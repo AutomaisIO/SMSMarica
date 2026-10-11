@@ -128,6 +128,46 @@ public sealed class GraphMetaClientTests
         handler.Chamadas.Should().BeEmpty("sem credencial não se chama a Meta");
     }
 
+    [Fact]
+    public async Task RegistrarNumero_manda_o_pin_no_corpo_do_register()
+    {
+        var (cliente, handler) = Montar((HttpStatusCode.OK, """{"success":true}"""));
+
+        var r = await cliente.RegistrarNumeroAsync("1370719552782216", " 123456 ");
+
+        r.Sucesso.Should().BeTrue();
+        handler.Chamadas.Should().ContainSingle()
+            .Which.Should().Be("https://graph.facebook.com/v21.0/1370719552782216/register");
+        handler.Corpos.Single().Should().Be("""{"messaging_product":"whatsapp","pin":"123456"}""");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("12345")]
+    [InlineData("1234567")]
+    [InlineData("12a456")]
+    public async Task RegistrarNumero_pin_que_nao_tem_6_numeros_nem_chega_a_meta(string pin)
+    {
+        var (cliente, handler) = Montar((HttpStatusCode.OK, """{"success":true}"""));
+
+        var r = await cliente.RegistrarNumeroAsync("1370719552782216", pin);
+
+        r.Sucesso.Should().BeFalse();
+        handler.Chamadas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RegistrarNumero_devolve_a_recusa_da_meta()
+    {
+        var (cliente, _) = Montar((HttpStatusCode.BadRequest,
+            """{"error":{"message":"Two step verification PIN Mismatch","code":133005}}"""));
+
+        var r = await cliente.RegistrarNumeroAsync("1370719552782216", "654321");
+
+        r.Sucesso.Should().BeFalse();
+        r.Erro.Should().Contain("PIN Mismatch").And.Contain("133005");
+    }
+
     [Theory]
     [InlineData("APPROVED", "on")]
     [InlineData("PENDING", "atencao")]
@@ -308,25 +348,27 @@ public sealed class GraphMetaClientTests
         return (new GraphMetaClient(http, config, NullLogger<GraphMetaClient>.Instance), handler);
     }
 
-    /// <summary>Devolve as respostas combinadas, na ordem, e guarda as URLs pedidas.</summary>
+    /// <summary>Devolve as respostas combinadas, na ordem, e guarda as URLs e os corpos pedidos.</summary>
     private sealed class HandlerFalso((HttpStatusCode Codigo, string Corpo)[] respostas) : HttpMessageHandler
     {
         private int _proxima;
 
         public List<string> Chamadas { get; } = [];
+        public List<string> Corpos { get; } = [];
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             Chamadas.Add(request.RequestUri!.ToString());
+            if (request.Content is not null) Corpos.Add(await request.Content.ReadAsStringAsync(ct));
 
             var (codigo, corpo) = _proxima < respostas.Length
                 ? respostas[_proxima++]
                 : (HttpStatusCode.InternalServerError, """{"error":{"message":"resposta nao combinada no teste"}}""");
 
-            return Task.FromResult(new HttpResponseMessage(codigo)
+            return new HttpResponseMessage(codigo)
             {
                 Content = new StringContent(corpo, Encoding.UTF8, "application/json"),
-            });
+            };
         }
     }
 

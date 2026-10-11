@@ -24,7 +24,12 @@
             max-width: 100%; max-height: 170px; border-radius: 6px; display: block;
             box-shadow: 0 1px 3px rgba(0,0,0,.18); background: #fff;
         }
-        .arte .dados { padding: 11px 13px 13px; display: grid; gap: 7px; border-top: 1px solid var(--borda-suave); }
+        /* minmax(0, 1fr): sem ele a coluna cresce até caber o endereço inteiro, e o Copiar e o
+           Apagar ficam para fora do cartão (que corta o que transborda). */
+        .arte .dados {
+            padding: 11px 13px 13px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px;
+            border-top: 1px solid var(--borda-suave);
+        }
         .arte .dados .nome { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
         .arte .dados .meta-linha { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--fraco); }
         .arte .endereco { display: flex; align-items: center; gap: 6px; }

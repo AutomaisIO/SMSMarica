@@ -10,8 +10,10 @@ namespace Automais.Zap.Api.Pages.Admin;
 /// <summary>
 /// Diagnóstico de um número: o que a Meta diz sobre ele e como o relay o trata.
 ///
-/// Só lê. Toda a configuração (ligar/desligar, destino próprio) continua na tela do WABA —
-/// duplicar formulário de escrita em duas telas é como se cria divergência de regra.
+/// Só lê o que é do relay. Toda a configuração (ligar/desligar, destino próprio) continua na
+/// tela do WABA — duplicar formulário de escrita em duas telas é como se cria divergência de
+/// regra. A exceção é o registro na Meta, que não é configuração nossa: é o remédio para o que
+/// este diagnóstico mostra (nome aprovado que não chegou ao número).
 /// </summary>
 public sealed class NumeroModel(ZapDbContext db, EscopoUsuario escopo, IGraphMetaClient graph) : PageModel
 {
@@ -21,6 +23,9 @@ public sealed class NumeroModel(ZapDbContext db, EscopoUsuario escopo, IGraphMet
     /// <summary>Retrato vindo da Meta. Nulo quando a consulta falhou — ver <see cref="ErroGraph"/>.</summary>
     public NumeroDetalheMeta? NaMeta { get; private set; }
     public string? ErroGraph { get; private set; }
+
+    [TempData] public string? Recado { get; set; }
+    [TempData] public string? Erro { get; set; }
 
     public string? DestinoEfetivo => string.IsNullOrWhiteSpace(Alvo?.UrlDestinoOverride)
         ? Waba?.UrlDestino
@@ -35,6 +40,32 @@ public sealed class NumeroModel(ZapDbContext db, EscopoUsuario escopo, IGraphMet
 
     public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken ct)
     {
+        if (await AutorizarAsync(id, ct) is { } recusa) return recusa;
+
+        // Chegar por URL a um número de outro tenant realinha o contexto do painel.
+        escopo.Selecionar(Waba!.TenantId);
+
+        var r = await graph.ObterNumeroAsync(Alvo!.PhoneNumberId, ct);
+        if (r.Sucesso) NaMeta = r.Valor;
+        else ErroGraph = r.Erro;
+
+        return Page();
+    }
+
+    /// <summary>Registra o número de novo na Meta com o PIN da verificação em duas etapas.</summary>
+    public async Task<IActionResult> OnPostRegistrarAsync(Guid id, string? pin, CancellationToken ct)
+    {
+        if (await AutorizarAsync(id, ct) is { } recusa) return recusa;
+
+        var r = await graph.RegistrarNumeroAsync(Alvo!.PhoneNumberId, pin ?? "", ct);
+        if (r.Sucesso) Recado = "Número registrado de novo na Meta. A situação do nome pode levar alguns minutos para mudar.";
+        else Erro = "A Meta recusou: " + r.Erro;
+
+        return RedirectToPage(new { id });
+    }
+
+    private async Task<IActionResult?> AutorizarAsync(Guid id, CancellationToken ct)
+    {
         Alvo = await db.Numeros.AsNoTracking().FirstOrDefaultAsync(n => n.Id == id, ct);
         if (Alvo is null) return NotFound();
 
@@ -42,16 +73,7 @@ public sealed class NumeroModel(ZapDbContext db, EscopoUsuario escopo, IGraphMet
         if (Waba is null) return NotFound();
 
         // Fail-closed: número é de um tenant, e tenant que o usuário não enxerga não existe.
-        if (!await escopo.PodeVerAsync(Waba.TenantId, ct)) return Forbid();
-
-        // Chegar por URL a um número de outro tenant realinha o contexto do painel.
-        escopo.Selecionar(Waba.TenantId);
-
-        var r = await graph.ObterNumeroAsync(Alvo.PhoneNumberId, ct);
-        if (r.Sucesso) NaMeta = r.Valor;
-        else ErroGraph = r.Erro;
-
-        return Page();
+        return await escopo.PodeVerAsync(Waba.TenantId, ct) ? null : Forbid();
     }
 
     /// <summary>

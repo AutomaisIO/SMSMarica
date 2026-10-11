@@ -209,6 +209,35 @@ public sealed partial class GraphMetaClient(
         return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
     }
 
+    /// <summary>
+    /// Registra o número de novo na Cloud API. É o que reinstala o certificado do nome de
+    /// exibição: com o nome aprovado no Gerenciador mas <c>name_status</c> fora de APPROVED, a
+    /// Meta recusa todo envio com o 131037 até o número ser registrado outra vez.
+    ///
+    /// <para>O PIN é o da verificação em duas etapas do número. Vai só no corpo, que nunca é
+    /// logado — nem aqui nem no <see cref="EnviarAsync"/>.</para>
+    /// </summary>
+    public async Task<ResultadoMeta<bool>> RegistrarNumeroAsync(string phoneNumberId, string pin, CancellationToken ct = default)
+    {
+        pin = (pin ?? "").Trim();
+        if (pin.Length != 6 || !pin.All(char.IsAsciiDigit))
+        {
+            return ResultadoMeta<bool>.Falha("O PIN da verificação em duas etapas tem 6 números.");
+        }
+
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
+
+        logger.LogWarning("Registrando de novo o número {Numero} na Meta — reinstala o certificado do nome de exibição.", phoneNumberId);
+        var corpo = JsonSerializer.Serialize(new Dictionary<string, string>
+        {
+            ["messaging_product"] = "whatsapp",
+            ["pin"] = pin,
+        });
+        var r = await ChamarJsonAsync(HttpMethod.Post, $"{phoneNumberId}/register", creds!.TokenSistema!, corpo, ct);
+        return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
+    }
+
     // ------------------------------------------------------------ Templates
 
     public async Task<ResultadoMeta<IReadOnlyList<TemplateMeta>>> ListarTemplatesAsync(string wabaId, CancellationToken ct = default)

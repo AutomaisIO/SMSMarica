@@ -224,6 +224,7 @@ public interface IGraphMetaClient
     Task<ResultadoMeta<IReadOnlyList<AppInscrito>>> ListarAppsInscritosAsync(string wabaId, CancellationToken ct = default);
     Task<ResultadoMeta<bool>> InscreverAppNoWabaAsync(string wabaId, CancellationToken ct = default);
     Task<ResultadoMeta<bool>> DesinscreverAppDoWabaAsync(string wabaId, CancellationToken ct = default);
+    Task<ResultadoMeta<bool>> RegistrarNumeroAsync(string phoneNumberId, string pin, CancellationToken ct = default);
 
     // --- Templates ---
     Task<ResultadoMeta<IReadOnlyList<TemplateMeta>>> ListarTemplatesAsync(string wabaId, CancellationToken ct = default);

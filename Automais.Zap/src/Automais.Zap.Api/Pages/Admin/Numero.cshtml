@@ -60,6 +60,15 @@
     <a href="/admin/perfil?id=@Model.Alvo.Id">Perfil do WhatsApp</a>
 </nav>
 
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
 @if (Model.ErroGraph is not null)
 {
     <div class="aviso atencao">
@@ -165,6 +174,25 @@
             </tbody>
         </table>
     }
+</div>
+
+<h2>Registro na Meta</h2>
+<div class="cartao">
+    <form method="post" asp-page-handler="Registrar" asp-route-id="@Model.Alvo.Id" class="linha" style="margin-top:0"
+          onsubmit="return confirm('Registrar este número de novo na Meta?');">
+        @Html.AntiForgeryToken()
+        <div>
+            <label for="registro-pin">PIN da verificação em duas etapas</label>
+            <input id="registro-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}"
+                   maxlength="6" autocomplete="off" required />
+        </div>
+        <button class="acao" type="submit">Registrar de novo</button>
+    </form>
+    <p class="ajuda-campo" style="margin-top:10px">
+        Com o nome aprovado no Gerenciador e a situação do nome diferente de APPROVED, a Meta recusa
+        todo envio (erro 131037) até o número ser registrado outra vez. O PIN é o da aba
+        "Verificação em duas etapas" do número no Gerenciador da Meta.
+    </p>
 </div>
 
 <h2>Conta comercial oficial (selo azul)</h2>
