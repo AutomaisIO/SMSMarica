@@ -166,7 +166,7 @@ class _DocumentoTela extends StatelessWidget {
                 child: SingleChildScrollView(
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
                   child: SelectionArea(
-                    child: HtmlWidget(documento.conteudoHtml, textStyle: Txt.sans(14, altura: 1.5)),
+                    child: _DocumentoHtml(documento.conteudoHtml),
                   ),
                 ),
               ),
@@ -174,6 +174,72 @@ class _DocumentoTela extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Padrão visual do documento de atendimento — o mesmo do painel e do PWA (classes `edoc-*`).
+///
+/// Chegam três formas do servidor: eDoc do Salux (`.edoc-campo`: rótulo + valor), Boletim do
+/// Klinikos (`h3` + `p`, sem classe) e evolução em texto (`.edoc-texto`, parágrafos). O
+/// renderizador não conhece `text-transform` nem `letter-spacing`, então o rótulo (e o título de
+/// seção do boletim) é desenhado como widget; o resto vai por estilo de elemento.
+class _DocumentoHtml extends StatelessWidget {
+  const _DocumentoHtml(this.html);
+
+  final String html;
+
+  @override
+  Widget build(BuildContext context) {
+    return HtmlWidget(
+      html,
+      textStyle: Txt.sans(15, altura: 1.6),
+      customStylesBuilder: (e) {
+        final classes = e.classes;
+        final ultimo = e.nextElementSibling == null;
+        if (classes.contains('edoc-titulo')) {
+          return {
+            'color': '#0A5E5D',
+            'font-size': '16px',
+            'font-weight': '600',
+            'margin': '0 0 12px',
+            'padding-bottom': '8px',
+            'border-bottom': '2px solid #E5F2F1',
+          };
+        }
+        if (classes.contains('edoc-doc') && e.previousElementSibling != null) {
+          return {'margin-top': '24px', 'padding-top': '16px', 'border-top': '1px solid #ECE3E1'};
+        }
+        if (classes.contains('edoc-campo')) {
+          return {'padding': '10px 0', if (!ultimo) 'border-bottom': '1px solid #ECE3E1'};
+        }
+        // O valor do eDoc guarda as quebras de linha que o profissional digitou.
+        if (classes.contains('edoc-valor')) return {'white-space': 'pre'};
+        if (classes.contains('edoc-vazio')) return {'color': '#6F6466', 'font-style': 'italic'};
+        if (e.localName == 'p') return {'margin': ultimo ? '0' : '0 0 12px'};
+        return null;
+      },
+      customWidgetBuilder: (e) {
+        final secao = e.localName == 'h3' && !e.classes.contains('edoc-titulo');
+        if (!secao && !e.classes.contains('edoc-rotulo')) return null;
+
+        final rotulo = Text(
+          e.text.trim().toUpperCase(),
+          style: Txt.sans(11, peso: FontWeight.w600, cor: CoresMarica.tintaMute, altura: 1.4, espacamento: 0.66),
+        );
+        if (!secao) return Padding(padding: const EdgeInsets.only(bottom: 2), child: rotulo);
+
+        // Seção do boletim (Anamnese, Exame físico…): fio acima, menos na primeira. O parágrafo de
+        // cima já deixa 12; aqui as margens somam, não colapsam como no navegador.
+        final primeira = e.previousElementSibling == null;
+        return Container(
+          width: double.infinity,
+          margin: EdgeInsets.only(top: primeira ? 0 : 6, bottom: 4),
+          padding: EdgeInsets.only(top: primeira ? 0 : 14),
+          decoration: primeira ? null : const BoxDecoration(border: Border(top: BorderSide(color: CoresMarica.areia))),
+          child: rotulo,
+        );
+      },
     );
   }
 }
