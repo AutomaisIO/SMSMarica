@@ -28,6 +28,11 @@ public class ComunicacaoPaciente
     public Guid? SolicitacaoId { get; set; }
     public Solicitacao? Solicitacao { get; set; }
 
+    /// <summary>Agendamento do SER/SERNIT/ESUS SG a que o aviso se refere — a âncora dos sistemas
+    /// que não têm <see cref="Solicitacao"/> (10/10/2026). Exclusivo com <see cref="SolicitacaoId"/>.</summary>
+    public Guid? AgendamentoExternoId { get; set; }
+    public AgendamentoExterno? AgendamentoExterno { get; set; }
+
     /// <summary>Aponta para fhir.patient (hub FHIR) — sem FK/navegação local.</summary>
     public Guid PacienteId { get; set; }
 

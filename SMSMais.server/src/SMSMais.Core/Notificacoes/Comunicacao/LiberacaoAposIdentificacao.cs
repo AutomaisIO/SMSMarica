@@ -110,6 +110,7 @@ public sealed class LiberacaoAposIdentificacao(
         // lembrete de quem não respondeu repete a primeira mensagem e fica retido do mesmo jeito.
         var candidatas = await db.ComunicacoesPaciente
             .Include(n => n.Solicitacao)
+            .Include(n => n.AgendamentoExterno)
             .Include(n => n.MensagemWhatsApp)
             .Where(n => n.PacienteId == pacienteId
                 && (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
@@ -133,6 +134,8 @@ public sealed class LiberacaoAposIdentificacao(
         var naoLiberadas = 0;
         foreach (var n in candidatas)
         {
+            // A data que decide o "já passou" — da espinha (SISREG) ou do agendamento do SER/SERNIT/ESUS.
+            var dataAgendada = DataDoAgendamento(n);
             if (n.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue or StatusComunicacao.Lida)
             {
                 // Anti-reenvio — mas só envio COM DADOS conta como "já enviado". Até 26/09 o
@@ -143,31 +146,34 @@ public sealed class LiberacaoAposIdentificacao(
                 // ser elegível e sai agora com os dados.
                 if (!EnvioFoiSemDados(n))
                 {
-                    motivos[n.Id] = new(DesfechoLiberacao.JaEnviado, n.Solicitacao?.DataAgendada, n.Telefone);
+                    motivos[n.Id] = new(DesfechoLiberacao.JaEnviado, dataAgendada, n.Telefone);
                     continue;
                 }
             }
             if (n.Status == StatusComunicacao.SubstituidaPorAtendente)
             {
                 // Uma pessoa já entrou no circuito: o automático não volta.
-                motivos[n.Id] = new(DesfechoLiberacao.AtendenteAssumiu, n.Solicitacao?.DataAgendada, null);
+                motivos[n.Id] = new(DesfechoLiberacao.AtendenteAssumiu, dataAgendada, null);
                 continue;
             }
             if (n.Status == StatusComunicacao.Dispensada)
             {
                 // Já coberta por outra da mesma solicitação.
-                motivos[n.Id] = new(DesfechoLiberacao.NadaPendente, n.Solicitacao?.DataAgendada, null);
+                motivos[n.Id] = new(DesfechoLiberacao.NadaPendente, dataAgendada, null);
                 continue;
             }
 
             // A MESMA régua do envio, com folga: o que o envio vai barrar não é prometido.
-            var impedimento = ComunicacaoPacienteService.MotivoQueImpedeEnvio(
-                n.Finalidade, n.Solicitacao, somenteSisreg, agora.Add(FolgaAntesDoAgendamento));
+            var impedimento = n.AgendamentoExternoId is not null
+                ? ComunicacaoPacienteService.MotivoQueImpedeEnvioExterno(
+                    n.Finalidade, n.AgendamentoExterno, agora.Add(FolgaAntesDoAgendamento))
+                : ComunicacaoPacienteService.MotivoQueImpedeEnvio(
+                    n.Finalidade, n.Solicitacao, somenteSisreg, agora.Add(FolgaAntesDoAgendamento));
             if (impedimento is not null)
             {
                 Encerrar(n, StatusComunicacao.Falha,
                     $"Identificação concluída em {dia}; não liberada: {Minuscula(impedimento.Motivo)}", agora);
-                motivos[n.Id] = new(DesfechoDoImpedimento(impedimento, n.Solicitacao), n.Solicitacao?.DataAgendada, null);
+                motivos[n.Id] = new(DesfechoDoImpedimento(impedimento, dataAgendada), dataAgendada, null);
                 naoLiberadas++;
                 continue;
             }
@@ -176,7 +182,7 @@ public sealed class LiberacaoAposIdentificacao(
                 Encerrar(n, StatusComunicacao.SubstituidaPorAtendente,
                     $"Identificação concluída em {dia}; não liberada: uma atendente já está cuidando deste agendamento.",
                     agora);
-                motivos[n.Id] = new(DesfechoLiberacao.AtendenteAssumiu, n.Solicitacao?.DataAgendada, null);
+                motivos[n.Id] = new(DesfechoLiberacao.AtendenteAssumiu, dataAgendada, null);
                 naoLiberadas++;
                 continue;
             }
@@ -187,7 +193,7 @@ public sealed class LiberacaoAposIdentificacao(
         // solicitação — as duas sairiam como a mesma confirmação completa, uma atrás da outra.
         var liberadas = new List<Guid>();
         var cobertas = 0;
-        foreach (var grupo in elegiveis.GroupBy(n => n.SolicitacaoId ?? n.Id))
+        foreach (var grupo in elegiveis.GroupBy(n => n.SolicitacaoId ?? n.AgendamentoExternoId ?? n.Id))
         {
             var ordenadas = grupo
                 .OrderBy(n => n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento ? 0 : 1)
@@ -258,14 +264,18 @@ public sealed class LiberacaoAposIdentificacao(
         return new LiberacaoResultado(0, motivo.Desfecho, motivo.DataAgendada, motivo.Telefone, texto);
     }
 
-    private static DesfechoLiberacao DesfechoDoImpedimento(ComunicacaoPacienteService.Impedimento i, Solicitacao? s)
+    private static DesfechoLiberacao DesfechoDoImpedimento(ComunicacaoPacienteService.Impedimento i, DateTime? dataAgendada)
         => i.Tipo switch
         {
             ComunicacaoPacienteService.ImpedimentoEnvio.SolicitacaoEncerrada => DesfechoLiberacao.AgendamentoCancelado,
-            ComunicacaoPacienteService.ImpedimentoEnvio.SemDataFutura when s?.DataAgendada is not null
+            ComunicacaoPacienteService.ImpedimentoEnvio.SemDataFutura when dataAgendada is not null
                 => DesfechoLiberacao.AgendamentoPassou,
             _ => DesfechoLiberacao.NadaPendente,
         };
+
+    private static DateTime? DataDoAgendamento(ComunicacaoPaciente n) =>
+        n.Solicitacao?.DataAgendada
+        ?? (n.AgendamentoExterno is { } a ? ComunicacaoPacienteService.InstanteDoAgendamento(a) : null);
 
     /// <summary>O que saiu foi a primeira mensagem CURTA (sem data/local)? Sem o vínculo com a
     /// mensagem enviada não dá para afirmar — aí prevalece o anti-reenvio de sempre.</summary>

@@ -30,6 +30,8 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   atualizadoEm: '2026-10-10',
   palavrasChave: [
     'contato com o paciente',
+    'aviso do SER',
+    'endereço do agendamento',
     'paciente foi avisado',
     'aviso pelo WhatsApp',
     'paciente confirmou',
@@ -648,7 +650,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'contato-paciente',
       titulo: 'Contato com o paciente: ele foi avisado?',
       busca:
-        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu telefone confirmado sisreg ser sernit esus outro pedido equipe avisou à mão conversas',
+        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu motivo telefone confirmado sisreg ser sernit esus endereço local unidade de atendimento outro pedido equipe avisou à mão conversas',
       conteudo: (
         <>
           <P>
@@ -658,10 +660,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
           <Lista>
             <Item>
               <strong>O agendamento</strong> — a data e o local como o sistema de destino mostra (o SER e o
-              SERNIT escrevem a data do jeito deles).
+              SERNIT escrevem a data do jeito deles). Para o SER, o SERNIT e o ESUS, embaixo vem o{' '}
+              <strong>endereço que vai no aviso</strong> — ou o alerta de que o local ainda não tem endereço ligado.
             </Item>
             <Item>
-              <strong>O aviso automático</strong> — só existe para o <strong>SISREG</strong>. Aparece com os
+              <strong>O aviso automático</strong> — do SISREG, do SER, do SERNIT e do ESUS. Aparece com os
               sinais do WhatsApp: ✓ enviada, ✓✓ entregue, ✓✓ azul lida. Embaixo vem a resposta: confirmou que
               vai, avisou que não vai (com o motivo dele) ou ainda não respondeu.
             </Item>
@@ -675,10 +678,19 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               respondeu. As anotações internas da equipe não aparecem.
             </Item>
           </Lista>
-          <Callout tipo="atencao" titulo="Do SER, do SERNIT e do ESUS, a plataforma não avisa sozinha">
-            Para esses destinos, o quadro mostra a faixa amarela “A plataforma não avisa sozinha”. Aí, quem
-            diz se o paciente soube são as mensagens: veja se alguém da equipe mandou a data para ele. Se
-            ninguém mandou, ele pode não saber do agendamento.
+          <Callout tipo="regra" titulo="Como o paciente do SER, do SERNIT e do ESUS é avisado">
+            Quando o pedido aparece agendado na leitura do sistema, a plataforma manda a mesma primeira
+            mensagem do SISREG — sem dizer o quê, nem onde. Quando o paciente toca em “Quero mais
+            informações” (e confirma o CPF e o nascimento, se o número dele não é confirmado), recebe o
+            procedimento, o dia, a hora, o local e o <strong>endereço</strong>. Não manda buscar guia no posto:
+            esses atendimentos são marcados por outra regulação. Se ele responder que não vai, a resposta
+            fica registrada aqui — <strong>nada é desmarcado no SER, no SERNIT ou no ESUS</strong>; isso
+            continua sendo com a equipe. Só são avisados agendamentos de amanhã em diante.
+          </Callout>
+          <Callout tipo="atencao" titulo="Faixa amarela: o aviso está desligado">
+            Se o quadro mostrar a faixa amarela, o aviso automático desse sistema está desligado na
+            Mensageria. Aí, quem diz se o paciente soube são as mensagens: veja se alguém da equipe mandou a
+            data para ele. Se ninguém mandou, ele pode não saber do agendamento.
           </Callout>
           <Callout tipo="dica" titulo="Aviso de outro pedido">
             O paciente pode ter mais de um pedido, e o aviso automático não diz o procedimento (“Sua consulta

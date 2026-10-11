@@ -6,6 +6,7 @@ import { useSolicitacaoSernit } from '@/features/sernit/api/queries';
 import { SituacaoSernitBadge } from '@/features/sernit/components/SituacaoSernitBadge';
 import { PainelFollowUpSernit } from '@/features/sernit/components/PainelFollowUpSernit';
 import { PainelContatosSernit } from '@/features/sernit/components/PainelContatosSernit';
+import { ContatoComPacienteEspelho } from '@/features/regulacao/components/ContatoComPaciente';
 import type { EventoSernit } from '@/features/sernit/types';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -261,6 +262,9 @@ export function SernitSolicitacaoDetalhePage() {
 
           {/* Parecer da análise automática das regras (ADR-0063 §4) — nada vai ao SERNIT. */}
           {id && <PainelAnaliseRegras sistema="sernit" espelhoId={id} analise={detalhe.analise} />}
+
+          {/* O paciente foi avisado do agendamento pelo WhatsApp? Leu? Respondeu? (10/10/2026) */}
+          {id && <ContatoComPacienteEspelho sistema="sernit" espelhoId={id} />}
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">

@@ -139,6 +139,18 @@ export async function obterContatoPaciente(id: string): Promise<ContatoPacienteR
   return data;
 }
 
+/** Sistemas cujo pedido tem tela de detalhe própria (espelho) — o quadro também aparece lá. */
+export type SistemaEspelho = 'ser' | 'sernit' | 'esussg';
+
+/** O mesmo quadro, visto do pedido no espelho do SER/SERNIT/ESUS (permissão da tela do sistema). */
+export async function obterContatoPacienteEspelho(
+  sistema: SistemaEspelho,
+  id: string,
+): Promise<ContatoPacienteRegulacao> {
+  const { data } = await http.get<ContatoPacienteRegulacao>(`/regulacao/${sistema}/${id}/contato-paciente`);
+  return data;
+}
+
 // ---------------------------------------------------------------- ações do agente (módulo 48)
 
 export async function assumirSolicitacao(id: string): Promise<SolicitacaoRegulacao> {

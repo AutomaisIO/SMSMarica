@@ -7,6 +7,8 @@ import {
   devolverSolicitacao,
   listarEventos,
   obterContatoPaciente,
+  obterContatoPacienteEspelho,
+  type SistemaEspelho,
   listarExamesInternos,
   obterElegibilidade,
   listarNotificacoesRegulacao,
@@ -165,6 +167,16 @@ export function useContatoPaciente(id: string | null) {
     queryFn: () => obterContatoPaciente(id!),
     enabled: !!id,
     // As respostas do paciente chegam a qualquer hora; quem está com o caso aberto vê sem recarregar.
+    refetchInterval: 60_000,
+  });
+}
+
+/** O quadro do contato com o paciente na tela de detalhe do pedido do SER/SERNIT/ESUS. */
+export function useContatoPacienteEspelho(sistema: SistemaEspelho, id: string | null) {
+  return useQuery({
+    queryKey: ['regulacao', 'espelho', sistema, id, 'contato-paciente'],
+    queryFn: () => obterContatoPacienteEspelho(sistema, id!),
+    enabled: !!id,
     refetchInterval: 60_000,
   });
 }

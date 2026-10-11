@@ -402,6 +402,8 @@ export type AgendamentoNoDestino = {
   dataHora: string | null;
   dataTexto: string | null;
   local: string | null;
+  /** Endereço que vai no aviso (unidade de atendimento ligada ao nome do local). Nulo = sem ligação. */
+  endereco?: string | null;
 };
 
 /** A mensagem é um aviso automático — e de qual pedido (o paciente pode ter vários). */
@@ -430,7 +432,8 @@ export type MensagemAoPaciente = {
 /** `GET /regulacao/solicitacoes/{id}/contato-paciente` — o paciente foi avisado? leu? respondeu? */
 export type ContatoPacienteRegulacao = {
   agendamento: AgendamentoNoDestino | null;
-  /** A plataforma avisa sozinha os agendamentos deste destino (hoje, só o SISREG). */
+  /** A plataforma avisa sozinha os agendamentos deste destino: o SISREG sempre; o SER, o SERNIT e o
+   *  ESUS enquanto a chave da Mensageria estiver ligada. */
   destinoComAvisoAutomatico: boolean;
   confirmacao: 'Pendente' | 'Confirmada' | 'Cancelada' | null;
   confirmadoEm: string | null;

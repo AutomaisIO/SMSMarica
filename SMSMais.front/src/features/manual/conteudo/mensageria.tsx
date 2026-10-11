@@ -24,7 +24,7 @@ export const artigoMensageria: Artigo = {
   icone: BellRing,
   rota: '/app/mensageria',
   publico: 'Quem responde pelo canal: coordenação, regulação e quem configura o envio automático',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-10',
   palavrasChave: [
     'mensageria',
     'retorno',
@@ -83,6 +83,14 @@ export const artigoMensageria: Artigo = {
     'cadastro confirmado',
     'finalidade',
     'aviso de cancelamento',
+    'ser',
+    'sernit',
+    'esus',
+    'agendamento do ser',
+    'agendamento fora do município',
+    'regulação estadual',
+    'endereço do local',
+    'locais dos agendamentos externos',
   ],
   secoes: () => [
     {
@@ -463,7 +471,7 @@ export const artigoMensageria: Artigo = {
       id: 'regras',
       titulo: 'Regras e parâmetros: o que governa o automático',
       busca:
-        'regras parâmetros janela de envio horário 21h véspera atendimento de amanhã atendimento hoje mesmo dia primeira vez dispensada vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente reforço orientação ao posto interruptor desligado',
+        'regras parâmetros janela de envio horário 21h véspera atendimento de amanhã atendimento hoje mesmo dia primeira vez dispensada vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente reforço orientação ao posto interruptor desligado ser sernit esus agendamentos externos',
       conteudo: (
         <div className="space-y-4">
           <Sub>Parâmetros de disparo</Sub>
@@ -583,6 +591,14 @@ export const artigoMensageria: Artigo = {
             recebe o quê, e quando, está na seção seguinte.
           </P>
 
+          <Sub>Agendamentos do SER, do SERNIT e do ESUS</Sub>
+          <P>
+            Um interruptor só, que <strong>nasce ligado</strong>: <em>Avisar o paciente quando o pedido for
+            agendado</em>. Ele não passa pelas chaves por unidade da lista abaixo — essas são do SISREG. Como o aviso
+            funciona está na seção <em>Agendamentos do SER, do SERNIT e do ESUS</em>, logo depois desta. Desligado,
+            os avisos que já estavam na fila esperam; ao religar, eles saem (se a data ainda não passou).
+          </P>
+
           <Sub>Quem recebe o aviso</Sub>
           <P>
             A mensagem só sai quando <strong>as duas</strong> chaves estão ligadas: a da unidade executante, aqui
@@ -591,6 +607,90 @@ export const artigoMensageria: Artigo = {
             unidade estão marcados — "3 de 40" é o aviso ligado com quase nada passando. Essas chaves governam a
             confirmação e o lembrete. O aviso de cancelamento não passa por elas: quando está ligado, sai para
             qualquer unidade.
+          </P>
+        </div>
+      ),
+    },
+    {
+      id: 'agendamentos-externos',
+      titulo: 'Agendamentos do SER, do SERNIT e do ESUS',
+      busca:
+        'ser sernit esus são gonçalo regulação estadual agendado aviso automático fora do município endereço local unidade de atendimento quero mais informações cpf nascimento confirmo não poderei ir motivo não desmarca hora do agendamento histórico amanhã remarcado desmarcado contato com o paciente',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Até 10/10/2026 só o agendamento do SISREG avisava o paciente. O paciente encaminhado pelo SER, pelo
+            SERNIT ou pelo ESUS só sabia da data se alguém da equipe mandasse a mensagem à mão. Agora a plataforma
+            avisa sozinha, pela mesma conversa da confirmação do SISREG:
+          </P>
+          <Passos
+            itens={[
+              {
+                titulo: 'O pedido aparece agendado',
+                detalhe:
+                  'A leitura do sistema (de madrugada, ou quando alguém sincroniza) traz o agendamento. Em até 10 minutos o aviso entra na fila — só para data de amanhã em diante — e sai no horário de envio.',
+              },
+              {
+                titulo: 'A primeira mensagem não diz nada',
+                detalhe:
+                  '“Sua consulta foi agendada!”, com os botões Quero mais informações e Não sou essa pessoa. Nem o quê, nem onde: o número pode não ser do paciente.',
+              },
+              {
+                titulo: 'O paciente pede mais informações',
+                detalhe:
+                  'Se o número dele é o confirmado, os dados saem na hora. Se não é, ele confirma os 4 primeiros dígitos do CPF, o mês e o ano de nascimento — o mesmo de sempre.',
+              },
+              {
+                titulo: 'Recebe o agendamento completo',
+                detalhe:
+                  'Procedimento, dia, hora, local e o ENDEREÇO de onde vai ser, e quem marcou (SER, SERNIT ou ESUS). Sem guia do posto: esses atendimentos não usam a guia do SISREG.',
+              },
+              {
+                titulo: 'Responde',
+                detalhe:
+                  'Sim, confirmo — ou Não poderei ir, com a pergunta de confirmação e o motivo, se ele quiser escrever.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="A resposta não volta para o SER">
+            “Não poderei ir” fica registrado na plataforma — no quadro <em>Contato com o paciente</em> do pedido, em
+            Envios e na Regulação. <strong>Nada é desmarcado no SER, no SERNIT ou no ESUS.</strong> Liberar a vaga lá
+            continua sendo com a equipe de regulação.
+          </Callout>
+          <Sub>De onde vem cada informação</Sub>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Dia e hora',
+                descricao:
+                  'O SER mostra só o dia na lista; a hora está no histórico do pedido (evento “Agendar”). O aviso espera o histórico até 24 horas — depois disso sai só com o dia, e a mensagem pede para o paciente confirmar o horário com o local. O SERNIT e o ESUS trazem dia e hora juntos.',
+              },
+              {
+                termo: 'Local',
+                descricao: 'O nome como o sistema escreve (o ESUS cola o CNES no nome; ele é tirado).',
+              },
+              {
+                termo: 'Endereço',
+                descricao:
+                  'Os sistemas não mandam endereço. Ele vem da unidade de atendimento ligada ao nome do local, em Unidades de Atendimento → Locais dos agendamentos do SER, SERNIT e ESUS. Local sem ligação sai só com o nome.',
+              },
+            ]}
+          />
+          <Callout tipo="atencao" titulo="Quem liga o endereço é uma pessoa">
+            A tela sugere a unidade parecida, mas a sugestão não vale sozinha: “Rio Imagem Lagos”, em Casimiro de
+            Abreu, se parece com o Rio Imagem do Rio de Janeiro — e o paciente iria para a cidade errada. Confira o
+            endereço antes de ligar.
+          </Callout>
+          <Sub>Remarcou ou desmarcou no sistema</Sub>
+          <P>
+            Se o sistema passa a mostrar <strong>outra data</strong>, o aviso antigo que ainda não tinha chegado ao
+            paciente não sai, e um aviso novo entra na fila com a data nova. Se o pedido <strong>sai de Agendada</strong>{' '}
+            (cancelado, voltou à fila), o que ainda não saiu não sai mais. O que já chegou ao paciente não é desfeito:
+            não existe aviso de cancelamento para esses sistemas.
+          </P>
+          <P>
+            Em <AbaRef>Envios</AbaRef> esses avisos aparecem com o número do pedido no lugar do código do SISREG
+            (“SER 8407041”).
           </P>
         </div>
       ),

@@ -6,6 +6,7 @@ import { useSolicitacaoSer } from '@/features/ser/api/queries';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
 import { PainelFollowUpSer } from '@/features/ser/components/PainelFollowUpSer';
 import { PainelContatosSer } from '@/features/ser/components/PainelContatosSer';
+import { ContatoComPacienteEspelho } from '@/features/regulacao/components/ContatoComPaciente';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type { EventoSer } from '@/features/ser/types';
 
@@ -185,6 +186,9 @@ export function SerSolicitacaoDetalhePage() {
 
           {/* Parecer da análise automática das regras (ADR-0063 §4) — nada vai ao SER. */}
           {id && <PainelAnaliseRegras sistema="ser" espelhoId={id} analise={detalhe.analise} />}
+
+          {/* O paciente foi avisado do agendamento pelo WhatsApp? Leu? Respondeu? (10/10/2026) */}
+          {id && <ContatoComPacienteEspelho sistema="ser" espelhoId={id} />}
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">

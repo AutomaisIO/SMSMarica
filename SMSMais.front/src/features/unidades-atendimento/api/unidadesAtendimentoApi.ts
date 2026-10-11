@@ -1,5 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  LocalAgendamentoExterno,
   SalvarUnidadeAtendimentoPayload,
   UnidadeAtendimento,
   UnidadeAtendimentoListItem,
@@ -32,4 +33,15 @@ export async function desativarUnidadeAtendimento(id: string): Promise<void> {
 
 export async function reativarUnidadeAtendimento(id: string): Promise<void> {
   await http.post(`/unidades-atendimento/${id}/reativar`);
+}
+
+/** Os locais dos agendamentos futuros do SER/SERNIT/ESUS e a unidade ligada a cada um. */
+export async function listarLocaisExternos(): Promise<LocalAgendamentoExterno[]> {
+  const { data } = await http.get<LocalAgendamentoExterno[]>('/unidades-atendimento/locais-externos');
+  return data;
+}
+
+/** Liga o nome do local a uma unidade de atendimento — ou desfaz, com a unidade nula. */
+export async function vincularLocalExterno(nome: string, unidadeAtendimentoId: string | null): Promise<void> {
+  await http.put('/unidades-atendimento/locais-externos', { nome, unidadeAtendimentoId });
 }

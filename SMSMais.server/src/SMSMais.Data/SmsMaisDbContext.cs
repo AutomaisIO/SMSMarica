@@ -320,6 +320,10 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<Entities.Notificacoes.AtendimentoConfirmacaoEvento> AtendimentoConfirmacaoEventos => Set<Entities.Notificacoes.AtendimentoConfirmacaoEvento>();
     public DbSet<Entities.Notificacoes.ContatoComprometido> ContatosComprometidos => Set<Entities.Notificacoes.ContatoComprometido>();
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
+    // Agendamentos do SER/SERNIT/ESUS SG vistos pelo lado do aviso ao paciente (âncora da comunicação
+    // desses sistemas) e os nomes com que as unidades de atendimento aparecem neles (endereço).
+    public DbSet<Entities.Notificacoes.AgendamentoExterno> AgendamentosExternos => Set<Entities.Notificacoes.AgendamentoExterno>();
+    public DbSet<UnidadeAtendimentoNomeExterno> UnidadeAtendimentoNomesExternos => Set<UnidadeAtendimentoNomeExterno>();
     public DbSet<Entities.Notificacoes.VerificacaoCadastralEstado> VerificacoesCadastraisEstado => Set<Entities.Notificacoes.VerificacaoCadastralEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();
 

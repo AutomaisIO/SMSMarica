@@ -9,6 +9,7 @@ import {
   CheckCheck,
   CheckCircle2,
   Clock3,
+  MapPin,
   ShieldCheck,
   XCircle,
 } from 'lucide-react';
@@ -19,7 +20,8 @@ import { formatarInstante, formatarInstanteData } from '@/shared/lib/datas';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { formatarTelefoneBR } from '@/shared/ui/TelefoneCopiavel';
 
-import { useContatoPaciente } from '../api/solicitacoesQueries';
+import type { SistemaEspelho } from '../api/solicitacoesApi';
+import { useContatoPaciente, useContatoPacienteEspelho } from '../api/solicitacoesQueries';
 import type { ContatoPacienteRegulacao, MensagemAoPaciente } from '../tiposSolicitacao';
 import { ROTULO_SISTEMA_REGULACAO } from '../types';
 
@@ -57,23 +59,41 @@ type Props = {
  * mensagem chegou, se leu e o que respondeu — para a unidade e o regulador saberem sem abrir o
  * módulo Conversas.
  *
- * <p><b>Só o SISREG tem aviso automático.</b> Do SER, do SERNIT e do ESUS a plataforma ainda não
- * avisa sozinha; o quadro diz isso com todas as letras, e as mensagens da conversa mostram se
- * alguém da equipe avisou à mão. Aviso automático de <b>outro</b> pedido do mesmo paciente vem
- * marcado — o texto do modelo não diz o procedimento.</p>
+ * <p>O SISREG sempre avisou sozinho; o SER, o SERNIT e o ESUS passaram a avisar em 10/10/2026
+ * (chave na Mensageria). Com a chave desligada o quadro diz isso com todas as letras, e as
+ * mensagens da conversa mostram se alguém da equipe avisou à mão. Aviso automático de <b>outro</b>
+ * pedido do mesmo paciente vem marcado — o texto do modelo não diz o procedimento.</p>
  */
 export function ContatoComPaciente({ solicitacaoId, artigoManual }: Props) {
   const q = useContatoPaciente(solicitacaoId);
-  const c = q.data;
+  return <Quadro carregando={q.isLoading} c={q.data} artigo={artigoManual} secao="contato-paciente" />;
+}
 
+/** O mesmo quadro na tela de detalhe do pedido do SER, do SERNIT ou do ESUS (o espelho). */
+export function ContatoComPacienteEspelho({ sistema, espelhoId }: { sistema: SistemaEspelho; espelhoId: string }) {
+  const q = useContatoPacienteEspelho(sistema, espelhoId);
+  return <Quadro carregando={q.isLoading} c={q.data} artigo="mensageria" secao="agendamentos-externos" />;
+}
+
+function Quadro({
+  carregando,
+  c,
+  artigo,
+  secao,
+}: {
+  carregando: boolean;
+  c: ContatoPacienteRegulacao | undefined;
+  artigo: string;
+  secao: string;
+}) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-center gap-1">
         <h2 className="text-sm font-semibold text-slate-900">Contato com o paciente</h2>
-        <AjudaManual artigo={artigoManual} secao="contato-paciente" />
+        <AjudaManual artigo={artigo} secao={secao} />
       </div>
 
-      {q.isLoading ? (
+      {carregando ? (
         <p className="text-sm text-slate-500">Carregando…</p>
       ) : !c ? (
         <p className="text-sm text-slate-500">Não foi possível carregar o contato com o paciente.</p>
@@ -111,27 +131,53 @@ function Agendamento({ c }: { c: ContatoPacienteRegulacao }) {
   const a = c.agendamento;
   if (!a) return null;
   const quando = a.dataHora ? formatarInstante(a.dataHora) : a.dataTexto;
+  // O endereço do aviso só existe para SER/SERNIT/ESUS (o do SISREG está na guia do posto).
+  const externo = a.sistema !== 'Sisreg';
   return (
-    <p className="flex items-start gap-2 text-sm text-slate-800">
-      <CalendarCheck className="mt-0.5 size-4 shrink-0 text-primary-600" />
-      <span>
-        Agendado no {ROTULO_SISTEMA_REGULACAO[a.sistema] ?? a.sistema} para <b>{quando}</b>
-        {a.local ? <> — {a.local}</> : null}.
-      </span>
-    </p>
+    <div className="space-y-1">
+      <p className="flex items-start gap-2 text-sm text-slate-800">
+        <CalendarCheck className="mt-0.5 size-4 shrink-0 text-primary-600" />
+        <span>
+          Agendado no {ROTULO_SISTEMA_REGULACAO[a.sistema] ?? a.sistema} para <b>{quando}</b>
+          {a.local ? <> — {a.local}</> : null}.
+        </span>
+      </p>
+      {externo && a.endereco ? (
+        <p className="flex items-start gap-2 pl-6 text-xs text-slate-600">
+          <MapPin className="mt-0.5 size-3.5 shrink-0 text-slate-400" />
+          <span>Endereço que vai no aviso: {a.endereco}</span>
+        </p>
+      ) : null}
+      {externo && !a.endereco && c.destinoComAvisoAutomatico ? (
+        <p className="flex items-start gap-2 pl-6 text-xs text-amber-800">
+          <MapPin className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            Este local ainda não está ligado a uma unidade de atendimento: o aviso sai só com o nome, sem endereço.
+            Ligue em Unidades de Atendimento → Locais dos agendamentos externos.
+          </span>
+        </p>
+      ) : null}
+    </div>
   );
 }
 
 function AvisoDoAgendamento({ c }: { c: ContatoPacienteRegulacao }) {
-  if (!c.destinoComAvisoAutomatico) {
-    const sistema = c.agendamento ? (ROTULO_SISTEMA_REGULACAO[c.agendamento.sistema] ?? 'sistema de destino') : null;
+  const sistemaDoAgendamento = c.agendamento?.sistema;
+  const sistema = sistemaDoAgendamento ? (ROTULO_SISTEMA_REGULACAO[sistemaDoAgendamento] ?? 'sistema de destino') : null;
+  const externo = !!sistemaDoAgendamento && sistemaDoAgendamento !== 'Sisreg';
+
+  if (!c.destinoComAvisoAutomatico && c.avisos.length === 0) {
     return (
       <p className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
         <BellOff className="mt-0.5 size-4 shrink-0" />
         <span>
-          <b>A plataforma não avisa sozinha os agendamentos {sistema ? `do ${sistema}` : 'deste destino'}.</b> Veja
-          nas mensagens abaixo se alguém da equipe avisou o paciente pelo WhatsApp. Se ninguém avisou, ele pode não
-          saber da data.
+          <b>
+            {externo
+              ? `O aviso automático dos agendamentos do ${sistema} está desligado (Mensageria → Regras).`
+              : `A plataforma não avisa sozinha os agendamentos ${sistema ? `do ${sistema}` : 'deste destino'}.`}
+          </b>{' '}
+          Veja nas mensagens abaixo se alguém da equipe avisou o paciente pelo WhatsApp. Se ninguém avisou, ele pode
+          não saber da data.
         </span>
       </p>
     );
@@ -142,8 +188,9 @@ function AvisoDoAgendamento({ c }: { c: ContatoPacienteRegulacao }) {
       <p className="flex items-start gap-2 text-sm text-slate-600">
         <BellOff className="mt-0.5 size-4 shrink-0 text-slate-400" />
         <span>
-          Nenhum aviso automático saiu para este agendamento. O aviso do SISREG só sai para unidade executante e
-          procedimento ligados nas Confirmações, e para data que ainda não passou.
+          {externo
+            ? `Nenhum aviso saiu ainda para este agendamento. O aviso entra na fila até 10 minutos depois que o agendamento aparece na leitura do ${sistema}, só para data de amanhã em diante, e sai dentro do horário de envio da Mensageria.`
+            : 'Nenhum aviso automático saiu para este agendamento. O aviso do SISREG só sai para unidade executante e procedimento ligados nas Confirmações, e para data que ainda não passou.'}
         </span>
       </p>
     );

@@ -40,6 +40,18 @@ public sealed class EsusSgController(IEsusSgConsultaService consulta) : Controll
     public Task<EsusSgSolicitacaoDetalheDto> Obter(Guid id, CancellationToken cancellationToken) =>
         consulta.ObterAsync(id, cancellationToken);
 
+    /// <summary>Contato com o paciente sobre este pedido: o aviso do agendamento pelo WhatsApp, os
+    /// recibos, a resposta e as mensagens desde a abertura (10/10/2026). Só lê.</summary>
+    [HttpGet("{id:guid}/contato-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoEsusSg, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.Regulacao.ContatoPaciente.ContatoPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<SMSMais.Core.Regulacao.ContatoPaciente.ContatoPacienteRegulacaoDto> ContatoPaciente(
+        Guid id,
+        [FromServices] SMSMais.Core.Regulacao.ContatoPaciente.IRegulacaoContatoPacienteService contato,
+        CancellationToken cancellationToken) =>
+        contato.ObterPorEspelhoAsync(SistemaRegulacao.EsusSg, id, cancellationToken);
+
     /// <summary>Refaz agora a análise de regras deste pedido (ADR-0063 §4). Só recalcula o NOSSO
     /// parecer — não escreve nada no ESUS.</summary>
     [HttpPost("{id:guid}/analise/reanalisar")]

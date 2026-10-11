@@ -7,9 +7,11 @@ using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Conversas;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Core.Pacientes;
+using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMais.Core.Notificacoes.Comunicacao;
 
@@ -26,6 +28,10 @@ public interface IComunicacaoPacienteService
     /// só entra com o aviso ligado e para cancelamento posterior ao momento em que foi ligado.
     /// NÃO salva — participa do SaveChanges do chamador.</summary>
     Task EnfileirarAsync(Solicitacao solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default);
+
+    /// <summary>Enfileira o aviso de um agendamento do SER/SERNIT/ESUS SG (idempotente por agendamento
+    /// × finalidade; a linha que não chegou a sair volta para a fila). NÃO salva.</summary>
+    Task EnfileirarExternoAsync(Data.Entities.Notificacoes.AgendamentoExterno agendamento, CancellationToken ct = default);
 
     /// <summary>Processa UMA tentativa de envio. Nunca lança — falha vira backoff/estado terminal.</summary>
     Task ProcessarTentativaEnvioAsync(Guid comunicacaoId, CancellationToken ct = default);
@@ -170,6 +176,34 @@ public sealed class ComunicacaoPacienteService(
             Finalidade = finalidade,
             SolicitacaoId = solicitacao.Id,
             PacienteId = solicitacao.PacienteId,
+            Status = StatusComunicacao.Pendente,
+            ProximaTentativaEm = DateTime.UtcNow,
+            CriadoEm = DateTime.UtcNow,
+        });
+    }
+
+    public async Task EnfileirarExternoAsync(AgendamentoExterno agendamento, CancellationToken ct = default)
+    {
+        const FinalidadeComunicacao finalidade = FinalidadeComunicacao.ConfirmacaoAgendamento;
+        var existente = await db.ComunicacoesPaciente
+            .FirstOrDefaultAsync(c => c.AgendamentoExternoId == agendamento.Id && c.Finalidade == finalidade, ct);
+        if (existente is not null)
+        {
+            // Agendamento que voltou a valer (saiu de "Agendada" e voltou com o mesmo dia): o aviso
+            // que tinha sido encerrado ANTES de sair volta para a fila. O que saiu não sai de novo.
+            if (existente.Status is StatusComunicacao.Dispensada or StatusComunicacao.Falha
+                && existente.EnviadoEm is null)
+                RearmarParaNovoEnvio(existente);
+            return;
+        }
+
+        db.ComunicacoesPaciente.Add(new ComunicacaoPaciente
+        {
+            Id = Guid.CreateVersion7(),
+            Tipo = agendamento.Tipo,
+            Finalidade = finalidade,
+            AgendamentoExternoId = agendamento.Id,
+            PacienteId = agendamento.PacienteId,
             Status = StatusComunicacao.Pendente,
             ProximaTentativaEm = DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
@@ -325,6 +359,28 @@ public sealed class ComunicacaoPacienteService(
         return null;
     }
 
+    /// <summary>
+    /// As mesmas guardas para o aviso de um agendamento do SER/SERNIT/ESUS SG: o agendamento deixou
+    /// de valer (remarcado, desmarcado), a data passou, o paciente já respondeu. Nada de "só SISREG"
+    /// — essa regra é da recepção, e estes agendamentos vêm de outro sistema por definição.
+    /// </summary>
+    internal static Impedimento? MotivoQueImpedeEnvioExterno(
+        FinalidadeComunicacao finalidade, AgendamentoExterno? a, DateTime dataMinimaUtc)
+    {
+        if (a is null || a.Situacao != SituacaoAgendamentoExterno.Ativo)
+            return new(ImpedimentoEnvio.SolicitacaoEncerrada,
+                "Agendamento remarcado ou desmarcado no sistema de regulação antes do envio.");
+        if (InstanteDoAgendamento(a) <= dataMinimaUtc)
+            return new(ImpedimentoEnvio.SemDataFutura, "Agendamento sem data futura no momento do envio.");
+        if (EhDaConfirmacao(finalidade) && a.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+            return new(ImpedimentoEnvio.JaRespondeu, "Paciente já respondeu.");
+        return null;
+    }
+
+    /// <summary>O instante (UTC) do agendamento externo — sem hora informada, a presumida da leitura.</summary>
+    internal static DateTime InstanteDoAgendamento(AgendamentoExterno a) =>
+        AgendamentosExternos.LeituraAgendamentoExterno.InstanteUtc(a.Data, a.Hora);
+
     /// <summary>Zera a linha para um envio novo — mesmo saneamento do reenvio manual: telefone,
     /// link e recibos saem, porque todos se referem ao envio anterior.</summary>
     internal static void RearmarParaNovoEnvio(ComunicacaoPaciente n)
@@ -350,6 +406,7 @@ public sealed class ComunicacaoPacienteService(
     {
         var n = await db.ComunicacoesPaciente
             .Include(x => x.Solicitacao!).ThenInclude(s => s.ExameImagem!).ThenInclude(e => e.TipoExame)
+            .Include(x => x.AgendamentoExterno)
             .FirstOrDefaultAsync(x => x.Id == comunicacaoId, ct);
         if (n is null || n.Status != StatusComunicacao.Pendente || n.ProximaTentativaEm is null)
             return;
@@ -357,6 +414,23 @@ public sealed class ComunicacaoPacienteService(
         n.Tentativas++;
         n.UltimaTentativaEm = DateTime.UtcNow;
         n.AtualizadoEm = DateTime.UtcNow;
+
+        // Agendamento do SER/SERNIT/ESUS SG: caminho próprio, sem espinha.
+        if (n.AgendamentoExternoId is not null)
+        {
+            try
+            {
+                await ProcessarExternoAsync(n, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Falha ao enviar o aviso de agendamento externo {Id} (tentativa {N}).",
+                    n.Id, n.Tentativas);
+                ReagendarOuFalhar(n, ex.Message);
+            }
+            await db.SaveChangesAsync(ct);
+            return;
+        }
 
         try
         {
@@ -390,7 +464,7 @@ public sealed class ComunicacaoPacienteService(
             }
             else if (EhSobreAgendamento(n.Finalidade)
                      && !n.IgnorarJanelaHorario
-                     && await ForaDaJanelaAsync(n, s!, ct) is { } abertura)
+                     && await ForaDaJanelaAsync(n, s!.DataAgendada, ct) is { } abertura)
             {
                 // Fora do horário (padrão 08h–18h): não é tentativa — fica EMPILHADA e sai quando a
                 // janela abrir. Vale também para reenvio manual: a regra é sobre o paciente.
@@ -431,7 +505,10 @@ public sealed class ComunicacaoPacienteService(
         var n = await db.ComunicacoesPaciente
             .Include(x => x.Solicitacao!).ThenInclude(s => s.ExameImagem!).ThenInclude(e => e.TipoExame)
             .Include(x => x.Solicitacao!).ThenInclude(s => s.UnidadeExecutante)
+            .Include(x => x.AgendamentoExterno)
             .FirstOrDefaultAsync(x => x.Id == comunicacaoId, ct);
+        if (n?.AgendamentoExterno is { } externo)
+            return await EnviarDetalhesExternoNaConversaAsync(n, externo, telefoneDestino, ct);
         var s = n?.Solicitacao;
         if (n is null || s is null || n.Status != StatusComunicacao.Pendente
             || n.Finalidade is not (FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento)
@@ -526,7 +603,7 @@ public sealed class ComunicacaoPacienteService(
     /// que outro envio já gravou como saída (o registro dele fica).
     /// </summary>
     private async Task GravarDetalhesEnviadosAsync(
-        ComunicacaoPaciente n, string telefoneDestino, Guid loginLinkId, EnvioWhatsAppResultado resultado,
+        ComunicacaoPaciente n, string telefoneDestino, Guid? loginLinkId, EnvioWhatsAppResultado resultado,
         CancellationToken ct)
     {
         try
@@ -597,7 +674,7 @@ public sealed class ComunicacaoPacienteService(
         => _regras ??= await regrasConfirmacao.ObterAsync(ct);
 
     /// <summary>Próxima abertura da janela (UTC) quando AGORA está fora dela; null se está dentro.</summary>
-    private async Task<DateTime?> ForaDaJanelaAsync(ComunicacaoPaciente n, Solicitacao s, CancellationToken ct)
+    private async Task<DateTime?> ForaDaJanelaAsync(ComunicacaoPaciente n, DateTime? dataAgendadaUtc, CancellationToken ct)
     {
         var r = await RegrasAsync(ct);
         var inicio = TimeOnly.Parse(r.HoraInicioEnvio);
@@ -609,7 +686,7 @@ public sealed class ComunicacaoPacienteService(
         // janela fechar (a importação do SISREG roda logo depois das 18h) ainda sai hoje à noite —
         // senão só sairia amanhã cedo, no dia do atendimento.
         if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
-            && s.DataAgendada is { } dataAgendada
+            && dataAgendadaUtc is { } dataAgendada
             && TimeOnly.TryParse(options.Value.HoraLimiteVesperaConfirmacao, out var limiteVespera)
             && Confirmacoes.JanelaEnvioConfirmacao.NaFolgaDaVespera(agora, dataAgendada, fim, limiteVespera))
             return null;
@@ -872,52 +949,7 @@ public sealed class ComunicacaoPacienteService(
             }
         }
 
-        // Telefone: régua única (TelefoneWhatsApp.DestinoDoCadastro) — verificado > PRINCIPAL
-        // celular > campo celular (só se o principal não for celular) > residencial.
-        // Número marcado como INVÁLIDO (quem atendeu disse que não conhece o paciente) nunca é
-        // destino — nem de mensagem automática nem de reenvio. Só volta a valer quando o número é
-        // verificado de novo ou a recepção dá a marcação por improcedente.
-        bool Negado(string? t) => paciente.TelefoneNegado is { } neg && TelefoneWhatsApp.MesmoNumero(t, neg);
-        var candidatos = new[] { paciente.TelefonePrincipal, paciente.TelefoneCelular, paciente.TelefoneResidencial };
-        var telefone = TelefoneWhatsApp.DestinoDoCadastro(paciente.TelefoneVerificado,
-            paciente.TelefonePrincipal, paciente.TelefoneCelular, paciente.TelefoneResidencial, paciente.TelefoneNegado);
-
-        if (!TelefoneWhatsApp.EhCelularBr(telefone))
-        {
-            if (candidatos.Any(t => TelefoneWhatsApp.EhCelularBr(t) && Negado(t)))
-            {
-                n.Status = StatusComunicacao.AguardandoCorrecaoContato;
-                n.MotivoFalha = "Número marcado como INVÁLIDO: quem atende disse que não conhece o paciente. "
-                    + "Atualize o telefone no cadastro para liberar o envio.";
-                n.ProximaTentativaEm = null;
-                return;
-            }
-            Terminal(n, StatusComunicacao.SemTelefoneValido, "Paciente sem número de celular válido.");
-            // Marca no CADASTRO: o problema não é deste agendamento, é da ficha do paciente.
-            await contatosComprometidos.MarcarAsync(
-                n.PacienteId, null, MotivoContatoComprometido.SemCelular,
-                "Nenhum celular brasileiro válido no cadastro.", n.Id, ct);
-            return;
-        }
-        n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
-
-        // O cadastro tem número utilizável: o que estiver marcado sobre um número velho (ou sobre
-        // a falta de número) deixou de valer.
-        await contatosComprometidos.ReconciliarAsync(n.PacienteId, n.Telefone, ct);
-
-        // NÚMERO NEGADO: pendência aberta de "número errado" para o destino ⇒ quem atende já
-        // disse que não é o paciente. Nenhum automático sai — nem o desafio cadastral (é
-        // template do mesmo jeito, para a mesma pessoa errada). Fica retida; resolver/ignorar a
-        // pendência solta (e o telefone é re-resolvido do cadastro, já corrigido).
-        if (await NumeroTemPendenciaAbertaAsync(n.Telefone, ct))
-        {
-            n.Status = StatusComunicacao.AguardandoCorrecaoContato;
-            n.MotivoFalha = "Número com pendência de contato errado (quem atende negou ser o "
-                + "paciente). Corrija o cadastro em Pendências de Cadastro para liberar.";
-            n.ProximaTentativaEm = null;
-            await db.SaveChangesAsync(ct);
-            return;
-        }
+        if (!await DefinirTelefoneAsync(n, paciente, ct)) return;
 
         // Régua de reforço (toques 2 e 3 da confirmação): ramo próprio, com reconferência — entre a
         // fila e a saída a pessoa pode ter respondido, alguém pode ter assumido, o cadastro mudou.
@@ -946,48 +978,7 @@ public sealed class ComunicacaoPacienteService(
             && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
             && options.Value.VerificacaoCadastralHabilitada)
         {
-            var optsDesafio = options.Value;
-            var ehConsulta = n.Tipo == TipoAgendamento.Consulta;
-            var modeloPrimeiraMsg = ehConsulta
-                ? optsDesafio.TemplateConfirmacaoConsulta
-                : optsDesafio.TemplateConfirmacaoExame;
-            var tratamento = Tratamento(paciente.NomeCompleto, paciente.Sexo);
-            // Conteúdo legível gravado na thread/histórico — é o que o operador vê que o cidadão recebeu.
-            var textoDesafio =
-                $"Olá {tratamento}, esse é o canal oficial do Alô Maricá da Secretaria Municipal de Saúde.\n\n"
-                + $"{(ehConsulta ? "Sua consulta foi agendada" : "Seu exame foi agendado")}!\n"
-                + "Para mais informações acesse: app.smsmarica.online";
-            // Mesma conferência do resto: o modelo aprovado manda na quantidade de variáveis.
-            var (paramsPrimeiraMsg, incompativelPrimeiraMsg) =
-                await AjustarAoModeloAsync(modeloPrimeiraMsg, [tratamento], ct);
-            if (incompativelPrimeiraMsg is not null)
-            {
-                Terminal(n, StatusComunicacao.Falha, incompativelPrimeiraMsg);
-                return;
-            }
-
-            var desafio = await whatsApp.EnviarTemplateAsync(
-                n.Telefone, modeloPrimeiraMsg, optsDesafio.Idioma, paramsPrimeiraMsg,
-                pacienteId: n.PacienteId, conteudoLegivel: textoDesafio, ct: ct);
-
-            if (desafio.Ok)
-            {
-                n.Status = StatusComunicacao.AguardandoVerificacaoCadastral;
-                n.EnviadoEm = DateTime.UtcNow;
-                // Liga a mensagem do desafio à comunicação: os recibos da Meta aparecem na fila e o
-                // toque em "Não sou essa pessoa." é casado pelo contexto da resposta.
-                if (desafio.WaMessageId is { } wamidDesafio)
-                    n.MensagemWhatsAppId = await db.MensagensWhatsApp.AsNoTracking()
-                        .Where(m => m.WaMessageId == wamidDesafio).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct);
-                n.MotivoFalha = "Primeira mensagem entregue; aguardando o paciente se identificar "
-                    + "(Quero mais informações → 4 dígitos do CPF → nascimento → nome).";
-                n.ProximaTentativaEm = null;
-                await AbrirEstadoVerificacaoAsync(n, ct);
-                await db.SaveChangesAsync(ct);
-                return;
-            }
-            if (ErroPermanente(desafio.Erro)) { Terminal(n, StatusComunicacao.Falha, desafio.Erro); return; }
-            ReagendarOuFalhar(n, desafio.Erro);
+            await EnviarPrimeiraMensagemAsync(n, paciente, ct);
             return;
         }
 
@@ -1037,8 +1028,9 @@ public sealed class ComunicacaoPacienteService(
             return;
         }
 
+        // DefinirTelefoneAsync deixou o número escolhido (ou já saiu daqui).
         var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
-            n.Telefone, template, opts.Idioma, parametros, botoes,
+            n.Telefone!, template, opts.Idioma, parametros, botoes,
             pacienteId: n.PacienteId, conteudoLegivel: ConteudoLegivel(template, opts, parametros), ct: ct);
 
         if (resultado.Ok)
@@ -1053,6 +1045,290 @@ public sealed class ComunicacaoPacienteService(
         {
             await TratarEnvioRecusadoAsync(n, resultado, ct);
         }
+    }
+
+    /// <summary>
+    /// Escolhe o número do envio pelo cadastro e aplica as travas de LGPD (número negado, pendência de
+    /// número errado). <c>false</c> = a comunicação ficou retida ou encerrada aqui, com o motivo.
+    /// </summary>
+    private async Task<bool> DefinirTelefoneAsync(ComunicacaoPaciente n, PacienteDto paciente, CancellationToken ct)
+    {
+        // Telefone: régua única (TelefoneWhatsApp.DestinoDoCadastro) — verificado > PRINCIPAL
+        // celular > campo celular (só se o principal não for celular) > residencial.
+        // Número marcado como INVÁLIDO (quem atendeu disse que não conhece o paciente) nunca é
+        // destino — nem de mensagem automática nem de reenvio. Só volta a valer quando o número é
+        // verificado de novo ou a recepção dá a marcação por improcedente.
+        bool Negado(string? t) => paciente.TelefoneNegado is { } neg && TelefoneWhatsApp.MesmoNumero(t, neg);
+        var candidatos = new[] { paciente.TelefonePrincipal, paciente.TelefoneCelular, paciente.TelefoneResidencial };
+        var telefone = TelefoneWhatsApp.DestinoDoCadastro(paciente.TelefoneVerificado,
+            paciente.TelefonePrincipal, paciente.TelefoneCelular, paciente.TelefoneResidencial, paciente.TelefoneNegado);
+
+        if (!TelefoneWhatsApp.EhCelularBr(telefone))
+        {
+            if (candidatos.Any(t => TelefoneWhatsApp.EhCelularBr(t) && Negado(t)))
+            {
+                n.Status = StatusComunicacao.AguardandoCorrecaoContato;
+                n.MotivoFalha = "Número marcado como INVÁLIDO: quem atende disse que não conhece o paciente. "
+                    + "Atualize o telefone no cadastro para liberar o envio.";
+                n.ProximaTentativaEm = null;
+                return false;
+            }
+            Terminal(n, StatusComunicacao.SemTelefoneValido, "Paciente sem número de celular válido.");
+            // Marca no CADASTRO: o problema não é deste agendamento, é da ficha do paciente.
+            await contatosComprometidos.MarcarAsync(
+                n.PacienteId, null, MotivoContatoComprometido.SemCelular,
+                "Nenhum celular brasileiro válido no cadastro.", n.Id, ct);
+            return false;
+        }
+        n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
+
+        // O cadastro tem número utilizável: o que estiver marcado sobre um número velho (ou sobre
+        // a falta de número) deixou de valer.
+        await contatosComprometidos.ReconciliarAsync(n.PacienteId, n.Telefone, ct);
+
+        // NÚMERO NEGADO: pendência aberta de "número errado" para o destino ⇒ quem atende já
+        // disse que não é o paciente. Nenhum automático sai — nem o desafio cadastral (é
+        // template do mesmo jeito, para a mesma pessoa errada). Fica retida; resolver/ignorar a
+        // pendência solta (e o telefone é re-resolvido do cadastro, já corrigido).
+        if (await NumeroTemPendenciaAbertaAsync(n.Telefone, ct))
+        {
+            n.Status = StatusComunicacao.AguardandoCorrecaoContato;
+            n.MotivoFalha = "Número com pendência de contato errado (quem atende negou ser o "
+                + "paciente). Corrija o cadastro em Pendências de Cadastro para liberar.";
+            n.ProximaTentativaEm = null;
+            await db.SaveChangesAsync(ct);
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// A PRIMEIRA MENSAGEM — curta, sem dado nenhum do agendamento ("Sua consulta foi agendada!" +
+    /// "Quero mais informações" / "Não sou essa pessoa") — e a abertura da conversa de
+    /// identificação. A confirmação de verdade fica pendurada até a pessoa se identificar.
+    /// </summary>
+    private async Task EnviarPrimeiraMensagemAsync(ComunicacaoPaciente n, PacienteDto paciente, CancellationToken ct)
+    {
+        var optsDesafio = options.Value;
+        var ehConsulta = n.Tipo == TipoAgendamento.Consulta;
+        var modeloPrimeiraMsg = ehConsulta
+            ? optsDesafio.TemplateConfirmacaoConsulta
+            : optsDesafio.TemplateConfirmacaoExame;
+        var tratamento = Tratamento(paciente.NomeCompleto, paciente.Sexo);
+        // Conteúdo legível gravado na thread/histórico — é o que o operador vê que o cidadão recebeu.
+        var textoDesafio =
+            $"Olá {tratamento}, esse é o canal oficial do Alô Maricá da Secretaria Municipal de Saúde.\n\n"
+            + $"{(ehConsulta ? "Sua consulta foi agendada" : "Seu exame foi agendado")}!\n"
+            + "Para mais informações acesse: app.smsmarica.online";
+        // Mesma conferência do resto: o modelo aprovado manda na quantidade de variáveis.
+        var (paramsPrimeiraMsg, incompativelPrimeiraMsg) =
+            await AjustarAoModeloAsync(modeloPrimeiraMsg, [tratamento], ct);
+        if (incompativelPrimeiraMsg is not null)
+        {
+            Terminal(n, StatusComunicacao.Falha, incompativelPrimeiraMsg);
+            return;
+        }
+
+        var desafio = await whatsApp.EnviarTemplateAsync(
+            n.Telefone!, modeloPrimeiraMsg, optsDesafio.Idioma, paramsPrimeiraMsg,
+            pacienteId: n.PacienteId, conteudoLegivel: textoDesafio, ct: ct);
+
+        if (desafio.Ok)
+        {
+            n.Status = StatusComunicacao.AguardandoVerificacaoCadastral;
+            n.EnviadoEm = DateTime.UtcNow;
+            // Liga a mensagem do desafio à comunicação: os recibos da Meta aparecem na fila e o
+            // toque em "Não sou essa pessoa." é casado pelo contexto da resposta.
+            if (desafio.WaMessageId is { } wamidDesafio)
+                n.MensagemWhatsAppId = await db.MensagensWhatsApp.AsNoTracking()
+                    .Where(m => m.WaMessageId == wamidDesafio).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct);
+            n.MotivoFalha = "Primeira mensagem entregue; aguardando o paciente se identificar "
+                + "(Quero mais informações → 4 dígitos do CPF → nascimento → nome).";
+            n.ProximaTentativaEm = null;
+            await AbrirEstadoVerificacaoAsync(n, ct);
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+        if (ErroPermanente(desafio.Erro)) { Terminal(n, StatusComunicacao.Falha, desafio.Erro); return; }
+        ReagendarOuFalhar(n, desafio.Erro);
+    }
+
+    // ===================== agendamento do SER / SERNIT / ESUS SG =====================
+
+    /// <summary>Botões da mensagem de DETALHES do agendamento externo. Prefixos próprios: o id é de
+    /// um <see cref="AgendamentoExterno"/>, não de uma solicitação — misturar mandaria a resposta
+    /// procurar no lugar errado.</summary>
+    internal const string PrefixoExternoConfirmaSim = "confext_sim:";
+    internal const string PrefixoExternoNaoPoderei = "confext_nao:";
+
+    /// <summary>
+    /// Uma tentativa do aviso de agendamento do SER/SERNIT/ESUS SG (10/10/2026). A conversa é a mesma
+    /// do SISREG — primeira mensagem sem dado nenhum, o paciente pede mais informações, prova quem é
+    /// se o número não está confirmado — com uma diferença: os DADOS só saem como mensagem de sessão,
+    /// depois que a pessoa escreveu. Não há modelo aprovado com o agendamento externo, e o da
+    /// regulação manda retirar a guia no posto — o que não serve para atendimento fora do município.
+    /// </summary>
+    private async Task ProcessarExternoAsync(ComunicacaoPaciente n, CancellationToken ct)
+    {
+        var a = n.AgendamentoExterno;
+        if (MotivoQueImpedeEnvioExterno(n.Finalidade, a, DateTime.UtcNow) is { } impedimento)
+        {
+            Terminal(n, impedimento.Tipo == ImpedimentoEnvio.SolicitacaoEncerrada
+                ? StatusComunicacao.Dispensada : StatusComunicacao.Falha, impedimento.Motivo);
+            return;
+        }
+
+        // Chave desligada no menu Mensageria: segura na fila, sem gastar tentativa. Quem acabou de se
+        // identificar recebe mesmo assim — está na conversa esperando.
+        if (!(await RegrasAsync(ct)).AvisoAgendamentoExternoHabilitado && !n.IgnorarVerificacaoTelefone)
+        {
+            n.Tentativas--;
+            n.ProximaTentativaEm = DateTime.UtcNow.AddHours(1);
+            n.MotivoFalha = "Aviso dos agendamentos do SER/SERNIT/ESUS desligado (Mensageria → Regras): fica na fila.";
+            return;
+        }
+
+        if (!n.IgnorarJanelaHorario && await ForaDaJanelaAsync(n, InstanteDoAgendamento(a!), ct) is { } abertura)
+        {
+            n.Tentativas--;
+            n.ProximaTentativaEm = abertura;
+            n.MotivoFalha = null;
+            return;
+        }
+
+        var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
+        if (paciente.DataObito is { } obito)
+        {
+            Terminal(n, StatusComunicacao.Dispensada, $"Óbito registrado na ficha do paciente ({obito:dd/MM/yyyy}).");
+            return;
+        }
+        if (!await DefinirTelefoneAsync(n, paciente, ct)) return;
+
+        // Liberada depois da identificação (ou o operador assumiu o risco): os dados, na conversa.
+        if (n.IgnorarVerificacaoTelefone)
+        {
+            var resultado = await EnviarDetalhesExternoAsync(n, a!, paciente, n.Telefone!, ct);
+            if (resultado.Ok)
+            {
+                n.Status = StatusComunicacao.Enviada;
+                n.EnviadoEm = DateTime.UtcNow;
+                n.MotivoFalha = null;
+                n.ProximaTentativaEm = null;
+                n.LoginLinkId = null;
+                if (resultado.WaMessageId is not null) n.MensagemWhatsAppId = await MensagemDoEnvioAsync(resultado, ct);
+            }
+            else
+            {
+                await TratarEnvioRecusadoAsync(n, resultado, ct);
+            }
+            return;
+        }
+
+        if (!options.Value.VerificacaoCadastralHabilitada)
+        {
+            Terminal(n, StatusComunicacao.Falha,
+                "Verificação cadastral desligada: o aviso do SER/SERNIT/ESUS só sai pela conversa de identificação.");
+            return;
+        }
+
+        // Até para número já confirmado vai a primeira mensagem: o "Quero mais informações" de quem já
+        // provou o número entrega os dados direto, sem perguntar CPF (VerificacaoCadastralWhatsAppHandler).
+        await EnviarPrimeiraMensagemAsync(n, paciente, ct);
+    }
+
+    /// <summary>A liberação depois da identificação chama por aqui: os dados saem NESTA conversa.</summary>
+    private async Task<bool> EnviarDetalhesExternoNaConversaAsync(
+        ComunicacaoPaciente n, AgendamentoExterno a, string telefoneDestino, CancellationToken ct)
+    {
+        if (n.Status != StatusComunicacao.Pendente
+            || n.Finalidade is not (FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento)
+            || MotivoQueImpedeEnvioExterno(n.Finalidade, a, DateTime.UtcNow) is not null)
+            return false;
+
+        try
+        {
+            var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
+            // "Negado" continua valendo mesmo depois do desafio (ADR-0057) — ver a versão do SISREG.
+            if (paciente.TelefoneNegado is { } negado && TelefoneWhatsApp.MesmoNumero(telefoneDestino, negado))
+                return false;
+
+            var resultado = await EnviarDetalhesExternoAsync(n, a, paciente, telefoneDestino, ct);
+            if (!resultado.Ok)
+            {
+                logger.LogWarning(
+                    "Detalhes do agendamento externo NÃO saíram na conversa (…{Fone4}, comunicação {Id}): {Erro}.",
+                    Ultimos4(telefoneDestino), n.Id, resultado.Erro);
+                return false;
+            }
+            await GravarDetalhesEnviadosAsync(n, telefoneDestino, null, resultado, ct);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Falha ao enviar os detalhes do agendamento externo na conversa (…{Fone4}, comunicação {Id}).",
+                Ultimos4(telefoneDestino), n.Id);
+            return false;
+        }
+    }
+
+    /// <summary>Monta e envia a mensagem de detalhes (texto + botões de presença, quando ainda não
+    /// respondeu). O endereço vem da unidade de atendimento ligada ao nome do local.</summary>
+    private async Task<EnvioWhatsAppResultado> EnviarDetalhesExternoAsync(
+        ComunicacaoPaciente n, AgendamentoExterno a, PacienteDto paciente, string telefoneDestino, CancellationToken ct)
+    {
+        var local = await AgendamentosExternos.LocaisAgendamentoExternoService.ResolverAsync(db, a.LocalNome, ct);
+        var texto = TextoDetalhesExterno(a, paciente.NomeCompleto, local);
+
+        if (a.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
+            return await whatsApp.EnviarInterativoBotoesAsync(
+                telefoneDestino, texto + "\n\nVocê confirma a presença?",
+                [
+                    new BotaoInterativoWhatsApp($"{PrefixoExternoConfirmaSim}{a.Id}", "Sim, confirmo"),
+                    new BotaoInterativoWhatsApp($"{PrefixoExternoNaoPoderei}{a.Id}", "Não poderei ir"),
+                ],
+                pacienteId: n.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+
+        texto += a.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada
+            ? "\n\nSua presença já está *confirmada* ✅"
+            : string.Empty;
+        return await whatsApp.EnviarTextoAsync(
+            telefoneDestino, texto, pacienteId: n.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+    }
+
+    /// <summary>
+    /// O texto dos dados do agendamento externo: o quê, quando, onde e o endereço — e quem marcou.
+    /// SEM o recado da guia no posto: o atendimento é fora do município, a guia do SISREG não existe
+    /// e mandar a pessoa ao posto só a faria perder uma viagem. Cabe no corpo de mensagem interativa
+    /// (1024 caracteres) com folga: cada campo livre é aparado.
+    /// </summary>
+    internal static string TextoDetalhesExterno(AgendamentoExterno a, string? nomePaciente, AgendamentosExternos.LocalComEnderecoDto? local)
+    {
+        static string Curto(string? s, int max) =>
+            string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim().Length <= max ? s.Trim() : s.Trim()[..max] + "…";
+
+        var rotulo = a.Tipo == TipoAgendamento.Consulta ? "Consulta" : "Exame";
+        var nomeLocal = local?.Nome ?? a.LocalNome;
+        var sb = new System.Text.StringBuilder()
+            .Append($"Aqui estão as informações do agendamento de *{PrimeiroNome(nomePaciente)}*:\n\n");
+        if (!string.IsNullOrWhiteSpace(a.Procedimento))
+            sb.Append($"{rotulo}: *{Curto(a.Procedimento, 200)}*\n");
+        sb.Append($"Data: *{AgendamentosExternos.LeituraAgendamentoExterno.DataParaPaciente(a.Data, a.Hora)}*\n");
+        if (!string.IsNullOrWhiteSpace(nomeLocal))
+            sb.Append($"Local: *{Curto(nomeLocal, 150)}*\n");
+        if (!string.IsNullOrWhiteSpace(local?.Endereco))
+            sb.Append($"Endereço: {Curto(local.Endereco, 250)}\n");
+        if (!string.IsNullOrWhiteSpace(local?.PontoReferencia))
+            sb.Append($"Referência: {Curto(local.PontoReferencia, 120)}\n");
+        if (!string.IsNullOrWhiteSpace(local?.Telefone))
+            sb.Append($"Telefone do local: {Curto(local.Telefone, 30)}\n");
+        if (a.Hora is null)
+            sb.Append("\nO horário não veio do sistema de regulação — confirme com o local antes de ir.\n");
+        // "Fora do município" não é dito: quase sempre é, mas o endereço acima é o que vale — e uma
+        // unidade do SER dentro do município receberia a frase errada.
+        sb.Append($"\nEste agendamento foi feito pela regulação do *{AgendamentosExternos.AgendamentoExternoService.Rotulo(a.Sistema)}*. "
+            + "No dia, leve um documento com foto e o cartão do SUS.");
+        return sb.ToString();
     }
 
     /// <summary>Id local da mensagem enviada (é por ela que os recibos da Meta acham a comunicação).</summary>

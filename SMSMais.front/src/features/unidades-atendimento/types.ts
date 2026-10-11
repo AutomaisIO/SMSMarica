@@ -50,3 +50,20 @@ export type SalvarUnidadeAtendimentoPayload = {
   longitude: number;
   externa: boolean;
 };
+
+/** Uma unidade de atendimento como opção de ligação de um nome externo. */
+export type UnidadeAtendimentoOpcao = { id: string; nome: string; temEndereco: boolean };
+
+/**
+ * Um local como o SER, o SERNIT ou o ESUS o escrevem, com os agendamentos futuros que o usam. A
+ * unidade LIGADA (por uma pessoa) é de onde sai o endereço do aviso ao paciente; a SUGERIDA é só
+ * um palpite da máquina, que nunca vale sozinho.
+ */
+export type LocalAgendamentoExterno = {
+  nome: string;
+  sistemas: string[];
+  agendamentosFuturos: number;
+  proximaData: string | null;
+  ligada: UnidadeAtendimentoOpcao | null;
+  sugerida: UnidadeAtendimentoOpcao | null;
+};

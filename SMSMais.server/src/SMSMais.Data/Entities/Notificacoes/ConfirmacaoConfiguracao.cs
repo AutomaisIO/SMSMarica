@@ -97,6 +97,18 @@ public class ConfirmacaoConfiguracao
     public bool OrientacaoPostoHabilitada { get; set; }
 
     /// <summary>
+    /// Liga o AVISO dos agendamentos do SER, do SERNIT e do ESUS de São Gonçalo (10/10/2026). Até
+    /// então só o SISREG avisava: o paciente encaminhado para fora do município só sabia da data se
+    /// alguém da equipe mandasse a mensagem à mão.
+    ///
+    /// <para>Mesma conversa da confirmação do SISREG — primeira mensagem sem dado nenhum, o paciente
+    /// pede mais informações, prova quem é (se o número não está confirmado) e só então recebe o
+    /// procedimento, a data e o ENDEREÇO de onde vai ser. Sem a guia do posto: o atendimento é fora
+    /// do município. Nasce LIGADO (pedido do dono). Desligar segura os novos; o que já saiu, saiu.</para>
+    /// </summary>
+    public bool AvisoAgendamentoExternoHabilitado { get; set; } = true;
+
+    /// <summary>
     /// Minutos entre passadas da conciliação. O padrão 10 saiu de medição: um dia útil tem 46–62
     /// cancelamentos, a listagem traz 20 por página, e o ciclo custa 1 a 3 requisições em ~1,5 s —
     /// 11 req/h no dia típico contra um teto de ~700/h. Mas é a operação que decide: apertar custa

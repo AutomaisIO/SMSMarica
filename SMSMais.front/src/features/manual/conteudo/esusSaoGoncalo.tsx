@@ -24,8 +24,10 @@ export const artigoEsusSaoGoncalo: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/esussg',
   publico: 'Quem acompanha os pedidos de exame da PPI encaminhados ao ESUS de São Gonçalo',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-10',
   palavrasChave: [
+    'contato com o paciente',
+    'aviso pelo WhatsApp',
     'ESUS',
     'ESUS SG',
     'ESUS São Gonçalo',
@@ -194,7 +196,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
       id: 'detalhe',
       titulo: 'O pedido (detalhe)',
       busca:
-        'detalhe pedido paciente ficha cpf cns mãe telefone bairro procedimento subprocedimentos código interno não é sigtap prioridade pendência posição solicitante unidade solicitante quem incluiu regulador unidade executora cnes setor local quem agendou comprovante impresso tfd notificação resposta do paciente',
+        'detalhe pedido paciente ficha cpf cns mãe telefone bairro procedimento subprocedimentos código interno não é sigtap prioridade pendência posição solicitante unidade solicitante quem incluiu regulador unidade executora cnes setor local quem agendou comprovante impresso tfd notificação resposta do paciente contato com o paciente aviso whatsapp endereço confirmou não vai',
       conteudo: (
         <>
           <P>O detalhe junta tudo o que o espelho sabe do pedido, em blocos:</P>
@@ -224,6 +226,14 @@ export const artigoEsusSaoGoncalo: Artigo = {
           <P>
             O detalhe também traz o painel da <strong>análise das regras</strong>, com cada regra
             avaliada e o botão <BotaoRef variante="outline">Reanalisar</BotaoRef>.
+          </P>
+          <P>
+            E o quadro <strong>Contato com o paciente</strong>: desde 10/10/2026 a plataforma avisa pelo
+            WhatsApp o paciente do pedido agendado — além da notificação do próprio ESUS. O quadro mostra
+            o aviso (enviado, entregue, lido), o endereço que foi na mensagem, a resposta do paciente
+            (confirmou ou avisou que não vai, com o motivo) e as mensagens trocadas desde o pedido. A
+            resposta fica só na plataforma: nada é escrito no ESUS. Como o aviso funciona está no artigo
+            da Mensageria, seção “Agendamentos do SER, do SERNIT e do ESUS”.
           </P>
         </>
       ),

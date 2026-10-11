@@ -3,9 +3,11 @@ import {
   atualizarUnidadeAtendimento,
   cadastrarUnidadeAtendimento,
   desativarUnidadeAtendimento,
+  listarLocaisExternos,
   listarUnidadesAtendimento,
   obterUnidadeAtendimento,
   reativarUnidadeAtendimento,
+  vincularLocalExterno,
 } from '@/features/unidades-atendimento/api/unidadesAtendimentoApi';
 import type { SalvarUnidadeAtendimentoPayload } from '@/features/unidades-atendimento/types';
 
@@ -69,5 +71,21 @@ export function useReativarUnidadeAtendimento() {
   return useMutation({
     mutationFn: (id: string) => reativarUnidadeAtendimento(id),
     onSuccess: () => invalidarTudo(client),
+  });
+}
+
+export function useLocaisExternos() {
+  return useQuery({
+    queryKey: ['unidades-atendimento', 'locais-externos'] as const,
+    queryFn: listarLocaisExternos,
+  });
+}
+
+export function useVincularLocalExterno() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ nome, unidadeAtendimentoId }: { nome: string; unidadeAtendimentoId: string | null }) =>
+      vincularLocalExterno(nome, unidadeAtendimentoId),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['unidades-atendimento', 'locais-externos'] }),
   });
 }

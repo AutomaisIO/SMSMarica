@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
 using SMSMais.Core.UnidadesAtendimento;
 using SMSMais.Core.UnidadesAtendimento.Dtos;
 using SMSMais.Data.Entities.Enums;
@@ -24,6 +25,32 @@ public sealed class UnidadesAtendimentoController(IUnidadesAtendimentoService se
         [FromQuery] bool incluirInativas,
         CancellationToken cancellationToken) =>
         await _service.ListarAsync(incluirInativas, cancellationToken);
+
+    /// <summary>
+    /// Os locais dos agendamentos futuros do SER/SERNIT/ESUS, como cada sistema os escreve, e a
+    /// unidade de atendimento ligada a cada um — de onde sai o ENDEREÇO do aviso ao paciente.
+    /// </summary>
+    [HttpGet("locais-externos")]
+    [RequerPermissao(ModuloPermissao.UnidadesAtendimento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<LocalAgendamentoExternoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<LocalAgendamentoExternoDto>> LocaisExternos(
+        [FromServices] ILocaisAgendamentoExternoService locais, CancellationToken cancellationToken) =>
+        locais.ListarAsync(cancellationToken);
+
+    /// <summary>Liga o nome do local a uma unidade de atendimento (ou desfaz, com a unidade nula).</summary>
+    [HttpPut("locais-externos")]
+    [RequerPermissao(ModuloPermissao.UnidadesAtendimento, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> VincularLocalExterno(
+        [FromBody] VincularLocalExternoRequest request,
+        [FromServices] ILocaisAgendamentoExternoService locais,
+        CancellationToken cancellationToken)
+    {
+        await locais.VincularAsync(request, cancellationToken);
+        return NoContent();
+    }
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.UnidadesAtendimento, AcoesPermissao.Consulta)]

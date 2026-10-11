@@ -171,6 +171,11 @@ export type ConfirmacaoConfiguracao = {
    * Chave separada do reforço de propósito: dá para ligar esta antes. Nasce desligada.
    */
   orientacaoPostoHabilitada: boolean;
+  /**
+   * Aviso dos agendamentos do SER, do SERNIT e do ESUS (10/10/2026): a mesma conversa da confirmação,
+   * com o endereço do local e sem mandar ao posto. Nasce ligado.
+   */
+  avisoAgendamentoExternoHabilitado: boolean;
   /** De quantos em quantos minutos o motor relê o dia corrente (1 a 120). */
   conciliacaoIntervaloMinutos: number;
   /** Hora em que a leitura do dia começa (0–23). */
@@ -197,6 +202,7 @@ export type SalvarConfirmacaoConfiguracao = Pick<
   | 'avisoCancelamentoHabilitado'
   | 'reforcoConfirmacaoHabilitado'
   | 'orientacaoPostoHabilitada'
+  | 'avisoAgendamentoExternoHabilitado'
   | 'conciliacaoIntervaloMinutos'
   | 'conciliacaoHoraInicio'
   | 'conciliacaoHoraFim'

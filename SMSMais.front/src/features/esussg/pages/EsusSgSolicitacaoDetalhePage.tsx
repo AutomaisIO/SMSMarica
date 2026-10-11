@@ -11,6 +11,7 @@ import { useSolicitacaoEsusSg } from '@/features/esussg/api/queries';
 import { SituacaoEsusSgBadge } from '@/features/esussg/components/SituacaoEsusSgBadge';
 import { PrioridadeEsusSg } from '@/features/esussg/components/PrioridadeEsusSg';
 import { TrilhaEsusSg } from '@/features/esussg/components/TrilhaEsusSg';
+import { ContatoComPacienteEspelho } from '@/features/regulacao/components/ContatoComPaciente';
 import { dataHoraAgendada } from '@/features/esussg/lib/agendamento';
 import { formatarCpf, limparTexto, simNao } from '@/features/esussg/lib/formatacao';
 import { DICA_SITUACAO_ESUSSG, ROTULO_SITUACAO_ESUSSG } from '@/features/esussg/types';
@@ -227,6 +228,9 @@ export function EsusSgSolicitacaoDetalhePage() {
           </div>
 
           <PainelAnaliseRegras sistema="esussg" espelhoId={id} analise={detalhe.analise} />
+
+          {/* O paciente foi avisado do agendamento pelo WhatsApp? Leu? Respondeu? (10/10/2026) */}
+          <ContatoComPacienteEspelho sistema="esussg" espelhoId={id} />
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">

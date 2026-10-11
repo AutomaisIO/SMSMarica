@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
+using SMSMais.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Notificacoes.Confirmacoes;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Enriquecimento;
 using SMSMais.Core.Regulacao.Comum;
@@ -8,18 +12,22 @@ using SMSMais.Core.Solicitacoes;
 using SMSMais.Core.Solicitacoes.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMais.Core.Regulacao.ContatoPaciente;
 
 /// <summary>O agendamento como o sistema de destino o mostra.</summary>
 /// <param name="DataHora">Instante (UTC) — só o SISREG entrega data e hora como dado.</param>
 /// <param name="DataTexto">Como o SER, o SERNIT e o ESUS escrevem a data (texto da tela deles).</param>
+/// <param name="Endereco">O endereço do local que vai no aviso — o da unidade de atendimento ligada
+/// ao nome do local. Nulo quando ninguém ligou ainda (o aviso sai só com o nome).</param>
 public sealed record AgendamentoNoDestinoDto(
     SistemaRegulacao Sistema,
     string? Situacao,
     DateTime? DataHora,
     string? DataTexto,
-    string? Local);
+    string? Local,
+    string? Endereco = null);
 
 /// <summary>
 /// A mensagem é um aviso automático (confirmação, lembrete...) — e de qual pedido. O paciente pode
@@ -58,10 +66,11 @@ public sealed record MensagemAoPacienteDto(
 /// agendamento (com os recibos e a resposta) e as mensagens de WhatsApp trocadas desde que ela foi
 /// aberta.
 /// </summary>
-/// <param name="DestinoComAvisoAutomatico">A plataforma avisa sozinha os agendamentos deste destino
-/// (hoje, só o SISREG). Falso = do SER/SERNIT/ESUS nada sai sem alguém mandar.</param>
-/// <param name="Confirmacao">Pendente, Confirmada ou Cancelada — a resposta ao aviso do SISREG.
-/// Nulo quando não houve aviso nem confirmação por outro canal.</param>
+/// <param name="DestinoComAvisoAutomatico">A plataforma avisa sozinha os agendamentos deste destino:
+/// o SISREG sempre; o SER, o SERNIT e o ESUS desde 10/10/2026, enquanto a chave da Mensageria estiver
+/// ligada. Falso = nada sai sem alguém mandar.</param>
+/// <param name="Confirmacao">Pendente, Confirmada ou Cancelada — a resposta ao aviso. Nulo quando
+/// não houve aviso nem confirmação por outro canal.</param>
 public sealed record ContatoPacienteRegulacaoDto(
     AgendamentoNoDestinoDto? Agendamento,
     bool DestinoComAvisoAutomatico,
@@ -81,16 +90,23 @@ public interface IRegulacaoContatoPacienteService
     /// de paciente, e quem não enxerga a solicitação não o enxerga por esta porta.
     /// </summary>
     Task<ContatoPacienteRegulacaoDto> ObterAsync(Guid solicitacaoId, CancellationToken ct);
+
+    /// <summary>
+    /// O mesmo quadro visto do pedido no espelho do SER/SERNIT/ESUS SG (a tela de detalhe de cada
+    /// sistema) — é onde mora a maioria dos agendamentos externos, que não nasceram de uma
+    /// solicitação da regulação. A permissão é a da tela do sistema (controller).
+    /// </summary>
+    Task<ContatoPacienteRegulacaoDto> ObterPorEspelhoAsync(SistemaRegulacao sistema, Guid espelhoId, CancellationToken ct);
 }
 
 /// <summary>
 /// O contato com o paciente visto da solicitação da regulação — para a unidade e o regulador
 /// saberem se o paciente foi avisado, se leu e o que respondeu, sem abrir o módulo Conversas.
 ///
-/// <para><b>Só lê.</b> Nada aqui envia mensagem: o aviso automático é do SISREG
-/// (<c>ComunicacaoPaciente</c>, ancorada na espinha <c>solicitacao</c>), e o SER, o SERNIT e o
-/// ESUS ainda não têm aviso automático — por isso as mensagens da conversa entram junto: é
-/// por elas que se vê quando alguém da equipe avisou à mão.</para>
+/// <para><b>Só lê.</b> Nada aqui envia mensagem. O aviso automático do SISREG é ancorado na espinha
+/// <c>solicitacao</c>; o do SER/SERNIT/ESUS SG (10/10/2026), no <c>agendamento_externo</c> do pedido do
+/// espelho. As mensagens da conversa entram junto: é por elas que se vê quando alguém da equipe
+/// avisou à mão.</para>
 ///
 /// <para><b>Mensagens:</b> as do paciente desde a abertura da solicitação, das duas direções.
 /// Nota interna e mensagem de sistema do módulo Conversas ficam de fora — são da equipe, não do
@@ -100,13 +116,18 @@ public sealed class RegulacaoContatoPacienteService(
     SmsMaisDbContext db,
     IRegulacaoEscopo escopo,
     ISolicitacaoHistoricoService historico,
-    IPacientesService pacientes) : IRegulacaoContatoPacienteService
+    IPacientesService pacientes,
+    IConfirmacaoConfiguracaoService regras) : IRegulacaoContatoPacienteService
 {
     /// <summary>Teto de mensagens na tela — a conversa inteira continua no módulo Conversas.</summary>
     internal const int MaxMensagens = 40;
 
     /// <summary>Corte do texto de cada mensagem — o modelo do aviso já passa de 600 caracteres.</summary>
     internal const int MaxTexto = 700;
+
+    /// <summary>De onde o quadro é montado: a espinha (SISREG) ou a linha de um espelho.</summary>
+    private sealed record Alvo(
+        SistemaRegulacao? Sistema, Guid? EspinhaId, Guid? EspelhoId, Guid PacienteId, DateTime Desde);
 
     public async Task<ContatoPacienteRegulacaoDto> ObterAsync(Guid solicitacaoId, CancellationToken ct)
     {
@@ -115,18 +136,57 @@ public sealed class RegulacaoContatoPacienteService(
             ?? throw new NaoEncontradoException("Solicitação da regulação", solicitacaoId);
         await escopo.ExigirAlcanceAsync(s, ct);
 
-        var agendamento = await AgendamentoAsync(s.SistemaDestino, s.SolicitacaoId, s.SerSolicitacaoId,
-            s.SernitSolicitacaoId, s.EsusSgSolicitacaoId, ct);
+        var espelhoId = s.SistemaDestino switch
+        {
+            SistemaRegulacao.Ser => s.SerSolicitacaoId,
+            SistemaRegulacao.Sernit => s.SernitSolicitacaoId,
+            SistemaRegulacao.EsusSg => s.EsusSgSolicitacaoId,
+            _ => null,
+        };
+        return await MontarAsync(new Alvo(s.SistemaDestino, s.SolicitacaoId, espelhoId, s.PacienteId, s.CriadoEm), ct);
+    }
 
-        // Aviso automático e contatos registrados existem só na espinha (SISREG).
+    public async Task<ContatoPacienteRegulacaoDto> ObterPorEspelhoAsync(
+        SistemaRegulacao sistema, Guid espelhoId, CancellationToken ct)
+    {
+        var linha = sistema switch
+        {
+            SistemaRegulacao.Ser => await db.SerSolicitacoes.AsNoTracking().Where(x => x.Id == espelhoId)
+                .Select(x => new { x.PacienteId, x.DataSolicitacao, x.CriadoEm }).FirstOrDefaultAsync(ct),
+            SistemaRegulacao.Sernit => await db.SernitSolicitacoes.AsNoTracking().Where(x => x.Id == espelhoId)
+                .Select(x => new { x.PacienteId, x.DataSolicitacao, x.CriadoEm }).FirstOrDefaultAsync(ct),
+            SistemaRegulacao.EsusSg => await db.EsusSgSolicitacoes.AsNoTracking().Where(x => x.Id == espelhoId)
+                .Select(x => new { x.PacienteId, x.DataSolicitacao, x.CriadoEm }).FirstOrDefaultAsync(ct),
+            _ => null,
+        } ?? throw new NaoEncontradoException("Pedido do sistema de regulação", espelhoId);
+
+        // Pedido ainda sem paciente conciliado: não há com quem ter falado.
+        if (linha.PacienteId is not { } pacienteId)
+            return new ContatoPacienteRegulacaoDto(
+                await AgendamentoAsync(sistema, null, espelhoId, ct), await AvisaSozinhoAsync(sistema, ct),
+                null, null, null, null, [], [], [], null);
+
+        // Desde quando o pedido existe no sistema de destino — ou desde que o espelho o viu.
+        var desde = linha.DataSolicitacao is { } d
+            ? FusoBrasilia.DeBrasiliaParaUtc(d.ToDateTime(TimeOnly.MinValue))
+            : linha.CriadoEm;
+        return await MontarAsync(new Alvo(sistema, null, espelhoId, pacienteId, desde), ct);
+    }
+
+    private async Task<ContatoPacienteRegulacaoDto> MontarAsync(Alvo alvo, CancellationToken ct)
+    {
+        var agendamento = await AgendamentoAsync(alvo.Sistema, alvo.EspinhaId, alvo.EspelhoId, ct);
+
         IReadOnlyList<HistoricoComunicacaoDto> avisos = [];
         IReadOnlyList<HistoricoContatoDto> contatos = [];
         string? confirmacao = null;
         DateTime? confirmadoEm = null;
         string? canal = null;
         string? motivoCancelamento = null;
-        if (s.SolicitacaoId is { } espinhaId)
+
+        if (alvo.EspinhaId is { } espinhaId)
         {
+            // SISREG: aviso e contatos registrados vivem na espinha.
             var h = await historico.ObterAsync(espinhaId, ct);
             avisos = h.Comunicacoes;
             contatos = h.Contatos;
@@ -145,10 +205,58 @@ public sealed class RegulacaoContatoPacienteService(
                 motivoCancelamento = c.MotivoCancelamentoPaciente;
             }
         }
+        else if (alvo.EspelhoId is { } espelhoId && alvo.Sistema is { } sistema)
+        {
+            // SER/SERNIT/ESUS SG: os avisos de todos os agendamentos deste pedido (a remarcação gera
+            // aviso novo — o anterior fica na lista, de histórico) e a resposta do agendamento vigente.
+            avisos = await db.ComunicacoesPaciente.AsNoTracking()
+                .Where(c => c.AgendamentoExterno != null && c.AgendamentoExterno.OrigemId == espelhoId
+                            && c.AgendamentoExterno.Sistema == sistema)
+                .OrderBy(c => c.CriadoEm)
+                .Select(c => new HistoricoComunicacaoDto(
+                    c.Id, c.Finalidade.ToString(), c.Status.ToString(), c.Telefone, c.Tentativas, c.CriadoEm,
+                    c.EnviadoEm, c.EntregueEm, c.LidoEm, c.VisualizadoEm, c.MotivoFalha,
+                    c.MensagemWhatsApp != null ? c.MensagemWhatsApp.ErroMeta : null))
+                .ToListAsync(ct);
 
-        var desde = s.CriadoEm;
+            var vigente = await db.AgendamentosExternos.AsNoTracking()
+                .Where(a => a.OrigemId == espelhoId && a.Sistema == sistema)
+                .OrderBy(a => a.Situacao == SituacaoAgendamentoExterno.Ativo ? 0 : 1)
+                .ThenByDescending(a => a.CriadoEm)
+                .FirstOrDefaultAsync(ct);
+            if (vigente is not null && (avisos.Count > 0 || vigente.ConfirmadoCanal != null))
+            {
+                confirmacao = vigente.StatusConfirmacao.ToString();
+                confirmadoEm = vigente.ConfirmadoEm ?? vigente.ConfirmacaoCanceladaEm;
+                canal = vigente.ConfirmadoCanal;
+                motivoCancelamento = vigente.MotivoCancelamentoPaciente;
+            }
+        }
+
+        var mensagens = await MensagensAsync(alvo, ct);
+
+        return new ContatoPacienteRegulacaoDto(
+            agendamento,
+            alvo.Sistema is { } sis && await AvisaSozinhoAsync(sis, ct),
+            confirmacao, confirmadoEm, canal, motivoCancelamento,
+            avisos, contatos, mensagens,
+            await TelefoneConfirmadoAsync(alvo.PacienteId, ct));
+    }
+
+    /// <summary>O SISREG avisa sempre; o SER/SERNIT/ESUS SG, enquanto a chave da Mensageria estiver ligada.</summary>
+    private async Task<bool> AvisaSozinhoAsync(SistemaRegulacao sistema, CancellationToken ct) =>
+        sistema switch
+        {
+            SistemaRegulacao.Sisreg => true,
+            SistemaRegulacao.Ser or SistemaRegulacao.Sernit or SistemaRegulacao.EsusSg =>
+                (await regras.ObterAsync(ct)).AvisoAgendamentoExternoHabilitado,
+            _ => false,
+        };
+
+    private async Task<IReadOnlyList<MensagemAoPacienteDto>> MensagensAsync(Alvo alvo, CancellationToken ct)
+    {
         var linhas = await db.MensagensWhatsApp.AsNoTracking()
-            .Where(m => m.PacienteId == s.PacienteId && m.OcorridoEm >= desde
+            .Where(m => m.PacienteId == alvo.PacienteId && m.OcorridoEm >= alvo.Desde
                         && m.TipoMensagem != TipoMensagem.NotaInterna && m.TipoMensagem != TipoMensagem.Sistema)
             .OrderByDescending(m => m.OcorridoEm)
             .Take(MaxMensagens)
@@ -168,8 +276,9 @@ public sealed class RegulacaoContatoPacienteService(
                 MensagemId = c.MensagemWhatsAppId!.Value,
                 c.SolicitacaoId,
                 c.Finalidade,
-                Procedimento = c.Solicitacao!.ProcedimentoTexto,
-                c.Solicitacao.DataAgendada,
+                Procedimento = c.Solicitacao != null ? c.Solicitacao.ProcedimentoTexto : null,
+                DataAgendada = c.Solicitacao != null ? c.Solicitacao.DataAgendada : null,
+                Externo = c.AgendamentoExterno,
             })
             .ToListAsync(ct);
         var avisoPorMensagem = avisosDasMensagens
@@ -177,11 +286,16 @@ public sealed class RegulacaoContatoPacienteService(
             .ToDictionary(g => g.Key, g =>
             {
                 var a = g.First();
+                var deste = a.Externo is { } e
+                    ? alvo.EspelhoId == e.OrigemId && alvo.Sistema == e.Sistema
+                    : a.SolicitacaoId != null && a.SolicitacaoId == alvo.EspinhaId;
                 return new AvisoDaMensagemDto(
-                    a.Finalidade.ToString(), a.SolicitacaoId == s.SolicitacaoId, a.Procedimento, a.DataAgendada);
+                    a.Finalidade.ToString(), deste,
+                    a.Procedimento ?? a.Externo?.Procedimento,
+                    a.DataAgendada ?? (a.Externo is { } x ? ComunicacaoPacienteService.InstanteDoAgendamento(x) : null));
             });
 
-        var mensagens = linhas
+        return linhas
             .Select(m => new MensagemAoPacienteDto(
                 m.Id,
                 m.OcorridoEm,
@@ -195,18 +309,10 @@ public sealed class RegulacaoContatoPacienteService(
                 m.ErroMeta,
                 avisoPorMensagem.GetValueOrDefault(m.Id)))
             .ToList();
-
-        return new ContatoPacienteRegulacaoDto(
-            agendamento,
-            s.SistemaDestino == SistemaRegulacao.Sisreg,
-            confirmacao, confirmadoEm, canal, motivoCancelamento,
-            avisos, contatos, mensagens,
-            await TelefoneConfirmadoAsync(s.PacienteId, ct));
     }
 
     private async Task<AgendamentoNoDestinoDto?> AgendamentoAsync(
-        SistemaRegulacao? sistema, Guid? espinhaId, Guid? serId, Guid? sernitId, Guid? esusSgId,
-        CancellationToken ct)
+        SistemaRegulacao? sistema, Guid? espinhaId, Guid? espelhoId, CancellationToken ct)
     {
         AgendamentoNoDestinoDto? a = null;
         if (sistema == SistemaRegulacao.Sisreg && espinhaId is { } id)
@@ -218,26 +324,27 @@ public sealed class RegulacaoContatoPacienteService(
                     x.Status.ToString(),
                     x.DataAgendada,
                     null,
-                    db.Unidades.Where(u => u.Id == x.UnidadeExecutanteId).Select(u => u.Nome).FirstOrDefault()))
+                    db.Unidades.Where(u => u.Id == x.UnidadeExecutanteId).Select(u => u.Nome).FirstOrDefault(),
+                    null))
                 .FirstOrDefaultAsync(ct);
         }
-        else if (sistema == SistemaRegulacao.Ser && serId is { } ser)
+        else if (sistema == SistemaRegulacao.Ser && espelhoId is { } ser)
         {
             a = await db.SerSolicitacoes.AsNoTracking()
                 .Where(x => x.Id == ser)
                 .Select(x => new AgendamentoNoDestinoDto(
-                    SistemaRegulacao.Ser, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora))
+                    SistemaRegulacao.Ser, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora, null))
                 .FirstOrDefaultAsync(ct);
         }
-        else if (sistema == SistemaRegulacao.Sernit && sernitId is { } sernit)
+        else if (sistema == SistemaRegulacao.Sernit && espelhoId is { } sernit)
         {
             a = await db.SernitSolicitacoes.AsNoTracking()
                 .Where(x => x.Id == sernit)
                 .Select(x => new AgendamentoNoDestinoDto(
-                    SistemaRegulacao.Sernit, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora))
+                    SistemaRegulacao.Sernit, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora, null))
                 .FirstOrDefaultAsync(ct);
         }
-        else if (sistema == SistemaRegulacao.EsusSg && esusSgId is { } esus)
+        else if (sistema == SistemaRegulacao.EsusSg && espelhoId is { } esus)
         {
             var e = await db.EsusSgSolicitacoes.AsNoTracking()
                 .Where(x => x.Id == esus)
@@ -248,12 +355,28 @@ public sealed class RegulacaoContatoPacienteService(
                 a = new AgendamentoNoDestinoDto(
                     SistemaRegulacao.EsusSg, e.Situacao.ToString(), null,
                     e.DataHoraAgendadaTexto ?? e.DataAgendada?.ToString("dd/MM/yyyy"),
-                    e.UnidadeExecutora ?? e.Local);
+                    e.UnidadeExecutora ?? e.Local, null);
             }
         }
 
         // Sem data o "agendamento" é só a situação — essa a tela já mostra no cabeçalho.
-        return a is not null && (a.DataHora is not null || !string.IsNullOrWhiteSpace(a.DataTexto)) ? a : null;
+        if (a is null || (a.DataHora is null && string.IsNullOrWhiteSpace(a.DataTexto))) return null;
+
+        // O local que o AVISO usa (o vigente do pedido) e o endereço ligado a ele — é o que a equipe
+        // precisa ver para saber se o paciente recebeu o endereço certo.
+        if (a.Sistema != SistemaRegulacao.Sisreg && espelhoId is { } origem)
+        {
+            var localDoAviso = await db.AgendamentosExternos.AsNoTracking()
+                .Where(x => x.OrigemId == origem && x.Sistema == a.Sistema && x.Situacao == SituacaoAgendamentoExterno.Ativo)
+                .Select(x => x.LocalNome)
+                .FirstOrDefaultAsync(ct);
+            var nome = localDoAviso
+                ?? (a.Sistema == SistemaRegulacao.Sernit ? LeituraAgendamentoExterno.DataHora(a.DataTexto).Resto : null)
+                ?? (a.Sistema == SistemaRegulacao.EsusSg ? LeituraAgendamentoExterno.LocalEsusSg(a.Local) : a.Local);
+            var resolvido = await LocaisAgendamentoExternoService.ResolverAsync(db, nome, ct);
+            a = a with { Local = a.Local ?? nome, Endereco = resolvido?.Endereco };
+        }
+        return a;
     }
 
     /// <summary>

@@ -125,6 +125,7 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.AvisoCancelamentoHabilitado = request.AvisoCancelamentoHabilitado;
         c.ReforcoConfirmacaoHabilitado = request.ReforcoConfirmacaoHabilitado ?? c.ReforcoConfirmacaoHabilitado;
         c.OrientacaoPostoHabilitada = request.OrientacaoPostoHabilitada ?? c.OrientacaoPostoHabilitada;
+        c.AvisoAgendamentoExternoHabilitado = request.AvisoAgendamentoExternoHabilitado ?? c.AvisoAgendamentoExternoHabilitado;
         c.ConciliacaoIntervaloMinutos = intervalo;
         c.ConciliacaoHoraInicio = horaInicio;
         c.ConciliacaoHoraFim = horaFim;
@@ -170,5 +171,6 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.ConciliacaoUltimoDiaFechado,
         c.AvisoCancelamentoLigadoEm,
         c.ReforcoConfirmacaoHabilitado,
-        c.OrientacaoPostoHabilitada);
+        c.OrientacaoPostoHabilitada,
+        c.AvisoAgendamentoExternoHabilitado);
 }

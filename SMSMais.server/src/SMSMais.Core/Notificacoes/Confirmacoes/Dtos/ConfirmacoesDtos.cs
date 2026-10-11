@@ -26,7 +26,9 @@ public sealed record ConfirmacaoConfiguracaoDto(
     /// <summary>Reforço para quem recebeu a primeira mensagem e não se identificou (toque 2).</summary>
     bool ReforcoConfirmacaoHabilitado = false,
     /// <summary>Orientação ao posto — a última mensagem da régua (toque 3, terminal).</summary>
-    bool OrientacaoPostoHabilitada = false);
+    bool OrientacaoPostoHabilitada = false,
+    /// <summary>Aviso dos agendamentos do SER/SERNIT/ESUS SG (nasce ligado).</summary>
+    bool AvisoAgendamentoExternoHabilitado = true);
 
 public sealed record SalvarConfirmacaoConfiguracaoRequest(
     string HoraInicioEnvio,
@@ -54,7 +56,9 @@ public sealed record SalvarConfirmacaoConfiguracaoRequest(
     /// desligaria calada, no primeiro "salvar" da janela de horário, uma régua que alguém ligou.
     /// </summary>
     bool? ReforcoConfirmacaoHabilitado = null,
-    bool? OrientacaoPostoHabilitada = null);
+    bool? OrientacaoPostoHabilitada = null,
+    /// <summary>Aviso dos agendamentos do SER/SERNIT/ESUS SG — ausente = manter o gravado.</summary>
+    bool? AvisoAgendamentoExternoHabilitado = null);
 
 /// <summary>Fotografia da fila de confirmações (só a finalidade confirmação de agendamento).</summary>
 public sealed record ResumoFilaConfirmacaoDto(

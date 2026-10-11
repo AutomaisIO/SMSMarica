@@ -17,6 +17,7 @@ import {
 } from '@/features/unidades-atendimento/api/queries';
 import type { UnidadeAtendimentoListItem } from '@/features/unidades-atendimento/types';
 import { cidadeUf, semAcento } from '@/features/unidades-atendimento/lib/formatar';
+import { LocaisAgendamentosExternos } from '@/features/unidades-atendimento/components/LocaisAgendamentosExternos';
 
 export function UnidadesAtendimentoPage() {
   const navigate = useNavigate();
@@ -221,6 +222,9 @@ export function UnidadesAtendimentoPage() {
             : 'Nenhuma unidade de atendimento cadastrada ainda. Cadastre os destinos antes dos atendimentos.'
         }
       />
+
+      {/* De onde sai o endereço do aviso de agendamento do SER/SERNIT/ESUS (10/10/2026). */}
+      <LocaisAgendamentosExternos unidades={lista.data ?? []} podeEditar={podeEditar} />
 
       <ConfirmDialog
         aberto={Boolean(paraDesativar)}

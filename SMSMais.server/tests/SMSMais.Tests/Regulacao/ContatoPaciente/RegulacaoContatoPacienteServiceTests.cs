@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Notificacoes.Confirmacoes;
+using SMSMais.Core.Notificacoes.Confirmacoes.Dtos;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.ContatoPaciente;
@@ -31,7 +33,8 @@ namespace SMSMais.Tests.Regulacao.ContatoPaciente;
 [Collection(nameof(PostgresCollection))]
 public class RegulacaoContatoPacienteServiceTests(PostgresFixture fixture)
 {
-    private static RegulacaoContatoPacienteService Servico(SmsMaisDbContext db, string? telefoneConfirmado = null)
+    private static RegulacaoContatoPacienteService Servico(
+        SmsMaisDbContext db, string? telefoneConfirmado = null, bool avisoExterno = true)
     {
         // Sem usuário no contexto o escopo é "tudo" (como num job): o alcance tem testes próprios.
         var acessor = new UsuarioAtualAccessorFake();
@@ -39,7 +42,11 @@ public class RegulacaoContatoPacienteServiceTests(PostgresFixture fixture)
         var pacientes = Substitute.For<IPacientesService>();
         pacientes.ObterPorIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(PacienteNaTelaTests.Paciente() with { TelefoneVerificado = telefoneConfirmado });
-        return new RegulacaoContatoPacienteService(db, escopo, new SolicitacaoHistoricoService(db, acessor), pacientes);
+        var regras = Substitute.For<IConfirmacaoConfiguracaoService>();
+        regras.ObterAsync(Arg.Any<CancellationToken>()).Returns(new ConfirmacaoConfiguracaoDto(
+            "08:00", "18:00", 100, SomenteSisreg: true, true, null, AvisoAgendamentoExternoHabilitado: avisoExterno));
+        return new RegulacaoContatoPacienteService(
+            db, escopo, new SolicitacaoHistoricoService(db, acessor), pacientes, regras);
     }
 
     private static async Task<RegulacaoSolicitacao> SolicitacaoAsync(
@@ -146,9 +153,11 @@ public class RegulacaoContatoPacienteServiceTests(PostgresFixture fixture)
             Mensagem(Guid.NewGuid(), abertura.AddDays(5), DirecaoMensagem.Saida, "de outro paciente"));
         await db.SaveChangesAsync();
 
-        var dto = await Servico(db, telefoneConfirmado: "21999990000").ObterAsync(s.Id, CancellationToken.None);
+        // Com a chave do aviso externo DESLIGADA o SER volta a não avisar sozinho — e o quadro diz isso.
+        var dto = await Servico(db, telefoneConfirmado: "21999990000", avisoExterno: false)
+            .ObterAsync(s.Id, CancellationToken.None);
 
-        dto.DestinoComAvisoAutomatico.Should().BeFalse("do SER a plataforma ainda não avisa sozinha");
+        dto.DestinoComAvisoAutomatico.Should().BeFalse("com a chave desligada o SER não avisa sozinho");
         dto.Avisos.Should().BeEmpty();
         dto.Confirmacao.Should().BeNull();
         dto.Agendamento.Should().NotBeNull();

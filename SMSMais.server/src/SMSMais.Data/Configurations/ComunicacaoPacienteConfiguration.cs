@@ -52,6 +52,12 @@ internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguratio
             .HasForeignKey(n => n.SolicitacaoId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Property(n => n.AgendamentoExternoId).HasColumnName("agendamento_externo_id");
+        builder.HasOne(n => n.AgendamentoExterno)
+            .WithMany()
+            .HasForeignKey(n => n.AgendamentoExternoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasOne(n => n.LoginLink)
             .WithMany()
             .HasForeignKey(n => n.LoginLinkId)
@@ -68,6 +74,10 @@ internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguratio
         builder.HasIndex(n => new { n.SolicitacaoId, n.Finalidade })
             .IsUnique()
             .HasFilter("solicitacao_id IS NOT NULL");
+        // Idem para o agendamento do SER/SERNIT/ESUS SG.
+        builder.HasIndex(n => new { n.AgendamentoExternoId, n.Finalidade })
+            .IsUnique()
+            .HasFilter("agendamento_externo_id IS NOT NULL");
         builder.HasIndex(n => n.MensagemWhatsAppId);
         builder.HasIndex(n => n.PacienteId);
     }

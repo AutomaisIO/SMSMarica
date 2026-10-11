@@ -49,6 +49,11 @@ internal sealed class ConfirmacaoConfiguracaoConfiguration : IEntityTypeConfigur
             .HasColumnName("conciliacao_hora_fechamento").HasDefaultValue(7).ValueGeneratedNever().IsRequired();
         builder.Property(x => x.ConciliacaoUltimoDiaFechado)
             .HasColumnName("conciliacao_ultimo_dia_fechado");
+        // Aviso dos agendamentos do SER/SERNIT/ESUS SG (10/10/2026): nasce LIGADO — foi pedido para
+        // valer já. ValueGeneratedNever pelo mesmo motivo de cima: sem ele, desligar (false = default
+        // do CLR) sumiria do INSERT da linha singleton e o banco gravaria true.
+        builder.Property(x => x.AvisoAgendamentoExternoHabilitado)
+            .HasColumnName("aviso_agendamento_externo_habilitado").HasDefaultValue(true).ValueGeneratedNever().IsRequired();
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em");
         builder.Property(x => x.AtualizadoPor).HasColumnName("atualizado_por");

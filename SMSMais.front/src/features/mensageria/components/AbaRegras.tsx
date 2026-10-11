@@ -132,6 +132,7 @@ export function AbaRegras() {
   const [avisoCancelamento, setAvisoCancelamento] = useState(false);
   const [reforcoConfirmacao, setReforcoConfirmacao] = useState(false);
   const [orientacaoPosto, setOrientacaoPosto] = useState(false);
+  const [avisoExterno, setAvisoExterno] = useState(true);
   // Texto, não número: `Number('')` é 0, e um campo apagado para redigitar viraria "lê a cada 0
   // minutos, das 0h às 0h" na legenda e um 400 no salvar. Guardar o que foi digitado deixa o campo
   // vazio de verdade enquanto a pessoa redigita, e a conversão acontece num lugar só, na hora de
@@ -153,6 +154,7 @@ export function AbaRegras() {
     setAvisoCancelamento(cfg.data.avisoCancelamentoHabilitado);
     setReforcoConfirmacao(cfg.data.reforcoConfirmacaoHabilitado);
     setOrientacaoPosto(cfg.data.orientacaoPostoHabilitada);
+    setAvisoExterno(cfg.data.avisoAgendamentoExternoHabilitado);
     setConciliacaoIntervalo(String(cfg.data.conciliacaoIntervaloMinutos));
     setConciliacaoInicio(String(cfg.data.conciliacaoHoraInicio));
     setConciliacaoFim(String(cfg.data.conciliacaoHoraFim));
@@ -457,6 +459,34 @@ export function AbaRegras() {
           </div>
         </div>
 
+        {/*
+          Agendamentos do SER/SERNIT/ESUS (10/10/2026): não passam pelas chaves por unidade da tabela
+          abaixo (são do SISREG) — o atendimento é em outra rede, e esta chave vale para todos.
+        */}
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900">Agendamentos do SER, do SERNIT e do ESUS</h3>
+          <div className="mt-2">
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={avisoExterno}
+                onChange={(e) => setAvisoExterno(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                Avisar o paciente quando o pedido for agendado
+                <span className="block text-xs text-gray-500">
+                  A mesma conversa da confirmação do SISREG: a primeira mensagem não diz nada do agendamento; quando a
+                  pessoa pede mais informações (e confirma o CPF e o nascimento, se o número não é confirmado), recebe o
+                  procedimento, o dia, a hora, o local e o endereço — sem a guia do posto, que não existe para esses
+                  atendimentos. Só agendamentos de amanhã em diante. Desligar segura os avisos na fila.
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
         {podeEditar ? (
           <div className="mt-4 flex items-center justify-end gap-3">
             {salvar.isError ? <span className="text-sm text-red-700">{extrairMensagemDeErro(salvar.error)}</span> : null}
@@ -476,6 +506,7 @@ export function AbaRegras() {
                   avisoCancelamentoHabilitado: avisoCancelamento,
                   reforcoConfirmacaoHabilitado: reforcoConfirmacao,
                   orientacaoPostoHabilitada: orientacaoPosto,
+                  avisoAgendamentoExternoHabilitado: avisoExterno,
                   conciliacaoIntervaloMinutos: conciliacao.intervalo!,
                   conciliacaoHoraInicio: conciliacao.ini!,
                   conciliacaoHoraFim: conciliacao.f!,

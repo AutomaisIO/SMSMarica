@@ -35,6 +35,7 @@ public sealed class ComunicacaoGestaoService(
         var query = db.ComunicacoesPaciente.AsNoTracking()
             .Include(n => n.Solicitacao!).ThenInclude(s => s.ExameImagem!).ThenInclude(e => e.TipoExame)
             .Include(n => n.Solicitacao!).ThenInclude(s => s.UnidadeExecutante)
+            .Include(n => n.AgendamentoExterno)
             .AsQueryable();
 
         if (Enum.TryParse<StatusComunicacao>(filtro.Status, ignoreCase: true, out var st))
@@ -42,7 +43,8 @@ public sealed class ComunicacaoGestaoService(
         if (Enum.TryParse<FinalidadeComunicacao>(filtro.Finalidade, ignoreCase: true, out var fin))
             query = query.Where(n => n.Finalidade == fin);
         if (Enum.TryParse<StatusConfirmacaoAgendamento>(filtro.Confirmacao, ignoreCase: true, out var conf))
-            query = query.Where(n => n.Solicitacao != null && n.Solicitacao.StatusConfirmacao == conf);
+            query = query.Where(n => (n.Solicitacao != null && n.Solicitacao.StatusConfirmacao == conf)
+                || (n.AgendamentoExterno != null && n.AgendamentoExterno.StatusConfirmacao == conf));
         if (filtro.De is { } de)
         {
             var deUtc = FusoBrasilia.LimiteDeFiltroParaUtc(de);
@@ -56,10 +58,11 @@ public sealed class ComunicacaoGestaoService(
         if (!string.IsNullOrWhiteSpace(filtro.Texto))
         {
             var t = filtro.Texto.Trim();
-            query = query.Where(n => n.Solicitacao != null
-                && ((n.Solicitacao.ExameImagem != null && n.Solicitacao.ExameImagem.AccessionNumber.Contains(t))
-                    || (n.Solicitacao.CodigoSolicitacao != null && n.Solicitacao.CodigoSolicitacao.Contains(t))
-                    || (n.Telefone != null && n.Telefone.Contains(t))));
+            query = query.Where(n => (n.Solicitacao != null
+                    && ((n.Solicitacao.ExameImagem != null && n.Solicitacao.ExameImagem.AccessionNumber.Contains(t))
+                        || (n.Solicitacao.CodigoSolicitacao != null && n.Solicitacao.CodigoSolicitacao.Contains(t))))
+                || (n.AgendamentoExterno != null && n.AgendamentoExterno.NumeroExterno.Contains(t))
+                || (n.Telefone != null && n.Telefone.Contains(t)));
         }
 
         var total = await query.CountAsync(ct);
@@ -85,6 +88,7 @@ public sealed class ComunicacaoGestaoService(
         var n = await db.ComunicacoesPaciente.AsNoTracking()
             .Include(x => x.Solicitacao!).ThenInclude(s => s.ExameImagem!).ThenInclude(e => e.TipoExame)
             .Include(x => x.Solicitacao!).ThenInclude(s => s.UnidadeExecutante)
+            .Include(x => x.AgendamentoExterno)
             .Include(x => x.MensagemWhatsApp)
             .Include(x => x.LoginLink)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
@@ -108,11 +112,25 @@ public sealed class ComunicacaoGestaoService(
     {
         var n = await db.ComunicacoesPaciente
             .Include(x => x.Solicitacao)
+            .Include(x => x.AgendamentoExterno)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NaoEncontradoException("comunicacao.nao_encontrada", "Comunicação não encontrada.");
 
         if (n.Status == StatusComunicacao.Pendente && n.ProximaTentativaEm is not null)
             throw new ConflitoException("comunicacao.ja_na_fila", "Esta comunicação já está na fila de envio.");
+        if (n.AgendamentoExternoId is not null)
+        {
+            // SER/SERNIT/ESUS SG: as mesmas guardas do envio (remarcado/desmarcado, data, resposta).
+            if (ComunicacaoPacienteService.MotivoQueImpedeEnvioExterno(n.Finalidade, n.AgendamentoExterno, DateTime.UtcNow)
+                is { } impedimento)
+                throw new ConflitoException("comunicacao.externo_impedido", impedimento.Motivo);
+            n.Status = StatusComunicacao.Pendente;
+            n.MotivoFalha = null;
+            n.ProximaTentativaEm = DateTime.UtcNow;
+            n.AtualizadoEm = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
         if (n.Solicitacao is null || n.Solicitacao.ExcluidoEm is not null)
             throw new ConflitoException("comunicacao.sem_solicitacao", "A solicitação desta comunicação não existe mais.");
         if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
@@ -158,8 +176,10 @@ public sealed class ComunicacaoGestaoService(
                 c.CriadoEm, c.EnviadoEm, c.EntregueEm, c.LidoEm, c.VisualizadoEm, c.Status, c.MotivoFalha,
                 c.Finalidade, c.ProximaTentativaEm,
                 ErroMeta = c.MensagemWhatsApp != null ? c.MensagemWhatsApp.ErroMeta : null,
-                Resposta = c.Solicitacao != null ? (StatusConfirmacaoAgendamento?)c.Solicitacao.StatusConfirmacao : null,
-                Unidade = c.Solicitacao != null && c.Solicitacao.UnidadeExecutante != null ? c.Solicitacao.UnidadeExecutante.Nome : null,
+                Resposta = c.Solicitacao != null ? (StatusConfirmacaoAgendamento?)c.Solicitacao.StatusConfirmacao
+                    : c.AgendamentoExterno != null ? (StatusConfirmacaoAgendamento?)c.AgendamentoExterno.StatusConfirmacao : null,
+                Unidade = c.Solicitacao != null && c.Solicitacao.UnidadeExecutante != null ? c.Solicitacao.UnidadeExecutante.Nome
+                    : c.AgendamentoExterno != null ? c.AgendamentoExterno.LocalNome : null,
             })
             .ToListAsync(ct);
 
@@ -259,17 +279,21 @@ public sealed class ComunicacaoGestaoService(
     private static ComunicacaoResumoDto Mapear(ComunicacaoPaciente n, string? pacienteNome)
     {
         var s = n.Solicitacao;
+        // SER/SERNIT/ESUS SG: sem espinha — o código é "SER 8407041" e o procedimento e o local são
+        // os do agendamento externo, como o sistema de destino os mostra.
+        var a = n.AgendamentoExterno;
         return new ComunicacaoResumoDto(
             n.Id,
             n.Finalidade.ToString(),
             n.SolicitacaoId,
             s?.ExameImagem?.AccessionNumber,
-            s?.CodigoSolicitacao,
+            s?.CodigoSolicitacao
+                ?? (a is null ? null : $"{AgendamentosExternos.AgendamentoExternoService.Rotulo(a.Sistema)} {a.NumeroExterno}"),
             n.PacienteId,
             pacienteNome,
-            s?.ExameImagem?.TipoExame?.Nome,
-            s?.UnidadeExecutante?.Nome,
-            s?.DataAgendada,
+            s?.ExameImagem?.TipoExame?.Nome ?? a?.Procedimento,
+            s?.UnidadeExecutante?.Nome ?? a?.LocalNome,
+            s?.DataAgendada ?? (a is null ? null : ComunicacaoPacienteService.InstanteDoAgendamento(a)),
             n.Telefone,
             n.Status.ToString(),
             n.MotivoFalha,
@@ -278,10 +302,10 @@ public sealed class ComunicacaoGestaoService(
             n.EntregueEm,
             n.LidoEm,
             n.VisualizadoEm,
-            (s?.StatusConfirmacao ?? StatusConfirmacaoAgendamento.Pendente).ToString(),
-            s?.ConfirmadoEm,
-            s?.ConfirmadoCanal,
-            s?.MotivoCancelamentoPaciente,
+            (s?.StatusConfirmacao ?? a?.StatusConfirmacao ?? StatusConfirmacaoAgendamento.Pendente).ToString(),
+            s?.ConfirmadoEm ?? a?.ConfirmadoEm,
+            s?.ConfirmadoCanal ?? a?.ConfirmadoCanal,
+            s?.MotivoCancelamentoPaciente ?? a?.MotivoCancelamentoPaciente,
             n.CriadoEm);
     }
 }

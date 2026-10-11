@@ -1118,6 +1118,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AgendamentoExternoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agendamento_externo_id");
+
                     b.Property<DateTime?>("AtualizadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
@@ -1231,6 +1235,10 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("MensagemWhatsAppId");
 
                     b.HasIndex("PacienteId");
+
+                    b.HasIndex("AgendamentoExternoId", "Finalidade")
+                        .IsUnique()
+                        .HasFilter("agendamento_externo_id IS NOT NULL");
 
                     b.HasIndex("SolicitacaoId", "Finalidade")
                         .IsUnique()
@@ -5601,6 +5609,111 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("motorista", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.AgendamentoExterno", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<DateTime?>("ConfirmacaoCanceladaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmacao_cancelada_em");
+
+                    b.Property<string>("ConfirmadoCanal")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("confirmado_canal");
+
+                    b.Property<DateTime?>("ConfirmadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date")
+                        .HasColumnName("data");
+
+                    b.Property<DateTime?>("EncerradoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("encerrado_em");
+
+                    b.Property<TimeOnly?>("Hora")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("hora");
+
+                    b.Property<string>("LocalNome")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("local_nome");
+
+                    b.Property<string>("MotivoCancelamentoPaciente")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_cancelamento_paciente");
+
+                    b.Property<string>("NumeroExterno")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("numero_externo");
+
+                    b.Property<Guid>("OrigemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("origem_id");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<string>("Procedimento")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("procedimento");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Sistema")
+                        .HasColumnType("integer")
+                        .HasColumnName("sistema");
+
+                    b.Property<int>("Situacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao");
+
+                    b.Property<int>("StatusConfirmacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_confirmacao");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrigemId");
+
+                    b.HasIndex("PacienteId");
+
+                    b.HasIndex("Sistema", "OrigemId")
+                        .IsUnique()
+                        .HasFilter("situacao = 1");
+
+                    b.ToTable("agendamento_externo", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.AtendimentoConfirmacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5802,6 +5915,11 @@ namespace SMSMais.Data.Migrations
                     b.Property<Guid?>("AtualizadoPor")
                         .HasColumnType("uuid")
                         .HasColumnName("atualizado_por");
+
+                    b.Property<bool>("AvisoAgendamentoExternoHabilitado")
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("aviso_agendamento_externo_habilitado");
 
                     b.Property<bool>("AvisoCancelamentoHabilitado")
                         .ValueGeneratedOnAdd()
@@ -15918,6 +16036,47 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("unidade_atendimento", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.UnidadeAtendimentoNomeExterno", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("NomeNormalizado")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("nome_normalizado");
+
+                    b.Property<Guid>("UnidadeAtendimentoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unidade_atendimento_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NomeNormalizado")
+                        .IsUnique();
+
+                    b.HasIndex("UnidadeAtendimentoId");
+
+                    b.ToTable("unidade_atendimento_nome_externo", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.UnidadePesquisaConfig", b =>
                 {
                     b.Property<Guid>("UnidadeId")
@@ -16292,6 +16451,11 @@ namespace SMSMais.Data.Migrations
 
             modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoPaciente", b =>
                 {
+                    b.HasOne("SMSMais.Data.Entities.Notificacoes.AgendamentoExterno", "AgendamentoExterno")
+                        .WithMany()
+                        .HasForeignKey("AgendamentoExternoId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("SMSMais.Data.Entities.CidadaoLoginLink", "LoginLink")
                         .WithMany()
                         .HasForeignKey("LoginLinkId")
@@ -16306,6 +16470,8 @@ namespace SMSMais.Data.Migrations
                         .WithMany()
                         .HasForeignKey("SolicitacaoId")
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("AgendamentoExterno");
 
                     b.Navigation("LoginLink");
 
@@ -18177,6 +18343,17 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Endereco");
 
                     b.Navigation("Gps");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.UnidadeAtendimentoNomeExterno", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.UnidadeAtendimento", "UnidadeAtendimento")
+                        .WithMany()
+                        .HasForeignKey("UnidadeAtendimentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UnidadeAtendimento");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Usuario", b =>
