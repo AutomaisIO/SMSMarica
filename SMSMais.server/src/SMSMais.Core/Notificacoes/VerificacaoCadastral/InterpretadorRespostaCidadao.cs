@@ -141,15 +141,30 @@ public static partial class InterpretadorRespostaCidadao
 
     // ---------- Vínculo com o paciente ----------
 
-    /// <summary>Lê, em texto livre, se quem responde é o próprio paciente ou quem recebe por ele.
-    /// Null quando a resposta não deixa claro (o fluxo então re-orienta).</summary>
+    /// <summary>
+    /// Lê, em texto livre, se quem responde é o próprio paciente ou quem recebe por ele.
+    /// Null quando a resposta não deixa claro (o fluxo então re-orienta).
+    ///
+    /// <para>A régua do "próprio" é por REGEX, não por igualdade exata (lição do ticket #158,
+    /// 11/10/2026): uma idosa de 84 anos respondeu *nove vezes* "do próprio paciente", "é do
+    /// próprio paciente", "sim é meu" — a lista exata antiga não casava com nenhuma, o fluxo
+    /// re-orientava com a MESMA pergunta e, passado o teto, silenciava. O regex reconhece a
+    /// intenção ("próprio", "é meu", "sou eu", "do paciente"…) do jeito que se escreve no
+    /// WhatsApp — pontuação grudada inclusa ("Do.paciente").</para>
+    ///
+    /// <para>Ordem importa: FAMÍLIA/responsável primeiro (senão "sou a mãe do paciente" casaria o
+    /// ramo do próprio por conter "paciente"); depois a NEGAÇÃO do próprio ("não sou eu", "não é
+    /// meu") devolve nulo em vez de adivinhar; só então o próprio.</para>
+    /// </summary>
     public static Data.Entities.Enums.VinculoContatoVerificado? TentarLerVinculo(string? texto)
     {
-        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', ' ');
+        // Normaliza (minúsculas, sem acento) E troca pontuação/símbolos grudados por espaço, para
+        // "Do.paciente", "sim,é meu" e afins virarem tokens limpos antes do \b dos regexes.
+        var t = Regex.Replace(Normalizar(texto ?? string.Empty), @"[^a-z0-9]+", " ").Trim();
         if (t.Length == 0) return null;
-        if (t is "sou o paciente" or "sou a paciente" or "sou eu" or "eu mesmo" or "eu mesma" or "meu"
-            or "e meu" or "e o meu" or "sou eu mesmo" or "sou eu mesma" or "proprio" || EhSim(t))
-            return Data.Entities.Enums.VinculoContatoVerificado.Proprio;
+
+        // Família / responsável ANTES do próprio: "sou a mãe do paciente" tem "paciente" e viraria
+        // "próprio" se checado depois.
         if (t.Contains("mae") || t.Contains("pai") || t.Contains("responsav") || t.Contains("tutor")
             || t.Contains("guarda"))
             return Data.Entities.Enums.VinculoContatoVerificado.MaeOuPaiOuResponsavel;
@@ -158,6 +173,13 @@ public static partial class InterpretadorRespostaCidadao
             || t.Contains("esposa") || t.Contains("marido") || t.Contains("cuidador")
             || t.Contains("vizinh") || t.Contains("parente") || t.Contains("amig"))
             return Data.Entities.Enums.VinculoContatoVerificado.OutroParenteOuCuidador;
+
+        // "Não sou eu", "não é meu", "esse número não é meu": a pessoa recebe por outra, mas não
+        // disse o vínculo. NÃO é próprio — re-pergunta em vez de carimbar errado.
+        if (RegexNegaProprioVinculo().IsMatch(t)) return null;
+
+        if (RegexProprioVinculo().IsMatch(t) || EhSim(t))
+            return Data.Entities.Enums.VinculoContatoVerificado.Proprio;
         return null;
     }
 
@@ -287,6 +309,20 @@ public static partial class InterpretadorRespostaCidadao
         "dezembro" or "dez" => 12,
         _ => 0,
     };
+
+    /// <summary>"É o próprio paciente / é meu" em texto livre (sobre o texto já sem acento e com a
+    /// pontuação virada espaço). Cobre "proprio/propria", "sou eu (mesmo/a)", "eu mesmo/a", "é/sou o/a
+    /// paciente", "paciente sou eu", "meu/minha", "do/da paciente". A família é filtrada ANTES, então
+    /// um "paciente" solto aqui é o do agendamento.</summary>
+    [GeneratedRegex(
+        @"\b(?:propri[oa]|sou eu|eu mesm[oa]|sou [oa] (?:paciente|propri[oa])|paciente sou eu|meu|minha|(?:do|da) paciente|(?:e|eh|sou) [oa] paciente)\b")]
+    private static partial Regex RegexProprioVinculo();
+
+    /// <summary>Negação do próprio ("não sou eu", "não é meu", "esse número não é meu"): recebe por
+    /// outra pessoa sem dizer o vínculo. Impede que "não sou eu" caia no ramo do próprio por conter
+    /// "sou eu".</summary>
+    [GeneratedRegex(@"\bnao\b.*\b(?:sou|e|eh|meu|minha|propri[oa]|paciente)\b")]
+    private static partial Regex RegexNegaProprioVinculo();
 
     [GeneratedRegex(
         @"(?:(?<dia>\d{1,2})\s*(?:de\s+)?)?(?<mes>janeiro|fevereiro|marco|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\W*(?:de\s+)?(?<ano>\d{2,4})",

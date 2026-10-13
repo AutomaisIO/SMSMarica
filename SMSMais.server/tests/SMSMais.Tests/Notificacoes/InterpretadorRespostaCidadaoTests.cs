@@ -1,4 +1,5 @@
 using SMSMais.Core.Notificacoes.VerificacaoCadastral;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Notificacoes;
 
@@ -257,4 +258,53 @@ public class InterpretadorRespostaCidadaoTests
     [InlineData("obrigado")]
     public void Atendente_nao_dispara_em_respostas_normais(string entrada) =>
         Assert.False(InterpretadorRespostaCidadao.PedeAtendente(entrada));
+
+    // ---------- Vínculo com o paciente (ticket #158) ----------
+
+    [Theory]
+    // As frases REAIS da conversa do #158 — a lista exata antiga falhava em todas estas:
+    [InlineData("Do.paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("Do paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("Bom dia  do.paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("Do próprio paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("Este WhatsApp  é  do próprio  paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("EstewhatsApp é do próprio  paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("Sim é meu", VinculoContatoVerificado.Proprio)]
+    [InlineData("o número é meu", VinculoContatoVerificado.Proprio)]
+    // Compatibilidade com o que já funcionava:
+    [InlineData("sou o paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("sou a paciente", VinculoContatoVerificado.Proprio)]
+    [InlineData("sou eu", VinculoContatoVerificado.Proprio)]
+    [InlineData("sou eu mesma", VinculoContatoVerificado.Proprio)]
+    [InlineData("eu mesmo", VinculoContatoVerificado.Proprio)]
+    [InlineData("meu", VinculoContatoVerificado.Proprio)]
+    [InlineData("proprio", VinculoContatoVerificado.Proprio)]
+    [InlineData("sim", VinculoContatoVerificado.Proprio)]       // "sim" seco confirma o próprio
+    public void Vinculo_reconhece_o_proprio_paciente(string texto, VinculoContatoVerificado esperado) =>
+        Assert.Equal(esperado, InterpretadorRespostaCidadao.TentarLerVinculo(texto));
+
+    [Theory]
+    [InlineData("sou a mãe do paciente", VinculoContatoVerificado.MaeOuPaiOuResponsavel)]
+    [InlineData("sou o pai dele", VinculoContatoVerificado.MaeOuPaiOuResponsavel)]
+    [InlineData("sou responsável por ela", VinculoContatoVerificado.MaeOuPaiOuResponsavel)]
+    [InlineData("sou o tutor", VinculoContatoVerificado.MaeOuPaiOuResponsavel)]
+    [InlineData("sou a filha dele", VinculoContatoVerificado.OutroParenteOuCuidador)]
+    [InlineData("sou cuidadora", VinculoContatoVerificado.OutroParenteOuCuidador)]
+    [InlineData("sou a esposa", VinculoContatoVerificado.OutroParenteOuCuidador)]
+    [InlineData("sou vizinha dela", VinculoContatoVerificado.OutroParenteOuCuidador)]
+    public void Vinculo_familia_vence_o_proprio(string texto, VinculoContatoVerificado esperado) =>
+        Assert.Equal(esperado, InterpretadorRespostaCidadao.TentarLerVinculo(texto));
+
+    [Theory]
+    // Negação do próprio: recebe por outra pessoa sem dizer o vínculo → re-pergunta, não adivinha.
+    [InlineData("não sou eu")]
+    [InlineData("não é meu")]
+    [InlineData("esse número não é meu")]
+    [InlineData("não sou o paciente")]
+    // Ambíguo de verdade → null (o fluxo re-orienta):
+    [InlineData("recebo por ela")]
+    [InlineData("bom dia")]
+    [InlineData("é da pessoa")]
+    public void Vinculo_nao_adivinha_quando_nega_ou_ambiguo(string texto) =>
+        Assert.Null(InterpretadorRespostaCidadao.TentarLerVinculo(texto));
 }
