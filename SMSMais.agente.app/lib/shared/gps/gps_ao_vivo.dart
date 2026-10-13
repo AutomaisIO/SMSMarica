@@ -9,6 +9,9 @@ import 'package:geolocator/geolocator.dart';
 ///
 /// A permissão de localização vem concedida pelo MDM (Device Owner); sem ela,
 /// tenta de novo a cada 10 s em vez de abrir diálogo (bloqueado no quiosque).
+///
+/// Usa só o GPS nativo (`LocationManager`): o tablet não depende do Play
+/// Services para ter posição.
 class GpsAoVivo extends StateNotifier<Position?> {
   GpsAoVivo() : super(null);
 
@@ -27,6 +30,11 @@ class GpsAoVivo extends StateNotifier<Position?> {
     _assinatura =
         Geolocator.getPositionStream(
           locationSettings: AndroidSettings(
+            // GPS nativo do Android, nunca o do Play Services. Nos tablets
+            // genéricos da frota o Play Services passa na checagem do plugin
+            // mas recusa a conexão (SERVICE_INVALID), e a exceção derrubava
+            // o app ao abrir — em loop, com o quiosque relançando.
+            forceLocationManager: true,
             intervalDuration: const Duration(seconds: 1),
             foregroundNotificationConfig: const ForegroundNotificationConfig(
               notificationTitle: 'SMS Maricá — Transporte',
