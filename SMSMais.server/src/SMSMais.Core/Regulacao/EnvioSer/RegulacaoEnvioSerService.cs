@@ -534,10 +534,21 @@ public sealed partial class RegulacaoEnvioSerService(
         // O SER-RJ tem também um autocomplete de recurso que precisa ser amarrado; o SERNIT não tem.
         if (motor.TemCampo(SerCriacaoSolicitacao.CampoRecursoSugestao))
         {
-            var linhaRecurso = await motor.AmarrarAsync(
-                SerCriacaoSolicitacao.CampoRecursoSugestao, recursos[0].Rotulo,
-                linhas => Indice(linhas, l => l.Any(c => IdentidadePorNome.Chave(c) == IdentidadePorNome.Chave(recursos[0].Rotulo))),
-                ct);
+            // O autocomplete do SER filtra as sugestões NO SERVIDOR, por CONTAINS case-insensitive
+            // (medido contra o SER real em 14/10/2026 — ticket #159). Alguns recursos estão indexados
+            // lá com ESPAÇO DUPLO (ex.: "CONSULTA  EM POLISSONOGRAFIA"); como o nosso rótulo guarda o
+            // espaço colapsado (ChaveRotulo), mandar o rótulo inteiro como termo não é substring do
+            // texto indexado e o SER não devolve linha nenhuma. Buscamos então pelo TOKEN MAIS LONGO
+            // do rótulo — uma palavra só, sem espaço interno, que atravessa o filtro contains — e o
+            // casamento exato por chave normalizada escolhe a linha certa entre as devolvidas. Se o
+            // token não casar (recurso de nome atípico, lista saturada), uma última tentativa com o
+            // rótulo inteiro, antes de recusar.
+            int? Escolher(IReadOnlyList<IReadOnlyList<string>> linhas) =>
+                Indice(linhas, l => l.Any(c => IdentidadePorNome.Chave(c) == IdentidadePorNome.Chave(recursos[0].Rotulo)));
+
+            var linhaRecurso =
+                await motor.AmarrarAsync(SerCriacaoSolicitacao.CampoRecursoSugestao, TermoBuscaRecurso(recursos[0].Rotulo), Escolher, ct)
+                ?? await motor.AmarrarAsync(SerCriacaoSolicitacao.CampoRecursoSugestao, recursos[0].Rotulo, Escolher, ct);
             if (linhaRecurso is null)
             {
                 throw new ValidacaoException("ser.recurso", $"O autocomplete de recurso do {sistema} não sugeriu \"{recursos[0].Rotulo}\".");
@@ -1129,6 +1140,19 @@ public sealed partial class RegulacaoEnvioSerService(
     {
         for (var i = 0; i < linhas.Count; i++) if (casa(linhas[i])) return i;
         return null;
+    }
+
+    /// <summary>
+    /// Termo para digitar no autocomplete de recurso do SER: o TOKEN MAIS LONGO do rótulo. O filtro
+    /// do SER é contains case-insensitive (medido em 14/10/2026 — ticket #159) e alguns recursos
+    /// estão indexados lá com espaço duplo; uma palavra única, sem espaço interno, atravessa o filtro
+    /// onde o rótulo inteiro (com o espaçamento colapsado pelo nosso lado) não casa. Em empate de
+    /// tamanho, o primeiro token. Rótulo sem palavra alguma devolve o próprio rótulo.
+    /// </summary>
+    internal static string TermoBuscaRecurso(string rotulo)
+    {
+        var tokens = (rotulo ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return tokens.Length == 0 ? (rotulo ?? string.Empty) : tokens.MaxBy(t => t.Length)!;
     }
 
     private static string Digitos(string? s) => new([.. (s ?? string.Empty).Where(char.IsDigit)]);

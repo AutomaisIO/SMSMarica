@@ -44,6 +44,25 @@ oncologia pede campos diferentes".
 Ações da aba: `form0:addMedico` (Adicionar médico), `form0:j_id299` (Anexar Arquivo) e
 **`form0:j_id313` (Gravar)** — este último é escrita e está fora de qualquer uso nosso.
 
+#### 2.1.1 O autocomplete de recurso (`suggRecurso`): filtro é *contains*, e o espaço duplo quebra
+
+O `form0:suggRecurso` precisa ser amarrado depois do combo (o SER-RJ exige os dois; o SERNIT nem
+tem o autocomplete). Medido contra o SER real em **14/10/2026** (ticket #159, sonda só de *fetch*
+de sugestões, sem `onselect`): o filtro da caixa roda **no servidor do SER** e é **CONTAINS,
+case-insensitive** — `POLISSONOGRAFIA` e `polissonografia` acham a linha; `CONSULTA` (prefixo) traz
+144 das 149 e a linha certa está entre elas; **não** é *starts-with*.
+
+A armadilha: **alguns recursos estão indexados no SER com ESPAÇO DUPLO** (medido:
+`CONSULTA  EM POLISSONOGRAFIA`, valor 1164). Como o nosso espelho guarda o rótulo com o espaço
+**colapsado** (`ChaveRotulo.Normalizar`), digitar o rótulo inteiro de espaço simples **não é
+substring** do texto indexado e o SER devolve *"Nenhum registro encontrado"* — o combo casa (ele
+compara por valor), mas o autocomplete não, e o envio para com `ValidacaoException "ser.recurso"`.
+
+Solução (em `RegulacaoEnvioSerService.PreencherAsync` → `TermoBuscaRecurso`): digitar o **token
+mais longo** do rótulo (uma palavra só, sem espaço interno — ex.: `POLISSONOGRAFIA`), que atravessa
+o filtro *contains*, e deixar o casamento exato por chave normalizada escolher a linha. Se não
+casar, uma última tentativa com o rótulo inteiro antes de recusar.
+
 #### Classificação de Risco: o código diz o que cada "Prioridade" é
 
 Lido da tela em `Automais.SER/capturas/criar_relatorio.json` (gerado por `probe_tela_criar.py`).

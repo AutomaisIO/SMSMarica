@@ -145,6 +145,26 @@ public class EnvioSerPecasTests
         SerCriacaoSolicitacao.EventoDoControle(html, "form0:comboRecurso").Should().Be("form0:j_id57");
         SerCriacaoSolicitacao.EventoDoControle(html, "form0:unidadeDeOrigemIdentificada_radio").Should().Be("form0:j_id270");
     }
+
+    [Theory]
+    // o caso do ticket #159: o SER indexa com espaço duplo, o token longo atravessa o filtro contains
+    [InlineData("CONSULTA EM POLISSONOGRAFIA", "POLISSONOGRAFIA")]
+    // o hífen e a parte genérica ficam de fora; vence a palavra distintiva
+    [InlineData("CONSULTA EM NEFROLOGIA - GERAL", "NEFROLOGIA")]
+    // sem espaço, o termo é o próprio rótulo
+    [InlineData("MAMOGRAFIA", "MAMOGRAFIA")]
+    public void Termo_de_busca_do_recurso_e_o_token_mais_longo(string rotulo, string esperado)
+    {
+        RegulacaoEnvioSerService.TermoBuscaRecurso(rotulo).Should().Be(esperado);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Termo_de_busca_do_recurso_tolera_rotulo_vazio(string rotulo)
+    {
+        RegulacaoEnvioSerService.TermoBuscaRecurso(rotulo).Should().Be(rotulo);
+    }
 }
 
 /// <summary>
