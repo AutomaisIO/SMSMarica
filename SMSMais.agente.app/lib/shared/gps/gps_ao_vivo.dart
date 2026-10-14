@@ -56,8 +56,12 @@ class GpsAoVivo extends StateNotifier<Position?> {
     _retentativa = Timer(const Duration(seconds: 10), iniciar);
   }
 
+  /// Sem `Geolocator.isLocationServiceEnabled()`: ela ignora o
+  /// `forceLocationManager`, pergunta sempre ao Play Services e, na recusa
+  /// (SERVICE_INVALID), o geolocator_android 4.6.2 chama `getResult()` mesmo
+  /// assim e derruba o app. Localização desligada já chega como erro do
+  /// stream (→ [_reiniciar], nova tentativa em 10 s).
   Future<bool> _temPermissao() async {
-    if (!await Geolocator.isLocationServiceEnabled()) return false;
     final p = await Geolocator.checkPermission();
     return p == LocationPermission.always || p == LocationPermission.whileInUse;
   }
