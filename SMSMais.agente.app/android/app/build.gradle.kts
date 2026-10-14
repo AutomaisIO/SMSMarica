@@ -79,6 +79,13 @@ android {
     }
 
     buildTypes {
+        // Debug com outro pacote: instala AO LADO do app do MDM (assinado com a chave de
+        // release, desinstalação travada pelo Device Owner), sem conflito de assinatura.
+        // No MDM ele aparece como io.automais.smsmais.agente.debug.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
