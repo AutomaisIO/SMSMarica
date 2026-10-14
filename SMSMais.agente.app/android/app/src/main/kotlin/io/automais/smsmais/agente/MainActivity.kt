@@ -1,7 +1,9 @@
 package io.automais.smsmais.agente
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.provider.Settings
 import android.view.WindowManager
@@ -10,6 +12,16 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    // pt-BR também no contexto da Activity (textos do Navigation SDK na tela). Ver Idioma.
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Idioma.emPortugues(base))
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        Idioma.fixarPadrao()
+        super.onConfigurationChanged(newConfig)
+    }
 
     // Canal pequeno para o que não justifica dependência nova: identificação do tablet
     // (vínculo com o veículo), manter a tela ligada na tela de Deslocamento e saber se o

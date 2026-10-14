@@ -11,6 +11,9 @@ dependencies:
   dio: ^5.7.0
   flutter:
     sdk: flutter
+  # Textos do próprio Flutter (tooltips, rótulos de acessibilidade) em pt-BR.
+  flutter_localizations:
+    sdk: flutter
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
   permission_handler: ^11.3.1

@@ -3,6 +3,7 @@ import 'package:agente/app/theme.dart';
 import 'package:agente/features/dispositivo/application/envio_posicoes_service.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AgenteApp extends ConsumerWidget {
@@ -20,10 +21,15 @@ class AgenteApp extends ConsumerWidget {
       ..watch(gpsAoVivoProvider.notifier)
       ..watch(envioPosicoesProvider);
 
+    // Sempre pt-BR, mesmo com o tablet em inglês (o nativo também fixa pt-BR
+    // para a narração do Navigation SDK — ver MainActivity).
     return MaterialApp.router(
       title: 'SMS Maricá — Agente',
       theme: MaricaTheme.light(),
       debugShowCheckedModeBanner: false,
+      locale: const Locale('pt', 'BR'),
+      supportedLocales: const [Locale('pt', 'BR')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: router,
     );
   }
