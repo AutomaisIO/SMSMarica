@@ -86,6 +86,13 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
+        // Profile = código compilado (AOT) como no release, para medir desempenho real no
+        // tablet (o debug roda o Dart em JIT, bem mais lento). Mesmo pacote e mesma assinatura
+        // do debug: instala por cima dele e usa a mesma restrição da chave do Google.
+        maybeCreate("profile").apply {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-profile"
+        }
         release {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
