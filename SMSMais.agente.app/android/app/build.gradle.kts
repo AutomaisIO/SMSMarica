@@ -112,6 +112,14 @@ gradle.taskGraph.whenReady {
                 "AGENTE_KEY_ALIAS/AGENTE_KEY_PASSWORD. Ver README, seção \"Distribuição pelo MDM\"."
         )
     }
+    // Sem a chave o mapa e a navegação não funcionam no tablet (o SDK só registra
+    // "Authorization failure" e a sessão falha como se os termos não tivessem sido aceitos).
+    if (buildsRelease && mapsApiKey.isBlank()) {
+        throw GradleException(
+            "MAPS_API_KEY ausente: defina em android/local.properties (MAPS_API_KEY=...) ou na " +
+                "variável de ambiente MAPS_API_KEY. Ver docs/modulos/tfd/navegacao-motorista.md."
+        )
+    }
 }
 
 dependencies {
