@@ -34,6 +34,12 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   TransladoNavegacao? _translado;
   final Set<String> _concluidas = {};
 
+  /// Pessoas (paciente ou acompanhante) que faltaram na coleta.
+  final Set<String> _ausentes = {};
+
+  /// Simulação ligada (teste com o tablet parado): retoma a cada parada.
+  bool _simulando = false;
+
   bool _sessaoPronta = false;
   bool _confirmando = false;
   bool _painelVisivel = true;
@@ -153,10 +159,13 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     } on Object catch (_) {}
   }
 
+  /// Paradas com o andamento: concluídas marcadas e, no destino, só quem
+  /// embarcou (destino sem ninguém fica dispensado).
   List<ParadaNavegacao> get _paradas =>
-      _translado?.paradas
-          .map((p) => p.copyWith(concluida: _concluidas.contains(p.id)))
-          .toList() ??
+      _translado?.paradasComAndamento(
+        concluidas: _concluidas,
+        ausentes: _ausentes,
+      ) ??
       const [];
 
   ParadaNavegacao? get _proxima {
@@ -283,10 +292,14 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
   void _aoChegar(OnArrivalEvent event) {
     final parada = _paradaPorId(event.waypoint.title);
-    if (parada != null) {
-      _mostrarPainel();
-      unawaited(_confirmarParada(parada));
+    if (parada == null) return;
+    if (parada.concluida) {
+      // Parada já resolvida (ex.: destino dispensado): segue sem parar.
+      unawaited(_seguirProxima());
+      return;
     }
+    _mostrarPainel();
+    unawaited(_confirmarParada(parada));
   }
 
   Future<void> _confirmarParada(ParadaNavegacao parada) async {
@@ -299,7 +312,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     } on Object catch (_) {}
 
     if (!mounted) return;
-    final ok = await showModalBottomSheet<bool>(
+    final marcas = await showModalBottomSheet<Map<String, bool>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -308,8 +321,17 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
     if (!mounted) return;
 
-    if (ok ?? false) {
-      setState(() => _concluidas.add(parada.id));
+    if (marcas != null) {
+      setState(() {
+        _concluidas.add(parada.id);
+        // Quem faltou na coleta não é esperado no destino.
+        if (parada.tipo == TipoParada.coleta) {
+          _ausentes.addAll([
+            for (final m in marcas.entries)
+              if (!m.value) m.key,
+          ]);
+        }
+      });
       await _seguirProxima();
     } else {
       // Retoma a guidance na mesma parada.
@@ -320,25 +342,40 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     if (mounted) setState(() => _confirmando = false);
   }
 
+  /// Avança para a próxima parada pendente na MESMA sessão (sem nova
+  /// cobrança): tira do SDK a parada atual e as dispensadas no caminho
+  /// (destino de quem faltou). Se o SDK não tiver a parada esperada, refaz a
+  /// rota só com as pendentes — antes, um `waypoint == null` aqui deixava a
+  /// navegação parada sem rota. Com a simulação ligada, o carro segue sozinho.
   Future<void> _seguirProxima() async {
-    if (_proxima == null) {
+    final proxima = _proxima;
+    if (proxima == null) {
       // Fim do translado: encerra guidance e limpa destinos (mesma sessão).
+      _simulando = false;
       try {
         await GoogleMapsNavigator.stopGuidance();
         await GoogleMapsNavigator.clearDestinations();
       } on Object catch (_) {}
       return;
     }
-    // Mesma sessão: avança ao próximo waypoint, sem recriar (sem nova cobra).
     try {
-      final resp = await GoogleMapsNavigator.continueToNextDestination();
-      if (resp.waypoint != null) {
+      var atual = (await GoogleMapsNavigator.continueToNextDestination())
+          .waypoint;
+      while (atual != null && atual.title != proxima.id) {
+        atual = (await GoogleMapsNavigator.continueToNextDestination())
+            .waypoint;
+      }
+      debugPrint('[navegacao] próxima=${proxima.id} sdk=${atual?.title}');
+      if (atual == null) {
+        await _definirRotaEGuide();
+      } else {
         await GoogleMapsNavigator.startGuidance();
       }
-    } on Object catch (_) {
-      // Fallback raro: redefine a rota com as paradas restantes (1 sessão).
+    } on Object catch (e) {
+      debugPrint('[navegacao] continuar falhou ($e): refazendo a rota');
       await _definirRotaEGuide();
     }
+    if (_simulando && mounted) await _simularTrajeto();
   }
 
   Future<void> _onViewCreated(GoogleNavigationViewController controller) async {
@@ -380,6 +417,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
           .simulateLocationsAlongExistingRouteWithOptions(
         SimulationOptions(speedMultiplier: 8),
       );
+      _simulando = true;
     } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
