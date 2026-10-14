@@ -11,13 +11,14 @@ on:
 jobs:
   build-and-deploy:
     # Uma execução POR INSTÂNCIA (ADR-0043/0046): cada município é um GitHub Environment
-    # com os MESMOS nomes de secret/var. fail-fast desligado: falha numa instância não
+    # com os MESMOS nomes de secret/var. `automais` = VM 159 SMSMAIS-01 na EVEO (SSH na WAN
+    # pela porta 64159, var DEPLOY_PORT), que substitui o droplet `marica` na virada. fail-fast desligado: falha numa instância não
     # impede nem cancela a outra. Concurrency por instância: deploys da mesma instância
     # se enfileiram; instâncias diferentes correm em paralelo.
     strategy:
       fail-fast: false
       matrix:
-        instancia: [marica, ccdti]
+        instancia: [marica, automais]
     runs-on: ubuntu-latest
     environment: ${{ matrix.instancia }}
     concurrency:
@@ -67,7 +68,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          port: 22
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           source: smsmarica-server.tar.gz
           target: /tmp/
 
@@ -86,7 +87,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          port: 22
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           envs: DB_CS,AIENGINE_KEY,I_APP_DIR,I_ENV_DIR,I_SERVICE,I_RUN_USER,DP_NOME,DP_CHAVES
           command_timeout: 15m
           script: |
@@ -258,6 +259,14 @@ jobs:
             # --- 9. Iniciar ---
             log "Iniciando $SERVICE..."
             $SUDO systemctl start "$SERVICE"
+
+            # Instância TRAVADA: a unit tem condição (ex.: ConditionPathExists=/etc/smsmais/liberado
+            # na VM da EVEO antes da virada) e ela não está satisfeita. O artefato foi atualizado,
+            # mas o serviço não deve subir — não é falha.
+            if [ "$($SUDO systemctl show -p ConditionResult --value "$SERVICE")" = "no" ]; then
+              log "Instância TRAVADA (condição da unit não satisfeita): artefato atualizado, serviço não iniciado."
+              exit 0
+            fi
 
             # --- 10. Validação ---
             sleep 4

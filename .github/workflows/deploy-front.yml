@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        instancia: [marica, ccdti]
+        instancia: [marica, automais]
     runs-on: ubuntu-latest
     environment: ${{ matrix.instancia }}
     concurrency:
@@ -75,7 +75,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          port: 22
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           source: smsmais-front.tar.gz
           target: /tmp/
 
@@ -88,7 +88,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          port: 22
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           command_timeout: 10m
           script: |
             set -euo pipefail
