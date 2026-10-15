@@ -36,8 +36,20 @@ troca o JWT pelo token do veículo.
 
 1. **O rosto é comparado no tablet; o servidor não compara rostos.** Detector do ML Kit **embutido**
    (nunca a variante que depende do Play Services), vetor de identidade MobileFaceNet em TFLite,
-   similaridade de cosseno. Limiar inicial **0,62**, recalibrado com o teste de pessoa diferente antes
-   de ir para a frota. No tablet fica só o vetor, cifrado (SQLCipher, chave no Keystore).
+   similaridade de cosseno. Antes do modelo, o rosto é **alinhado pelos 5 pontos** do ML Kit (olhos,
+   nariz, cantos da boca) no gabarito 112×112 em que o modelo é treinado. Limiar **0,62**. No tablet
+   fica só o vetor, cifrado (SQLCipher, chave no Keystore).
+
+   Medido no tablet `501cd033` em 15/10/2026, contra o servidor de teste:
+
+   | Recorte da foto | Mesma pessoa | Outras pessoas |
+   |---|---|---|
+   | Só a caixa do rosto | 0,94–0,96 | até **0,86** (passava) |
+   | Alinhado pelos 5 pontos | 0,90–0,95 (6 conferências) | 0,23–0,36 (2 pessoas, 5 tentativas) |
+
+   Sem alinhamento o fundo e a posição da cabeça pesavam mais que o rosto. Com outros motoristas,
+   outra luz e outros dias, a nota da mesma pessoa tende a cair; recalibrar na homologação com mais
+   gente. Os builds de teste guardam o recorte que entrou no modelo para conferir.
 
 2. **Prova de vida ativa.** Piscar, virar o rosto para um lado **sorteado** e voltar de frente, com o
    mesmo rosto do começo ao fim (`trackingId` do detector) e prazo por etapa. A foto que vai para a

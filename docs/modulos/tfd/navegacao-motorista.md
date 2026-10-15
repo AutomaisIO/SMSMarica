@@ -129,6 +129,32 @@ tablet parado.
 > `fit: StackFit.expand` (e FABs como `Positioned`), senão encolhe para a altura
 > do maior filho não-posicionado e o mapa renderiza só numa faixa no topo.
 
+### No tablet da frota (14–15/10/2026)
+
+Validado no aparelho da frota (Qualcomm msm8953, Android 9, **sem Play Services
+funcionando**, quiosque do MDM, sempre em paisagem). O Navigation SDK funciona sem
+Play Services (`client version: 0`).
+
+- **Builds de teste** (debug e profile) usam o pacote `io.automais.smsmais.agente.debug`
+  (instala ao lado do app do MDM) com a assinatura de debug. A chave do GCP ganhou
+  uma 2ª restrição para esse pacote + SHA-1 de debug — **tirar depois da
+  homologação**. Para medir desempenho no tablet, `--profile` (o debug tem JIT lento
+  e dá ANR). A release falha no build se faltar `MAPS_API_KEY`.
+- **Voz em pt-BR**: o SDK escolhe o idioma da narração no início do processo, então o
+  locale é fixado na `AgenteApplication` (não basta na Activity).
+- **Termos do Google e chave**: se a janela de termos não responde em 20 s ou falta a
+  chave, a tela avisa e oferece Voltar / Tentar de novo (antes ficava presa).
+- **Rota não calculada (`networkError`)**: acontece na primeira tentativa depois de
+  muito tempo parado; "Tentar de novo" resolve (visto em 15/10, com internet normal).
+- **Confirmação por pessoa**: paciente e acompanhante conferidos separadamente
+  (Embarcou / Ausente); a rota segue para a próxima parada e quem ficou ausente sai do
+  desembarque (`paradasComAndamento`). Ainda só no app — persistir no servidor é
+  pendência abaixo.
+- **Quem está dirigindo**: antes de abrir a navegação, o tablet confere de novo o rosto
+  do motorista da sessão ([ADR-0073](../../adr/0073-login-facial-motorista-tablet.md)).
+- O contador de distância/tempo do Deslocamento liga sozinho com a sessão de navegação
+  e para no fim.
+
 ## Integrações
 
 A chave do Navigation SDK / Routes API é registrada na tela
@@ -145,4 +171,5 @@ item da mesma seção. Ver [memória de integrações de credenciais].
 - Endpoint/serviço de **otimização de rota** (Routes API) server-side,
   devolvendo a ordem dos waypoints já resolvida.
 - Canal de **mensagens** translado (paciente ↔ motorista) + push.
-- Marcar **embarque/ausência** por pessoa na parada (persistência).
+- Marcar **embarque/ausência** por pessoa na parada (persistência) — a tela já
+  confere por pessoa; falta o servidor guardar.

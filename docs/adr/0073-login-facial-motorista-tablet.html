@@ -45,7 +45,10 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <ol>
 <li><strong>O rosto é comparado no tablet; o servidor não compara rostos.</strong> Detector do ML Kit <strong>embutido</strong></li>
 </ol>
-<p>   (nunca a variante que depende do Play Services), vetor de identidade MobileFaceNet em TFLite,    similaridade de cosseno. Limiar inicial <strong>0,62</strong>, recalibrado com o teste de pessoa diferente antes    de ir para a frota. No tablet fica só o vetor, cifrado (SQLCipher, chave no Keystore).</p>
+<p>   (nunca a variante que depende do Play Services), vetor de identidade MobileFaceNet em TFLite,    similaridade de cosseno. Antes do modelo, o rosto é <strong>alinhado pelos 5 pontos</strong> do ML Kit (olhos,    nariz, cantos da boca) no gabarito 112×112 em que o modelo é treinado. Limiar <strong>0,62</strong>. No tablet    fica só o vetor, cifrado (SQLCipher, chave no Keystore).</p>
+<p>   Medido no tablet <code>501cd033</code> em 15/10/2026, contra o servidor de teste:</p>
+<p>   | Recorte da foto | Mesma pessoa | Outras pessoas |    |---|---|---|    | Só a caixa do rosto | 0,94–0,96 | até <strong>0,86</strong> (passava) |    | Alinhado pelos 5 pontos | 0,90–0,95 (6 conferências) | 0,23–0,36 (2 pessoas, 5 tentativas) |</p>
+<p>   Sem alinhamento o fundo e a posição da cabeça pesavam mais que o rosto. Com outros motoristas,    outra luz e outros dias, a nota da mesma pessoa tende a cair; recalibrar na homologação com mais    gente. Os builds de teste guardam o recorte que entrou no modelo para conferir.</p>
 <ol>
 <li><strong>Prova de vida ativa.</strong> Piscar, virar o rosto para um lado <strong>sorteado</strong> e voltar de frente, com o</li>
 </ol>
