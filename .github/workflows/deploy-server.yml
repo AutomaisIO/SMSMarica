@@ -12,13 +12,14 @@ jobs:
   build-and-deploy:
     # Uma execução POR INSTÂNCIA (ADR-0043/0046): cada município é um GitHub Environment
     # com os MESMOS nomes de secret/var. `automais` = VM 159 SMSMAIS-01 na EVEO (SSH na WAN
-    # pela porta 64159, var DEPLOY_PORT), que substitui o droplet `marica` na virada. fail-fast desligado: falha numa instância não
-    # impede nem cancela a outra. Concurrency por instância: deploys da mesma instância
-    # se enfileiram; instâncias diferentes correm em paralelo.
+    # pela porta 64159, var DEPLOY_PORT) — é a produção após a virada DO->EVEO (15/10/2026).
+    # O droplet `marica` da DigitalOcean foi desligado na migração e saiu da matriz (o
+    # Environment `marica` pode ser removido na UI quando conveniente). fail-fast e a
+    # concurrency por instância ficam para quando uma segunda instância voltar à matriz.
     strategy:
       fail-fast: false
       matrix:
-        instancia: [marica, automais]
+        instancia: [automais]
     runs-on: ubuntu-latest
     environment: ${{ matrix.instancia }}
     concurrency:

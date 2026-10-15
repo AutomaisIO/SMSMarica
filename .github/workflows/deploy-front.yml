@@ -11,11 +11,13 @@ on:
 jobs:
   build-and-deploy:
     # Uma execução por INSTÂNCIA (ADR-0043/0046) — mesmos nomes de secret/var em cada
-    # GitHub Environment; fail-fast off: a falha de um município não trava o outro.
+    # GitHub Environment. `automais` (VM EVEO) é a produção após a virada DO->EVEO
+    # (15/10/2026); o droplet `marica` foi desligado e saiu da matriz. fail-fast off fica
+    # para quando uma segunda instância voltar.
     strategy:
       fail-fast: false
       matrix:
-        instancia: [marica, automais]
+        instancia: [automais]
     runs-on: ubuntu-latest
     environment: ${{ matrix.instancia }}
     concurrency:
