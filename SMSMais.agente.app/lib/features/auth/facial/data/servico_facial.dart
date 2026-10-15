@@ -4,6 +4,7 @@ import 'package:agente/features/auth/facial/data/armazenamento_facial.dart';
 import 'package:agente/features/auth/facial/data/detector_rosto.dart';
 import 'package:agente/features/auth/facial/data/embedding_facial.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 /// Resultado de uma verificação (1:1, ou o melhor de vários candidatos).
 class ResultadoVerificacao {
@@ -56,9 +57,9 @@ class ServicoFacial implements ReconhecedorFacial {
     EmbeddingFacial? embedding,
     ArmazenamentoFacial? armazenamento,
     DetectorRosto? detector,
-  })  : _embedding = embedding ?? EmbeddingFacial(),
-        _armazenamento = armazenamento ?? ArmazenamentoFacial(),
-        _detector = detector ?? DetectorRosto();
+  }) : _embedding = embedding ?? EmbeddingFacial(),
+       _armazenamento = armazenamento ?? ArmazenamentoFacial(),
+       _detector = detector ?? DetectorRosto();
 
   /// Limiar de cosseno para aceitar como a mesma pessoa. MobileFaceNet:
   /// mesma pessoa costuma ficar > 0.7; pessoas diferentes < 0.5. 0.62 é um
@@ -88,8 +89,9 @@ class ServicoFacial implements ReconhecedorFacial {
       _armazenamento.obter(motoristaId);
 
   @override
-  Future<List<String>> cadastrados() async =>
-      [for (final m in await _armazenamento.todos()) m.motoristaId];
+  Future<List<String>> cadastrados() async => [
+    for (final m in await _armazenamento.todos()) m.motoristaId,
+  ];
 
   @override
   Future<void> esquecer(String motoristaId) =>
@@ -114,10 +116,48 @@ class ServicoFacial implements ReconhecedorFacial {
 
   /// Gera o embedding de uma foto capturada (detecta o rosto no arquivo e
   /// recorta). Retorna `null` se o modelo indisponível ou nenhum rosto.
-  Future<Float32List?> _embeddingDaFoto(String caminhoFoto) async {
+  Future<Float32List?> _embeddingDaFoto(
+    String caminhoFoto, {
+    String rotulo = 'rosto',
+  }) async {
     final rostos = await _detector.detectarDoArquivo(caminhoFoto);
     if (rostos.length != 1) return null;
-    return _embedding.gerarEmbedding(caminhoFoto, rostos.first.boundingBox);
+    final rosto = rostos.first;
+    return _embedding.gerarEmbedding(
+      caminhoFoto,
+      rosto.boundingBox,
+      pontos: _pontos(rosto),
+      rotulo: rotulo,
+    );
+  }
+
+  /// Olhos, nariz e cantos da boca na ordem do gabarito; null se o ML Kit
+  /// não devolveu algum (aí o embedding usa só a caixa do rosto).
+  static List<(double, double)>? _pontos(Face rosto) {
+    (double, double)? p(FaceLandmarkType t) {
+      final pos = rosto.landmarks[t]?.position;
+      return pos == null ? null : (pos.x.toDouble(), pos.y.toDouble());
+    }
+
+    final olhoA = p(FaceLandmarkType.leftEye);
+    final olhoB = p(FaceLandmarkType.rightEye);
+    final nariz = p(FaceLandmarkType.noseBase);
+    final bocaA = p(FaceLandmarkType.leftMouth);
+    final bocaB = p(FaceLandmarkType.rightMouth);
+    if (olhoA == null ||
+        olhoB == null ||
+        nariz == null ||
+        bocaA == null ||
+        bocaB == null) {
+      return null;
+    }
+    return ordenarPontos(
+      olhoA: olhoA,
+      olhoB: olhoB,
+      nariz: nariz,
+      bocaA: bocaA,
+      bocaB: bocaB,
+    );
   }
 
   /// Cadastra (enrollment) o rosto de um motorista a partir de uma foto.
@@ -129,7 +169,7 @@ class ServicoFacial implements ReconhecedorFacial {
     required String caminhoFoto,
     required String fotoHash,
   }) async {
-    final vetor = await _embeddingDaFoto(caminhoFoto);
+    final vetor = await _embeddingDaFoto(caminhoFoto, rotulo: 'cadastro');
     if (vetor == null) return false;
     await _armazenamento.salvar(
       MotoristaFacial(
@@ -161,7 +201,7 @@ class ServicoFacial implements ReconhecedorFacial {
       );
     }
 
-    final atual = await _embeddingDaFoto(caminhoFoto);
+    final atual = await _embeddingDaFoto(caminhoFoto, rotulo: 'conferencia');
     if (atual == null) {
       return const ResultadoVerificacao(
         aprovado: false,
@@ -172,8 +212,9 @@ class ServicoFacial implements ReconhecedorFacial {
 
     final ids = motoristaId != null ? [motoristaId] : candidatos?.toList();
     final registros = ids != null
-        ? [for (final id in ids) await _armazenamento.obter(id)]
-            .whereType<MotoristaFacial>()
+        ? [
+            for (final id in ids) await _armazenamento.obter(id),
+          ].whereType<MotoristaFacial>()
         : await _armazenamento.todos();
 
     if (registros.isEmpty) {

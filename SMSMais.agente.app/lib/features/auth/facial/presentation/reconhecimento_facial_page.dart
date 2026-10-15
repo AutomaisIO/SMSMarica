@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:agente/app/theme.dart';
 import 'package:agente/features/auth/facial/data/servico_facial.dart';
@@ -14,10 +15,14 @@ class _Tentativa {
     required this.ok,
     required this.prova,
     required this.processamento,
+    this.outraPessoa = false,
     this.score,
   });
 
   final bool cadastro;
+
+  /// Quem estava na frente da câmera não era o dono do cadastro.
+  final bool outraPessoa;
   final bool ok;
   final double? score;
   final Duration prova;
@@ -43,6 +48,7 @@ class _ReconhecimentoFacialPageState
   bool _carregando = true;
   bool _cadastrado = false;
   bool _modelo = false;
+  bool _outraPessoa = false;
   String? _mensagem;
   final List<_Tentativa> _tentativas = [];
 
@@ -129,6 +135,7 @@ class _ReconhecimentoFacialPageState
         0,
         _Tentativa(
           cadastro: false,
+          outraPessoa: _outraPessoa,
           ok: r.aprovado,
           score: r.score,
           prova: captura.duracaoProva,
@@ -154,6 +161,8 @@ class _ReconhecimentoFacialPageState
                   mensagem: _mensagem,
                   onCadastrar: _modelo ? _cadastrar : null,
                   onTestar: _modelo && _cadastrado ? _testar : null,
+                  outraPessoa: _outraPessoa,
+                  onOutraPessoa: (v) => setState(() => _outraPessoa = v),
                 );
                 final historico = _Historico(tentativas: _tentativas);
                 if (c.maxWidth > c.maxHeight) {
@@ -187,6 +196,8 @@ class _Painel extends StatelessWidget {
     required this.mensagem,
     required this.onCadastrar,
     required this.onTestar,
+    required this.outraPessoa,
+    required this.onOutraPessoa,
   });
 
   final String nome;
@@ -195,6 +206,8 @@ class _Painel extends StatelessWidget {
   final String? mensagem;
   final VoidCallback? onCadastrar;
   final VoidCallback? onTestar;
+  final bool outraPessoa;
+  final ValueChanged<bool> onOutraPessoa;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -231,6 +244,15 @@ class _Painel extends StatelessWidget {
             cadastrado ? 'Atualizar meu rosto' : 'Cadastrar meu rosto',
           ),
         ),
+        const SizedBox(height: 16),
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('Testando: eu')),
+            ButtonSegment(value: true, label: Text('Outra pessoa')),
+          ],
+          selected: {outraPessoa},
+          onSelectionChanged: (s) => onOutraPessoa(s.first),
+        ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: onTestar,
@@ -259,38 +281,58 @@ class _Historico extends StatelessWidget {
       '${(d.inMilliseconds / 1000).toStringAsFixed(1).replaceAll('.', ',')} s';
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      Text(
-        'Teste várias vezes com você (deve passar) e peça para outra pessoa '
-        'testar no seu cadastro (não deve passar). Passa com nota a partir '
-        'de ${ServicoFacial.limiar.toStringAsFixed(2).replaceAll('.', ',')}.',
-        style: const TextStyle(color: MaricaTheme.cinzaTexto),
-      ),
-      const SizedBox(height: 8),
-      for (final t in tentativas)
-        ListTile(
-          dense: true,
-          leading: Icon(
-            t.cadastro
-                ? Icons.face_retouching_natural
-                : t.ok
-                ? Icons.check_circle
-                : Icons.cancel,
-            color: t.ok ? Colors.green.shade700 : MaricaTheme.vermelho,
-          ),
-          title: Text(
-            t.cadastro
-                ? (t.ok ? 'Cadastro feito' : 'Cadastro falhou')
-                : 'Nota ${t.score!.toStringAsFixed(2).replaceAll('.', ',')}'
-                      ' — ${t.ok ? 'passou' : 'não passou'}',
-          ),
-          subtitle: Text(
-            'prova de vida ${_s(t.prova)} · '
-            'reconhecimento ${_s(t.processamento)}',
-          ),
+  Widget build(BuildContext context) {
+    final testes = tentativas.where((t) => !t.cadastro && t.score != null);
+    final minhas = [
+      for (final t in testes)
+        if (!t.outraPessoa) t.score!,
+    ];
+    final outras = [
+      for (final t in testes)
+        if (t.outraPessoa) t.score!,
+    ];
+    String n(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Teste várias vezes com você (deve passar) e peça para outra pessoa '
+          'testar no seu cadastro (não deve passar). Passa com nota a partir '
+          'de ${ServicoFacial.limiar.toStringAsFixed(2).replaceAll('.', ',')}.',
+          style: const TextStyle(color: MaricaTheme.cinzaTexto),
         ),
-    ],
-  );
+        if (minhas.isNotEmpty && outras.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Sua menor nota: ${n(minhas.reduce(min))} · maior nota de outra '
+            'pessoa: ${n(outras.reduce(max))}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ],
+        const SizedBox(height: 8),
+        for (final t in tentativas)
+          ListTile(
+            dense: true,
+            leading: Icon(
+              t.cadastro
+                  ? Icons.face_retouching_natural
+                  : t.ok
+                  ? Icons.check_circle
+                  : Icons.cancel,
+              color: t.ok ? Colors.green.shade700 : MaricaTheme.vermelho,
+            ),
+            title: Text(
+              t.cadastro
+                  ? (t.ok ? 'Cadastro feito' : 'Cadastro falhou')
+                  : '${t.outraPessoa ? 'Outra pessoa' : 'Você'}: nota '
+                        '${n(t.score!)} — ${t.ok ? 'passou' : 'não passou'}',
+            ),
+            subtitle: Text(
+              'prova de vida ${_s(t.prova)} · '
+              'reconhecimento ${_s(t.processamento)}',
+            ),
+          ),
+      ],
+    );
+  }
 }

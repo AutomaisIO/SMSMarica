@@ -76,12 +76,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final escala = await _servico.carregarEscala(token);
       if (mounted) setState(() => _escala = escala);
     } on TokenDispositivoInvalido {
-      _avisar('Este tablet foi desligado do veículo. Vincule de novo.');
+      await _desvinculado();
     } on Object catch (_) {
       _avisar('Não consegui buscar a escala de hoje. Tente de novo.');
     } finally {
       if (mounted) setState(() => _carregandoEscala = false);
     }
+  }
+
+  /// Token recusado pelo servidor: o vínculo deste tablet acabou. Apaga o
+  /// local para a tela oferecer "Vincular veículo" de novo.
+  Future<void> _desvinculado() async {
+    _escala = null;
+    _tokenCarregado = null;
+    await ref
+        .read(dispositivoProvider.notifier)
+        .desvincularLocal(
+          'Este tablet foi desligado do veículo. Vincule de novo.',
+        );
   }
 
   void _avisar(String? m) {
@@ -186,7 +198,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _codigo.clear();
       _ir(_Passo.codigoWhats);
     } on Object catch (erro) {
-      _avisar(_explicar(erro));
+      _avisar(_tratar(erro));
     }
   }
 
@@ -202,7 +214,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _liberado = l;
       _ir(_Passo.termo);
     } on Object catch (erro) {
-      _avisar(_explicar(erro));
+      _avisar(_tratar(erro));
     }
   }
 
@@ -232,7 +244,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         'Não achei seu rosto na foto. Toque em "Concordo" e tente de novo.',
       );
     } on Object catch (erro) {
-      _avisar(_explicar(erro));
+      _avisar(_tratar(erro));
     }
   }
 
@@ -253,7 +265,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (m == null || !mounted) return;
       await _entrou(m.motoristaId, m.nome, MeioEntrada.codigoCentral);
     } on Object catch (erro) {
-      _avisar(_explicar(erro));
+      _avisar(_tratar(erro));
     }
   }
 
@@ -269,6 +281,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           'código para entrar.',
     _ => 'Não consegui mandar o código. Fale com a central.',
   };
+
+  /// Mensagem do erro; 401 também apaga o vínculo local.
+  String _tratar(Object erro) {
+    if (erro is TokenDispositivoInvalido) unawaited(_desvinculado());
+    return _explicar(erro);
+  }
 
   static String _explicar(Object erro) => switch (erro) {
     RecusaDaCentral(:final mensagem) => mensagem,
