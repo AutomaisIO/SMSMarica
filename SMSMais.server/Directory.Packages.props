@@ -54,6 +54,12 @@
     <PackageVersion Include="PdfSharp" Version="6.1.1" />
     <!-- QR Code (selo de autenticidade da declaração). PngByteQRCode não usa System.Drawing. MIT. -->
     <PackageVersion Include="QRCoder" Version="1.6.0" />
+    <!-- Compressão de imagem (anexo > 5 MB no envio ao SER/SERNIT, ticket #167). SkiaSharp é MIT,
+         mantido pela .NET Foundation. A variante NoDependencies traz o libSkiaSharp.so sem exigir
+         libfontconfig/etc no host. Preferido a ImageSharp (2.x tem CVE sem correção; 3.x é licença
+         comercial) e a System.Drawing (indisponível fora do Windows). -->
+    <PackageVersion Include="SkiaSharp" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
   </ItemGroup>
   <ItemGroup Label="Autenticação / Autorização">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />

@@ -8,7 +8,11 @@ using SMSMais.Core.Common.Excecoes;
 namespace SMSMais.Core.Regulacao.EnvioSer;
 
 /// <summary>Um arquivo pronto para subir ao SER.</summary>
-public sealed record AnexoParaSer(string Nome, string ContentType, byte[] Conteudo, IReadOnlyList<Guid> Origens);
+/// <param name="NomesOrigem">Os nomes (como o regulador os vê) dos arquivos que entraram neste anexo —
+/// um só, ou vários quando 3+ viraram um PDF. É o que a prévia mostra para a pessoa confirmar o
+/// agrupamento antes de enviar (ticket #167).</param>
+public sealed record AnexoParaSer(
+    string Nome, string ContentType, byte[] Conteudo, IReadOnlyList<Guid> Origens, IReadOnlyList<string> NomesOrigem);
 
 /// <summary>Um arquivo da solicitação, já lido do armazenamento.</summary>
 public sealed record ArquivoLido(Guid Id, string Nome, string? Titulo, string ContentType, byte[] Conteudo);
@@ -20,8 +24,13 @@ public sealed record ArquivoLido(Guid Id, string Nome, string? Titulo, string Co
 ///
 /// <para>Até dois arquivos vão como estão. Com mais, tudo vira <b>um PDF só</b> (imagens, uma por
 /// página; PDFs, página a página) — é o "documento" que a tela pede, sem ninguém precisar montar à
-/// mão. Arquivo acima de 5 MB não é cortado nem comprimido: é recusa com o nome dele, antes de
-/// tocar no SER.</para>
+/// mão.</para>
+///
+/// <para>Arquivo acima de 5 MB é <b>comprimido automaticamente</b> antes de recusar (ticket #167):
+/// imagem (foto de celular) é reencodada menor até caber, com piso de legibilidade; o PDF agrupado,
+/// se estourar, é refeito comprimindo as imagens-fonte. Só quando nem comprimido cabe — ou quando é
+/// um PDF avulso enviado pela unidade, que não dá para recomprimir com segurança aqui — é que recusa,
+/// com o nome do arquivo, antes de tocar no SER.</para>
 /// </summary>
 public static class AnexosParaSer
 {
@@ -32,23 +41,63 @@ public static class AnexosParaSer
     {
         if (arquivos.Count == 0) return [];
 
-        List<AnexoParaSer> saida = arquivos.Count <= MaximoDeArquivos
-            ? [.. arquivos.Select(a => new AnexoParaSer(NomeParaOSer(a), a.ContentType, a.Conteudo, [a.Id]))]
-            : [new AnexoParaSer("anexos-da-solicitacao.pdf", "application/pdf", JuntarEmPdf(arquivos), [.. arquivos.Select(a => a.Id)])];
+        return arquivos.Count <= MaximoDeArquivos
+            ? [.. arquivos.Select(a => UmArquivo(a, sistema))]
+            : [AgrupadoEmPdf(arquivos, sistema)];
+    }
 
-        var grande = saida.FirstOrDefault(a => a.Conteudo.LongLength > TamanhoMaximo);
-        if (grande is not null)
+    /// <summary>
+    /// Um anexo que vai sozinho: o próprio arquivo. Se passar de 5 MB e for imagem, reencoda menor até
+    /// caber (vira JPEG); PDF/outros acima de 5 MB não dá para comprimir com segurança aqui — recusa.
+    /// </summary>
+    private static AnexoParaSer UmArquivo(ArquivoLido a, string sistema)
+    {
+        var nome = NomeParaOSer(a);
+        var conteudo = a.Conteudo;
+        var contentType = a.ContentType;
+
+        if (conteudo.LongLength > TamanhoMaximo)
+        {
+            var menor = EhImagem(a) ? CompressorImagem.ComprimirAte(conteudo, TamanhoMaximo) : null;
+            if (menor is null)
+            {
+                throw new ValidacaoException(
+                    "anexos",
+                    $"O arquivo \"{nome}\" tem {Mb(conteudo.LongLength)} — o {sistema} aceita até 5 MB por arquivo. "
+                    + (EhImagem(a)
+                        ? "Mesmo comprimido não coube sem ficar ilegível; envie uma versão menor."
+                        : "Substitua por uma versão menor (PDF comprimido) ou separe o conteúdo."));
+            }
+            conteudo = menor;
+            contentType = "image/jpeg";
+            nome = Path.ChangeExtension(nome, ".jpg");
+        }
+
+        return new AnexoParaSer(nome, contentType, conteudo, [a.Id], [NomeParaOSer(a)]);
+    }
+
+    /// <summary>
+    /// 3+ arquivos viram um PDF só (o "documento" que a tela pede). Se o PDF estourar 5 MB, refaz
+    /// comprimindo as imagens antes de juntar; se mesmo assim não couber (PDFs-fonte grandes, que não
+    /// recomprimimos), recusa.
+    /// </summary>
+    private static AnexoParaSer AgrupadoEmPdf(IReadOnlyList<ArquivoLido> arquivos, string sistema)
+    {
+        var pdf = JuntarEmPdf(arquivos, comprimirImagens: false);
+        if (pdf.LongLength > TamanhoMaximo)
+            pdf = JuntarEmPdf(arquivos, comprimirImagens: true);
+
+        if (pdf.LongLength > TamanhoMaximo)
         {
             throw new ValidacaoException(
                 "anexos",
-                arquivos.Count <= MaximoDeArquivos
-                    ? $"O arquivo \"{grande.Nome}\" tem {Mb(grande.Conteudo.LongLength)} — o {sistema} aceita até 5 MB por "
-                      + "arquivo. Substitua por uma versão menor (foto com menos resolução, PDF comprimido)."
-                    : $"Os {arquivos.Count} anexos juntos num PDF dão {Mb(grande.Conteudo.LongLength)} — o {sistema} aceita até "
-                      + "5 MB por arquivo e no máximo 2 arquivos. Reduza ou remova anexos.");
+                $"Os {arquivos.Count} anexos juntos num PDF dão {Mb(pdf.LongLength)} mesmo comprimidos — o {sistema} "
+                + "aceita até 5 MB por arquivo. Remova anexos ou envie um PDF menor no lugar.");
         }
 
-        return saida;
+        return new AnexoParaSer(
+            "anexos-da-solicitacao.pdf", "application/pdf", pdf,
+            [.. arquivos.Select(a => a.Id)], [.. arquivos.Select(NomeParaOSer)]);
     }
 
     /// <summary>
@@ -67,7 +116,10 @@ public static class AnexosParaSer
         return limpo + extensao.ToLowerInvariant();
     }
 
-    private static byte[] JuntarEmPdf(IReadOnlyList<ArquivoLido> arquivos)
+    /// <param name="comprimirImagens">Reencoda cada imagem menor (lado maior 2000 px, JPEG q70) antes
+    /// de desenhá-la — para o PDF agrupado caber em 5 MB. Só é ligado na segunda tentativa, quando o
+    /// PDF sem comprimir estourou; assim o caso comum (poucas imagens pequenas) mantém a qualidade.</param>
+    private static byte[] JuntarEmPdf(IReadOnlyList<ArquivoLido> arquivos, bool comprimirImagens)
     {
         using var saida = new PdfDocument();
         foreach (var a in arquivos)
@@ -88,9 +140,13 @@ public static class AnexosParaSer
                     + "juntados num PDF, e este tipo não dá para juntar. Envie-o em PDF.");
             }
 
+            var bytesImagem = a.Conteudo;
+            if (comprimirImagens && CompressorImagem.Reencodar(a.Conteudo, 2000, 70) is { } reduzida)
+                bytesImagem = reduzida;
+
             // Uma imagem por página A4, cabendo inteira e centralizada.
             // `publiclyVisible`: o PDFsharp lê o buffer interno do stream — sem isto, recusa a imagem.
-            using var imagemMs = new MemoryStream(a.Conteudo, 0, a.Conteudo.Length, writable: false, publiclyVisible: true);
+            using var imagemMs = new MemoryStream(bytesImagem, 0, bytesImagem.Length, writable: false, publiclyVisible: true);
             using var imagem = XImage.FromStream(imagemMs);
             var pagina = saida.AddPage();
             pagina.Width = XUnit.FromMillimeter(210);

@@ -1,4 +1,5 @@
 using PdfSharp.Pdf.IO;
+using SkiaSharp;
 
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Integracoes.SerWeb;
@@ -19,6 +20,23 @@ public class EnvioSerPecasTests
 
     private static ArquivoLido Imagem(string titulo) =>
         new(Guid.NewGuid(), "2026-10-02_004.png", titulo, "image/png", Png1x1);
+
+    /// <summary>Um PNG de ruído de <paramref name="lado"/>×<paramref name="lado"/> — não comprime,
+    /// então passa com folga dos 5 MB: a foto de celular grande que o SER recusaria.</summary>
+    private static byte[] PngGrande(int lado = 1500)
+    {
+        using var bmp = new SKBitmap(lado, lado);
+        var rnd = new Random(42);
+        for (var y = 0; y < lado; y++)
+            for (var x = 0; x < lado; x++)
+                bmp.SetPixel(x, y, new SKColor((byte)rnd.Next(256), (byte)rnd.Next(256), (byte)rnd.Next(256)));
+        using var img = SKImage.FromBitmap(bmp);
+        using var dados = img.Encode(SKEncodedImageFormat.Png, 100);
+        return dados.ToArray();
+    }
+
+    private static ArquivoLido ImagemGrande(string titulo) =>
+        new(Guid.NewGuid(), "2026-10-02_004.jpg", titulo, "image/jpeg", PngGrande());
 
     [Fact]
     public void Ate_dois_anexos_vao_como_estao_com_o_titulo_como_nome()
@@ -54,6 +72,50 @@ public class EnvioSerPecasTests
         var acao = () => AnexosParaSer.Preparar([grande]);
 
         acao.Should().Throw<ValidacaoException>().WithMessage("*EXAME.pdf*5 MB*");
+    }
+
+    [Fact]
+    public void Imagem_acima_de_5MB_e_comprimida_em_vez_de_recusada()
+    {
+        var foto = new ArquivoLido(Guid.NewGuid(), "2026-10-02_004.jpg", "RELATÓRIO MÉDICO", "image/jpeg", PngGrande());
+        foto.Conteudo.LongLength.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximo, "o PNG de ruído precisa estourar o limite");
+
+        var saida = AnexosParaSer.Preparar([foto]);
+
+        saida.Should().ContainSingle();
+        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximo);
+        saida[0].ContentType.Should().Be("image/jpeg");
+        saida[0].Nome.Should().Be("RELATORIO MEDICO.jpg");
+        SKBitmap.Decode(saida[0].Conteudo).Should().NotBeNull("o resultado tem de continuar sendo uma imagem legível");
+    }
+
+    [Fact]
+    public void Compressor_devolve_null_quando_nem_no_piso_cabe()
+    {
+        // Alvo impossível (1 byte): nem no passo mais econômico cabe — null, para o chamador recusar.
+        CompressorImagem.ComprimirAte(PngGrande(), alvoBytes: 1).Should().BeNull();
+    }
+
+    [Fact]
+    public void Agrupado_lista_os_nomes_para_a_pessoa_confirmar()
+    {
+        var saida = AnexosParaSer.Preparar([Imagem("RELATÓRIO MÉDICO"), Imagem("IDENTIFICAÇÃO"), Imagem("EXAME")]);
+
+        saida.Should().ContainSingle();
+        saida[0].NomesOrigem.Should().Equal("RELATORIO MEDICO.png", "IDENTIFICACAO.png", "EXAME.png");
+    }
+
+    [Fact]
+    public void Agrupado_que_estoura_5MB_e_comprimido_para_caber()
+    {
+        var tres = new[] { ImagemGrande("A"), ImagemGrande("B"), ImagemGrande("C") };
+
+        var saida = AnexosParaSer.Preparar(tres);
+
+        saida.Should().ContainSingle();
+        saida[0].ContentType.Should().Be("application/pdf");
+        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximo,
+            "três fotos grandes juntas passam de 5 MB; o PDF é refeito comprimindo as imagens");
     }
 
     [Theory]

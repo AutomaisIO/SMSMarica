@@ -408,7 +408,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente telefone confirmado celular do sernit aviso ao paciente não confirmado tentar de novo quadro cadastro do paciente cadsus e-sus campo município é obrigatório telefone celular para contato é obrigatório município uf celular nome da mãe logradouro o sernit não tinha médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
+        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado agrupamento quais arquivos serão agrupados confirmar o agrupamento conferi pode juntar imagem comprimida automaticamente foto acima de 5 mb reduzida compressão de imagem pdf avulso recusado versão menor sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente telefone confirmado celular do sernit aviso ao paciente não confirmado tentar de novo quadro cadastro do paciente cadsus e-sus campo município é obrigatório telefone celular para contato é obrigatório município uf celular nome da mãe logradouro o sernit não tinha médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
       conteudo: (
         <>
           <p>
@@ -428,7 +428,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 titulo: 'Prévia — nada é gravado',
                 detalhe:
-                  'A plataforma abre a tela de nova solicitação do SER e preenche tudo: recurso, paciente (pelo CNS ou CPF), médico solicitante, classificação de risco, unidade de origem, hipótese (CID) e os campos do recurso. A janela mostra campo a campo o que vai, os anexos como vão e se o SER já tem pedido parecido para o paciente.',
+                  'A plataforma abre a tela de nova solicitação do SER e preenche tudo: recurso, paciente (pelo CNS ou CPF), médico solicitante, classificação de risco, unidade de origem, hipótese (CID) e os campos do recurso. A janela mostra campo a campo o que vai, os anexos como vão (pedindo para confirmar o agrupamento quando mais de dois forem juntados num PDF) e se o SER já tem pedido parecido para o paciente.',
               },
               {
                 titulo: <BotaoRef>Enviar ao SER</BotaoRef>,
@@ -442,7 +442,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: 'Anexos',
                 descricao:
-                  'O SER aceita no máximo dois arquivos de até 5 MB. Com até dois, eles vão como estão, com o título que a unidade deu como nome. Com mais, a plataforma junta tudo num PDF só. Arquivo acima de 5 MB é recusado antes de tocar no SER — peça à unidade uma versão menor.',
+                  'O SER aceita no máximo dois arquivos de até 5 MB. Com até dois, eles vão como estão, com o título que a unidade deu como nome. Com mais de dois, a plataforma junta tudo num PDF só — e a prévia lista, em ordem, quais arquivos serão agrupados e pede que você marque “Conferi: pode juntar estes arquivos num PDF e enviar” antes de liberar o envio. Arquivo de imagem (foto) acima de 5 MB é comprimido automaticamente até caber, sem você precisar reduzir à mão; só se nem comprimido couber sem ficar ilegível é que ele é recusado. Um PDF avulso acima de 5 MB ainda é recusado (a plataforma não recomprime PDF) — peça à unidade uma versão menor.',
               },
               {
                 termo: 'Pedido parecido no SER',

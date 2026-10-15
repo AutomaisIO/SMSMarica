@@ -275,7 +275,13 @@ export async function usarExameInterno(
 /** O que foi posto em um campo da tela do SER, e se o SER aceitou. */
 export type PassoEnvioSer = { campo: string; valor: string | null; ok: boolean; observacao: string | null };
 
-export type AnexoEnvioSer = { nome: string; tamanho: number; arquivosJuntados: number };
+export type AnexoEnvioSer = {
+  nome: string;
+  tamanho: number;
+  arquivosJuntados: number;
+  /** Os nomes dos arquivos que entraram neste anexo — listados para a pessoa confirmar o agrupamento. */
+  nomesJuntados: string[];
+};
 
 export type PedidoParecidoSer = {
   idSer: string;

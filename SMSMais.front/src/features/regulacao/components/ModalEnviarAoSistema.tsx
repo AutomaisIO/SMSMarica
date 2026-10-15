@@ -108,6 +108,8 @@ function ModalEnvioAutomatico({
   const [faltaNoCadastro, setFaltaNoCadastro] = useState(false);
   const paciente = usePacientePorId(aberto ? (pacienteId ?? null) : null);
   const [conferiParecidos, setConferiParecidos] = useState(false);
+  /** Confirmação de que pode juntar 3+ arquivos num PDF só antes de enviar (ticket #167). */
+  const [conferiAgrupamento, setConferiAgrupamento] = useState(false);
   /** Desfecho do médico resolvido nesta abertura ("cadastrado e conferido") — fica à vista na prévia refeita. */
   const [avisoMedico, setAvisoMedico] = useState<string | null>(null);
   /** O "Autorizo cadastrar" do médico fora da lista — vai junto com o envio, que faz o cadastro. */
@@ -120,6 +122,7 @@ function ModalEnvioAutomatico({
     setErroDepoisDeEnviar(false);
     setFaltaNoCadastro(false);
     setConferiParecidos(false);
+    setConferiAgrupamento(false);
     setAutorizoMedico(null);
     try {
       setPrevia(await preparar.mutateAsync(solicitacaoId));
@@ -179,6 +182,7 @@ function ModalEnvioAutomatico({
 
   const ocupado = etapa === 'preparando' || etapa === 'enviando';
   const temParecidos = (previa?.possiveisDuplicados.length ?? 0) > 0;
+  const temAgrupamento = previa?.anexos.some((a) => a.arquivosJuntados > 1) ?? false;
   const cadastraMedico = !!previa?.medicoNovo && !!autorizoMedico;
 
   return (
@@ -258,12 +262,41 @@ function ModalEnvioAutomatico({
                     {a.nome}
                     <span className="text-xs text-slate-400">
                       {(a.tamanho / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB
-                      {a.arquivosJuntados > 1 && ` · ${a.arquivosJuntados} arquivos juntados num PDF (o ${nome} aceita no máximo 2)`}
+                      {a.arquivosJuntados > 1 && ` · ${a.arquivosJuntados} arquivos juntados num PDF`}
                     </span>
                   </li>
                 ))}
               </ul>
             </div>
+
+            {temAgrupamento && (
+              <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="flex items-center gap-2 font-medium">
+                  <AlertTriangle className="size-4" /> Vários arquivos vão juntos num PDF só
+                </p>
+                <p className="mt-1">
+                  O {nome} aceita no máximo 2 arquivos. Como esta solicitação tem mais, eles são juntados num
+                  único PDF, nesta ordem:
+                </p>
+                {previa.anexos
+                  .filter((a) => a.arquivosJuntados > 1)
+                  .map((a) => (
+                    <ol key={a.nome} className="mt-1 list-inside list-decimal">
+                      {a.nomesJuntados.map((n, i) => (
+                        <li key={`${n}-${i}`}>{n}</li>
+                      ))}
+                    </ol>
+                  ))}
+                <label className="mt-2 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={conferiAgrupamento}
+                    onChange={(e) => setConferiAgrupamento(e.target.checked)}
+                  />
+                  Conferi: pode juntar estes arquivos num PDF e enviar.
+                </label>
+              </div>
+            )}
 
             {temParecidos && (
               <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -295,11 +328,17 @@ function ModalEnvioAutomatico({
               </Button>
               <Button
                 onClick={fazerEnvio}
-                disabled={(temParecidos && !conferiParecidos) || (!!previa.medicoNovo && !autorizoMedico)}
+                disabled={
+                  (temParecidos && !conferiParecidos)
+                  || (temAgrupamento && !conferiAgrupamento)
+                  || (!!previa.medicoNovo && !autorizoMedico)
+                }
                 title={
                   previa.medicoNovo && !autorizoMedico
                     ? `Escolha um dos nomes parecidos ou autorize o cadastro do médico antes de enviar ao ${nome}`
-                    : undefined
+                    : temAgrupamento && !conferiAgrupamento
+                      ? 'Confirme o agrupamento dos arquivos num PDF antes de enviar'
+                      : undefined
                 }
               >
                 <Send className="size-4" />

@@ -28,6 +28,9 @@
     <PackageReference Include="HtmlSanitizer" />
     <PackageReference Include="PdfSharp" />
     <PackageReference Include="QRCoder" />
+    <!-- Compressão de imagem no envio ao SER/SERNIT (anexo > 5 MB), ticket #167. -->
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
     <PackageReference Include="Pgvector" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" />
     <!-- Export da tela de Histórico do SER: .xls BIFF8 (OLE2), 500 linhas por lote. -->
