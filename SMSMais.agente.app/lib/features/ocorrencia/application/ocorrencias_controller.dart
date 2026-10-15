@@ -7,18 +7,44 @@ import 'package:agente/features/ocorrencia/domain/ocorrencia.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Por que o REPORT ainda não chegou à central. Em todos os casos ele fica
+/// na fila do tablet; o motivo serve para a tela não dizer "sem conexão"
+/// quando a central respondeu.
+enum MotivoPendente {
+  /// Tablet sem veículo vinculado (ou vínculo revogado, HTTP 401).
+  semVinculo,
+
+  /// Nenhuma resposta: rede ou VPN fora.
+  semRede,
+
+  /// A central respondeu com falha passageira (5xx).
+  centralComFalha,
+
+  /// A central respondeu e não aceitou (4xx), p. ex. servidor sem REPORT.
+  recusado,
+}
+
 /// O que aconteceu com um REPORT, para a tela dizer ao motorista.
 class ResultadoReport {
-  const ResultadoReport.enviado(DateTime this.recebidaEm) : semVinculo = false;
-  const ResultadoReport.pendente({this.semVinculo = false}) : recebidaEm = null;
+  const ResultadoReport.enviado(DateTime this.recebidaEm)
+    : motivo = null,
+      status = null;
+  const ResultadoReport.pendente(MotivoPendente this.motivo, {this.status})
+    : recebidaEm = null;
 
   /// Quando a central recebeu; null = ainda na fila do tablet.
   final DateTime? recebidaEm;
 
-  /// Tablet sem veículo vinculado: não há para quem mandar ainda.
-  final bool semVinculo;
+  /// Por que não chegou; null = enviado.
+  final MotivoPendente? motivo;
+
+  /// Código HTTP da central, quando ela respondeu (ajuda o suporte).
+  final int? status;
 
   bool get enviado => recebidaEm != null;
+
+  /// Tablet sem veículo vinculado: não há para quem mandar ainda.
+  bool get semVinculo => motivo == MotivoPendente.semVinculo;
 }
 
 class EstadoOcorrencias {
@@ -69,7 +95,7 @@ class OcorrenciasController extends StateNotifier<EstadoOcorrencias> {
     final token = _ref.read(dispositivoProvider).token;
     if (token == null) {
       await _atualizarContagem();
-      return const ResultadoReport.pendente(semVinculo: true);
+      return const ResultadoReport.pendente(MotivoPendente.semVinculo);
     }
     try {
       final recebida = await _ref
@@ -78,12 +104,27 @@ class OcorrenciasController extends StateNotifier<EstadoOcorrencias> {
       await _fila.remover(ocorrencia.idLocal);
       await _atualizarContagem();
       return ResultadoReport.enviado(recebida);
-    } on Object catch (_) {
-      // Sem rede/servidor fora (ou token revogado): fica na fila.
+    } on Object catch (e) {
+      // Fica na fila em qualquer caso; o motivo é só para a tela.
       await _atualizarContagem();
-      return const ResultadoReport.pendente();
+      return _pendentePor(e);
     }
   }
+
+  static ResultadoReport _pendentePor(Object erro) => switch (erro) {
+    TokenDispositivoInvalido() => const ResultadoReport.pendente(
+      MotivoPendente.semVinculo,
+    ),
+    CentralComFalha(:final status) => ResultadoReport.pendente(
+      MotivoPendente.centralComFalha,
+      status: status,
+    ),
+    OcorrenciaRecusada(:final status) => ResultadoReport.pendente(
+      MotivoPendente.recusado,
+      status: status,
+    ),
+    _ => const ResultadoReport.pendente(MotivoPendente.semRede),
+  };
 
   /// Reenvia o que ficou na fila, do mais antigo ao mais novo.
   Future<void> enviarPendentes() async {
@@ -97,8 +138,10 @@ class OcorrenciasController extends StateNotifier<EstadoOcorrencias> {
         try {
           await repo.enviarOcorrencia(token, o);
           await _fila.remover(o.idLocal);
+        } on OcorrenciaRecusada catch (_) {
+          // A central não aceitou este; ele fica, mas não trava os outros.
         } on Object catch (_) {
-          break; // Sem rede: o próximo ciclo tenta de novo.
+          break; // Sem rede ou central fora: o próximo ciclo tenta de novo.
         }
       }
     } on Object catch (_) {

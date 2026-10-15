@@ -231,18 +231,34 @@ class _Resultado extends StatelessWidget {
         'Central avisada',
         'Aviso recebido às ${_hora(recebida!)}.',
       ),
-      ResultadoReport(semVinculo: true) => (
+      ResultadoReport(motivo: MotivoPendente.semVinculo) => (
         Icons.link_off,
         Colors.orange.shade900,
         'Aviso guardado no tablet',
         'Este tablet não está vinculado a um veículo. Vincule o tablet para '
-            'a central receber o aviso.',
+            'a central receber o aviso. $_ligue',
+      ),
+      ResultadoReport(motivo: MotivoPendente.recusado, :final status) => (
+        Icons.block,
+        MaricaTheme.vermelho,
+        'A central não aceitou o aviso',
+        'O servidor da central ainda não recebe avisos deste tablet '
+            '(código $status). O aviso ficou guardado e sai sozinho quando '
+            'o servidor aceitar. $_ligue',
+      ),
+      ResultadoReport(motivo: MotivoPendente.centralComFalha) => (
+        Icons.sync_problem,
+        Colors.orange.shade900,
+        'A central não respondeu',
+        'O servidor da central está com falha agora. O aviso ficou guardado '
+            'e o tablet tenta de novo sozinho. $_ligue',
       ),
       _ => (
         Icons.cloud_off,
         Colors.orange.shade900,
         'Sem conexão agora',
-        'O aviso ficou guardado e sai sozinho assim que a rede voltar.',
+        'O tablet não conseguiu falar com a central. O aviso ficou guardado '
+            'e sai sozinho assim que a rede voltar. $_ligue',
       ),
     };
     return Column(
@@ -275,6 +291,8 @@ class _Resultado extends StatelessWidget {
       ],
     );
   }
+
+  static const _ligue = 'Se for urgente, ligue para a central.';
 
   static String _hora(DateTime t) =>
       '${t.hour.toString().padLeft(2, '0')}:'
