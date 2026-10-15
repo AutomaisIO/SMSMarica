@@ -6,6 +6,7 @@ import 'package:agente/features/navegacao/data/navegacao_repository.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
 import 'package:agente/features/navegacao/presentation/widgets/confirmacao_parada_sheet.dart';
 import 'package:agente/features/navegacao/presentation/widgets/painel_passageiro.dart';
+import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
 import 'package:agente/shared/plataforma/canal_dispositivo.dart';
 import 'package:flutter/material.dart';
@@ -487,8 +488,11 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
                 padding: const EdgeInsets.only(right: 8),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const BotaoReport(),
+                    const SizedBox(height: 16),
                     _FabRedondo(
                       icone: _modoNoite ? Icons.light_mode : Icons.dark_mode,
                       onTap: _alternarNoite,
@@ -555,7 +559,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   }
 
   Widget _telaCarregando() => Scaffold(
-        appBar: AppBar(title: const Text('Navegação')),
+        appBar: _barraComReport(),
         body: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -581,7 +585,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       );
 
   Widget _telaErro(String msg) => Scaffold(
-        appBar: AppBar(title: const Text('Navegação')),
+        appBar: _barraComReport(),
         body: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -597,6 +601,17 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
             ),
           ),
         ),
+      );
+
+  /// Barra das telas de espera/erro: o REPORT continua à mão.
+  PreferredSizeWidget _barraComReport() => AppBar(
+        title: const Text('Navegação'),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.fromLTRB(0, 6, 12, 6),
+            child: BotaoReport(sobreBarra: true),
+          ),
+        ],
       );
 
   /// Voltar à rota + Tentar de novo, lado a lado (tablet em paisagem).

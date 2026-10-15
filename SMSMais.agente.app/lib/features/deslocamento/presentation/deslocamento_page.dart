@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agente/app/theme.dart';
 import 'package:agente/features/deslocamento/application/deslocamento_controller.dart';
 import 'package:agente/features/dispositivo/application/dispositivo_controller.dart';
+import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
@@ -158,6 +159,7 @@ class _DeslocamentoPageState extends ConsumerState<DeslocamentoPage> {
                   onVincular: () => context.push('/vincular'),
                 ),
               ),
+              const Positioned(left: 12, bottom: 16, child: BotaoReport()),
               if (!_seguir)
                 Positioned(
                   right: 16,

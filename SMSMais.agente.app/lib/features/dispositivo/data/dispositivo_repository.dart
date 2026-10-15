@@ -1,4 +1,5 @@
 import 'package:agente/features/dispositivo/domain/veiculo_vinculado.dart';
+import 'package:agente/features/ocorrencia/domain/ocorrencia.dart';
 import 'package:agente/shared/api/dio_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,6 +86,25 @@ class DispositivoRepository {
         },
         options: Options(headers: <String, String>{_header: token}),
       );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) throw const TokenDispositivoInvalido();
+      rethrow;
+    }
+  }
+
+  /// REPORT do motorista (`POST /rastreamento/dispositivos/ocorrencias`).
+  /// Devolve quando o servidor recebeu (UTC). Idempotente pelo `idLocal`.
+  Future<DateTime> enviarOcorrencia(
+    String token,
+    OcorrenciaPendente ocorrencia,
+  ) async {
+    try {
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/rastreamento/dispositivos/ocorrencias',
+        data: ocorrencia.toJson(),
+        options: Options(headers: <String, String>{_header: token}),
+      );
+      return DateTime.parse(resp.data!['recebidaEm'] as String);
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) throw const TokenDispositivoInvalido();
       rethrow;
