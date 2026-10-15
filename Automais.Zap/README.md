@@ -47,12 +47,13 @@ a existir. Aparece em *Entregas* como "sem rota cadastrada".
 
 Três camadas (ADR-0004): `Data ← nada`, `Core ← Data`, `Api ← Core + Data`.
 
-> **14–15/10/2026 — migração para a EVEO em andamento.** O DNS de `api.smsmais.automais.com` e
-> `smsmais.automais.com` já aponta para a EVEO: o proxy01 publica os dois nomes (certificado próprio)
-> e, até a janela final, **repassa para este droplet**. A VM ZAP-01 da EVEO já tem o binário atual,
-> o env, a chave do Data Protection e o banco `zap` no PSQL-01 (restaurado do droplet); falta a
-> janela que troca o destino do proxy01 e desliga o droplet. De dentro da EVEO estes nomes resolvem
-> para o proxy01 interno (`/etc/hosts`), porque o IP público não responde lá de dentro.
+> **15/10/2026 — o Zap roda na EVEO.** Desde ~20:00 BRT o relay está na VM ZAP-01 do datacenter
+> EVEO, com o banco `zap` no PostgreSQL da EVEO (PSQL-01). O proxy01 publica
+> `api.smsmais.automais.com` e `smsmais.automais.com` (certificado próprio) e repassa para a VM.
+> O droplet da DigitalOcean descrito abaixo foi **desligado** (serviço desabilitado) — a seção a
+> seguir é histórica. De dentro da EVEO estes nomes resolvem para o proxy01 interno (`/etc/hosts`),
+> porque o IP público não responde lá de dentro. Pendente: o `deploy-zap` ainda aponta para o
+> droplet (e já falhava antes) — o deploy na VM é manual até ele ser repontado.
 
 | | |
 |---|---|
