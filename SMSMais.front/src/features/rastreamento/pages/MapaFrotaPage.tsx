@@ -3,8 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import L, { type LatLngBoundsExpression } from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Bus, Gauge, MapPin, RefreshCw, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bus, Gauge, MapPin, RefreshCw, Siren, Users } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { rotuloTipo } from '@/features/ocorrencias/lib/rotulos';
+import type { TipoOcorrencia } from '@/features/ocorrencias/types';
 import { listarFrota } from '@/features/rastreamento/api/rastreamentoApi';
 import type { FrotaVeiculo } from '@/features/rastreamento/types';
 
@@ -70,25 +73,45 @@ const ICONE_BUS_SVG =
   '<path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.6 6.8 19.9 6 19 6H5a2 2 0 0 0-1.9 1.5L1.7 12.7c-.1.4-.2.8-.2 1.2 0 .4.1.8.2 1.2C2 16.3 2.5 18 2.5 18H5"/>' +
   '<circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>';
 
-function iconeVan(cor: string, parado: boolean, velocidade: number | null): L.DivIcon {
+// Veículo com ocorrência em aberto (REPORT do tablet): vermelho com anel pulsando, por cima do status.
+const COR_OCORRENCIA = '#dc2626';
+
+function iconeVan(cor: string, parado: boolean, velocidade: number | null, ocorrencia = false): L.DivIcon {
   const etiqueta =
     velocidade != null && velocidade >= 1
       ? `<div style="position:absolute;top:36px;left:50%;transform:translateX(-50%);white-space:nowrap;` +
         `background:#111827;color:white;font:600 11px/1 system-ui,sans-serif;padding:3px 6px;` +
         `border-radius:9999px;box-shadow:0 1px 3px rgba(0,0,0,.4);">${velocidade} km/h</div>`
       : '';
+  const anel = ocorrencia
+    ? `<div class="animate-ping" style="position:absolute;inset:-6px;border-radius:50%;` +
+      `border:3px solid ${COR_OCORRENCIA};"></div>`
+    : '';
   return L.divIcon({
     className: 'frota-marker',
     html:
-      `<div style="position:relative;width:34px;height:34px;">` +
-      `<div style="background:${cor};width:34px;height:34px;border-radius:50%;` +
+      `<div style="position:relative;width:34px;height:34px;">${anel}` +
+      `<div style="background:${ocorrencia ? COR_OCORRENCIA : cor};width:34px;height:34px;border-radius:50%;` +
       `border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.45);` +
-      `display:flex;align-items:center;justify-content:center;opacity:${parado ? 0.5 : 1};">` +
+      `display:flex;align-items:center;justify-content:center;opacity:${parado && !ocorrencia ? 0.5 : 1};">` +
       `${ICONE_BUS_SVG}</div>${etiqueta}</div>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     popupAnchor: [0, -18],
   });
+}
+
+/** Faixa "Ocorrência em aberto" no balão e no cartão do veículo, com atalho para a lista. */
+function AvisoOcorrencia({ tipo }: { tipo: TipoOcorrencia }) {
+  return (
+    <Link
+      to="/app/rastreamento/ocorrencias"
+      className="mb-2 flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
+    >
+      <Siren className="h-3.5 w-3.5" />
+      Ocorrência em aberto: {rotuloTipo(tipo)}
+    </Link>
+  );
 }
 
 /** Centraliza o mapa na frota apenas na 1ª carga com posições (refresh não reposiciona). */
@@ -173,10 +196,12 @@ export function MapaFrotaPage() {
                 <Marker
                   key={chaveDe(v)}
                   position={[v.latitude, v.longitude]}
-                  icon={iconeVan(st.cor, estaParado(v.atualizadoEm), velocidadeAtual(v))}
+                  icon={iconeVan(st.cor, estaParado(v.atualizadoEm), velocidadeAtual(v), v.ocorrenciaAberta != null)}
+                  zIndexOffset={v.ocorrenciaAberta ? 1000 : 0}
                 >
                   <Popup>
                     <div className="space-y-1 text-sm">
+                      {v.ocorrenciaAberta ? <AvisoOcorrencia tipo={v.ocorrenciaAberta} /> : null}
                       <div className="font-semibold text-gray-900">{tituloDe(v)}</div>
                       <div className="text-gray-700">
                         {v.veiculoPlaca}
@@ -217,8 +242,11 @@ export function MapaFrotaPage() {
             return (
               <div
                 key={chaveDe(v)}
-                className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+                className={`rounded-lg border bg-white p-3 shadow-sm ${
+                  v.ocorrenciaAberta ? 'border-red-400' : 'border-gray-200'
+                }`}
               >
+                {v.ocorrenciaAberta ? <AvisoOcorrencia tipo={v.ocorrenciaAberta} /> : null}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span
