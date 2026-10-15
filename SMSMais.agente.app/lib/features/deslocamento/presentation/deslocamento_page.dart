@@ -123,9 +123,9 @@ class _DeslocamentoPageState extends ConsumerState<DeslocamentoPage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Sair',
+            tooltip: 'Trocar motorista',
             onPressed: () {
-              ref.read(sessaoProvider.notifier).sair();
+              unawaited(ref.read(sessaoProvider.notifier).sair());
               context.go('/login');
             },
           ),

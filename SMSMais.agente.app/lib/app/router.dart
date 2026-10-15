@@ -17,7 +17,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final sessao = ref.read(sessaoProvider);
       final indoParaLogin = state.matchedLocation == '/login';
-      if (sessao == null && !indoParaLogin) return '/login';
+      // Vincular o tablet vem antes do motorista entrar: a escala do dia é
+      // do veículo (ADR-0073).
+      final semMotorista = indoParaLogin || state.matchedLocation == '/vincular';
+      if (sessao == null && !semMotorista) return '/login';
       if (sessao != null && indoParaLogin) return '/deslocamento';
       return null;
     },
