@@ -112,7 +112,7 @@ Galaxy Tab A (SM-T290). Configuração nativa em vigor:
    (exigido pelo SDK porque `minSdk 26 < 34`).
 3. **Package**: `applicationId`/`namespace` = **`io.automais.smsmais.agente`** (era
    `online.smsmarica.agente` até o commit 759b4f7) — a chave do GCP é restrita a esse package +
-   SHA-1 do certificado de **release** (`98:FB:AB:5C:14:E3:F8:FE:81:AA:74:B1:7C:F8:F9:37:96:EE:AA:BA`,
+   SHA-1 do certificado de **release** (`86:C8:C5:64:60:32:63:A5:E3:30:0C:77:72:F1:98:C4:B7:B9:6F:97`, chave recriada em 15/10/2026;
    keystore em `SMSMais.agente.app/android/keystore/`, ver README "Distribuição pelo MDM").
    Restrição antiga (package velho / SHA-1 de debug) faz a navegação recusar a chave. **Android-only**
    ([ADR-0003](../../adr/0003-flutter-android-only-agente.md)).
