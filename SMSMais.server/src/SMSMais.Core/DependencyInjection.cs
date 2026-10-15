@@ -65,6 +65,10 @@ public static class DependencyInjection
         services.AddScoped<IRastreamentoService, RastreamentoService>();
         services.AddScoped<Rastreamento.Dispositivos.IDispositivoVeiculoService, Rastreamento.Dispositivos.DispositivoVeiculoService>();
         services.AddScoped<Rastreamento.Ocorrencias.IOcorrenciaVeiculoService, Rastreamento.Ocorrencias.OcorrenciaVeiculoService>();
+        // Login do motorista no tablet pelo rosto (ADR-0073)
+        services.AddScoped<Rastreamento.Biometria.IBiometriaTabletService, Rastreamento.Biometria.BiometriaTabletService>();
+        services.AddScoped<Rastreamento.Biometria.IBiometriaPainelService, Rastreamento.Biometria.BiometriaPainelService>();
+        services.AddHostedService<Rastreamento.Biometria.LimpezaSelfiesWorker>();
         services.AddScoped<IRastreamentoNotificador, NotificadorRastreamentoNulo>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<Tickets.ITicketService, Tickets.TicketService>();

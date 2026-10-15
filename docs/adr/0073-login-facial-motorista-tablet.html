@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0073 — Login do motorista no tablet do veículo pelo rosto (primeiro acesso pelo WhatsApp, só o escalado do dia, liberação pela central)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0073 — Login do motorista no tablet do veículo pelo rosto (primeiro acesso pelo WhatsApp, só o escalado do dia, liberação pela central)</h1>
+<p><strong>Status:</strong> proposto · <strong>Data:</strong> 2026-10-15 <strong>Relacionado:</strong> <a href="./0003-flutter-android-only-agente.md">ADR-0003</a> (app do agente só Android) · <a href="./0045-criterio-para-extrair-servico.md">ADR-0045</a> (motorista é papel de <code>Usuario</code>, FK <code>motorista.usuario_id</code>) · <a href="./0036-login-cidadao-contato-verificado.md">ADR-0036</a> (código só para contato verificado) · <a href="./0018-identidade-e-sessao-do-cidadao.md">ADR-0018</a> (sessão do cidadão) · pedido de backend de junho em <a href="../modulos/tfd/backend-app-motorista.md"><code>docs/modulos/tfd/backend-app-motorista.md</code></a> · <a href="../modulos/tfd/deslocamento-tablet.md"><code>docs/modulos/tfd/deslocamento-tablet.md</code></a> (o tablet é do veículo)</p>
+<h2>Contexto</h2>
+<p>O tablet do TFD é <strong>do veículo</strong>, não do motorista: fica preso no carro, em paisagem, em modo quiosque pelo MDM, e fala com o servidor por um token próprio (<code>X-Dispositivo-Token</code>) ligado ao veículo. Os aparelhos da frota (Qualcomm msm8953, Android 9) <strong>não têm Play Services funcionando</strong>, e o carro passa parte do dia sem rede.</p>
+<p>Até aqui o login do app era de mentira (<code>mock-001</code>), e o motorista criado no painel nasce com <code>SenhaHash = "PENDENTE_AUTH"</code>: não entra em lugar nenhum. A central não sabe quem estava dirigindo cada translado, e o REPORT e as posições ficam só com o veículo.</p>
+<p>O app já tinha o esqueleto do reconhecimento facial no próprio aparelho (ML Kit + MobileFaceNet em TFLite + piscada + armazenamento cifrado), nunca ligado. Em 15/10/2026 ele foi provado no tablet da frota (<code>501cd033</code>):</p>
+<ul>
+<li>o detector do ML Kit <strong>com o modelo dentro do APK</strong> (<code>com.google.mlkit:face-detection</code>) e o TFLite</li>
+</ul>
+<p>  próprio do app funcionam sem Play Services;</p>
+<ul>
+<li>a mesma pessoa tirou nota <strong>0,94 a 0,96</strong> em 5 verificações contra o próprio cadastro (limiar 0,62);</li>
+<li>a prova de vida levou <strong>4 a 10 s</strong> e o reconhecimento, <strong>0,6 a 0,8 s</strong> depois da foto.</li>
+</ul>
+<p>O pedido de junho propunha JWT de motorista, verificação gravada por RBAC e OTP no primeiro acesso. O tablet, porém, não tem usuário logado no servidor e precisa funcionar sem rede, então o desenho abaixo troca o JWT pelo token do veículo.</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>O rosto é comparado no tablet; o servidor não compara rostos.</strong> Detector do ML Kit <strong>embutido</strong></li>
+</ol>
+<p>   (nunca a variante que depende do Play Services), vetor de identidade MobileFaceNet em TFLite,    similaridade de cosseno. Limiar inicial <strong>0,62</strong>, recalibrado com o teste de pessoa diferente antes    de ir para a frota. No tablet fica só o vetor, cifrado (SQLCipher, chave no Keystore).</p>
+<ol>
+<li><strong>Prova de vida ativa.</strong> Piscar, virar o rosto para um lado <strong>sorteado</strong> e voltar de frente, com o</li>
+</ol>
+<p>   mesmo rosto do começo ao fim (<code>trackingId</code> do detector) e prazo por etapa. A foto que vai para a    comparação é a do fim, de frente. Só a piscada, um vídeo da pessoa piscando passaria.</p>
+<ol>
+<li><strong>Só entra o motorista escalado do dia naquele veículo.</strong> "Escalado" = motorista da <code>RotaDiaria</code> do</li>
+</ol>
+<p>   veículo do tablet com <code>Data</code> = hoje no fuso de Brasília e status diferente de Cancelada. O tablet    baixa, pelo token do veículo, a lista dos escalados do dia e a <strong>foto de referência</strong> de cada um, gera    o vetor e compara contra eles (normalmente um só). Sem rede, usa a última lista baixada, que vale    apenas para o dia dela.</p>
+<ol>
+<li><strong>Primeiro acesso pelo próprio motorista, com código no WhatsApp.</strong> Quando o escalado ainda não tem</li>
+</ol>
+<p>   foto de referência:    1. o motorista digita o CPF no tablet;    2. o servidor confere que o CPF é de um motorista escalado hoje naquele veículo; se não for, a       resposta não diz por quê (não revela quem existe);    3. sai um código de 6 dígitos para o <strong>telefone do cadastro do motorista</strong>, pelo mesmo modelo de       mensagem de autenticação do app do cidadão (<code>authzap</code>), válido por 5 minutos e com 5 tentativas;       o modo de teste (<code>Tfd:Otp:ModoTeste</code>) mostra o código na tela;    4. confirmado o código, o motorista lê o termo de ciência e aceita;    5. faz a captura com prova de vida;    6. a foto vai para o servidor como <strong>foto de referência facial</strong>, num campo próprio, separado da       foto de perfil.</p>
+<p>   O telefone foi cadastrado pelo gestor no vínculo de trabalho. Receber o código prova que quem está no    tablet tem esse telefone, que é o espírito do ADR-0036. O número <strong>não</strong> é carimbado como verificado:    o serviço de validação de telefone procura pelo CPF e é do paciente, e poderia marcar a ficha de    paciente da mesma pessoa. Limite de um pedido de código por minuto por CPF.    Os outros tablets baixam a mesma referência: <strong>o motorista cadastra o rosto uma vez só</strong>.</p>
+<ol>
+<li><strong>Sem reconhecimento, a central libera.</strong> Se o rosto não confere, não há escala no dia, a câmera</li>
+</ol>
+<p>   falha ou o primeiro acesso não chega, a central gera no painel um <strong>código de uso único</strong> para aquele    veículo e aquele motorista, válido por 15 minutos. O motorista digita no tablet e entra. Fica    registrado quem gerou, quando e em que tablet foi usado. O motorista nunca fica preso no quiosque.</p>
+<ol>
+<li><strong>Sessão local, sem JWT de motorista.</strong> O tablet continua falando só pelo token do veículo. Cada</li>
+</ol>
+<p>   verificação — login, início de translado, primeiro acesso, liberação pela central —, aprovada ou    não, vira um registro no servidor com:    - nota e limiar usado;    - resultado da prova de vida e versão do modelo;    - posição e selfie reduzida.</p>
+<p>   O registro é enviado pelo token do veículo, sem duplicar (<code>idLocal</code> gerado no tablet), e usa uma    fila sem rede como a do REPORT. "Quem está dirigindo" é o último registro aprovado do veículo.</p>
+<ol>
+<li><strong>Confere de novo antes de cada translado</strong>, antes de abrir a navegação. Funciona sem rede.</li>
+</ol>
+<ol>
+<li><strong>LGPD.</strong> Biometria é dado pessoal sensível (art. 5º, II).</li>
+</ol>
+<ul>
+<li><strong>Base legal:</strong> a base para identificação e autenticação é o art. 11, II, "g" (prevenção à fraude</li>
+</ul>
+<p>     e segurança do titular), e precisa ser confirmada pelo encarregado da Secretaria.    - <strong>Termo:</strong> o aceite de ciência é registrado com versão e hash do texto, no mesmo modelo de      <code>CidadaoConsentimento</code>.    - <strong>Foto de referência:</strong> fica no servidor porque serve a todos os tablets. "Apagar biometria" no      painel a apaga, e o motorista refaz o primeiro acesso. A exclusão do motorista também apaga.    - <strong>Selfies de auditoria:</strong> guardadas por <strong>90 dias</strong> (proposta, a confirmar com a Secretaria) e      apagadas por rotina diária.    - <strong>Logs:</strong> nunca levam CPF, código ou imagem.</p>
+<h2>Consequências</h2>
+<ul>
+<li>A central precisa escalar o motorista na rota do dia antes da saída. Sem escala, só a liberação</li>
+</ul>
+<p>  pela central resolve.</p>
+<ul>
+<li>O tablet precisa de rede ao menos uma vez no dia para baixar a escala e as fotos de referência.</li>
+<li>O telefone do cadastro do motorista precisa estar certo; se estiver errado, a central libera e</li>
+</ul>
+<p>  corrige o cadastro.</p>
+<ul>
+<li>Ataques que imitam a reação na hora (vídeo controlado, máscara) não são cobertos. É um risco aceito</li>
+</ul>
+<p>  para o que se protege, e a selfie da auditoria permite conferir depois.</p>
+<ul>
+<li>Do pedido de junho: a foto de referência (BE-1) e a auditoria (BE-2) entram, mas pelo token do</li>
+</ul>
+<p>  veículo, não por JWT. O código no WhatsApp (BE-4) fica só para o primeiro acesso. O "iniciar   translado só com verificação" no servidor (BE-3) fica para depois: a conferência é feita no tablet e   só registrada no servidor.</p>
+<ul>
+<li>Endpoints novos ficam sob <code>rastreamento/dispositivos/*</code> (token do veículo) e, no painel, sob</li>
+</ul>
+<p>  <code>motoristas/*</code> e <code>rastreamento/verificacoes-faciais</code> (permissão do módulo Rastreamento e de   Motoristas).</p>
+</main>
+</body>
+</html>

@@ -194,6 +194,10 @@ public sealed class MotoristasService(SmsMaisDbContext db, IUsuarioAtualAccessor
         m.Usuario.ExcluidoEm = agora;
         m.Usuario.ExcluidoPor = atualId;
 
+        // Foto do rosto é dado sensível: sai junto, não fica com o cadastro excluído (ADR-0073).
+        _db.ReferenciasFaciaisMotorista.RemoveRange(
+            await _db.ReferenciasFaciaisMotorista.Where(r => r.MotoristaId == id).ToListAsync(cancellationToken));
+
         await _db.SaveChangesAsync(cancellationToken);
     }
 
