@@ -6386,6 +6386,105 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("whatsapp_configuracao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.OcorrenciaVeiculo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtendidaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atendida_em");
+
+                    b.Property<Guid?>("AtendidaPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atendida_por");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descricao");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dispositivo_id");
+
+                    b.Property<DateTime?>("EncerradaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("encerrada_em");
+
+                    b.Property<Guid?>("EncerradaPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encerrada_por");
+
+                    b.Property<Guid>("IdLocal")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id_local");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("ObservacaoCentral")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacao_central");
+
+                    b.Property<DateTime>("OcorridaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrida_em");
+
+                    b.Property<double?>("PrecisaoM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("precisao_m");
+
+                    b.Property<DateTime>("RecebidaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recebida_em");
+
+                    b.Property<Guid?>("RotaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rota_id");
+
+                    b.Property<int>("Situacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<Guid>("VeiculoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("veiculo_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdLocal")
+                        .IsUnique();
+
+                    b.HasIndex("RotaId");
+
+                    b.HasIndex("VeiculoId");
+
+                    b.HasIndex("Situacao", "RecebidaEm");
+
+                    b.ToTable("rastreamento_ocorrencia", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Ouvidoria.OuvidoriaAcessoIdentidade", b =>
                 {
                     b.Property<Guid>("Id")
@@ -17120,6 +17219,20 @@ namespace SMSMais.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Comunicacao");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.OcorrenciaVeiculo", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.RotaDiaria", null)
+                        .WithMany()
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.Veiculo", null)
+                        .WithMany()
+                        .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Ouvidoria.OuvidoriaAcessoIdentidade", b =>

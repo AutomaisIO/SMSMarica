@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Rastreamento.Dispositivos;
+using SMSMais.Core.Rastreamento.Ocorrencias;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -13,7 +14,9 @@ namespace SMSMais.Api.Controllers;
 /// depois fala com o próprio token no header <c>X-Dispositivo-Token</c>.
 /// </summary>
 [ApiController]
-public sealed class DispositivosVeiculoController(IDispositivoVeiculoService service) : ControllerBase
+public sealed class DispositivosVeiculoController(
+    IDispositivoVeiculoService service,
+    IOcorrenciaVeiculoService ocorrencias) : ControllerBase
 {
     public const string PoliticaDeLimite = "tablet-veiculo";
     private const string CabecalhoToken = "X-Dispositivo-Token";
@@ -73,5 +76,20 @@ public sealed class DispositivosVeiculoController(IDispositivoVeiculoService ser
         if (d is null) return Unauthorized();
         await service.RegistrarPosicoesAsync(d, request, ct);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Botão REPORT do tablet (acidente, pane, paciente passou mal, outro). Idempotente pelo
+    /// <c>idLocal</c>: o reenvio da fila offline devolve a mesma ocorrência. Alerta o painel na hora.
+    /// </summary>
+    [HttpPost("rastreamento/dispositivos/ocorrencias")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> Ocorrencia([FromBody] RegistrarOcorrenciaRequest request, CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        if (d is null) return Unauthorized();
+        var registrada = await ocorrencias.RegistrarAsync(d, request, ct);
+        return StatusCode(StatusCodes.Status201Created, registrada);
     }
 }
