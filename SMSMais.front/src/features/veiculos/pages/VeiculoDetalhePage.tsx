@@ -4,7 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
-import { usePermissao } from '@/shared/auth/authStore';
+import { usePermissao, useTemConsulta } from '@/shared/auth/authStore';
+import { ConferenciasFaciais } from '@/features/biometria/components/ConferenciasFaciais';
 import { TabletVinculado } from '@/features/veiculos/components/TabletVinculado';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { MapaDeAssentos, type LinhaLayout } from '@/features/veiculos/components/MapaDeAssentos';
@@ -64,6 +65,8 @@ export function VeiculoDetalhePage() {
 
   const detalhe = useVeiculoPorId(id || null);
   const podeEditar = usePermissao('Veiculos', 'Edicao');
+  // Conferências do motorista no tablet (ADR-0073) são do módulo Rastreamento.
+  const podeVerConferencias = useTemConsulta('Rastreamento');
   const translados = useListarRotas({ veiculoId: id });
 
   const v = detalhe.data;
@@ -183,7 +186,9 @@ export function VeiculoDetalhePage() {
         </div>
       ) : null}
 
-      {v ? <TabletVinculado veiculoId={v.id} podeEditar={podeEditar} /> : null}
+      {v ? <TabletVinculado veiculoId={v.id} veiculoPlaca={v.placa} podeEditar={podeEditar} /> : null}
+
+      {v && podeVerConferencias ? <ConferenciasFaciais veiculoId={v.id} ocultar="veiculo" /> : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">Translados recentes</h2>
