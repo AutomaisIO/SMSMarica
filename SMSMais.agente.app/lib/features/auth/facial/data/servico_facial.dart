@@ -5,17 +5,22 @@ import 'package:agente/features/auth/facial/data/detector_rosto.dart';
 import 'package:agente/features/auth/facial/data/embedding_facial.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Resultado de uma verificação 1:1.
+/// Resultado de uma verificação (1:1, ou o melhor de vários candidatos).
 class ResultadoVerificacao {
   const ResultadoVerificacao({
     required this.aprovado,
     required this.score,
     required this.motivo,
+    this.motoristaId,
   });
 
   final bool aprovado;
   final double score;
   final String motivo;
+
+  /// Candidato mais parecido (null quando não havia com quem comparar). Só
+  /// é "quem entrou" se [aprovado].
+  final String? motoristaId;
 }
 
 /// Orquestra captura → embedding → cadastro/match, usando o store cifrado.
@@ -117,21 +122,31 @@ class ServicoFacial {
     }
 
     var melhor = -1.0;
+    String? quem;
     for (final c in candidatos) {
       final s = EmbeddingFacial.similaridade(atual, c.embedding);
-      if (s > melhor) melhor = s;
+      if (s > melhor) {
+        melhor = s;
+        quem = c.motoristaId;
+      }
     }
 
     return ResultadoVerificacao(
       aprovado: melhor >= limiar,
       score: melhor,
       motivo: melhor >= limiar ? 'Identidade confirmada' : 'Rosto não confere',
+      motoristaId: quem,
     );
+  }
+
+  void dispose() {
+    _embedding.dispose();
+    _detector.dispose();
   }
 }
 
 final servicoFacialProvider = Provider<ServicoFacial>((ref) {
   final s = ServicoFacial();
-  ref.onDispose(() {});
+  ref.onDispose(s.dispose);
   return s;
 });
