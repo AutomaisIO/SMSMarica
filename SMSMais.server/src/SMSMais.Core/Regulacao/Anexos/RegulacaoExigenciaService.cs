@@ -7,6 +7,7 @@ using SMSMais.Core.DocumentosPaciente;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
+using SMSMais.Core.Regulacao.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Regulacao;
@@ -110,6 +111,7 @@ public sealed class RegulacaoExigenciaService(
     IRegulacaoConfiguracaoService configuracao,
     IUsuarioAtualAccessor usuarioAtual,
     IRegulacaoEscopo escopoRegulacao,
+    IRegulacaoEventoService eventos,
     IDocumentosPacienteService? acervo = null) : IRegulacaoExigenciaService
 {
     private const string TituloAnexosGerais = "Anexos gerais";
@@ -446,7 +448,40 @@ public sealed class RegulacaoExigenciaService(
         var conteudo = await store.LerAsync(arquivo.ChaveArmazenamento, ct)
             ?? throw new NaoEncontradoException("Conteúdo do anexo da regulação", arquivoId);
 
+        await RegistrarAcessoAsync(solicitacaoId, arquivo, ct);
+
         return new ConteudoArquivoDto(conteudo, arquivo.ContentType, arquivo.Nome);
+    }
+
+    /// <summary>
+    /// Deixa na trilha que ALGUÉM abriu/baixou este documento — é como a regulação sabe que a guia
+    /// de agendamento foi retirada e por quem (e de qual unidade: o evento carrega a unidade ativa).
+    /// Uma vez por (documento, usuário): reabrir o mesmo arquivo não vira ruído. Fluxo sem usuário
+    /// autenticado (sistema) não tem o que registrar.
+    /// </summary>
+    private async Task RegistrarAcessoAsync(
+        Guid solicitacaoId, RegulacaoExigenciaArquivo arquivo, CancellationToken ct)
+    {
+        var usuarioId = usuarioAtual.UsuarioId;
+        if (usuarioId is null) return;
+
+        var chave = arquivo.Id.ToString();
+        var jaRegistrado = await db.RegulacaoEventos.AsNoTracking()
+            .AnyAsync(e => e.SolicitacaoId == solicitacaoId
+                && e.Tipo == TipoEventoRegulacao.DocumentoAcessado
+                && e.UsuarioId == usuarioId
+                && e.DetalheJson != null
+                && e.DetalheJson.Contains(chave), ct);
+        if (jaRegistrado) return;
+
+        var papel = await escopoRegulacao.EhAgenteAsync(ct)
+            ? PapelEventoRegulacao.Agente
+            : PapelEventoRegulacao.Solicitante;
+
+        await eventos.RegistrarAsync(
+            solicitacaoId, TipoEventoRegulacao.DocumentoAcessado, papel, ct,
+            detalhe: new { arquivoId = arquivo.Id, nome = arquivo.Nome });
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task DispensarCaixinhasDeOutroProcedimentoAsync(

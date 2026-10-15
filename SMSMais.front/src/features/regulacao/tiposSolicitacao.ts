@@ -129,7 +129,8 @@ export type TipoEventoRegulacao =
   | 'Cancelamento'
   | 'Recusa'
   | 'OkInterno'
-  | 'TrocaProcedimento';
+  | 'TrocaProcedimento'
+  | 'DocumentoAcessado';
 
 export type EventoRegulacao = {
   id: string;

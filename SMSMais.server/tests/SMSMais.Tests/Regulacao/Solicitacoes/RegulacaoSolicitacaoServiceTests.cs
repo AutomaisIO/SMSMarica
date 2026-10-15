@@ -85,7 +85,8 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         identidade.ObterPermissoesResolvidasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new PermissoesResolvidasDto(Herdadas: [], Overrides: [], Resolvidas: []));
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
-        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo);
+        var exigencias = new RegulacaoExigenciaService(
+            db, new StoreFake(), config, acessor, escopo, new RegulacaoEventoService(db, acessor));
 
         // As regras do manual têm teste próprio (PendenciasDasRegrasTests). Aqui o procedimento não
         // tem regra: a avaliação volta vazia e a conferência do envio segue como antes.

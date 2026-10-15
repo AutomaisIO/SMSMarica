@@ -27,8 +27,15 @@ export const artigoRegulacaoGestaoFila: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/regulacao/gestao-fila',
   publico: 'Quem avalia e regula as solicitações (agente regulador)',
-  atualizadoEm: '2026-10-11',
+  atualizadoEm: '2026-10-15',
   palavrasChave: [
+    'anexar documento',
+    'guia de agendamento',
+    'autorização',
+    'documento para a unidade',
+    'baixar guia',
+    'quem baixou o documento',
+    'documento aberto',
     'contato com o paciente',
     'aviso do SER',
     'paciente foi avisado',
@@ -522,6 +529,51 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             outra especialidade hoje. Por isso a plataforma escolhe recurso, médico e CID pelo nome, na
             tela do dia. Se a SES renomear um recurso, o envio para com aviso, em vez de mandar o
             pedido para o lugar errado.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'anexar-documento',
+      titulo: 'Anexar um documento para a unidade (guia de agendamento)',
+      busca:
+        'anexar documento guia de agendamento autorização autorizacao regulação enviar para a unidade download baixar abrir quem baixou pegou retirou trilha linha do tempo sem e-mail email arquivo pdf anexos',
+      conteudo: (
+        <>
+          <P>
+            Depois que o pedido foi <strong>enviado ao sistema de destino</strong> (SER, SERNIT ou
+            ESUS), aparece na análise o quadro <strong>Anexar documento para a unidade</strong>. É por
+            onde a regulação põe a <strong>guia de agendamento</strong> (ou a autorização) dentro da
+            própria solicitação — sem precisar mandar por e-mail.
+          </P>
+          <Lista>
+            <Item>
+              Dê um <strong>nome</strong> ao documento (vem preenchido “Guia de agendamento”) e
+              escolha o arquivo.
+            </Item>
+            <Item>
+              Clique em <BotaoRef>Anexar</BotaoRef>. O documento passa a aparecer no quadro{' '}
+              <strong>Anexos</strong>, logo abaixo.
+            </Item>
+            <Item>
+              A unidade abre a solicitação e <strong>baixa o documento pela própria plataforma</strong>{' '}
+              — é só clicar no arquivo para abrir ou salvar.
+            </Item>
+          </Lista>
+          <Callout tipo="regra" titulo="A linha do tempo registra quem pegou">
+            Toda vez que alguém abre ou baixa um documento anexado, fica na{' '}
+            <strong>linha do tempo</strong> da solicitação:{' '}
+            <em>“Documento aberto/baixado por «fulano»”</em>, com o nome do arquivo e a data. É assim
+            que a regulação sabe que a unidade pegou a guia — uma vez por pessoa, para não virar ruído
+            quando a mesma pessoa reabre.
+          </Callout>
+          <Callout tipo="dica" titulo="Pode anexar mais de um">
+            Reagendou? Anexe a nova guia — os documentos ficam todos no quadro Anexos, e cada download
+            aparece na linha do tempo.
+          </Callout>
+          <Callout tipo="atencao" titulo="A mensagem ao paciente continua a mesma">
+            Anexar a guia aqui <strong>não muda</strong> o aviso automático ao paciente (veja o quadro
+            “Contato com o paciente”). É um canal a mais, para a unidade — não substitui o aviso.
           </Callout>
         </>
       ),

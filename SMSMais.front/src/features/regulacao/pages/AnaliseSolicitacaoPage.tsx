@@ -7,6 +7,7 @@ import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 
 import { AjusteRiscoCid } from '../components/AjusteRiscoCid';
+import { AnexarGuiaRegulacao } from '../components/AnexarGuiaRegulacao';
 import { AnexosSolicitacao } from '../components/AnexosSolicitacao';
 import { CabecalhoSolicitacao } from '../components/CabecalhoSolicitacao';
 import { ContatoComPaciente } from '../components/ContatoComPaciente';
@@ -222,6 +223,10 @@ export function AnaliseSolicitacaoPage() {
       />
 
       <RespostasRegras solicitacaoId={id} />
+
+      {['EnviadaAoSistema', 'EmFilaExterna', 'Agendada'].includes(s.status) && (
+        <AnexarGuiaRegulacao solicitacaoId={id} />
+      )}
 
       <AnexosSolicitacao solicitacaoId={id} />
 

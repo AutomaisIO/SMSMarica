@@ -194,6 +194,14 @@ public enum TipoEventoRegulacao
     /// formulário e as regras — o diff registra o que sobreviveu e o que caiu.
     /// </summary>
     TrocaProcedimento = 21,
+
+    /// <summary>
+    /// Alguém ABRIU/BAIXOU um documento anexado da solicitação (ex.: a unidade pega a guia de
+    /// agendamento pela plataforma). Registrado uma vez por (documento, usuário), na trilha — é
+    /// como a regulação sabe que o documento foi retirado e por quem. Só trilha, não alerta o
+    /// celular.
+    /// </summary>
+    DocumentoAcessado = 22,
 }
 
 /// <summary>

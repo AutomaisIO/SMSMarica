@@ -92,8 +92,9 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
                     : []));
 
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
-        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo);
         var eventos = new RegulacaoEventoService(db, acessor);
+        var exigencias = new RegulacaoExigenciaService(
+            db, new StoreFake(), config, acessor, escopo, eventos);
 
         // As regras do manual têm teste próprio (PendenciasDasRegrasTests). Aqui o procedimento não
         // tem regra: a avaliação volta vazia e a conferência do envio segue como antes.

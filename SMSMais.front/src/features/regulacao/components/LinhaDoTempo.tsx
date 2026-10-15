@@ -2,6 +2,7 @@ import {
   ArrowRightLeft,
   CheckCircle2,
   CircleDot,
+  Download,
   FileEdit,
   Hash,
   Paperclip,
@@ -39,6 +40,7 @@ const ICONES: Partial<Record<TipoEventoRegulacao, LucideIcon>> = {
   Cancelamento: XCircle,
   Recusa: XCircle,
   FalhaEnvio: XCircle,
+  DocumentoAcessado: Download,
 };
 
 const ROTULOS: Record<TipoEventoRegulacao, string> = {
@@ -63,6 +65,7 @@ const ROTULOS: Record<TipoEventoRegulacao, string> = {
   Recusa: 'Recusada',
   OkInterno: 'Conferida pela regulação',
   TrocaProcedimento: 'Procedimento trocado',
+  DocumentoAcessado: 'Documento aberto/baixado',
 };
 
 /**
@@ -104,6 +107,10 @@ export function LinhaDoTempo({
         const autor =
           e.papel === 'Sistema' ? 'pelo sistema' : e.usuarioNome ? `por ${e.usuarioNome}` : '';
         const motivo = typeof e.detalhe?.motivo === 'string' ? e.detalhe.motivo : null;
+        const nomeDocumento =
+          e.tipo === 'DocumentoAcessado' && typeof e.detalhe?.nome === 'string'
+            ? e.detalhe.nome
+            : null;
 
         return (
           <li key={e.id} className="flex gap-3">
@@ -123,6 +130,10 @@ export function LinhaDoTempo({
               )}
 
               {motivo && <p className="mt-1 text-sm text-slate-700">“{motivo}”</p>}
+
+              {nomeDocumento && (
+                <p className="mt-1 text-sm text-slate-700">{nomeDocumento}</p>
+              )}
 
               {e.diff && Object.keys(e.diff).length > 0 && (
                 <ul className="mt-1 space-y-0.5 text-xs text-slate-600">

@@ -15,6 +15,7 @@ using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Regras;
+using SMSMais.Core.Regulacao.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;
@@ -68,7 +69,8 @@ public class RegulacaoElegibilidadeServiceTests(PostgresFixture fixture)
             .Returns(new PermissoesResolvidasDto([], [], []));
 
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
-        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo);
+        var exigencias = new RegulacaoExigenciaService(
+            db, new StoreFake(), config, acessor, escopo, new RegulacaoEventoService(db, acessor));
 
         return new RegulacaoElegibilidadeService(
             db, escopo, config, exigencias, pacientes, clinico, acessor);
