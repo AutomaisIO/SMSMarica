@@ -26,6 +26,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 </head>
 <body>
 <main>
+<p>&gt; <strong>14/10/2026 — DOCUMENTO HISTÓRICO.</strong> A produção saiu do droplet da DigitalOcean para a VM &gt; SMSMAIS-01 no datacenter EVEO (SP), que já sai para a internet com IP brasileiro: <strong>o SISREG é &gt; alcançado direto, sem túnel</strong>. O <code>wg-eveo</code>, o <code>wg-mk</code> e o <code>sisreg-egress-verificar.timer</code> ficaram no &gt; droplet desligado. O que segue descreve como era até essa data (útil só para entender o passado ou &gt; recriar uma instância fora do Brasil). Ver a skill <code>operar-servidor</code>.</p>
 <h1>SISREG — egress de rede em produção (túnel WireGuard até o Datacenter Automais)</h1>
 <p>&gt; Como o backend em produção (<code>api.smsmarica.online</code>, DigitalOcean) alcança o &gt; <strong>SISREG III</strong> (<code>sisregiii.saude.gov.br</code>) — consulta de paciente por CNS (CADSUS / &gt; <code>cadweb50</code>), ofertas, agenda e demais chamadas do motor. Ver também o motor da integração em &gt; <code>SMSMais.Core/Integracoes/SisregWeb/</code> e o laboratório <code>Automais.SISREG/</code>.</p>
 <p>&gt; <strong>Mudança de 14/09/2026:</strong> o egress saiu do MikroTik do escritório (link <strong>Mundivox</strong>, &gt; cancelado) e passou para o <strong>CCR2116 do Datacenter Automais (Eveo/SP)</strong>. O túnel antigo &gt; (<code>wg-mk</code>) continua de pé, mas <strong>não carrega mais o SISREG</strong> — ver §Histórico.</p>

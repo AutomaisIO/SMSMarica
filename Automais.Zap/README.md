@@ -47,6 +47,13 @@ a existir. Aparece em *Entregas* como "sem rota cadastrada".
 
 Três camadas (ADR-0004): `Data ← nada`, `Core ← Data`, `Api ← Core + Data`.
 
+> **14–15/10/2026 — migração para a EVEO em andamento.** O DNS de `api.smsmais.automais.com` e
+> `smsmais.automais.com` já aponta para a EVEO: o proxy01 publica os dois nomes (certificado próprio)
+> e, até a janela final, **repassa para este droplet**. A VM ZAP-01 da EVEO já tem o binário atual,
+> o env, a chave do Data Protection e o banco `zap` no PSQL-01 (restaurado do droplet); falta a
+> janela que troca o destino do proxy01 e desliga o droplet. De dentro da EVEO estes nomes resolvem
+> para o proxy01 interno (`/etc/hosts`), porque o IP público não responde lá de dentro.
+
 | | |
 |---|---|
 | Banco | Postgres **local do droplet**, database próprio, schema `zap` |

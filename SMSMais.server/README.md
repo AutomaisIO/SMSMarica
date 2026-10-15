@@ -81,6 +81,11 @@ dotnet user-secrets --project src/SMSMais.Api set "ConnectionStrings:DefaultDb" 
 
 A senha fica armazenada localmente no perfil do usuário Windows — **nunca no Git**.
 
+> **14/10/2026:** a produção de Maricá saiu do cluster da DigitalOcean para um PostgreSQL 18 próprio
+> no datacenter EVEO (VM PSQL-01), database **`smsmais`** só do SMSMais, schemas `smsmarica` e `fhir`
+> (ADR-0043: banco por instância). O texto abaixo descreve o arranjo antigo. Host, porta e usuário
+> ficam na connection string do env do servidor — nunca neste repositório (público).
+
 ### Cluster compartilhado (DigitalOcean)
 
 O Postgres em produção é o `defaultdb` do cluster da Prefeitura na DigitalOcean, compartilhado com outros produtos. **Tudo do SMSMais vive no schema `smsmarica`** ([ADR-0001](../docs/adr/0001-schema-isolation.md)). A migration `Initial` cria o schema automaticamente (`EnsureSchema`).

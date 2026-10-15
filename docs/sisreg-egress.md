@@ -1,3 +1,9 @@
+> **14/10/2026 — DOCUMENTO HISTÓRICO.** A produção saiu do droplet da DigitalOcean para a VM
+> SMSMAIS-01 no datacenter EVEO (SP), que já sai para a internet com IP brasileiro: **o SISREG é
+> alcançado direto, sem túnel**. O `wg-eveo`, o `wg-mk` e o `sisreg-egress-verificar.timer` ficaram no
+> droplet desligado. O que segue descreve como era até essa data (útil só para entender o passado ou
+> recriar uma instância fora do Brasil). Ver a skill `operar-servidor`.
+
 # SISREG — egress de rede em produção (túnel WireGuard até o Datacenter Automais)
 
 > Como o backend em produção (`api.smsmarica.online`, DigitalOcean) alcança o

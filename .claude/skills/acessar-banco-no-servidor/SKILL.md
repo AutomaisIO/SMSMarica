@@ -22,7 +22,7 @@ with open("/etc/smsmarica-server/env", encoding="utf-8") as fh:
 
 m = {k.strip().lower(): v.strip() for k, v in (p.split("=", 1) for p in cs.split(";") if "=" in p)}
 conn = psycopg2.connect(
-    host=m["host"], port=m.get("port", 25060), dbname=m["database"],
+    host=m["host"], port=m.get("port", 5432), dbname=m["database"],
     user=m.get("username") or m.get("user id"), password=m["password"], sslmode="require",
 )
 cur = conn.cursor()
@@ -35,8 +35,12 @@ está instalado (`/usr/bin/psql`).
 
 ## Regras
 
-- **Banco compartilhado** com outros produtos da Prefeitura (Centralia, Automais.Fhir). Uma query
-  pesada afeta sistemas que não são seus — filtre, use `LIMIT`, evite varrer tabela inteira.
+- **Onde fica o banco (desde 14/10/2026):** PostgreSQL 18 na VM **PSQL-01**, no mesmo datacenter
+  (EVEO) que este servidor, pela rede interna — o host e a porta estão na connection string do env.
+  Database `smsmais`, **exclusivo** do SMSMais (schemas `smsmarica` e `fhir`). O PSQL-01 hospeda
+  outros bancos da Automais: uma query pesada ainda afeta vizinhos — filtre, use `LIMIT`, evite
+  varrer tabela inteira. O banco gerenciado antigo da DigitalOcean ficou **congelado** na virada e
+  não é mais a verdade: nunca leia nem grave nele.
 - **Leitura é livre; escrita não.** `SELECT` à vontade para diagnóstico. `INSERT/UPDATE/DELETE`
   só quando uma skill específica (ex.: `criar-ticket`/`fechar-ticket`) ou o operador mandar — e
   mesmo assim espelhando a regra de negócio (auditoria, soft-delete), nunca "na mão" sem critério.

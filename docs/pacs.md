@@ -593,6 +593,13 @@ ufw allow from 198.211.104.55     # hub WireGuard
 ufw --force enable
 ```
 
+> **14/10/2026 — o backend saiu do droplet.** O app agora roda na VM SMSMAIS-01 da EVEO e chega ao
+> PACS pelo IP de saída da EVEO. Liberado no `ufw` do PACS (`allow from <IP de saída da EVEO>`, com
+> comentário "SMSMais VM 159 na EVEO") **e no `ignoreip` do `fail2ban`** (`/etc/fail2ban/jail.local`) —
+> sem o segundo, uma rajada de erros do app bane o IP e o PACS some para o sistema inteiro. A regra
+> do droplet antigo ficou sem efeito (droplet desligado) e sai na limpeza. Consultas QIDO de
+> diagnóstico rodam da VM SMSMAIS-01, não mais do droplet.
+
 **fail2ban** no `sshd` (havia **42 mil** tentativas de brute-force no `auth.log`):
 `banaction = ufw`, `maxretry=5`, `bantime` incremental até 1 semana. `ignoreip`
 protege localhost + VPN + backend + hub — nunca bane quem é nosso. Config em
