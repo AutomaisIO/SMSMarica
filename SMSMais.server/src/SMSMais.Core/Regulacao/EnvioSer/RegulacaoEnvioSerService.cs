@@ -30,7 +30,10 @@ namespace SMSMais.Core.Regulacao.EnvioSer;
 public sealed record EnvioSerPassoDto(string Campo, string? Valor, bool Ok, string? Observacao = null);
 
 /// <summary>Um anexo como vai ao sistema.</summary>
-public sealed record EnvioSerAnexoDto(string Nome, long Tamanho, int ArquivosJuntados);
+/// <param name="ArquivosJuntados">Quantos arquivos entraram neste anexo (1, ou 3+ quando viraram um PDF).</param>
+/// <param name="NomesJuntados">Os nomes desses arquivos — a tela os lista para a pessoa confirmar o
+/// agrupamento antes de enviar (ticket #167).</param>
+public sealed record EnvioSerAnexoDto(string Nome, long Tamanho, int ArquivosJuntados, IReadOnlyList<string> NomesJuntados);
 
 /// <summary>Pedido que o sistema já tem para o mesmo paciente e o mesmo recurso.</summary>
 public sealed record EnvioSerDuplicadoDto(string IdSer, string? Recurso, string? DataSolicitacao, string? Situacao);
@@ -170,7 +173,7 @@ public sealed partial class RegulacaoEnvioSerService(
 
         return new EnvioSerPreparoDto(
             ctx.Operador, dados.RecursoRotulo, passos,
-            [.. anexos.Select(a => new EnvioSerAnexoDto(a.Nome, a.Conteudo.LongLength, a.Origens.Count))],
+            [.. anexos.Select(a => new EnvioSerAnexoDto(a.Nome, a.Conteudo.LongLength, a.Origens.Count, a.NomesOrigem))],
             duplicados, ctx.Nome, medicoNovo.Bloco);
     }
 
