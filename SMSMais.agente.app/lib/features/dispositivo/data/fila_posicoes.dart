@@ -72,9 +72,7 @@ class FilaPosicoesDisco implements FilaPosicoes {
 
   final int limite;
   final FlutterSecureStorage _secure;
-  late final FilaPosicoesMemoria _memoria = FilaPosicoesMemoria(
-    limite: limite,
-  );
+  late final FilaPosicoesMemoria _memoria = FilaPosicoesMemoria(limite: limite);
   Future<Database?>? _abertura;
 
   /// Abre uma vez só, mesmo com chamadas simultâneas; `null` = sem disco.
@@ -160,6 +158,4 @@ class FilaPosicoesDisco implements FilaPosicoes {
   );
 }
 
-final filaPosicoesProvider = Provider<FilaPosicoes>(
-  (_) => FilaPosicoesDisco(),
-);
+final filaPosicoesProvider = Provider<FilaPosicoes>((_) => FilaPosicoesDisco());

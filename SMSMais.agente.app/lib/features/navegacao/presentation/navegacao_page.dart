@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:agente/app/theme.dart';
+import 'package:agente/features/deslocamento/application/deslocamento_controller.dart';
 import 'package:agente/features/navegacao/data/navegacao_repository.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
 import 'package:agente/features/navegacao/presentation/widgets/confirmacao_parada_sheet.dart';
@@ -242,6 +243,8 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
       if (!vigente()) return;
       setState(() => _sessaoPronta = true);
+      // Distância e tempo do translado contam sozinhos a partir daqui.
+      ref.read(deslocamentoProvider.notifier).iniciarSeParado();
     } on SessionInitializationException catch (e) {
       if (vigente()) setState(() => _erro = _msgInit(e.code));
     } on Object catch (e) {
@@ -350,8 +353,10 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   Future<void> _seguirProxima() async {
     final proxima = _proxima;
     if (proxima == null) {
-      // Fim do translado: encerra guidance e limpa destinos (mesma sessão).
+      // Fim do translado: encerra guidance e limpa destinos (mesma sessão) e
+      // congela distância e tempo do translado na tela de Deslocamento.
       _simulando = false;
+      if (mounted) ref.read(deslocamentoProvider.notifier).parar();
       try {
         await GoogleMapsNavigator.stopGuidance();
         await GoogleMapsNavigator.clearDestinations();

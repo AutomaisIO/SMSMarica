@@ -8,8 +8,30 @@ import 'package:agente/features/dispositivo/domain/veiculo_vinculado.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Decide se o carro está andando pela velocidade do GPS, com tolerância para
+/// paradas curtas (semáforo, embarque) — senão o envio cairia para 60 s a cada
+/// sinal fechado e o Mapa da frota "congelaria" no meio do trajeto.
+class DetectorMovimento {
+  DetectorMovimento({
+    this.limiarKmh = 5,
+    this.tolerancia = const Duration(seconds: 30),
+  });
+
+  /// Acima disso está andando (parado, o GPS oscila entre 0 e ~3 km/h).
+  final double limiarKmh;
+  final Duration tolerancia;
+  DateTime? _ultimoMovimento;
+
+  bool emMovimento(double kmh, DateTime agora) {
+    if (kmh >= limiarKmh) _ultimoMovimento = agora;
+    final ultimo = _ultimoMovimento;
+    return ultimo != null && agora.difference(ultimo) < tolerancia;
+  }
+}
+
 /// Manda a posição do tablet para o Mapa da frota enquanto houver vínculo:
-/// a cada 5 s com deslocamento ativo, a cada 60 s parado. Todo ponto passa
+/// a cada 5 s com o carro andando, a cada 60 s parado — pela velocidade do
+/// GPS, sem depender de botão nem do contador do translado. Todo ponto passa
 /// pela [FilaPosicoes] em disco: sem rede, ou com o tablet reiniciado no
 /// meio, ele espera lá e sai em lotes de até [maxLote], do mais antigo ao
 /// mais novo, quando a rede volta. 401 = desvinculado no painel.
@@ -18,11 +40,12 @@ class EnvioPosicoesService {
 
   final Ref _ref;
   final FilaPosicoes _fila;
+  final DetectorMovimento _movimento = DetectorMovimento();
 
   /// Teto do servidor por envio.
   static const int maxLote = 500;
   static const Duration tick = Duration(seconds: 5);
-  static const Duration intervaloAtivo = Duration(seconds: 5);
+  static const Duration intervaloEmMovimento = Duration(seconds: 5);
   static const Duration intervaloParado = Duration(seconds: 60);
   static const _avisoDesvinculado =
       'Tablet desvinculado no painel. Vincule de novo.';
@@ -90,8 +113,10 @@ class EnvioPosicoesService {
     if (_ultimoFixEnfileirado == fix.timestamp) return;
 
     final desloc = _ref.read(deslocamentoProvider);
-    final intervalo = desloc.ativo ? intervaloAtivo : intervaloParado;
     final agora = DateTime.now();
+    final intervalo = _movimento.emMovimento(desloc.velocidadeAoVivoKmh, agora)
+        ? intervaloEmMovimento
+        : intervaloParado;
     final ultimo = _ultimoEnfileirado;
     if (ultimo != null && agora.difference(ultimo) < intervalo) return;
 
