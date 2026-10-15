@@ -54,7 +54,13 @@ class DispositivoController extends StateNotifier<EstadoDispositivo> {
 
   /// Lê o token salvo e confirma o veículo no servidor (sem rede, usa o cache).
   Future<void> carregar() async {
-    final token = await _tokens.ler();
+    String? token;
+    try {
+      token = await _tokens.ler();
+    } on Object catch (_) {
+      // Armazenamento cifrado ilegível (Keystore): sem vínculo, mas a tela
+      // de entrada não pode ficar carregando para sempre.
+    }
     if (token == null) {
       state = const EstadoDispositivo(carregando: false);
       return;

@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- HTTP só para localhost (servidor de teste pelo cabo). -->
+    <application android:networkSecurityConfig="@xml/rede_local_teste"/>
 </manifest>

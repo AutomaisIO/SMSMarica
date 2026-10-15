@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:agente/app/theme.dart';
 import 'package:agente/features/auth/facial/presentation/reconhecimento_facial_page.dart';
+import 'package:agente/features/auth/presentation/confirmar_motorista.dart';
 import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
 import 'package:agente/features/rota/data/rota_repository.dart';
 import 'package:agente/features/rota/domain/parada.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +21,13 @@ class RotaDoDiaPage extends ConsumerStatefulWidget {
 }
 
 class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
+  /// Confere quem está ao volante antes de abrir a navegação (ADR-0073).
+  Future<void> _navegar() async {
+    if (await confirmarMotoristaParaTranslado(context, ref) && mounted) {
+      unawaited(context.push('/navegacao'));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -41,20 +52,22 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
             child: BotaoReport(sobreBarra: true),
           ),
           const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.face),
-            tooltip: 'Reconhecimento facial',
-            onPressed: () => Navigator.of(context).push<void>(
-              MaterialPageRoute(
-                builder: (_) => const ReconhecimentoFacialPage(),
+          // Tela de calibração do reconhecimento: só nos builds de teste.
+          if (!kReleaseMode)
+            IconButton(
+              icon: const Icon(Icons.face),
+              tooltip: 'Reconhecimento facial (teste)',
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => const ReconhecimentoFacialPage(),
+                ),
               ),
             ),
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Sair',
+            tooltip: 'Trocar motorista',
             onPressed: () {
-              ref.read(sessaoProvider.notifier).sair();
+              unawaited(ref.read(sessaoProvider.notifier).sair());
               context.go('/login');
             },
           ),
@@ -67,7 +80,7 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: ElevatedButton.icon(
-                    onPressed: () => context.push('/navegacao'),
+                    onPressed: _navegar,
                     icon: const Icon(Icons.navigation),
                     label: const Text('Iniciar navegação do translado'),
                   ),
@@ -88,7 +101,8 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
                   padding: const EdgeInsets.all(16),
                   itemCount: paradas.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _ParadaCard(parada: paradas[i]),
+                  itemBuilder: (_, i) =>
+                      _ParadaCard(parada: paradas[i], onNavegar: _navegar),
                 ),
               ),
             ),
@@ -132,8 +146,9 @@ class _CabecalhoMotorista extends StatelessWidget {
 }
 
 class _ParadaCard extends StatelessWidget {
-  const _ParadaCard({required this.parada});
+  const _ParadaCard({required this.parada, required this.onNavegar});
   final Parada parada;
+  final VoidCallback onNavegar;
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +186,7 @@ class _ParadaCard extends StatelessWidget {
             color: MaricaTheme.vermelho,
           ),
           tooltip: 'Navegar',
-          onPressed: () => context.push('/navegacao'),
+          onPressed: onNavegar,
         ),
       ),
     );
