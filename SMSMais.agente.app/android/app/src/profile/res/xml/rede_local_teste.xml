@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só nos builds de teste (debug/profile): o tablet fala HTTP com um servidor
+     local pelo cabo USB (adb reverse tcp:5080 tcp:5080), sem passar pela VPN.
+     A release não tem isto: só HTTPS. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

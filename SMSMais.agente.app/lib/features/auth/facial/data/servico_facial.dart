@@ -23,11 +23,35 @@ class ResultadoVerificacao {
   final String? motoristaId;
 }
 
+/// O que o login do motorista precisa do reconhecimento (permite trocar por
+/// um falso nos testes, sem câmera nem ML Kit).
+abstract interface class ReconhecedorFacial {
+  bool get matchDisponivel;
+  String get versaoModelo;
+  Future<void> carregar();
+  Future<MotoristaFacial?> registro(String motoristaId);
+  Future<List<String>> cadastrados();
+  Future<void> esquecer(String motoristaId);
+  Future<void> trocarHash(String motoristaId, String fotoHash);
+  Future<bool> cadastrar({
+    required String motoristaId,
+    required String cpf,
+    required String nome,
+    required String caminhoFoto,
+    required String fotoHash,
+  });
+  Future<ResultadoVerificacao> verificar({
+    required String caminhoFoto,
+    String? motoristaId,
+    Iterable<String>? candidatos,
+  });
+}
+
 /// Orquestra captura → embedding → cadastro/match, usando o store cifrado.
 ///
-/// Enquanto o backend (BE-1) não entrega a foto de referência, o cadastro pode
-/// ser feito localmente (modo teste) capturando o rosto no próprio device.
-class ServicoFacial {
+/// O vetor de cada motorista vem da foto de referência baixada do servidor
+/// (ADR-0073); a tela de teste ainda cadastra localmente para calibrar.
+class ServicoFacial implements ReconhecedorFacial {
   ServicoFacial({
     EmbeddingFacial? embedding,
     ArmazenamentoFacial? armazenamento,
@@ -45,13 +69,47 @@ class ServicoFacial {
   final ArmazenamentoFacial _armazenamento;
   final DetectorRosto _detector;
 
+  @override
   bool get matchDisponivel => _embedding.disponivel;
 
+  @override
+  String get versaoModelo => _embedding.versao;
+
+  @override
   Future<void> carregar() => _embedding.carregar();
 
   /// Indica se já existe template facial deste motorista neste tablet.
   Future<bool> estaCadastrado(String motoristaId) async {
     return await _armazenamento.obter(motoristaId) != null;
+  }
+
+  @override
+  Future<MotoristaFacial?> registro(String motoristaId) =>
+      _armazenamento.obter(motoristaId);
+
+  @override
+  Future<List<String>> cadastrados() async =>
+      [for (final m in await _armazenamento.todos()) m.motoristaId];
+
+  @override
+  Future<void> esquecer(String motoristaId) =>
+      _armazenamento.apagar(motoristaId);
+
+  @override
+  Future<void> trocarHash(String motoristaId, String fotoHash) async {
+    final m = await _armazenamento.obter(motoristaId);
+    if (m == null) return;
+    await _armazenamento.salvar(
+      MotoristaFacial(
+        motoristaId: m.motoristaId,
+        cpf: m.cpf,
+        nome: m.nome,
+        embedding: m.embedding,
+        fotoHash: fotoHash,
+        modeloVersao: m.modeloVersao,
+        atualizadoEm: DateTime.now(),
+      ),
+    );
   }
 
   /// Gera o embedding de uma foto capturada (detecta o rosto no arquivo e
@@ -63,6 +121,7 @@ class ServicoFacial {
   }
 
   /// Cadastra (enrollment) o rosto de um motorista a partir de uma foto.
+  @override
   Future<bool> cadastrar({
     required String motoristaId,
     required String cpf,
@@ -86,11 +145,13 @@ class ServicoFacial {
     return true;
   }
 
-  /// Verifica 1:1 contra um motorista específico, ou 1:N (melhor match) quando
-  /// [motoristaId] é nulo. Útil no login quando o device tem um único cadastro.
+  /// Verifica 1:1 contra [motoristaId], contra os [candidatos] (os escalados
+  /// do dia) ou, sem nenhum dos dois, contra todos os cadastrados no tablet.
+  @override
   Future<ResultadoVerificacao> verificar({
     required String caminhoFoto,
     String? motoristaId,
+    Iterable<String>? candidatos,
   }) async {
     if (!_embedding.disponivel) {
       return const ResultadoVerificacao(
@@ -109,11 +170,13 @@ class ServicoFacial {
       );
     }
 
-    final candidatos = motoristaId != null
-        ? [await _armazenamento.obter(motoristaId)].whereType<MotoristaFacial>()
+    final ids = motoristaId != null ? [motoristaId] : candidatos?.toList();
+    final registros = ids != null
+        ? [for (final id in ids) await _armazenamento.obter(id)]
+            .whereType<MotoristaFacial>()
         : await _armazenamento.todos();
 
-    if (candidatos.isEmpty) {
+    if (registros.isEmpty) {
       return const ResultadoVerificacao(
         aprovado: false,
         score: 0,
@@ -123,7 +186,7 @@ class ServicoFacial {
 
     var melhor = -1.0;
     String? quem;
-    for (final c in candidatos) {
+    for (final c in registros) {
       final s = EmbeddingFacial.similaridade(atual, c.embedding);
       if (s > melhor) {
         melhor = s;
