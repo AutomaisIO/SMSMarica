@@ -3,6 +3,7 @@ import { ArrowLeft, Pencil } from 'lucide-react';
 import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
@@ -10,6 +11,8 @@ import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useMotoristaPorId } from '@/features/motoristas/api/queries';
 import { REGIMES_CONTRATACAO } from '@/features/motoristas/types';
+import { ConferenciasFaciais } from '@/features/biometria/components/ConferenciasFaciais';
+import { ReconhecimentoFacialMotorista } from '@/features/biometria/components/ReconhecimentoFacialMotorista';
 import { useListarRotas } from '@/features/translados/api/queries';
 import type { RotaDiariaListItem, StatusRota } from '@/features/translados/types';
 
@@ -53,6 +56,9 @@ export function MotoristaDetalhePage() {
 
   const detalhe = useMotoristaPorId(id || null);
   const translados = useListarRotas({ motoristaId: id });
+  // Apagar o rosto cadastrado é edição do motorista; as conferências no tablet são do Rastreamento.
+  const podeEditar = usePermissao('Motoristas', 'Edicao');
+  const podeVerConferencias = useTemConsulta('Rastreamento');
 
   const m = detalhe.data;
 
@@ -137,6 +143,12 @@ export function MotoristaDetalhePage() {
           </div>
         </div>
       ) : null}
+
+      {m ? (
+        <ReconhecimentoFacialMotorista motoristaId={m.id} nomeMotorista={m.nomeCompleto} podeEditar={podeEditar} />
+      ) : null}
+
+      {m && podeVerConferencias ? <ConferenciasFaciais motoristaId={m.id} ocultar="motorista" /> : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">Translados recentes</h2>

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { KeyRound, Tablet, Unlink } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
+import { LiberarEntradaMotorista } from '@/features/biometria/components/LiberarEntradaMotorista';
 import {
   useDesvincularDispositivo,
   useDispositivoVeiculo,
@@ -20,8 +22,19 @@ function haQuanto(iso: string | null): string {
 /**
  * Tablet fixo neste veículo: o carro aparece no Mapa da frota pela posição que ele manda.
  * Vincular = gerar um código de 8 letras e digitar no tablet (app do motorista › Vincular veículo).
+ * Com o tablet vinculado, a central (Rastreamento/Edição) libera a entrada de um motorista por
+ * código de uso único quando o rosto não resolve (ADR-0073).
  */
-export function TabletVinculado({ veiculoId, podeEditar }: { veiculoId: string; podeEditar: boolean }) {
+export function TabletVinculado({
+  veiculoId,
+  veiculoPlaca,
+  podeEditar,
+}: {
+  veiculoId: string;
+  veiculoPlaca?: string;
+  podeEditar: boolean;
+}) {
+  const podeLiberarMotorista = usePermissao('Rastreamento', 'Edicao');
   const dispositivo = useDispositivoVeiculo(veiculoId);
   const gerar = useGerarCodigoDispositivo(veiculoId);
   const desvincular = useDesvincularDispositivo(veiculoId);
@@ -119,6 +132,16 @@ export function TabletVinculado({ veiculoId, podeEditar }: { veiculoId: string; 
               </button>
             )
           ) : null}
+        </div>
+      ) : null}
+
+      {podeLiberarMotorista && d?.ativo ? (
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <p className="mb-2 text-xs text-gray-500">
+            O motorista não consegue entrar pelo rosto? Gere um código de uso único para ele entrar
+            neste tablet.
+          </p>
+          <LiberarEntradaMotorista veiculoId={veiculoId} veiculoPlaca={veiculoPlaca} />
         </div>
       ) : null}
     </section>

@@ -15,6 +15,12 @@ import type { Artigo } from '@/features/manual/tipos';
  * (`VeiculosService` — placa única e exclusão lógica —, `VeiculosValidators`, `VeiculosController`).
  * Tablet vinculado: `components/TabletVinculado`, `DispositivosVeiculoController`,
  * `DispositivoVeiculoService` e o Mapa da frota (`features/rastreamento/pages/MapaFrotaPage`).
+ * Entrada do motorista (ADR-0073): `features/biometria` (LiberarEntradaMotorista dentro do
+ * TabletVinculado — Rastreamento/Edição, só com tablet vinculado; ConferenciasFaciais no detalhe —
+ * Rastreamento/Consulta), o app do tablet (`SMSMais.agente.app`, login_page — "Tenho um código da
+ * central") e o backend (`BiometriaPainelService.GerarLiberacaoAsync` — 6 números, 15 min, motorista
+ * ativo, o novo anula o anterior do veículo; `BiometriaTabletService.UsarLiberacaoAsync` — uso
+ * único, 5 erros anulam, precisa de rede).
  */
 export const artigoVeiculos: Artigo = {
   slug: 'veiculos',
@@ -33,6 +39,13 @@ export const artigoVeiculos: Artigo = {
     'vincular tablet',
     'código de ativação',
     'mapa da frota',
+    'liberar entrada de motorista',
+    'código da central',
+    'login do motorista',
+    'reconhecimento facial',
+    'rosto',
+    'conferência',
+    'selfie',
     'GPS',
     'velocidade',
     'frota',
@@ -382,6 +395,67 @@ export const artigoVeiculos: Artigo = {
       ),
     },
     {
+      id: 'entrada-motorista',
+      titulo: 'Quem entra no tablet: rosto e código da central',
+      busca:
+        'entrada do motorista login tablet rosto reconhecimento facial escalado do dia liberar entrada de motorista código da central 6 números 15 minutos uso único tenho um código da central gerar outro anula conferências no tablet selfie ver no mapa aprovada recusada',
+      conteudo: (
+        <>
+          <P>
+            No tablet do carro, o motorista entra <strong>pelo rosto</strong>, e só entra quem está
+            escalado hoje naquele veículo. O cadastro do rosto é feito pelo próprio motorista, no
+            primeiro acesso — ver “Reconhecimento facial no tablet” no artigo “Motoristas”.
+          </P>
+          <P>
+            Quando o rosto não resolve — não confere, o motorista não está escalado hoje neste
+            carro, a câmera falhou ou o código do primeiro acesso não chega no WhatsApp —, a central
+            libera a entrada por um <strong>código de uso único</strong>:
+          </P>
+          <Passos
+            itens={[
+              {
+                titulo: (
+                  <>
+                    No detalhe do veículo, em <strong>Tablet vinculado</strong>, clique em{' '}
+                    <BotaoRef variante="outline">Liberar entrada de motorista</BotaoRef>.
+                  </>
+                ),
+                detalhe: 'O botão só aparece quando o veículo tem tablet vinculado.',
+              },
+              {
+                titulo: 'Escolha o motorista e clique em Gerar código.',
+                detalhe:
+                  'Os escalados hoje neste veículo aparecem primeiro (e já vêm escolhidos, se for um só). Só aparecem motoristas ativos.',
+              },
+              {
+                titulo: 'Passe ao motorista o código de 6 números que aparece grande na tela.',
+                detalhe: 'Vale 15 minutos (a tela mostra até que horas) e só pode ser usado uma vez.',
+              },
+              {
+                titulo: 'No tablet, ele toca em “Tenho um código da central” e digita o código.',
+                detalhe: 'O tablet precisa de internet nessa hora: é o servidor que confere o código.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="Um código valendo por veículo">
+            O código serve só para aquele veículo e aquele motorista. Gerar outro para o mesmo
+            veículo anula o anterior, e 5 tentativas erradas no tablet também anulam. Fica registrado
+            quem gerou o código, e a entrada aparece nas conferências com o nome de quem liberou.
+          </Callout>
+          <Sub>Conferências no tablet</Sub>
+          <P>
+            Abaixo do cartão do tablet, o detalhe do veículo mostra as conferências dos últimos 7
+            dias: cada entrada no tablet, cada conferência antes de um translado e cada primeiro
+            acesso, aprovadas ou recusadas — com o motorista (ou “Não identificado”, quando o rosto
+            não bateu com ninguém escalado), como entrou (rosto ou código da central), a nota do rosto
+            e o mínimo, “Ver no mapa” e “Ver selfie”. A selfie fica guardada por 90 dias; depois, a
+            tela avisa “Selfie apagada (retenção de 90 dias)”. A tabela se atualiza sozinha a cada 30
+            segundos.
+          </P>
+        </>
+      ),
+    },
+    {
       id: 'excluir',
       titulo: 'Excluir um veículo',
       busca: 'excluir desativar veículo vendido baixado histórico placa reservada reativar',
@@ -401,7 +475,7 @@ export const artigoVeiculos: Artigo = {
     {
       id: 'quem-pode',
       titulo: 'Quem pode o quê',
-      busca: 'permissão perfil módulo veículos consulta inclusão edição exclusão',
+      busca: 'permissão perfil módulo veículos consulta inclusão edição exclusão rastreamento liberar entrada de motorista conferências',
       conteudo: (
         <>
           <P>
@@ -415,6 +489,11 @@ export const artigoVeiculos: Artigo = {
               { termo: 'Exclusão', descricao: 'Excluir.' },
             ]}
           />
+          <P>
+            A entrada do motorista no tablet é do módulo <strong>Rastreamento</strong>:{' '}
+            <strong>Edição</strong> mostra o botão Liberar entrada de motorista, e{' '}
+            <strong>Consulta</strong> mostra as conferências no tablet.
+          </P>
         </>
       ),
     },
