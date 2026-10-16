@@ -20,11 +20,13 @@ final _parada = ParadaNavegacao(
       nome: 'Maria',
       confirmacao: StatusConfirmacao.confirmado,
       assento: 'Banco 1',
-      acompanhante: Acompanhante(
-        nome: 'José',
-        confirmacao: StatusConfirmacao.pendente,
-        assento: 'Banco 2',
-      ),
+      acompanhantes: [
+        Acompanhante(
+          nome: 'José',
+          confirmacao: StatusConfirmacao.pendente,
+          assento: 'Banco 2',
+        ),
+      ],
     ),
     PassageiroTranslado(
       id: 'pac-2',

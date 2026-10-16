@@ -14,6 +14,7 @@ class Parada {
   final int ordem;
   final String pacienteNome;
   final String endereco;
-  final DateTime horarioPrevisto;
+  /// Nulo quando a central não definiu o horário.
+  final DateTime? horarioPrevisto;
   final StatusParada status;
 }
