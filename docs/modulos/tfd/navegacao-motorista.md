@@ -159,6 +159,15 @@ Play Services (`client version: 0`).
   realizada**. O painel corrige em Atendimentos ▸ Confirmar — e o que a central confirmou o
   tablet não muda mais (`ConfirmadaPorUsuarioId`); o evento atrasado fica registrado como
   "não aplicado". Acompanhante só registra (não muda a sessão nem o faturamento).
+- **Volta depende do destino** (decisão de 16/10, etapa 3): unidade **fora do município** → a
+  van espera; a rota do tablet ganha "Volta — unidade" (`retorno:{unidadeId}`, hora prevista =
+  `HoraPrevistaRetorno` ou chegada + tempo médio) e a entrega em casa (`casa:{sessaoId}`), com
+  `trecho: "Volta"`. **Em Maricá** a van não espera: quem desceu entra em
+  `GET /rastreamento/aguardando` (pronto previsto) e a central puxa (`POST /rastreamento/puxar`,
+  alocação `Parada = Retorno`, lugar pela condição do paciente). Marcações da volta vão com
+  `volta: true`: embarque na unidade → `HoraSaidaUnidade`/motorista e veículo da volta; chegada em
+  casa → `HoraChegadaResidencia`; não estava na unidade → `AguardandoRetorno` (volta para a fila).
+  A volta não muda o faturamento (contado na ida).
 - **Quem está dirigindo**: antes de abrir a navegação, o tablet confere de novo o rosto
   do motorista da sessão ([ADR-0073](../../adr/0073-login-facial-motorista-tablet.md)).
 - O contador de distância/tempo do Deslocamento liga sozinho com a sessão de navegação

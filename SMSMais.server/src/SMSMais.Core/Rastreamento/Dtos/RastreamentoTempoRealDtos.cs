@@ -42,6 +42,10 @@ public sealed record PacienteAguardandoDto(
     double? Longitude,
     int? DistanciaMetros,
     bool AcompanhanteEsperado,
-    DateOnly DataPrevista);
+    DateOnly DataPrevista,
+    /// <summary>Unidade fora do município (a van esperava; este ficou para trás).</summary>
+    bool ForaDoMunicipio = false,
+    /// <summary>Quando deve estar pronto para voltar: o marcado na sessão, ou chegada + tempo médio.</summary>
+    TimeOnly? ProntoPrevisto = null);
 
 public sealed record PuxarPacienteRequest(Guid RotaId, Guid SessaoId);

@@ -5,6 +5,7 @@ import type {
   CriarAlocacaoPayload,
   EnderecoParaRevisar,
   EventoViagem,
+  PacienteAguardando,
   FiltrosListarRotas,
   GerarTransladoPayload,
   ResultadoGeracao,
@@ -85,4 +86,15 @@ export async function listarEnderecosParaRevisar(): Promise<EnderecoParaRevisar[
 
 export async function fixarPontoDoEndereco(id: string, latitude: number, longitude: number): Promise<void> {
   await http.post('/geo/fixar', { id, latitude, longitude });
+}
+
+/** Quem aguarda a volta (fila de "puxar"). */
+export async function listarAguardandoRetorno(): Promise<PacienteAguardando[]> {
+  const { data } = await http.get<PacienteAguardando[]>('/rastreamento/aguardando');
+  return data;
+}
+
+/** Põe a volta do paciente na rota: busca na unidade e entrega em casa. */
+export async function puxarParaRota(rotaId: string, sessaoId: string): Promise<void> {
+  await http.post('/rastreamento/puxar', { rotaId, sessaoId });
 }
