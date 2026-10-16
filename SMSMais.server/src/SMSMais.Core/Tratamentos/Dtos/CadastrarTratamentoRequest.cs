@@ -27,7 +27,8 @@ public sealed record AgendaRequest(
     int? QuantidadeSessoes,
     bool Continuo);
 
-/// <summary>Condição do paciente para a viagem. Por enquanto só registro: quem monta a rota lê.</summary>
+/// <summary>Condição do paciente para a viagem: o gerador escolhe veículo e assento por ela
+/// (<c>AcomodacaoNoVeiculo</c>) e o motorista lê no tablet.</summary>
 public sealed record NecessidadesRequest(
     MobilidadeTransporte Mobilidade,
     bool DificuldadeVeiculoAlto,
