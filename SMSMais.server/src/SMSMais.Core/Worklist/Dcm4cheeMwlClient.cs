@@ -43,7 +43,7 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         var estacao = await _estacao.ResolverAsync(s, ct);
         var item = ConstrutorMwlItem.Item(
             s, paciente, estacao.AeTitle, estacao.DescricaoMaxCaracteres,
-            estacao.CodigoProcedimentoDestinos, estacao.CodigoProcedimentoEsquema);
+            estacao.CodigoProcedimentoDestinos, estacao.CodigoProcedimentoEsquema, estacao.Campos);
         var req = new HttpRequestMessage(HttpMethod.Post, "mwlitems")
         {
             Content = JsonContent.Create(item, DicomJson),

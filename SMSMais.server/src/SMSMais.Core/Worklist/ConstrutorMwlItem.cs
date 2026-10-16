@@ -77,7 +77,8 @@ internal static class ConstrutorMwlItem
         ExameImagem s, PacienteResumo paciente, string stationAeTitle,
         int descricaoMax = Equipamento.DescricaoMaxPadrao,
         DestinoCodigoProcedimento codigoDestinos = DestinoCodigoProcedimento.Nenhum,
-        string? codigoEsquema = null)
+        string? codigoEsquema = null,
+        CamposOpcionaisWorklist? campos = null)
     {
         var tipo = s.TipoExame ?? throw new InvalidOperationException("TipoExame não carregado.");
         var quando = s.Solicitacao!.DataAgendada ?? DateTime.UtcNow;
@@ -117,20 +118,64 @@ internal static class ConstrutorMwlItem
 
         // Código do procedimento — SÓ para o aparelho que pediu (ADR-0074). Desligado, o item sai
         // exatamente como antes: nada de sequência vazia, nada de campo novo.
-        if (codigoDestinos != DestinoCodigoProcedimento.Nenhum
+        if (campos?.CodigoProcedimentoTag is { } tagCodigo)
+        {
+            // Aparelho que lê o código num campo de texto, fora de sequência: vai só o código.
+            if (CodigoDoProcedimento(s, descricaoMax, codigoEsquema) is { } codigo)
+                Texto(item, tagCodigo, codigo.Valor);
+        }
+        else if (codigoDestinos != DestinoCodigoProcedimento.Nenhum
             && CodigoDoProcedimento(s, descricaoMax, codigoEsquema) is { } codigo)
         {
             if (codigoDestinos.HasFlag(DestinoCodigoProcedimento.ProcedimentoSolicitado))
                 item["00321064"] = SequenciaDeCodigo(codigo);              // RequestedProcedureCodeSequence
             if (codigoDestinos.HasFlag(DestinoCodigoProcedimento.ProtocoloAgendado))
-            {
-                var sps = (JsonObject)((JsonArray)item["00400100"]!["Value"]!)[0]!;
-                sps["00400008"] = SequenciaDeCodigo(codigo);               // ScheduledProtocolCodeSequence
-            }
+                Sps(item)["00400008"] = SequenciaDeCodigo(codigo);         // ScheduledProtocolCodeSequence
         }
+
+        // Médico e unidade (adendo do ADR-0074): também só no aparelho que ligou, na tag que ele lê.
+        if (campos?.MedicoSolicitanteTag is { } tagMedico)
+            Texto(item, tagMedico, s.Solicitacao!.SolicitanteNome);
+        if (campos?.UnidadeTag is { } tagUnidade)
+            Texto(item, tagUnidade, NomeDaUnidade(s.Solicitacao!, campos.UnidadeOrigem));
 
         return item;
     }
+
+    /// <summary>A etapa agendada (0040,0100) do item — onde vão os atributos do módulo SPS.</summary>
+    private static JsonObject Sps(JsonObject item) => (JsonObject)((JsonArray)item["00400100"]!["Value"]!)[0]!;
+
+    /// <summary>
+    /// Nome da unidade escolhida como origem. Precisa da navegação carregada — quem monta o item
+    /// inclui as duas unidades da solicitação; sem ela, o campo simplesmente não vai.
+    /// </summary>
+    private static string? NomeDaUnidade(Solicitacao s, OrigemUnidadeWorklist origem) =>
+        origem == OrigemUnidadeWorklist.Solicitante ? s.UnidadeSolicitante?.Nome : s.UnidadeExecutante?.Nome;
+
+    /// <summary>
+    /// Texto numa tag escolhida no cadastro do equipamento, no VR que o dicionário DICOM dá a ela,
+    /// sem acento e no teto do VR. Sem valor, a tag não entra — campo vazio no aparelho é melhor que
+    /// um "null". Tag que deixou de ser utilizável (cadastro anterior a uma regra) também não entra:
+    /// o item segue válido e o resto chega.
+    /// </summary>
+    private static void Texto(JsonObject item, string tag, string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor) || !TagDicomWorklist.Utilizavel(tag)) return;
+        var vr = TagDicomWorklist.Vr(tag)!;
+        var destino = TagDicomWorklist.VaiNaEtapaAgendada(tag) ? Sps(item) : item;
+        destino[tag] = vr == "PN"
+            ? new JsonObject
+            {
+                ["vr"] = "PN",
+                ["Value"] = new JsonArray(new JsonObject { ["Alphabetic"] = Truncar(FormatarPn(valor), 64) }),
+            }
+            : ComVr(vr, Truncar(TextoLimpo(valor), TagDicomWorklist.Teto(vr)));
+    }
+
+    /// <summary>Sem acento, sem barra invertida (separador de múltiplos valores em LO/SH) e com os
+    /// espaços colapsados.</summary>
+    private static string TextoLimpo(string v) =>
+        string.Join(' ', Ascii(v).Replace('\\', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>
     /// O item de código do procedimento: código interno do SISREG em (0008,0100), esquema em

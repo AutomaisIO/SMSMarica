@@ -27,7 +27,8 @@ export type Equipamento = {
   descricaoMaxCaracteres: number;
   ativo: boolean;
   criadoEm: string;
-} & CodigoProcedimentoConfig;
+} & CodigoProcedimentoConfig &
+  CamposWorklistConfig;
 
 export type EquipamentoListItem = {
   id: string;
@@ -38,7 +39,8 @@ export type EquipamentoListItem = {
   identificadorDicom: string | null;
   descricaoMaxCaracteres: number;
   ativo: boolean;
-} & CodigoProcedimentoConfig;
+} & CodigoProcedimentoConfig &
+  CamposWorklistConfig;
 
 /**
  * Código do procedimento no item de worklist (ADR-0074): o código interno do SISREG vai em
@@ -61,7 +63,59 @@ export type SalvarEquipamentoPayload = {
   identificadorDicom?: string | null;
   descricaoMaxCaracteres?: number;
   ativo?: boolean;
-} & Partial<CodigoProcedimentoConfig>;
+} & Partial<CodigoProcedimentoConfig> & {
+    /** Vazio ou 0008,0100 = o padrão (na sequência); outra tag = o código vai como texto nela. */
+    codigoProcedimentoTag?: string | null;
+    enviarMedicoSolicitante?: boolean;
+    medicoSolicitanteTag?: string | null;
+    enviarUnidade?: boolean;
+    unidadeOrigem?: OrigemUnidadeWorklist;
+    unidadeTag?: string | null;
+  };
+
+/** De qual unidade do pedido sai o nome que vai no campo "unidade/clínica" do aparelho. */
+export type OrigemUnidadeWorklist = 'Executante' | 'Solicitante';
+
+export const ORIGENS_UNIDADE: { id: OrigemUnidadeWorklist; rotulo: string }[] = [
+  { id: 'Executante', rotulo: 'Unidade executante (onde o exame é feito)' },
+  { id: 'Solicitante', rotulo: 'Unidade solicitante (quem pediu)' },
+];
+
+/**
+ * Campos opcionais do item de worklist, ligados aparelho a aparelho (ADR-0074, adendo de
+ * 16/10/2026). Tag no formato "0008,0090". Cada aparelho lê o seu campo — quem descobre qual é o
+ * técnico, testando —, por isso a tag é editável. Tudo nasce desligado.
+ */
+export type CamposWorklistConfig = {
+  /** Null = o padrão: (0008,0100) dentro da sequência. */
+  codigoProcedimentoTag: string | null;
+  /** Null = não envia. */
+  medicoSolicitanteTag: string | null;
+  /** Null = não envia. */
+  unidadeTag: string | null;
+  unidadeOrigem: OrigemUnidadeWorklist;
+};
+
+/** (0008,0100) Code Value — o código dentro da sequência de código, como sempre foi. */
+export const TAG_CODIGO_PADRAO = '0008,0100';
+/** (0008,0090) Referring Physician's Name — o campo de médico que o CardioNet pede. */
+export const TAG_MEDICO_PADRAO = '0008,0090';
+/** (0008,0080) Institution Name para a executante; (0032,1033) Requesting Service para a solicitante. */
+export const TAG_UNIDADE_PADRAO: Record<OrigemUnidadeWorklist, string> = {
+  Executante: '0008,0080',
+  Solicitante: '0032,1033',
+};
+
+/** "(0008,0090)", "0008 0090" ou "00080090" → "00080090"; null quando fora do formato. */
+export function normalizarTag(tag: string): string | null {
+  const hex = tag.replace(/[(), ]/g, '').toUpperCase();
+  return /^[0-9A-F]{8}$/.test(hex) ? hex : null;
+}
+
+/** A tag do código é o padrão (0008,0100, ou vazia)? Então ele vai na sequência. */
+export function tagCodigoEhPadrao(tag: string): boolean {
+  return !tag.trim() || normalizarTag(tag) === normalizarTag(TAG_CODIGO_PADRAO);
+}
 
 /** Esquema do código quando o campo fica vazio (esquema privado: começa com "99"). */
 export const CODIGO_ESQUEMA_PADRAO = '99SMS';

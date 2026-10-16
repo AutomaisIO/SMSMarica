@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Equipamentos.Dtos;
+using SMSMais.Core.Worklist;
 using SMSMais.Core.Identidade;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -50,6 +51,8 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
         await ValidarUnidadeAsync(request.UnidadeId, cancellationToken);
         await GarantirNomeUnicoAsync(request.UnidadeId, nome, null, cancellationToken);
 
+        // Código numa tag de texto (fora de sequência) dispensa as sequências: uma coisa ou outra.
+        var codigoTag = EquipamentosMapper.TagCodigo(request.CodigoProcedimentoTag);
         var equipamento = new Equipamento
         {
             Id = Guid.CreateVersion7(),
@@ -58,9 +61,16 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
             ModalidadeDicom = request.ModalidadeDicom,
             IdentificadorDicom = Normalizar(request.IdentificadorDicom),
             DescricaoMaxCaracteres = request.DescricaoMaxCaracteres,
-            CodigoProcedimentoDestinos = EquipamentosMapper.Destinos(
-                request.CodigoNoProcedimentoSolicitado, request.CodigoNoProtocoloAgendado),
+            CodigoProcedimentoDestinos = codigoTag is null
+                ? EquipamentosMapper.Destinos(request.CodigoNoProcedimentoSolicitado, request.CodigoNoProtocoloAgendado)
+                : DestinoCodigoProcedimento.Nenhum,
             CodigoProcedimentoEsquema = Normalizar(request.CodigoProcedimentoEsquema),
+            CodigoProcedimentoTag = codigoTag,
+            MedicoSolicitanteTag = EquipamentosMapper.TagLigada(
+                request.EnviarMedicoSolicitante, request.MedicoSolicitanteTag, TagDicomWorklist.MedicoSolicitantePadrao),
+            UnidadeOrigem = request.UnidadeOrigem,
+            UnidadeTag = EquipamentosMapper.TagLigada(
+                request.EnviarUnidade, request.UnidadeTag, TagDicomWorklist.UnidadePadrao(request.UnidadeOrigem)),
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
@@ -94,6 +104,17 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
                 request.CodigoNoProtocoloAgendado ?? atual.HasFlag(DestinoCodigoProcedimento.ProtocoloAgendado));
             e.CodigoProcedimentoEsquema = Normalizar(request.CodigoProcedimentoEsquema);
         }
+        // Campos opcionais da worklist (adendo do ADR-0074) — mesma régua: omitido = mantém.
+        if (request.CodigoProcedimentoTag is not null)
+            e.CodigoProcedimentoTag = EquipamentosMapper.TagCodigo(request.CodigoProcedimentoTag);
+        if (e.CodigoProcedimentoTag is not null) e.CodigoProcedimentoDestinos = DestinoCodigoProcedimento.Nenhum;
+        if (request.EnviarMedicoSolicitante is { } enviarMedico)
+            e.MedicoSolicitanteTag = EquipamentosMapper.TagLigada(
+                enviarMedico, request.MedicoSolicitanteTag, TagDicomWorklist.MedicoSolicitantePadrao);
+        if (request.UnidadeOrigem is { } origem) e.UnidadeOrigem = origem;
+        if (request.EnviarUnidade is { } enviarUnidade)
+            e.UnidadeTag = EquipamentosMapper.TagLigada(
+                enviarUnidade, request.UnidadeTag, TagDicomWorklist.UnidadePadrao(e.UnidadeOrigem));
         e.Ativo = request.Ativo;
         e.AtualizadoEm = DateTime.UtcNow;
         e.AtualizadoPor = _usuarioAtual.UsuarioId;

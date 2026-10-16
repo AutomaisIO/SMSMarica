@@ -8,7 +8,7 @@ import type { Artigo } from '@/features/manual/tipos';
  * unidade) — o aparelho que recebe a worklist.
  *
  * Conferido no código: `features/equipamentos` (EquipamentosPage, ModalEquipamento,
- * SeloCodigoProcedimento), `unidades/components/EquipamentosDaUnidadeSecao` e no backend
+ * SelosWorklist), `unidades/components/EquipamentosDaUnidadeSecao` e no backend
  * (`EquipamentosService`, validadores, `ResolvedorEstacaoWorklist` — AE Title e escolha da sala —,
  * `ConstrutorMwlItem` — limite de descrição e código do procedimento, ADR-0074 —,
  * `EquipamentosController` para as permissões).
@@ -17,7 +17,7 @@ export const artigoEquipamentos: Artigo = {
   slug: 'equipamentos',
   titulo: 'Equipamentos de imagem',
   resumo:
-    'O cadastro de cada aparelho de imagem da unidade: o AE Title por onde a worklist chega, o que ele aguenta receber e, quando ele pede, o código do procedimento.',
+    'O cadastro de cada aparelho de imagem da unidade: o AE Title por onde a worklist chega, o que ele aguenta receber e, quando ele pede, o código do procedimento, o médico solicitante e a unidade.',
   grupo: 'assistencial',
   icone: ScanLine,
   rota: '/app/equipamentos',
@@ -52,6 +52,16 @@ export const artigoEquipamentos: Artigo = {
     'esquema',
     '99SMS',
     'envia código',
+    'médico solicitante',
+    'unidade solicitante',
+    'unidade executante',
+    'clínica',
+    'tag DICOM',
+    '0008,0090',
+    '0008,0080',
+    '0032,1033',
+    'envia médico',
+    'envia unidade',
   ],
   secoes: () => [
     {
@@ -109,41 +119,85 @@ export const artigoEquipamentos: Artigo = {
       ),
     },
     {
-      id: 'codigo-procedimento',
-      titulo: 'Código do procedimento na worklist (0008,0100)',
+      id: 'o-que-vai-na-worklist',
+      titulo: 'O que vai na worklist deste aparelho',
       busca:
-        'código do procedimento 0008,0100 0032,1064 0040,0008 código interno SISREG protocolo fornecedor esquema 99SMS envia código raio-x CDT lista do fornecedor sequência',
+        'campos opcionais tag DICOM médico solicitante unidade clínica executante solicitante origem do dado 0008,0090 0008,0080 0032,1033 envia médico envia unidade CardioNet técnico padrão',
+      conteudo: (
+        <>
+          <P>
+            Além do paciente e do exame, que vão sempre, cada aparelho pode receber três campos a mais:
+            o <strong>código do procedimento</strong>, o <strong>médico solicitante</strong> e a{' '}
+            <strong>unidade</strong> (a “clínica” de alguns consoles). Cada um tem a sua marcação e a sua{' '}
+            <strong>tag DICOM</strong> — o campo do aparelho onde o dado entra.
+          </P>
+          <Lista>
+            <Item>
+              <strong>Médico solicitante</strong> — o nome de quem pediu o exame, como veio no pedido.
+              Tag padrão <strong>0008,0090</strong> (Referring Physician's Name), a que o CardioNet da
+              cardiologia do CDT lê.
+            </Item>
+            <Item>
+              <strong>Unidade (clínica)</strong> — escolha a <strong>origem do dado</strong>: a unidade{' '}
+              <strong>executante</strong> (onde o exame é feito) ou a <strong>solicitante</strong> (quem
+              pediu). Tag padrão 0008,0080 para a executante e 0032,1033 para a solicitante.
+            </Item>
+            <Item>
+              <strong>Código do procedimento</strong> — ver a seção seguinte.
+            </Item>
+          </Lista>
+          <P>
+            A tag já vem com o padrão. Mude só se o técnico do aparelho pedir outra: o sistema aceita
+            qualquer tag de texto do dicionário DICOM, mas recusa as que o item já usa (paciente, nº do
+            pedido, descrição do exame, data agendada…) e não deixa dois campos na mesma tag.
+          </P>
+          <P>
+            Na lista, o aparelho ganha um selo por campo ligado — <strong>envia médico (0008,0090)</strong>,{' '}
+            <strong>envia unidade executante (0008,0080)</strong> — ao lado do AE Title.
+          </P>
+          <Callout tipo="atencao" titulo="Vale para os exames enviados depois">
+            O que já está na lista do aparelho não muda ao salvar o cadastro. Para um exame que já foi,
+            use <em>Reenviar worklist</em> na tela do exame. Desligado — o padrão —, o item sai exatamente
+            como sempre saiu, e ligar num aparelho não muda nada nos outros.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'codigo-procedimento',
+      titulo: 'Código do procedimento na worklist',
+      busca:
+        'código do procedimento 0008,0100 0032,1064 0040,0008 código interno SISREG protocolo fornecedor esquema 99SMS envia código raio-x CDT lista do fornecedor sequência tag de texto',
       conteudo: (
         <>
           <P>
             Alguns aparelhos escolhem o protocolo sozinhos pelo código do procedimento que vem na
             worklist — em vez de o técnico procurar na tela qual é o exame. Para isso, o fornecedor
             cadastra no aparelho a lista de códigos, e o sistema passa a mandar, em cada exame, o{' '}
-            <strong>código interno do SISREG</strong> no campo <strong>(0008,0100)</strong>.
+            <strong>código interno do SISREG</strong>.
           </P>
           <Sub>Como ligar</Sub>
           <Lista>
             <Item>
-              Marque <strong>Enviar o código do procedimento em (0008,0100)</strong>.
+              Marque <strong>Código do procedimento</strong>.
             </Item>
             <Item>
-              Escolha <strong>em que sequência</strong> o aparelho lê o código: a do procedimento
-              solicitado (0032,1064) ou a do protocolo agendado (0040,0008). Ao ligar, as duas já vêm
-              marcadas — mandar nas duas é inofensivo quando não se sabe qual o aparelho lê.
+              <strong>Tag DICOM do código</strong> — no padrão, <strong>0008,0100</strong>, o código vai
+              dentro de uma sequência de código, com esquema e descrição. Se o aparelho lê o código num
+              campo de texto comum, ponha a tag desse campo: o código vai sozinho nela.
+            </Item>
+            <Item>
+              Com a tag no padrão, escolha <strong>em que sequência</strong> o aparelho lê o código: a do
+              procedimento solicitado (0032,1064) ou a do protocolo agendado (0040,0008). Ao ligar, as duas
+              já vêm marcadas — mandar nas duas é inofensivo quando não se sabe qual o aparelho lê.
             </Item>
             <Item>
               <strong>Esquema</strong> (0008,0102) — deixe em branco (vale <em>99SMS</em>), a não ser
               que o fornecedor peça outro.
             </Item>
           </Lista>
-          <P>
-            Na lista, o aparelho ganha o selo <strong>envia código (0008,0100)</strong> ao lado do AE
-            Title.
-          </P>
           <Callout tipo="atencao" titulo="Ligue só no aparelho que foi cadastrado com os códigos">
-            Desligado — o padrão —, o item da worklist sai exatamente como sempre saiu. Ligar num
-            aparelho não muda nada nos outros. Ligar num aparelho que não conhece os códigos não
-            quebra o exame, mas também não ajuda.
+            Ligar num aparelho que não conhece os códigos não quebra o exame, mas também não ajuda.
           </Callout>
           <Sub>O que vai em cada exame</Sub>
           <Lista>
@@ -153,9 +207,9 @@ export const artigoEquipamentos: Artigo = {
               <em>Exames e consultas → Pedido com mais de um procedimento</em>).
             </Item>
             <Item>
-              A descrição do procedimento sem acento e no limite do aparelho. Nomes longos são
-              abreviados antes de cortar (“RADIOGRAFIA” vira “RX”), para o direito e o esquerdo não
-              ficarem iguais.
+              Na sequência, também a descrição do procedimento sem acento e no limite do aparelho. Nomes
+              longos são abreviados antes de cortar (“RADIOGRAFIA” vira “RX”), para o direito e o esquerdo
+              não ficarem iguais.
             </Item>
             <Item>
               Pedido lançado à mão, sem código do SISREG, usa o código do tipo de exame. Sem nenhum
@@ -173,14 +227,15 @@ export const artigoEquipamentos: Artigo = {
         <P>
           Tudo aqui é governado pelo módulo <strong>Equipamentos</strong> do perfil: ver a lista é{' '}
           <strong>Consulta</strong>; cadastrar, <strong>Inclusão</strong>; mudar AE Title, limite e
-          código, <strong>Edição</strong>; excluir, <strong>Exclusão</strong>.
+          o que vai na worklist, <strong>Edição</strong>; excluir, <strong>Exclusão</strong>.
         </P>
       ),
     },
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'aparelho não recebe worklist protocolo não escolhido código não chega limite voltou 64',
+      busca:
+        'aparelho não recebe worklist protocolo não escolhido código não chega limite voltou 64 médico não aparece unidade clínica não aparece tag',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -193,6 +248,11 @@ export const artigoEquipamentos: Artigo = {
               termo: 'Liguei o código e o aparelho não escolheu o protocolo.',
               descricao:
                 'O aparelho só reconhece os códigos que o fornecedor cadastrou nele. Confira com o fornecedor a lista e a sequência em que ele lê o código; na dúvida, deixe as duas marcadas.',
+            },
+            {
+              termo: 'Liguei o médico (ou a unidade) e não aparece no aparelho.',
+              descricao:
+                'Primeiro, o exame tem de ter sido enviado depois de salvar — para os que já estavam na lista, use Reenviar worklist. Se ainda assim não aparece, o aparelho lê outro campo: peça ao técnico a tag certa e troque no cadastro. Há aparelhos que simplesmente não pedem o campo (a “clínica” de alguns consoles é um cadastro local deles).',
             },
             {
               termo: 'Editei o equipamento e o limite da descrição mudou sozinho?',

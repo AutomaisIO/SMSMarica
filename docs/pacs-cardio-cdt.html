@@ -44,6 +44,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>Texto em <strong>ISO_IR 100 (Latin-1)</strong>. O item da nossa worklist sai sem acento, então nome com</li>
 </ul>
 <p>  acento chega sem acento — não chega corrompido.</p>
+<p><strong>O que ele pede de fato</strong> (captura do C-FIND em 16/10/2026, versão instalada no CDT — a declaração de conformidade de 2020 está incompleta): nº do pedido, <strong>médico solicitante (0008,0090)</strong>, <strong>descrição do exame (0032,1060)</strong>, Study UID; do paciente, nome, ID, nascimento, sexo, altura, peso, endereço, país, região, telefone e tabagismo; e na etapa agendada, Modality, Station AE e o período de datas (do "Período" configurado até hoje). <strong>Nenhum campo de instituição/clínica.</strong></p>
 <hr>
 <h2>2. Servidor</h2>
 <div class="tw"><table><thead><tr><th>Item</th><th>Valor</th></tr></thead><tbody>
@@ -82,9 +83,13 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <hr>
 <h2>5. Pontos de atenção</h2>
 <ul>
-<li><strong>A lista não distingue Holter de MAPA.</strong> O CardioNet não pede nem mostra a descrição do exame</li>
+<li><strong>Holter × MAPA.</strong> O CardioNet pede a descrição do exame (<code>0032,1060</code>), que vai com o nome do</li>
 </ul>
-<p>  (não consulta <code>0032,1060</code> nem <code>0040,0007</code>) e não exibe a modalidade. Quem escolhe "Holter" ou   "MAPA" é o operador, ao criar o exame. Se o mesmo paciente tiver os dois agendados, aparecem   duas linhas com nº de pedido (Accession) diferente.</p>
+<p>  procedimento; mas quem escolhe "Holter" ou "MAPA" no programa é o operador, ao criar o exame. Se o   mesmo paciente tiver os dois agendados, aparecem duas linhas com nº de pedido (Accession) diferente.</p>
+<ul>
+<li><strong>Médico solicitante e "clínica".</strong> Ligam-se no cadastro do equipamento <code>CARDIO-CDT</code> (Exames de</li>
+</ul>
+<p>  Imagem → Equipamentos → "O que vai na worklist deste aparelho"): médico na <code>0008,0090</code>, que o   CardioNet pede; unidade com origem <strong>executante</strong>. Como o CardioNet não pede campo de instituição,   a "clínica" pode não vir da worklist — se não aparecer, é cadastro local do programa.</p>
 <ul>
 <li><strong>O item não sai da lista sozinho.</strong> Nos outros aparelhos, o item some quando a imagem chega ao</li>
 </ul>

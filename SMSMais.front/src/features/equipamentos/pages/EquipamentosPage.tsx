@@ -10,7 +10,7 @@ import {
   useListarEquipamentos,
 } from '@/features/equipamentos/api/queries';
 import { ModalEquipamento } from '@/features/equipamentos/components/ModalEquipamento';
-import { SeloCodigoProcedimento } from '@/features/equipamentos/components/SeloCodigoProcedimento';
+import { SelosWorklist } from '@/features/equipamentos/components/SelosWorklist';
 import { rotuloModalidade, type EquipamentoListItem } from '@/features/equipamentos/types';
 
 export function EquipamentosPage() {
@@ -47,7 +47,7 @@ export function EquipamentosPage() {
         e.identificadorDicom ? (
           <span className="whitespace-nowrap">
             <span className="font-mono text-xs text-gray-800">{e.identificadorDicom}</span>
-            <SeloCodigoProcedimento equipamento={e} />
+            <SelosWorklist equipamento={e} />
           </span>
         ) : (
           <span className="text-xs text-gray-400">—</span>

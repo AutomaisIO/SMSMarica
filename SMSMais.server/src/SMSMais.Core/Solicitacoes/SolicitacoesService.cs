@@ -1276,7 +1276,9 @@ public sealed class SolicitacoesService(
         // solicitacaoId aqui é o id PÚBLICO do exame (= ExameImagem.Id).
         var s = await _db.ExamesImagem
             .Include(x => x.TipoExame).ThenInclude(t => t!.ProcedimentoSigtap)
-            .Include(x => x.Solicitacao)
+            // As duas unidades: o equipamento pode pedir o nome de uma delas na worklist (adendo ADR-0074).
+            .Include(x => x.Solicitacao).ThenInclude(p => p!.UnidadeExecutante)
+            .Include(x => x.Solicitacao).ThenInclude(p => p!.UnidadeSolicitante)
             // O código do procedimento (0008,0100) do exame extra é o do item do pedido (ADR-0074).
             .Include(x => x.SolicitacaoProcedimento)
             .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
@@ -1485,7 +1487,8 @@ public sealed class SolicitacoesService(
     {
         var s = await _db.ExamesImagem
             .Include(x => x.TipoExame)
-            .Include(x => x.Solicitacao)
+            .Include(x => x.Solicitacao).ThenInclude(p => p!.UnidadeExecutante)
+            .Include(x => x.Solicitacao).ThenInclude(p => p!.UnidadeSolicitante)
             .Include(x => x.SolicitacaoProcedimento)
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(ExameImagem), id);

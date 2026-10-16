@@ -35,13 +35,15 @@ public sealed class ResolvedorEstacaoWorklist(
                 {
                     e.Nome, e.IdentificadorDicom, e.DescricaoMaxCaracteres,
                     e.CodigoProcedimentoDestinos, e.CodigoProcedimentoEsquema,
+                    e.MedicoSolicitanteTag, e.UnidadeTag, e.UnidadeOrigem, e.CodigoProcedimentoTag,
                 })
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (eq is not null && AeTitleValido(eq.IdentificadorDicom))
                 return new EstacaoWorklist(
                     eq.IdentificadorDicom!.Trim(), eq.DescricaoMaxCaracteres,
-                    eq.CodigoProcedimentoDestinos, eq.CodigoProcedimentoEsquema);
+                    eq.CodigoProcedimentoDestinos, eq.CodigoProcedimentoEsquema,
+                    CamposOpcionaisWorklist.De(eq.MedicoSolicitanteTag, eq.UnidadeTag, eq.UnidadeOrigem, eq.CodigoProcedimentoTag));
 
             // Equipamento escolhido saiu do ar (desativado/excluído/AE apagado): cai na dedução,
             // que ou acha um substituto único ou para e pede escolha nova.
@@ -61,7 +63,8 @@ public sealed class ResolvedorEstacaoWorklist(
         {
             return new EstacaoWorklist(
                 configurado.IdentificadorDicom!.Trim(), configurado.DescricaoMaxCaracteres,
-                configurado.CodigoProcedimentoDestinos, configurado.CodigoProcedimentoEsquema);
+                configurado.CodigoProcedimentoDestinos, configurado.CodigoProcedimentoEsquema,
+                CamposOpcionaisWorklist.De(configurado));
         }
 
         var candidatos = await ListarCandidatosAsync(exame, cancellationToken);
@@ -104,6 +107,7 @@ public sealed class ResolvedorEstacaoWorklist(
             {
                 e.Id, e.Nome, e.IdentificadorDicom, e.DescricaoMaxCaracteres,
                 e.CodigoProcedimentoDestinos, e.CodigoProcedimentoEsquema,
+                e.MedicoSolicitanteTag, e.UnidadeTag, e.UnidadeOrigem, e.CodigoProcedimentoTag,
             })
             .ToListAsync(cancellationToken);
 
@@ -113,7 +117,8 @@ public sealed class ResolvedorEstacaoWorklist(
             if (AeTitleValido(e.IdentificadorDicom))
                 validos.Add(new EquipamentoCandidato(
                     e.Id, e.Nome, e.IdentificadorDicom!.Trim(), e.DescricaoMaxCaracteres,
-                    e.CodigoProcedimentoDestinos, e.CodigoProcedimentoEsquema));
+                    e.CodigoProcedimentoDestinos, e.CodigoProcedimentoEsquema,
+                    CamposOpcionaisWorklist.De(e.MedicoSolicitanteTag, e.UnidadeTag, e.UnidadeOrigem, e.CodigoProcedimentoTag)));
             else
                 _logger.LogWarning(
                     "Equipamento '{Equipamento}' tem identificador DICOM inválido para AE Title ('{Ae}') — fora da worklist.",

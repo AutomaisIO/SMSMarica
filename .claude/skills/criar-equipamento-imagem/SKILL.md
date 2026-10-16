@@ -134,6 +134,11 @@ Exames de Imagem → Equipamentos. `identificador_dicom` = o AE Title do **apare
 
 - **`descricao_max_caracteres`**: deixar o padrão **64** (teto do VR `LO`). Só baixar se o console
   daquele aparelho falhar com descrição longa — é o caso do Fuji FDR-3000AWS, que fica em 16.
+- **"O que vai na worklist deste aparelho"** (ADR-0074 + adendo de 16/10/2026): código do
+  procedimento, médico solicitante e unidade (origem executante ou solicitante), cada um com a sua
+  tag DICOM editável. Tudo desligado por padrão. **Antes de ligar, descubra o que o aparelho pede:**
+  capture o C-FIND dele (receita em "Diagnóstico: a descrição não aparece") — o CardioNet, por
+  exemplo, pede `0008,0090` e nenhum campo de instituição.
 - **`ativo`**: **perguntar ao operador**, não decidir sozinho. Cadastrar **INATIVO** é o default
   seguro quando o aparelho ainda não chegou — um equipamento ativo a mais na mesma modalidade
   torna a dedução ambígua e **todo envio daquela unidade passa a exigir escolha da recepção**

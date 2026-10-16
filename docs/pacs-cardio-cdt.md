@@ -21,6 +21,12 @@ Pela declaração de conformidade do próprio CardioNet Client DICOM (manual 01.
 - Texto em **ISO_IR 100 (Latin-1)**. O item da nossa worklist sai sem acento, então nome com
   acento chega sem acento — não chega corrompido.
 
+**O que ele pede de fato** (captura do C-FIND em 16/10/2026, versão instalada no CDT — a declaração
+de conformidade de 2020 está incompleta): nº do pedido, **médico solicitante (0008,0090)**,
+**descrição do exame (0032,1060)**, Study UID; do paciente, nome, ID, nascimento, sexo, altura, peso,
+endereço, país, região, telefone e tabagismo; e na etapa agendada, Modality, Station AE e o período
+de datas (do "Período" configurado até hoje). **Nenhum campo de instituição/clínica.**
+
 ---
 
 ## 2. Servidor
@@ -78,10 +84,13 @@ CardioNet Client DICOM → Criar novo exame → fonte "DICOM" → Configuraçõe
 
 ## 5. Pontos de atenção
 
-- **A lista não distingue Holter de MAPA.** O CardioNet não pede nem mostra a descrição do exame
-  (não consulta `0032,1060` nem `0040,0007`) e não exibe a modalidade. Quem escolhe "Holter" ou
-  "MAPA" é o operador, ao criar o exame. Se o mesmo paciente tiver os dois agendados, aparecem
-  duas linhas com nº de pedido (Accession) diferente.
+- **Holter × MAPA.** O CardioNet pede a descrição do exame (`0032,1060`), que vai com o nome do
+  procedimento; mas quem escolhe "Holter" ou "MAPA" no programa é o operador, ao criar o exame. Se o
+  mesmo paciente tiver os dois agendados, aparecem duas linhas com nº de pedido (Accession) diferente.
+- **Médico solicitante e "clínica".** Ligam-se no cadastro do equipamento `CARDIO-CDT` (Exames de
+  Imagem → Equipamentos → "O que vai na worklist deste aparelho"): médico na `0008,0090`, que o
+  CardioNet pede; unidade com origem **executante**. Como o CardioNet não pede campo de instituição,
+  a "clínica" pode não vir da worklist — se não aparecer, é cadastro local do programa.
 - **O item não sai da lista sozinho.** Nos outros aparelhos, o item some quando a imagem chega ao
   PACS. O CardioNet não manda nada ao PACS, então o Holter feito continua na lista. Por isso o
   filtro de **Período**. Sem ele, a lista cresce até o teto de 1000 itens do CardioNet. (Pendência

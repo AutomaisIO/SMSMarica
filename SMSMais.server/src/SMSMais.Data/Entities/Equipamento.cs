@@ -56,6 +56,27 @@ public class Equipamento
     /// SISREG.</summary>
     public const string CodigoProcedimentoEsquemaPadrao = "99SMS";
 
+    // ---- Campos opcionais do item de worklist (ADR-0074, adendo de 16/10/2026) ----
+    // Tags gravadas como 8 dígitos hexadecimais, sem vírgula ("00080090"). Cada aparelho lê o seu
+    // campo, e quem descobre qual é o técnico, testando — por isso a tag é escolhida no cadastro.
+
+    /// <summary>
+    /// Tag onde vai o código do procedimento quando o aparelho NÃO o lê numa sequência de código.
+    /// Null = o padrão: (0008,0100) dentro das sequências de <see cref="CodigoProcedimentoDestinos"/>.
+    /// Preenchida, o código vai como texto simples nesta tag e as sequências não são usadas.
+    /// </summary>
+    public string? CodigoProcedimentoTag { get; set; }
+
+    /// <summary>Tag do nome do médico solicitante. Null = não envia (padrão). O usual é (0008,0090)
+    /// Referring Physician's Name — é a que o CardioNet pede.</summary>
+    public string? MedicoSolicitanteTag { get; set; }
+
+    /// <summary>Tag do nome da unidade (a "clínica" de alguns consoles). Null = não envia (padrão).</summary>
+    public string? UnidadeTag { get; set; }
+
+    /// <summary>De qual unidade do pedido sai o nome de <see cref="UnidadeTag"/>.</summary>
+    public OrigemUnidadeWorklist UnidadeOrigem { get; set; } = OrigemUnidadeWorklist.Executante;
+
     /// <summary>Visibilidade no agendamento. Soft-delete via <see cref="ExcluidoEm"/>.</summary>
     public bool Ativo { get; set; } = true;
 
