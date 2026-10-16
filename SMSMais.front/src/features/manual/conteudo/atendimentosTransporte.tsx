@@ -332,7 +332,7 @@ export const artigoAtendimentosTransporte: Artigo = {
     {
       id: 'no-app',
       titulo: 'O que o paciente vê no app',
-      busca: 'app do paciente cidadão minhas viagens horário véspera meus acompanhantes adicionar cpf nascimento limite de consultas link código',
+      busca: 'app do paciente cidadão minhas viagens horário véspera meus acompanhantes adicionar cpf nascimento limite de consultas link código avaliar avaliação nota',
       conteudo: (
         <>
           <P>
@@ -343,6 +343,10 @@ export const artigoAtendimentosTransporte: Artigo = {
           <P>
             Em <strong>Meus acompanhantes</strong>, ele cadastra alguém pelo CPF e pela data de
             nascimento — o app mostra o nome encontrado para ele confirmar.
+          </P>
+          <P>
+            Depois da viagem, em <strong>Avalie suas viagens</strong>, ele dá uma nota de 1 a 5 ao
+            transporte — veja o artigo de Avaliações.
           </P>
           <Callout tipo="lgpd" titulo="Consulta de dado de outra pessoa">
             A consulta pelo app tem limite diário por paciente. E quem entrou no app pelo link do

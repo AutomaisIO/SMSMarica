@@ -7,6 +7,8 @@ using SMSMais.Api.Auth;
 using SMSMais.Core.Acompanhantes;
 using SMSMais.Core.Acompanhantes.Dtos;
 using SMSMais.Core.Atendimentos;
+using SMSMais.Core.Avaliacoes;
+using SMSMais.Core.Avaliacoes.Dtos;
 using SMSMais.Core.Cidadao;
 using SMSMais.Core.Cidadao.Dtos;
 using SMSMais.Core.DocumentosPaciente;
@@ -36,7 +38,8 @@ public sealed class CidadaoController(
     ICidadaoClinicoService clinico,
     ITelefoneValidacaoService telefones,
     ITratamentosService transporte,
-    IAcompanhantesService acompanhantes) : ControllerBase
+    IAcompanhantesService acompanhantes,
+    IAvaliacoesService avaliacoes) : ControllerBase
 {
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
     [HttpGet("consentimento")]
@@ -122,6 +125,31 @@ public sealed class CidadaoController(
     [ProducesResponseType<IReadOnlyList<ViagemTransporteDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<ViagemTransporteDto>> MeusTranslados(CancellationToken ct) =>
         await transporte.ListarProximasViagensAsync(PacienteId(), cancellationToken: ct);
+
+    /// <summary>Viagens feitas nos últimos 30 dias, com a nota já dada (nula = ainda não avaliou).</summary>
+    [HttpGet("viagens-para-avaliar")]
+    [ProducesResponseType<IReadOnlyList<ViagemParaAvaliarDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ViagemParaAvaliarDto>> ViagensParaAvaliar(CancellationToken ct) =>
+        await avaliacoes.ViagensParaAvaliarAsync(PacienteId(), ct);
+
+    /// <summary>O paciente avalia a viagem (nota de 1 a 5 e, se quiser, um comentário). Uma vez por
+    /// viagem, até 30 dias depois. Como a troca de telefone e os acompanhantes: pelo link do WhatsApp
+    /// só lê, e a equipe entrando como o paciente não avalia por ele.</summary>
+    [HttpPost("viagens/{sessaoId:guid}/avaliacao")]
+    [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AvaliarViagem(Guid sessaoId, [FromBody] AvaliarViagemRequest req, CancellationToken ct)
+    {
+        GarantirNaoPersonificada("avaliacao.personificacao", "avaliar a viagem pelo paciente");
+        if (string.Equals(User.FindFirst("canal")?.Value, "magic-link", StringComparison.Ordinal))
+            throw new SMSMais.Core.Common.Excecoes.ConflitoException(
+                "avaliacao.sessao_por_link",
+                "Para avaliar a viagem, entre no aplicativo com o código enviado por WhatsApp.");
+        var id = await avaliacoes.AvaliarPeloPacienteAsync(PacienteId(), sessaoId, req, ct);
+        return StatusCode(StatusCodes.Status201Created, id);
+    }
 
     [HttpGet("me/acompanhantes")]
     [ProducesResponseType<IReadOnlyList<AcompanhanteCidadaoDto>>(StatusCodes.Status200OK)]

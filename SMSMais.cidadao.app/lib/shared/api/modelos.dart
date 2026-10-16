@@ -121,6 +121,40 @@ class ConsentimentoStatus {
 }
 
 /// Uma viagem do Transporte de Pacientes (sessão do atendimento).
+/// Viagem feita nos últimos 30 dias, para avaliar (`ViagemParaAvaliar` do `api.ts`).
+class ViagemParaAvaliar {
+  const ViagemParaAvaliar({
+    required this.sessaoId,
+    required this.data,
+    required this.destino,
+    this.motorista,
+    this.nota,
+    this.comentario,
+  });
+
+  factory ViagemParaAvaliar.deJson(Json j) => ViagemParaAvaliar(
+        sessaoId: j['sessaoId'] as String,
+        data: _s(j['data']) ?? '',
+        destino: _s(j['destino']) ?? '',
+        motorista: _s(j['motorista']),
+        nota: _i(j['nota']),
+        comentario: _s(j['comentario']),
+      );
+
+  final String sessaoId;
+
+  /// Data pura `aaaa-mm-dd`.
+  final String data;
+  final String destino;
+
+  /// Só o primeiro nome de quem levou.
+  final String? motorista;
+
+  /// Nula = ainda não avaliou.
+  final int? nota;
+  final String? comentario;
+}
+
 class ViagemTransporte {
   const ViagemTransporte({
     required this.sessaoId,
