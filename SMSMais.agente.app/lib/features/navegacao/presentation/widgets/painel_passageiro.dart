@@ -27,8 +27,11 @@ class PainelPassageiro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hh = parada.horarioPrevisto.hour.toString().padLeft(2, '0');
-    final mm = parada.horarioPrevisto.minute.toString().padLeft(2, '0');
+    final hora = parada.horarioPrevisto;
+    final textoHora = hora == null
+        ? null
+        : '${hora.hour.toString().padLeft(2, '0')}:'
+            '${hora.minute.toString().padLeft(2, '0')}';
     final principal =
         parada.passageiros.isNotEmpty ? parada.passageiros.first : null;
 
@@ -62,12 +65,14 @@ class PainelPassageiro extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                const Icon(Icons.schedule, size: 14, color: Colors.black45),
-                const SizedBox(width: 4),
-                Text(
-                  '$hh:$mm',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
+                if (textoHora != null) ...[
+                  const Icon(Icons.schedule, size: 14, color: Colors.black45),
+                  const SizedBox(width: 4),
+                  Text(
+                    textoHora,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
                 if (onOcultar != null)
                   IconButton(
                     visualDensity: VisualDensity.compact,
@@ -89,6 +94,20 @@ class PainelPassageiro extends StatelessWidget {
               parada.endereco,
               style: const TextStyle(fontSize: 12.5, color: Colors.black54),
             ),
+            if (parada.observacoes != null)
+              Text(
+                parada.observacoes!,
+                style: const TextStyle(fontSize: 12.5, color: Colors.black87),
+              ),
+            if (!parada.temPonto)
+              const Text(
+                'Sem ponto no mapa — siga pelo endereço.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
 
             if (parada.passageiros.length > 1) ...[
               const SizedBox(height: 8),
@@ -108,10 +127,12 @@ class PainelPassageiro extends StatelessWidget {
                     rotulo: 'Paciente',
                     status: principal.confirmacao,
                   ),
-                  if (principal.temAcompanhante)
+                  for (var i = 0; i < principal.acompanhantes.length; i++)
                     StatusConfirmacaoChip(
-                      rotulo: 'Acompanhante',
-                      status: principal.acompanhante!.confirmacao,
+                      rotulo: principal.acompanhantes.length > 1
+                          ? 'Acompanhante ${i + 1}'
+                          : 'Acompanhante',
+                      status: principal.acompanhantes[i].confirmacao,
                     ),
                 ],
               ),

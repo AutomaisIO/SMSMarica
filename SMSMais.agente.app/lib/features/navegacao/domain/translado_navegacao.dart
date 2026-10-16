@@ -68,7 +68,7 @@ class PassageiroTranslado {
     this.telefone,
     this.observacao,
     this.assento,
-    this.acompanhante,
+    this.acompanhantes = const [],
     this.mensagens = const [],
   });
 
@@ -83,27 +83,36 @@ class PassageiroTranslado {
   /// Assento do paciente, conforme alocado no planejamento.
   final String? assento;
 
-  final Acompanhante? acompanhante;
+  /// Quem acompanha o paciente nesta sessão (até 2, pela regra do
+  /// atendimento), cada um com o seu assento.
+  final List<Acompanhante> acompanhantes;
 
   /// Conversa objetiva paciente ↔ motorista.
   final List<MensagemTranslado> mensagens;
 
-  bool get temAcompanhante => acompanhante != null;
+  bool get temAcompanhante => acompanhantes.isNotEmpty;
 
-  /// Id da pessoa "acompanhante deste paciente" na conferência da parada.
-  String get idAcompanhante => '$id:acompanhante';
+  /// Id do [i]-ésimo acompanhante deste paciente na conferência da parada
+  /// (o primeiro é `<paciente>:acompanhante`).
+  String idAcompanhante([int i = 0]) =>
+      i == 0 ? '$id:acompanhante' : '$id:acompanhante:${i + 1}';
 
   int get mensagensNaoLidas =>
       mensagens.where((m) => !m.doMotorista).length;
 
-  /// O mesmo paciente, sem o acompanhante (que faltou na coleta).
-  PassageiroTranslado semAcompanhante() => PassageiroTranslado(
+  /// O mesmo paciente, sem os acompanhantes que faltaram na coleta
+  /// ([ausentes] são ids de pessoa, como em [idAcompanhante]).
+  PassageiroTranslado semAusentes(Set<String> ausentes) => PassageiroTranslado(
         id: id,
         nome: nome,
         confirmacao: confirmacao,
         telefone: telefone,
         observacao: observacao,
         assento: assento,
+        acompanhantes: [
+          for (var i = 0; i < acompanhantes.length; i++)
+            if (!ausentes.contains(idAcompanhante(i))) acompanhantes[i],
+        ],
         mensagens: mensagens,
       );
 }
@@ -119,6 +128,7 @@ class ParadaNavegacao {
     required this.latitude,
     required this.longitude,
     required this.horarioPrevisto,
+    this.observacoes,
     this.passageiros = const [],
     this.concluida = false,
   });
@@ -132,9 +142,20 @@ class ParadaNavegacao {
   /// Nome do paciente (coleta) ou da unidade/destino (destino).
   final String rotulo;
   final String endereco;
-  final double latitude;
-  final double longitude;
-  final DateTime horarioPrevisto;
+
+  /// Ponto no mapa; nulo quando o endereço não foi localizado (a navegação
+  /// pula a parada e o motorista segue pelo endereço).
+  final double? latitude;
+  final double? longitude;
+
+  /// Horário previsto, quando a central definiu.
+  final DateTime? horarioPrevisto;
+
+  /// Para o motorista: ponto de referência (coleta) ou orientação de chegada
+  /// da unidade (destino).
+  final String? observacoes;
+
+  bool get temPonto => latitude != null && longitude != null;
 
   /// Quem embarca (coleta) ou desembarca (destino) nesta parada.
   final List<PassageiroTranslado> passageiros;
@@ -154,6 +175,7 @@ class ParadaNavegacao {
         latitude: latitude,
         longitude: longitude,
         horarioPrevisto: horarioPrevisto,
+        observacoes: observacoes,
         passageiros: passageiros ?? this.passageiros,
         concluida: concluida ?? this.concluida,
       );
@@ -182,7 +204,7 @@ class TransladoNavegacao {
   /// Paradas com o andamento aplicado: [concluidas] (ids de parada) marcadas
   /// e, no destino, só desembarca quem embarcou — [ausentes] são ids de
   /// pessoa (paciente ou [PassageiroTranslado.idAcompanhante]) que faltaram
-  /// na coleta. Paciente ausente sai do destino junto com o acompanhante.
+  /// na coleta. Paciente ausente sai do destino junto com os acompanhantes.
   /// Destino sem ninguém para desembarcar fica **dispensado** (conta como
   /// concluído e sai da rota).
   List<ParadaNavegacao> paradasComAndamento({
@@ -204,7 +226,7 @@ class TransladoNavegacao {
     final quemDesce = [
       for (final p in parada.passageiros)
         if (!ausentes.contains(p.id))
-          ausentes.contains(p.idAcompanhante) ? p.semAcompanhante() : p,
+          p.semAusentes(ausentes),
     ];
     return parada.copyWith(
       passageiros: quemDesce,

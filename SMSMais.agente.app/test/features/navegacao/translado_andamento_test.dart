@@ -5,10 +5,9 @@ const _maria = PassageiroTranslado(
   id: 'pac-1',
   nome: 'Maria',
   confirmacao: StatusConfirmacao.confirmado,
-  acompanhante: Acompanhante(
-    nome: 'José',
-    confirmacao: StatusConfirmacao.confirmado,
-  ),
+  acompanhantes: [
+    Acompanhante(nome: 'José', confirmacao: StatusConfirmacao.confirmado),
+  ],
 );
 const _joao = PassageiroTranslado(
   id: 'pac-2',
@@ -58,10 +57,25 @@ void main() {
   });
 
   test('acompanhante ausente: paciente desce sem ele', () {
-    final destino = _destino({'p1', 'p2'}, {_maria.idAcompanhante});
+    final destino = _destino({'p1', 'p2'}, {_maria.idAcompanhante()});
 
     expect(destino.passageiros.map((p) => p.nome), ['Maria', 'João']);
     expect(destino.passageiros.first.temAcompanhante, isFalse);
+  });
+
+  test('dois acompanhantes, um ausente: desce só o que embarcou', () {
+    const paciente = PassageiroTranslado(
+      id: 'pac-9',
+      nome: 'Rita',
+      confirmacao: StatusConfirmacao.confirmado,
+      acompanhantes: [
+        Acompanhante(nome: 'Filha', confirmacao: StatusConfirmacao.confirmado),
+        Acompanhante(nome: 'Neto', confirmacao: StatusConfirmacao.confirmado),
+      ],
+    );
+    final desce = paciente.semAusentes({paciente.idAcompanhante(1)});
+
+    expect(desce.acompanhantes.map((a) => a.nome), ['Filha']);
   });
 
   test('paciente ausente sai do destino com o acompanhante', () {
