@@ -904,10 +904,12 @@ public sealed class AtendimentoConfirmacaoService(
         s.AtualizadoEm = agora;
         s.AtualizadoPor = me;
 
-        // Satélite de imagem: espelha o cancelamento (a limpeza da worklist fica com o worker,
-        // que varre exames cancelados com WorklistItemUid).
-        if (s.ExameImagem is { } exame && exame.Status is StatusSolicitacaoExame.Solicitada
-                or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida)
+        // Satélites de imagem: espelham o cancelamento — todos os exames do pedido, que é um só
+        // (ADR-0074). A limpeza da worklist fica com o worker, que varre exames cancelados com
+        // WorklistItemUid.
+        foreach (var exame in s.ExamesImagem.Where(e => e.ExcluidoEm == null && e.Status
+                     is StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada
+                     or StatusSolicitacaoExame.Recebida))
         {
             exame.Status = StatusSolicitacaoExame.Cancelada;
             exame.AtualizadoEm = agora;
@@ -1096,7 +1098,7 @@ public sealed class AtendimentoConfirmacaoService(
         usuarioAtual.UsuarioId ?? throw new ValidacaoException("operador", "Operador não identificado na requisição.");
 
     private async Task<Solicitacao> CarregarSolicitacaoAsync(Guid id, CancellationToken ct) =>
-        await db.Solicitacoes.Include(s => s.ExameImagem)
+        await db.Solicitacoes.Include(s => s.ExameImagem).Include(s => s.ExamesImagem)
             .FirstOrDefaultAsync(s => s.Id == id && s.ExcluidoEm == null, ct)
         ?? throw new NaoEncontradoException("Solicitação", id);
 

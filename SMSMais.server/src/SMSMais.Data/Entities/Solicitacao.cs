@@ -90,6 +90,12 @@ public class Solicitacao
     /// solicitações com RAW em produção, a coluna vem <b>vazia em 1.018 delas (33%)</b>, cobrindo 20
     /// procedimentos. Por isso ele é registrado e respeitado quando existe, mas quem identifica o
     /// procedimento é o NOME (<see cref="ProcedimentoTexto"/>), que nunca falta.</para>
+    ///
+    /// <para><b>Remedido em 16/10/2026 (ADR-0074):</b> nos 1.462 arquivos exportados da implantação
+    /// (1.016.979 linhas) a coluna vem em 100% das linhas, e cada código tem uma descrição e um SIGTAP
+    /// só. Na base, 612 de 1,05 milhão estão sem ele — pedidos manuais, varredura da agenda e linhas
+    /// antigas —, e nenhum agendado daqui para a frente. Continua opcional pelos outros caminhos, mas é
+    /// ele que vai ao aparelho em (0008,0100).</para>
     /// </summary>
     public string? ProcedimentoCodigoSisreg { get; set; }
 
@@ -204,11 +210,18 @@ public class Solicitacao
     /// </summary>
     public string? MotivoCancelamentoParaPaciente { get; set; }
 
-    // ---- Satélite de execução (0..1) ----
+    // ---- Satélites de execução ----
 
-    /// <summary>Execução de imagem (PACS), quando a categoria é <see cref="CategoriaSolicitacao.Imagem"/>.
-    /// Null enquanto não recebido/materializado e sempre para categorias sem satélite.</summary>
+    /// <summary>Exame de imagem PRINCIPAL (PACS) — o de ordem 0, accession sem sufixo —, quando a
+    /// categoria é <see cref="CategoriaSolicitacao.Imagem"/>. Null enquanto não materializado e
+    /// sempre para categorias sem satélite. É o "exame da solicitação" que telas, confirmações e o
+    /// robô leem; o que precisa agir em TODOS os exames do pedido usa <see cref="ExamesImagem"/>.</summary>
     public ExameImagem? ExameImagem { get; set; }
+
+    /// <summary>Todos os exames do pedido, um por código interno do SISREG (ADR-0074): o principal
+    /// e os extras (accession <c>-1</c>, <c>-2</c>…). Enviar à worklist e cancelar agem aqui — o
+    /// SISREG trata o pedido como um só.</summary>
+    public List<ExameImagem> ExamesImagem { get; set; } = [];
 
     // ---- Auditoria ADR-0006 ----
 

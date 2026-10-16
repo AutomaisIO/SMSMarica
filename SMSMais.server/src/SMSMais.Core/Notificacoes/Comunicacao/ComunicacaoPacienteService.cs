@@ -266,8 +266,10 @@ public sealed class ComunicacaoPacienteService(
     private async Task<bool> EstaObsoletaAsync(ComunicacaoPaciente c, CancellationToken ct)
     {
         if (c.EnviadoEm is not { } enviadoEm) return false;
+        // O exame principal do pedido: com vários (ADR-0074), sem ordem o "primeiro" seria qualquer um.
         var realizadoEm = await db.ExamesImagem.AsNoTracking()
             .Where(e => e.SolicitacaoId == c.SolicitacaoId && e.ExcluidoEm == null)
+            .OrderBy(e => e.Ordem)
             .Select(e => e.RealizadoEm)
             .FirstOrDefaultAsync(ct);
         return realizadoEm is { } r && enviadoEm < r;

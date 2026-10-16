@@ -383,14 +383,20 @@ public sealed class ExameAssociacaoService(
         string? Nome(Guid id) => nomes.TryGetValue(id, out var r) ? r.Nome : null;
 
         // Exames que já têm anamnese preenchida (alimenta o gate de iniciar laudo no front).
+        // A anamnese é do PEDIDO e mora no exame principal (ADR-0074): o exame -1 conta a dele.
         var todasSolIds = solIds.Concat(implicitas.Select(i => i.Id)).Distinct().ToArray();
-        var comAnamnese = todasSolIds.Length == 0
+        var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(db, todasSolIds, cancellationToken);
+        var principais = exameDaAnamnese.Values.Distinct().ToArray();
+        var principaisComAnamnese = principais.Length == 0
             ? []
             : (await db.Anamneses.AsNoTracking()
-                .Where(an => todasSolIds.Contains(an.ExameImagemId))
+                .Where(an => principais.Contains(an.ExameImagemId))
                 .Select(an => an.ExameImagemId)
                 .Distinct()
                 .ToListAsync(cancellationToken)).ToHashSet();
+        var comAnamnese = todasSolIds
+            .Where(id => principaisComAnamnese.Contains(exameDaAnamnese[id]))
+            .ToHashSet();
 
         var resultado = new List<ExameAssociacaoDto>(explicitas.Count + implicitas.Count);
         foreach (var a in explicitas)
@@ -643,8 +649,9 @@ public sealed class ExameAssociacaoService(
             })
             .FirstOrDefaultAsync(ct);
         var paciente = await pacienteResolver.ResolverAsync(assoc.PacienteId, ct);
+        var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(db, assoc.ExameImagemId, ct);
         var temAnamnese = await db.Anamneses.AsNoTracking()
-            .AnyAsync(an => an.ExameImagemId == assoc.ExameImagemId, ct);
+            .AnyAsync(an => an.ExameImagemId == exameDaAnamnese, ct);
         return new ExameAssociacaoDto(
             assoc.StudyInstanceUID, assoc.ExameImagemId, sol?.AccessionNumber ?? string.Empty,
             assoc.PacienteId, paciente?.Nome, Explicita: true, assoc.Origem,

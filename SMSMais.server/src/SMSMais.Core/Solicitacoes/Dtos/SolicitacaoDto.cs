@@ -123,17 +123,24 @@ public sealed record SolicitacaoDto(
     string? CidDescricao = null,
     // TODOS os procedimentos do pedido, na ordem do SISREG (ticket #149). O 1º é o principal — o
     // mesmo de ProcedimentoTexto. Pedido de um procedimento só vem com um item, montado da espinha.
-    IReadOnlyList<SolicitacaoProcedimentoDto>? Procedimentos = null);
+    IReadOnlyList<SolicitacaoProcedimentoDto>? Procedimentos = null,
+    // Accessions dos OUTROS exames do mesmo pedido (ADR-0074) — o selo "vinculado a" do detalhe.
+    // Vazio no pedido de um procedimento só.
+    IReadOnlyList<string>? AccessionsVinculados = null);
 
 /// <summary>Um procedimento do pedido (ticket #149). Data e executante são do item: no SISREG cada
-/// linha tem os seus. CPF do executante não sai — a tela só precisa do nome.</summary>
+/// linha tem os seus. CPF do executante não sai — a tela só precisa do nome. Em pedido de imagem,
+/// cada procedimento tem o seu exame (ADR-0074): id, accession e situação vêm junto.</summary>
 public sealed record SolicitacaoProcedimentoDto(
     int Ordem,
     string? ProcedimentoTexto,
     string? ProcedimentoCodigoSisreg,
     string? ProcedimentoSigtapCodigo,
     string? ProfissionalExecutanteNome,
-    DateTime? DataAgendada);
+    DateTime? DataAgendada,
+    Guid? ExameId = null,
+    string? AccessionNumber = null,
+    StatusSolicitacaoExame? StatusExame = null);
 
 /// <summary>
 /// Direção da solicitação RELATIVA à unidade ativa da sessão. <c>Recebida</c> = a unidade
@@ -199,7 +206,10 @@ public sealed record SolicitacaoListItemDto(
     bool TemAnamnese = false,
     // Protocolo da requisição no SISCAN, quando já foi gerada. Null = ainda não. Vai para a
     // lista porque "essa já foi?" é a pergunta que se faz olhando a fila, não abrindo cada uma.
-    string? SiscanProtocolo = null);
+    string? SiscanProtocolo = null,
+    // Accessions dos OUTROS exames do mesmo pedido (ADR-0074): o pedido com joelho D e E aparece em
+    // duas linhas, e cada uma mostra o selo "vinculado a" a outra. Null no pedido de um exame só.
+    IReadOnlyList<string>? AccessionsVinculados = null);
 
 /// <summary>Página da listagem de solicitações (paginação offset + total para os controles).</summary>
 public sealed record PaginaSolicitacoesDto(

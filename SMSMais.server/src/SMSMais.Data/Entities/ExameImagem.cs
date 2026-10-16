@@ -16,9 +16,28 @@ public class ExameImagem
 {
     public Guid Id { get; set; }
 
-    /// <summary>Regulação-pai (o pedido). 1 solicitação de imagem : 1 execução.</summary>
+    /// <summary>Regulação-pai (o pedido). Um exame por código interno do SISREG que o pedido trouxe
+    /// (ADR-0074): quase sempre um só; dois ou mais quando o SISREG manda vários procedimentos com o
+    /// mesmo nº.</summary>
     public Guid SolicitacaoId { get; set; }
     public Solicitacao? Solicitacao { get; set; }
+
+    /// <summary>
+    /// Preenchido (= <see cref="SolicitacaoId"/>) só no exame PRINCIPAL do pedido, o de
+    /// <see cref="Ordem"/> 0 — é por esta coluna que <see cref="Solicitacao.ExameImagem"/> continua
+    /// apontando para "o" exame da solicitação. Os exames extras ficam com null e só aparecem em
+    /// <see cref="Solicitacao.ExamesImagem"/>. Índice único: no máximo um principal por pedido.
+    /// </summary>
+    public Guid? SolicitacaoPrincipalId { get; set; }
+
+    /// <summary>Posição do exame no pedido: 0 = principal (accession sem sufixo); 1, 2… = os
+    /// procedimentos que vieram depois (accession com <c>-1</c>, <c>-2</c>…). Não muda depois.</summary>
+    public int Ordem { get; set; }
+
+    /// <summary>Procedimento do pedido que este exame executa — só nos extras (<see cref="Ordem"/>
+    /// ≥ 1). O principal lê o procedimento dos campos da própria <see cref="Solicitacao"/>.</summary>
+    public Guid? SolicitacaoProcedimentoId { get; set; }
+    public SolicitacaoProcedimento? SolicitacaoProcedimento { get; set; }
 
     // ---- Mapeamento clínico → DICOM ----
 

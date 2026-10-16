@@ -40,6 +40,22 @@ public class Equipamento
     /// <summary>Limite do VR <c>LO</c> do DICOM — o teto de qualquer aparelho.</summary>
     public const int DescricaoMaxPadrao = 64;
 
+    /// <summary>
+    /// Em que sequência(s) do item de worklist vai o código do procedimento (código interno do
+    /// SISREG, em (0008,0100)) — ADR-0074. <see cref="DestinoCodigoProcedimento.Nenhum"/> (padrão)
+    /// = não envia, e o item sai exatamente como antes. Liga-se aparelho a aparelho, quando ele está
+    /// cadastrado com esses códigos (ex.: o raio-X do CDT escolhe o protocolo pelo código).
+    /// </summary>
+    public DestinoCodigoProcedimento CodigoProcedimentoDestinos { get; set; } = DestinoCodigoProcedimento.Nenhum;
+
+    /// <summary>Esquema do código, em (0008,0102). Null = <see cref="CodigoProcedimentoEsquemaPadrao"/>.
+    /// Até 16 caracteres (VR <c>SH</c>).</summary>
+    public string? CodigoProcedimentoEsquema { get; set; }
+
+    /// <summary>Esquema privado (os privados começam com "99", PS3.16) para o código interno do
+    /// SISREG.</summary>
+    public const string CodigoProcedimentoEsquemaPadrao = "99SMS";
+
     /// <summary>Visibilidade no agendamento. Soft-delete via <see cref="ExcluidoEm"/>.</summary>
     public bool Ativo { get; set; } = true;
 

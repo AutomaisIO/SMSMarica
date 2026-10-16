@@ -26,9 +26,12 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-10-07',
+  atualizadoEm: '2026-10-16',
   palavrasChave: [
     'anamnese',
+    'anamnese do pedido',
+    'pedido com mais de um procedimento',
+    'vinculado',
     'siscan indisponível',
     'siscan instável',
     'siscan congestionado',
@@ -131,7 +134,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'quando-preencher',
       titulo: 'Quando preencher, e quem',
-      busca: 'quem preenche enfermeira recepção editar somente leitura laudar janela',
+      busca: 'quem preenche enfermeira recepção editar somente leitura laudar janela pedido com mais de um procedimento vinculado uma anamnese só',
       conteudo: (
         <>
           <P>
@@ -143,6 +146,12 @@ export const artigoAnamnese: Artigo = {
             a anamnese entra <strong>somente leitura</strong>. É de propósito: quem lauda precisa
             ler o que a paciente disse, não reescrever. Anexar documento continua liberado nesses
             casos, porque o médico precisa disso justamente enquanto lauda.
+          </P>
+          <P>
+            Quando o pedido do SISREG traz mais de um procedimento (ex.: joelho direito e esquerdo
+            com o mesmo nº), ele aparece em mais de uma linha, com o selo <strong>vinculado a</strong>.
+            A anamnese é <strong>uma só para o pedido</strong>: preenchida numa linha, vale para a
+            outra, e o laudo de cada exame a encontra — ninguém pergunta tudo de novo à paciente.
           </P>
         </>
       ),

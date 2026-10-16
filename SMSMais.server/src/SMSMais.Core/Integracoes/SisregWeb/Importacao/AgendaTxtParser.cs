@@ -30,7 +30,8 @@ public static class AgendaTxtParser
 
     // Índices das colunas (0-based) no layout de 38 campos — ver docs SISREG / mapa validado.
     private const int CodigoSolicitacao = 0;
-    /// <summary>O <c>pa</c> do SISREG. Vem VAZIO em ~1/3 das linhas — por isso é opcional.</summary>
+    /// <summary>O <c>pa</c> (código interno) do SISREG. Veio em todas as 1.016.979 linhas exportadas
+    /// conferidas em 16/10/2026; segue opcional porque a linha rejeitada não pode cair por ele.</summary>
     private const int CodigoProcedimentoSisreg = 1;
     private const int CodigoSigtap = 2;
     private const int ProcedimentoTexto = 3;

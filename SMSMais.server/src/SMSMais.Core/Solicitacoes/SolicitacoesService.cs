@@ -120,6 +120,36 @@ public sealed class SolicitacoesService(
         if (itens.Count > 0)
             enriquecido = enriquecido with { Procedimentos = [.. itens.Select(SolicitacoesMapper.ParaDto)] };
 
+        // Em pedido de imagem, cada procedimento tem o seu exame (ADR-0074): o detalhe mostra o
+        // accession e a situação de cada um, e o selo "vinculado a" com os outros exames.
+        var exames = await _db.ExamesImagem.AsNoTracking()
+            .Where(e => e.SolicitacaoId == dto.SolicitacaoId && e.ExcluidoEm == null)
+            .OrderBy(e => e.Ordem)
+            .Select(e => new { e.Id, e.Ordem, e.AccessionNumber, e.Status, e.SolicitacaoProcedimentoId })
+            .ToListAsync(ct);
+        if (exames.Count > 0 && enriquecido.Procedimentos is { } procedimentos)
+        {
+            var principal = exames.FirstOrDefault(e => e.Ordem == 0);
+            var itemPorOrdem = itens.ToDictionary(i => i.Ordem, i => i.Id);
+            enriquecido = enriquecido with
+            {
+                Procedimentos = [.. procedimentos.Select(p =>
+                {
+                    var exame = p.Ordem == 1
+                        ? principal
+                        : itemPorOrdem.TryGetValue(p.Ordem, out var itemId)
+                            ? exames.FirstOrDefault(e => e.SolicitacaoProcedimentoId == itemId)
+                            : null;
+                    return exame is null
+                        ? p
+                        : p with { ExameId = exame.Id, AccessionNumber = exame.AccessionNumber, StatusExame = exame.Status };
+                })],
+                AccessionsVinculados = exames.Count > 1
+                    ? [.. exames.Where(e => e.Id != dto.Id).Select(e => e.AccessionNumber)]
+                    : null,
+            };
+        }
+
         return enriquecido;
     }
 
@@ -273,9 +303,13 @@ public sealed class SolicitacoesService(
         // A lista parte da ESPINHA: toda solicitação regulada (exame de imagem, consulta,
         // laboratório…). O exame de imagem entra por LEFT JOIN — quando existe, precisa estar vivo;
         // pedido de imagem sem exame não aparece (não teria o que executar).
+        // Pedido com mais de um código interno (ADR-0074) tem um exame por código: a página conta
+        // PEDIDOS, e cada exame vivo vira uma linha (ver LinhasDoPedido).
         IQueryable<Solicitacao> query = _db.Solicitacoes.AsNoTracking()
             .Include(s => s.UnidadeExecutante)
             .Include(s => s.ExameImagem!).ThenInclude(e => e.TipoExame)
+            .Include(s => s.ExamesImagem).ThenInclude(e => e.TipoExame)
+            .Include(s => s.ExamesImagem).ThenInclude(e => e.SolicitacaoProcedimento)
             .Where(s => s.ExcluidoEm == null
                 && (s.ExameImagem != null
                     ? s.ExameImagem.ExcluidoEm == null
@@ -284,21 +318,23 @@ public sealed class SolicitacoesService(
         if (filtro.Categoria is { } categoria) query = query.Where(s => s.Categoria == categoria);
         if (filtro.Status is { } status)
         {
-            // Com exame, vale o status de execução; sem exame, o da espinha na mesma régua.
+            // Com exame, vale o status de execução (de qualquer exame do pedido); sem exame, o da
+            // espinha na mesma régua.
             var statusEspinha = SolicitacoesMapper.StatusDaEspinha(status);
             query = query.Where(s => s.ExameImagem != null
-                ? s.ExameImagem.Status == status
+                ? s.ExamesImagem.Any(e => e.ExcluidoEm == null && e.Status == status)
                 : statusEspinha != null && s.Status == statusEspinha);
         }
         if (filtro.PacienteId.HasValue) query = query.Where(s => s.PacienteId == filtro.PacienteId);
         if (filtro.UnidadeId.HasValue) query = query.Where(s => s.UnidadeExecutanteId == filtro.UnidadeId);
-        if (filtro.TipoExameId.HasValue) query = query.Where(s => s.ExameImagem!.TipoExameId == filtro.TipoExameId);
+        if (filtro.TipoExameId.HasValue)
+            query = query.Where(s => s.ExamesImagem.Any(e => e.ExcluidoEm == null && e.TipoExameId == filtro.TipoExameId));
         // Só retornos (vaga do SISREG) — ticket #135. Filtro de servidor, como os demais.
         if (filtro.SomenteRetornos) query = query.Where(s => s.TipoVaga == TipoVaga.Retorno);
         if (!string.IsNullOrWhiteSpace(filtro.AccessionNumber))
         {
             var a = filtro.AccessionNumber.Trim();
-            query = query.Where(s => s.ExameImagem!.AccessionNumber == a);
+            query = query.Where(s => s.ExamesImagem.Any(e => e.AccessionNumber == a));
         }
         if (!string.IsNullOrWhiteSpace(filtro.Busca))
         {
@@ -311,7 +347,7 @@ public sealed class SolicitacoesService(
             // "o teto deve obedecer ao dropdown da tela").
             var idsPaciente = (await _pacienteResolver.BuscarIdsPorTermoAsync(termo, tamanho, cancellationToken)).ToArray();
             query = query.Where(s =>
-                (s.ExameImagem != null && EF.Functions.ILike(s.ExameImagem.AccessionNumber, padrao))
+                s.ExamesImagem.Any(e => EF.Functions.ILike(e.AccessionNumber, padrao))
                 || (s.CodigoSolicitacao != null && EF.Functions.ILike(s.CodigoSolicitacao, padrao))
                 || (s.EspecialidadeTexto != null && EF.Functions.ILike(s.EspecialidadeTexto, padrao))
                 || (s.ProcedimentoTexto != null && EF.Functions.ILike(s.ProcedimentoTexto, padrao))
@@ -390,11 +426,42 @@ public sealed class SolicitacoesService(
             .Take(tamanho)
             .ToListAsync(cancellationToken);
 
-        var dtos = await EnriquecerAsync([.. lista.Select(s => SolicitacoesMapper.ParaListItem(s, unidadeReferencia))], cancellationToken);
+        var dtos = await EnriquecerAsync([.. lista.SelectMany(s => LinhasDoPedido(s, filtro, unidadeReferencia))], cancellationToken);
         var comLaudos = await EnriquecerLaudosAsync([.. dtos], cancellationToken);
         var comAnamnese = await EnriquecerAnamneseAsync([.. comLaudos], cancellationToken);
         var itens = await EnriquecerComunicacoesAsync([.. comAnamnese], cancellationToken);
         return new PaginaSolicitacoesDto(itens, total, pagina, tamanho);
+    }
+
+    /// <summary>
+    /// As linhas de um pedido na lista (ADR-0074). Um exame vivo só (quase sempre) = a linha de
+    /// sempre. Dois ou mais = uma linha por exame, cada uma com o seu procedimento e o selo
+    /// "vinculado a" com os accessions das outras. Os filtros que são do EXAME (situação, tipo,
+    /// accession exato) escolhem quais exames do pedido aparecem.
+    /// </summary>
+    internal static IEnumerable<SolicitacaoListItemDto> LinhasDoPedido(
+        Solicitacao s, FiltroSolicitacoesDto filtro, Guid? unidadeReferencia)
+    {
+        var exames = s.ExamesImagem.Where(e => e.ExcluidoEm == null).OrderBy(e => e.Ordem).ToList();
+        if (exames.Count <= 1)
+        {
+            yield return SolicitacoesMapper.ParaListItem(s, unidadeReferencia);
+            yield break;
+        }
+
+        var accession = filtro.AccessionNumber?.Trim();
+        var visiveis = exames.Where(e =>
+                (filtro.Status is not { } st || e.Status == st)
+                && (filtro.TipoExameId is not { } tipo || e.TipoExameId == tipo)
+                && (string.IsNullOrEmpty(accession) || e.AccessionNumber == accession))
+            .ToList();
+        if (visiveis.Count == 0) visiveis = [exames[0]];
+
+        foreach (var exame in visiveis)
+            yield return SolicitacoesMapper.ParaListItem(s, exame, unidadeReferencia) with
+            {
+                AccessionsVinculados = [.. exames.Where(e => e.Id != exame.Id).Select(e => e.AccessionNumber)],
+            };
     }
 
     // Marca as linhas que já têm anamnese preenchida (muda a cor do botão Anamnese na lista).
@@ -402,12 +469,16 @@ public sealed class SolicitacoesService(
         List<SolicitacaoListItemDto> dtos, CancellationToken ct)
     {
         if (dtos.Count == 0) return dtos;
-        // Anamnese FK = ExameImagemId (id preservado = DTO.Id).
+        // Anamnese FK = ExameImagemId (id preservado = DTO.Id). É do PEDIDO e mora no exame
+        // principal (ADR-0074): a linha do exame -1 acende junto com a do principal.
         var ids = dtos.Select(d => d.Id).ToArray();
-        var comAnamnese = (await _db.Anamneses.AsNoTracking()
-            .Where(a => ids.Contains(a.ExameImagemId) && a.ExcluidoEm == null)
+        var exameDaAnamnese = await ExamesDoPedido.ExameDaAnamneseAsync(_db, ids, ct);
+        var principais = exameDaAnamnese.Values.Distinct().ToArray();
+        var principaisComAnamnese = (await _db.Anamneses.AsNoTracking()
+            .Where(a => principais.Contains(a.ExameImagemId) && a.ExcluidoEm == null)
             .Select(a => a.ExameImagemId)
             .ToListAsync(ct)).ToHashSet();
+        var comAnamnese = ids.Where(id => principaisComAnamnese.Contains(exameDaAnamnese[id])).ToHashSet();
         // O protocolo do SISCAN vem no mesmo enriquecimento: é o mesmo conjunto de ids, e a fila
         // precisa mostrar quais já foram enviadas sem abrir uma a uma.
         var protocolos = await _db.ExamesImagem.AsNoTracking()
@@ -604,6 +675,19 @@ public sealed class SolicitacoesService(
         if (s is not null)
             await ValidarAutorizacaoDoExameAsync(s, reg, equipamentoId, cancellationToken);
 
+        // O pedido é UM SÓ (ADR-0074): receber um exame recebe todos. As linhas do mesmo nº chegam
+        // com a mesma data, hora e unidade — é a mesma visita. Os irmãos herdam a sala escolhida
+        // quando ela também os atende; o exame clicado já foi validado acima.
+        var exames = s is null
+            ? []
+            : await _db.ExamesImagem
+                .Include(x => x.TipoExame)
+                .Where(x => x.SolicitacaoId == reg.Id && x.ExcluidoEm == null)
+                .OrderBy(x => x.Ordem)
+                .ToListAsync(cancellationToken);
+        foreach (var irmao in exames.Where(x => x.Id != s!.Id))
+            await DefinirEstacaoDoIrmaoAsync(irmao, reg, s!.EquipamentoId ?? equipamentoId, cancellationToken);
+
         var agora = DateTime.UtcNow;
         reg.ChaveConfirmacao = chave;
         reg.AutorizadoEm = agora;
@@ -622,11 +706,12 @@ public sealed class SolicitacoesService(
             reg.MotivoCancelamentoPaciente = null;
         }
 
-        // Só AGORA enfileira o envio ao PACS (se o tipo envia à worklist e ainda não foi enviado).
-        string? impedimento = null;
-        if (s is { Status: StatusSolicitacaoExame.Solicitada } exame)
+        // Só AGORA enfileira o envio ao PACS (se o tipo envia à worklist e ainda não foi enviado) —
+        // de TODOS os exames do pedido, cada um com o seu código interno e o seu item de worklist.
+        var impedidos = new List<(ExameImagem Exame, string Motivo)>();
+        foreach (var exame in exames.Where(x => x.Status == StatusSolicitacaoExame.Solicitada))
         {
-            impedimento = await ImpedimentoEnvioPacsAsync(exame, reg, cancellationToken);
+            var impedimento = await ImpedimentoEnvioPacsAsync(exame, reg, cancellationToken);
             if (impedimento is null)
             {
                 exame.ProximaTentativaEm = agora;
@@ -639,14 +724,36 @@ public sealed class SolicitacoesService(
                 // tela mostra) e abre um erro rastreável em Sistema → Erros.
                 exame.ProximaTentativaEm = null;
                 exame.ErroIntegracaoPacs = impedimento;
+                impedidos.Add((exame, impedimento));
             }
             exame.AtualizadoEm = agora;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (impedimento is not null)
-            await ReportarImpedimentoAsync(s!, reg, impedimento, cancellationToken);
+        foreach (var (exame, motivo) in impedidos)
+            await ReportarImpedimentoAsync(exame, reg, motivo, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sala de um exame irmão do que a recepção autorizou (ADR-0074). Não pergunta nada: usa a sala
+    /// escolhida se ela atende este exame, ou a única que atende; com duas ou mais e nenhuma
+    /// escolhida válida, deixa para o envio deduzir — o mesmo caminho de qualquer exame sem sala.
+    /// </summary>
+    private async Task DefinirEstacaoDoIrmaoAsync(
+        ExameImagem irmao, Solicitacao reg, Guid? escolhido, CancellationToken cancellationToken)
+    {
+        if (irmao.Status != StatusSolicitacaoExame.Solicitada || irmao.EquipamentoId is not null) return;
+        var escopo = irmao.TipoExameId is { } tipo
+            ? await _escopoExame.ObterAsync(tipo, reg.UnidadeExecutanteId, cancellationToken)
+            : null;
+        if (!(escopo?.EnviarParaWorklist ?? false)) return;
+
+        var candidatos = await _estacaoWorklist.ListarCandidatosAsync(irmao, cancellationToken);
+        if (escolhido is { } id && candidatos.Any(c => c.Id == id))
+            irmao.EquipamentoId = id;
+        else if (candidatos.Count == 1)
+            irmao.EquipamentoId = candidatos[0].Id;
     }
 
     /// <summary>Travas da autorização que só valem para o exame de imagem (ver AutorizarAsync).</summary>
@@ -828,6 +935,9 @@ public sealed class SolicitacoesService(
         {
             Id = Guid.CreateVersion7(),
             Solicitacao = solicitacao,
+            // Pedido manual tem um procedimento só: o exame é o principal (ADR-0074).
+            SolicitacaoPrincipalId = solicitacao.Id,
+            Ordem = 0,
             AccessionNumber = accession,
             StudyInstanceUID = studyUid,
             TipoExameId = request.TipoExameId,
@@ -909,6 +1019,23 @@ public sealed class SolicitacoesService(
                 $"Solicitação no status '{status}' não pode ser cancelada.");
         }
 
+        // O pedido é um só (ADR-0074): com um exame irmão já feito, o pedido não se cancela pela
+        // tela de outro — cancelar aqui fecharia como "cancelado" um pedido em que o paciente foi
+        // atendido.
+        if (s is not null
+            && await _db.ExamesImagem.AsNoTracking().FirstOrDefaultAsync(x =>
+                    x.SolicitacaoId == reg.Id && x.ExcluidoEm == null
+                    && (x.Status == StatusSolicitacaoExame.EmExecucao
+                        || x.Status == StatusSolicitacaoExame.Realizada
+                        || x.Status == StatusSolicitacaoExame.Laudada),
+                cancellationToken) is { } feito)
+        {
+            throw new ConflitoException(
+                "solicitacao.nao_cancelavel",
+                $"O exame {feito.AccessionNumber} deste mesmo pedido já foi executado ('{feito.Status}'): "
+                + "o pedido não pode ser cancelado.");
+        }
+
         var motivo = (request.Motivo ?? string.Empty).Trim();
         if (motivo.Length == 0)
         {
@@ -916,29 +1043,39 @@ public sealed class SolicitacoesService(
         }
 
         var agora = DateTime.UtcNow;
-        if (s is not null)
+        // O pedido é um só (ADR-0074): cancelar pela tela de um exame cancela todos os exames dele
+        // que ainda não foram executados — como o SISREG faz.
+        var exames = s is null
+            ? []
+            : await _db.ExamesImagem
+                .Where(x => x.SolicitacaoId == reg.Id && x.ExcluidoEm == null
+                    && (x.Status == StatusSolicitacaoExame.Solicitada
+                        || x.Status == StatusSolicitacaoExame.Enviada
+                        || x.Status == StatusSolicitacaoExame.Recebida))
+                .ToListAsync(cancellationToken);
+        foreach (var exame in exames)
         {
             // Remove o item da worklist no dcm4chee (best-effort — não derruba o cancelamento local).
             // Se falhar, o campo continua preenchido e o worker refaz a remoção depois: o exame
             // cancelado entra na fila de limpeza justamente por ter WorklistItemUid.
-            if (!string.IsNullOrEmpty(s.WorklistItemUid))
+            if (!string.IsNullOrEmpty(exame.WorklistItemUid))
             {
                 try
                 {
-                    await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
-                    s.WorklistItemUid = null; // espelho do que está no PACS
+                    await _mwlClient.ExcluirMwlItemAsync(exame, cancellationToken);
+                    exame.WorklistItemUid = null; // espelho do que está no PACS
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     _logger.LogWarning(ex,
                         "Falha ao remover MWL de {Accession} no cancelamento — segue cancelado localmente; worker retenta.",
-                        s.AccessionNumber);
+                        exame.AccessionNumber);
                 }
             }
 
-            s.Status = StatusSolicitacaoExame.Cancelada;
-            s.AtualizadoEm = agora;
-            s.AtualizadoPor = _usuarioAtual.UsuarioId;
+            exame.Status = StatusSolicitacaoExame.Cancelada;
+            exame.AtualizadoEm = agora;
+            exame.AtualizadoPor = _usuarioAtual.UsuarioId;
         }
 
         // Espinha reflete o cancelamento (é decisão de regulação).
@@ -1003,54 +1140,68 @@ public sealed class SolicitacoesService(
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
 
-        // Exame iniciado/realizado/laudado tem imagens — o pedido não se exclui por aqui.
-        if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada)
+        // Excluir apaga o PEDIDO, e o pedido é um só (ADR-0074): leva todos os exames dele.
+        var exames = await _db.ExamesImagem
+            .Where(x => x.SolicitacaoId == s.SolicitacaoId && x.ExcluidoEm == null)
+            .ToListAsync(cancellationToken);
+
+        // Exame iniciado/realizado/laudado tem imagens — o pedido não se exclui por aqui, nem pelo
+        // irmão que ainda não foi feito.
+        if (exames.FirstOrDefault(x => x.Status is StatusSolicitacaoExame.EmExecucao
+                or StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada) is { } executado)
         {
             throw new ConflitoException(
                 "solicitacaoExame.nao_excluivel",
-                $"Solicitação no status '{s.Status}' (exame iniciado/realizado) não pode ser excluída.");
+                $"Solicitação no status '{executado.Status}' (exame {executado.AccessionNumber} iniciado/realizado) "
+                + "não pode ser excluída.");
         }
 
         // Anti-lixo: remove o item da worklist no dcm4chee e confirma; só então apaga localmente.
-        if (force)
+        foreach (var exame in exames)
         {
-            try
+            if (force)
             {
-                await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
-                s.WorklistItemUid = null;
+                try
+                {
+                    await _mwlClient.ExcluirMwlItemAsync(exame, cancellationToken);
+                    exame.WorklistItemUid = null;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Campo fica preenchido de propósito: exame excluído com item pendente continua
+                    // elegível para a fila de limpeza do worker, que retenta até o PACS aceitar.
+                    _logger.LogWarning(ex,
+                        "Exclusão forçada de {Accession} — falha ao remover MWL no dcm4chee; worker retenta.",
+                        exame.AccessionNumber);
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            else
             {
-                // Campo fica preenchido de propósito: exame excluído com item pendente continua
-                // elegível para a fila de limpeza do worker, que retenta até o PACS aceitar.
-                _logger.LogWarning(ex,
-                    "Exclusão forçada de {Accession} — falha ao remover MWL no dcm4chee; worker retenta.",
-                    s.AccessionNumber);
-            }
-        }
-        else
-        {
-            try
-            {
-                await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
-                s.WorklistItemUid = null;
-            }
-            catch (ConflitoException)
-            {
-                throw new ConflitoException(
-                    "solicitacaoExame.exclusao_pacs_falhou",
-                    "Não foi possível remover o item da worklist no dcm4chee. Verifique o PACS e tente de novo, " +
-                    "ou use a exclusão forçada (limpa apenas a base local).");
+                try
+                {
+                    await _mwlClient.ExcluirMwlItemAsync(exame, cancellationToken);
+                    exame.WorklistItemUid = null;
+                }
+                catch (ConflitoException)
+                {
+                    throw new ConflitoException(
+                        "solicitacaoExame.exclusao_pacs_falhou",
+                        $"Não foi possível remover o item da worklist do exame {exame.AccessionNumber} no dcm4chee. "
+                        + "Verifique o PACS e tente de novo, ou use a exclusão forçada (limpa apenas a base local).");
+                }
             }
         }
 
         var agora = DateTime.UtcNow;
         // Soft-delete espelhado nas duas tabelas (execução + regulação).
-        s.ExcluidoEm = agora;
-        s.ExcluidoPor = _usuarioAtual.UsuarioId;
-        s.AtualizadoEm = agora;
-        s.AtualizadoPor = _usuarioAtual.UsuarioId;
-        s.ProximaTentativaEm = null; // tira do worker
+        foreach (var exame in exames)
+        {
+            exame.ExcluidoEm = agora;
+            exame.ExcluidoPor = _usuarioAtual.UsuarioId;
+            exame.AtualizadoEm = agora;
+            exame.AtualizadoPor = _usuarioAtual.UsuarioId;
+            exame.ProximaTentativaEm = null; // tira do worker
+        }
 
         var reg = s.Solicitacao!;
         reg.ExcluidoEm = agora;
@@ -1126,6 +1277,8 @@ public sealed class SolicitacoesService(
         var s = await _db.ExamesImagem
             .Include(x => x.TipoExame).ThenInclude(t => t!.ProcedimentoSigtap)
             .Include(x => x.Solicitacao)
+            // O código do procedimento (0008,0100) do exame extra é o do item do pedido (ADR-0074).
+            .Include(x => x.SolicitacaoProcedimento)
             .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
 
         if (s is null) return;
@@ -1296,6 +1449,8 @@ public sealed class SolicitacoesService(
         return await _db.ExamesImagem.AsNoTracking()
             .Include(e => e.TipoExame)
             .Include(e => e.Equipamento)
+            // Exame extra (ADR-0074): o procedimento dele vem do item do pedido.
+            .Include(e => e.SolicitacaoProcedimento)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeSolicitante)
             .Where(e => e.ExcluidoEm == null && e.Solicitacao!.ExcluidoEm == null)
@@ -1331,6 +1486,7 @@ public sealed class SolicitacoesService(
         var s = await _db.ExamesImagem
             .Include(x => x.TipoExame)
             .Include(x => x.Solicitacao)
+            .Include(x => x.SolicitacaoProcedimento)
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
 
@@ -1453,15 +1609,23 @@ public sealed class SolicitacoesService(
             ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
         var reg = s.Solicitacao!;
 
+        // A unidade é do PEDIDO, e o pedido é um só (ADR-0074): os exames irmãos vão juntos.
+        var exames = await _db.ExamesImagem
+            .Where(x => x.SolicitacaoId == reg.Id && x.ExcluidoEm == null)
+            .OrderBy(x => x.Ordem)
+            .ToListAsync(cancellationToken);
+
         // 1) Elegibilidade (regra do ticket): só bloqueia quando a imagem JÁ voltou do PACS. Nos
-        //    status anteriores (Solicitada/Enviada/Recebida) a troca é permitida.
-        if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada
-                or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada
-            || s.RealizadoEm is not null)
+        //    status anteriores (Solicitada/Enviada/Recebida) a troca é permitida — para todos.
+        if (exames.FirstOrDefault(x => x.Status is StatusSolicitacaoExame.EmExecucao
+                or StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada
+                or StatusSolicitacaoExame.Cancelada
+            || x.RealizadoEm is not null) is { } bloqueado)
         {
             throw new ConflitoException(
                 "solicitacaoExame.unidade_nao_alteravel",
-                $"Não é possível alterar a unidade executante de um exame no status '{s.Status}' (imagem já recebida do PACS).");
+                $"Não é possível alterar a unidade executante de um exame no status '{bloqueado.Status}' "
+                + $"(exame {bloqueado.AccessionNumber}: imagem já recebida do PACS).");
         }
 
         // 2) Valida a nova unidade e rejeita no-op.
@@ -1480,14 +1644,16 @@ public sealed class SolicitacoesService(
 
         // 3) FONTE DA VERDADE É O PACS: se houver item na worklist do dcm4chee, remove e CONFIRMA a
         //    remoção ANTES de trocar. PACS indisponível/recusa aqui aborta sem tocar em nada.
-        if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+        foreach (var exame in exames)
         {
-            await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
-            s.WorklistItemUid = null;
+            if (!await _mwlClient.MwlItemExisteAsync(exame, cancellationToken)) continue;
+            await _mwlClient.ExcluirMwlItemAsync(exame, cancellationToken);
+            exame.WorklistItemUid = null;
 
-            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+            if (await _mwlClient.MwlItemExisteAsync(exame, cancellationToken))
                 throw new ConflitoException("solicitacaoExame.remocao_nao_confirmada",
-                    "Removi o item da worklist, mas o PACS ainda o lista. Aguarde um instante e tente de novo.");
+                    $"Removi o item da worklist do exame {exame.AccessionNumber}, mas o PACS ainda o lista. "
+                    + "Aguarde um instante e tente de novo.");
         }
 
         // 4) Troca + "estado zero" na nova unidade: sem equipamento, sem autorização, fora da
@@ -1501,13 +1667,16 @@ public sealed class SolicitacoesService(
         reg.AtualizadoEm = agora;
         reg.AtualizadoPor = _usuarioAtual.UsuarioId;
 
-        s.EquipamentoId = null;
-        s.WorklistItemUid = null;
-        s.Status = StatusSolicitacaoExame.Solicitada;
-        s.ProximaTentativaEm = null;
-        s.ErroIntegracaoPacs = null;
-        s.AtualizadoEm = agora;
-        s.AtualizadoPor = _usuarioAtual.UsuarioId;
+        foreach (var exame in exames)
+        {
+            exame.EquipamentoId = null;
+            exame.WorklistItemUid = null;
+            exame.Status = StatusSolicitacaoExame.Solicitada;
+            exame.ProximaTentativaEm = null;
+            exame.ErroIntegracaoPacs = null;
+            exame.AtualizadoEm = agora;
+            exame.AtualizadoPor = _usuarioAtual.UsuarioId;
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
 

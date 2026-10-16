@@ -477,8 +477,11 @@ public sealed class LaudosService(
         // quando há vínculo/solicitação). A configuração pode liberar iniciar sem anamnese.
         if (vinculo is not null && !config.PermitirLaudarSemAnamnese)
         {
+            // A anamnese é do PEDIDO (ADR-0074): o laudo do exame -1 vale a do exame principal.
+            var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(
+                _db, vinculo.SolicitacaoExameId, cancellationToken);
             var temAnamnese = await _db.Anamneses.AsNoTracking()
-                .AnyAsync(a => a.ExameImagemId == vinculo.SolicitacaoExameId, cancellationToken);
+                .AnyAsync(a => a.ExameImagemId == exameDaAnamnese, cancellationToken);
             if (!temAnamnese)
                 throw new ValidacaoException("laudo.sem_anamnese",
                     "Preencha a anamnese da solicitação antes de iniciar o laudo.");

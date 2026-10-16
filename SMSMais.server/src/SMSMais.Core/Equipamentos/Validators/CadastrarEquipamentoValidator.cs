@@ -21,5 +21,9 @@ public sealed class CadastrarEquipamentoValidator : AbstractValidator<CadastrarE
             .Must(ResolvedorEstacaoWorklist.AeTitleValido)
             .WithMessage("Identificador DICOM deve ser um AE Title válido: até 16 caracteres, sem espaços nem acentos.")
             .When(e => !string.IsNullOrWhiteSpace(e.IdentificadorDicom));
+
+        RuleFor(e => e.CodigoProcedimentoEsquema)
+            .Must(RegrasCodigoProcedimento.EsquemaValido)
+            .WithMessage(RegrasCodigoProcedimento.MensagemEsquema);
     }
 }

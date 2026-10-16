@@ -15,11 +15,16 @@ public sealed class AtualizarEquipamentoValidator : AbstractValidator<AtualizarE
         RuleFor(e => e.DescricaoMaxCaracteres)
             .InclusiveBetween(4, Equipamento.DescricaoMaxPadrao)
             .WithMessage($"O limite de descrição vai de 4 a {Equipamento.DescricaoMaxPadrao} " +
-                         "caracteres (64 é o teto do próprio DICOM).");
+                         "caracteres (64 é o teto do próprio DICOM).")
+            .When(e => e.DescricaoMaxCaracteres.HasValue);
 
         RuleFor(e => e.IdentificadorDicom)
             .Must(ResolvedorEstacaoWorklist.AeTitleValido)
             .WithMessage("Identificador DICOM deve ser um AE Title válido: até 16 caracteres, sem espaços nem acentos.")
             .When(e => !string.IsNullOrWhiteSpace(e.IdentificadorDicom));
+
+        RuleFor(e => e.CodigoProcedimentoEsquema)
+            .Must(RegrasCodigoProcedimento.EsquemaValido)
+            .WithMessage(RegrasCodigoProcedimento.MensagemEsquema);
     }
 }

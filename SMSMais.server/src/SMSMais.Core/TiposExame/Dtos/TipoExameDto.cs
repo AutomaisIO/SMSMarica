@@ -6,7 +6,7 @@ public sealed record TipoExameDto(
     Guid Id,
     /// <summary>Nome do procedimento no SISREG, em MAIÚSCULAS. É o que aparece em toda a UI.</summary>
     string Nome,
-    /// <summary>O <c>pa</c> do SISREG. Null quando o SISREG não informou (acontece em ~1/3 das linhas).</summary>
+    /// <summary>O <c>pa</c> do SISREG. Null quando o pedido entrou sem ele (manual, varredura da agenda).</summary>
     string? CodigoSisreg,
     /// <summary>Criado pela importação e ainda sem configuração DICOM feita por gente.</summary>
     bool AutoCriado,

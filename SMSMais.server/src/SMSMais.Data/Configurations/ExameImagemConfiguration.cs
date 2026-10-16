@@ -72,8 +72,24 @@ internal sealed class ExameImagemConfiguration : IEntityTypeConfiguration<ExameI
         builder.HasOne(e => e.TipoExame)
             .WithMany().HasForeignKey(e => e.TipoExameId).OnDelete(DeleteBehavior.Restrict);
 
-        // 1 solicitação de imagem : 1 execução (índice único garante o 0..1).
-        builder.HasIndex(e => e.SolicitacaoId).IsUnique();
+        // Um exame por código interno do pedido (ADR-0074). O 0..1 que antes valia para o pedido
+        // vale agora para o PRINCIPAL; (pedido, ordem) não se repete. Sem filtro de excluido_em, como
+        // era: um exame excluído continua ocupando a sua posição (e o seu accession).
+        builder.Property(e => e.SolicitacaoPrincipalId).HasColumnName("solicitacao_principal_id");
+        builder.Property(e => e.Ordem).HasColumnName("ordem").HasDefaultValue(0).IsRequired();
+        builder.Property(e => e.SolicitacaoProcedimentoId).HasColumnName("solicitacao_procedimento_id");
+        builder.HasOne(e => e.SolicitacaoProcedimento)
+            .WithMany().HasForeignKey(e => e.SolicitacaoProcedimentoId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => e.SolicitacaoId);
+        builder.HasIndex(e => e.SolicitacaoPrincipalId).IsUnique();
+        builder.HasIndex(e => new { e.SolicitacaoId, e.Ordem }).IsUnique();
+        builder.HasIndex(e => e.SolicitacaoProcedimentoId).IsUnique()
+            .HasFilter("solicitacao_procedimento_id IS NOT NULL");
+        // O principal é sempre do próprio pedido e é o de ordem 0; extra nunca é principal.
+        builder.ToTable(t => t.HasCheckConstraint(
+            "ck_exame_imagem_principal",
+            "(solicitacao_principal_id IS NULL AND ordem > 0) OR (solicitacao_principal_id = solicitacao_id AND ordem = 0)"));
         builder.HasIndex(e => e.AccessionNumber).IsUnique();
         builder.HasIndex(e => e.StudyInstanceUID).IsUnique();
         // Usado pelo worker de worklist (pega itens com tentativa vencida).

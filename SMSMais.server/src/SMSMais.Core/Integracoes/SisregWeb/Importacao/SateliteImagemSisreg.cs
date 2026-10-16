@@ -33,7 +33,8 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Importacao;
 public interface ISateliteImagemSisreg
 {
     /// <summary>
-    /// Cria o satélite que falta, ou completa o tipo de um satélite que nasceu sem ele. NÃO salva.
+    /// Cria o satélite que falta, ou completa o tipo de um satélite que nasceu sem ele — o principal
+    /// e um por procedimento extra do pedido (ADR-0074). NÃO salva.
     /// <paramref name="proximoAccession"/> nulo = pede ao gerador (uso unitário, na importação);
     /// só é chamado quando um exame é de fato criado.
     /// </summary>
@@ -77,11 +78,23 @@ public sealed class SateliteImagemSisreg(
             || solicitacao.ExcluidoEm is not null)
             return ResultadoSatelite.NadaAFazer;
 
-        // Sem filtro de ExcluidoEm: o índice único de solicitacao_id não é filtrado — um satélite
+        var (resultado, principal) = await GarantirPrincipalAsync(solicitacao, proximoAccession, ct);
+        var extras = await GarantirExtrasAsync(solicitacao, principal, ct);
+        return resultado == ResultadoSatelite.Criado || extras == ResultadoSatelite.Criado
+            ? ResultadoSatelite.Criado
+            : resultado == ResultadoSatelite.TipoCompletado ? resultado : extras;
+    }
+
+    /// <summary>O exame PRINCIPAL (ordem 0): cria o que falta ou completa o tipo. Devolve também o
+    /// exame, que os extras precisam para herdar o accession base.</summary>
+    private async Task<(ResultadoSatelite, ExameImagem?)> GarantirPrincipalAsync(
+        Solicitacao solicitacao, Func<string>? proximoAccession, CancellationToken ct)
+    {
+        // Sem filtro de ExcluidoEm: o índice único do principal não é filtrado — um satélite
         // excluído ainda ocupa a vaga, e criar outro estouraria.
-        var exame = await db.ExamesImagem.FirstOrDefaultAsync(e => e.SolicitacaoId == solicitacao.Id, ct);
+        var exame = await db.ExamesImagem.FirstOrDefaultAsync(e => e.SolicitacaoPrincipalId == solicitacao.Id, ct);
         if (exame is not null && (exame.TipoExameId is not null || exame.ExcluidoEm is not null))
-            return ResultadoSatelite.NadaAFazer;
+            return (ResultadoSatelite.NadaAFazer, exame);
 
         var nome = ResolvedorTipoExameSisreg.NormalizarNome(solicitacao.ProcedimentoTexto ?? string.Empty);
         var sig = SoDigitos(solicitacao.ProcedimentoSigtapCodigo);
@@ -93,17 +106,19 @@ public sealed class SateliteImagemSisreg(
         var agora = DateTime.UtcNow;
         if (exame is not null)
         {
-            if (tipoExameId is null) return ResultadoSatelite.NadaAFazer;
+            if (tipoExameId is null) return (ResultadoSatelite.NadaAFazer, exame);
             exame.TipoExameId = tipoExameId;
             exame.AtualizadoEm = agora;
             exame.AtualizadoPor = usuarioAtual.UsuarioId;
-            return ResultadoSatelite.TipoCompletado;
+            return (ResultadoSatelite.TipoCompletado, exame);
         }
 
-        db.ExamesImagem.Add(new ExameImagem
+        exame = new ExameImagem
         {
             Id = Guid.CreateVersion7(),
             SolicitacaoId = solicitacao.Id,
+            SolicitacaoPrincipalId = solicitacao.Id,
+            Ordem = 0,
             AccessionNumber = proximoAccession?.Invoke() ?? await geradorIds.ProximoAccessionAsync(ct),
             StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
             TipoExameId = tipoExameId, // nullable = mapeamento pendente
@@ -112,8 +127,108 @@ public sealed class SateliteImagemSisreg(
             ProximaTentativaEm = null,
             CriadoEm = agora,
             CriadoPor = usuarioAtual.UsuarioId,
-        });
-        return ResultadoSatelite.Criado;
+        };
+        db.ExamesImagem.Add(exame);
+        return (ResultadoSatelite.Criado, exame);
+    }
+
+    /// <summary>
+    /// Um exame por procedimento EXTRA do pedido (itens de ordem ≥ 2 do ticket #149) — ADR-0074. O
+    /// SISREG manda cada procedimento numa linha com o mesmo nº; cada um vira um exame com o seu
+    /// tipo (o joelho E não é o joelho D), o accession do principal com sufixo (<c>-1</c>,
+    /// <c>-2</c>…) e o seu próprio estudo. Completa o tipo do extra que nasceu sem ele.
+    ///
+    /// <para><b>Procedimento que chega depois da recepção.</b> As linhas do mesmo pedido vêm juntas
+    /// (mesma data, hora, unidade e chegada em todos os 2.986 pedidos medidos), mas, se uma chegar
+    /// com o pedido já autorizado, o exame dela entra na fila da worklist na hora: a recepção já
+    /// liberou o pedido inteiro e não há mais ninguém para clicar.</para>
+    /// </summary>
+    private async Task<ResultadoSatelite> GarantirExtrasAsync(
+        Solicitacao solicitacao, ExameImagem? principal, CancellationToken ct)
+    {
+        // Sem principal vivo não há accession base nem pedido em execução.
+        if (principal is null || principal.ExcluidoEm is not null) return ResultadoSatelite.NadaAFazer;
+
+        var itens = await db.SolicitacaoProcedimentos
+            .Where(p => p.SolicitacaoId == solicitacao.Id && p.ExcluidoEm == null && p.Ordem >= 2)
+            .OrderBy(p => p.Ordem)
+            .ToListAsync(ct);
+        if (itens.Count == 0) return ResultadoSatelite.NadaAFazer;
+
+        var existentes = await db.ExamesImagem
+            .Where(e => e.SolicitacaoId == solicitacao.Id && e.Ordem > 0)
+            .ToListAsync(ct);
+
+        var resultado = ResultadoSatelite.NadaAFazer;
+        var agora = DateTime.UtcNow;
+        foreach (var item in itens)
+        {
+            var exame = existentes.FirstOrDefault(e => e.SolicitacaoProcedimentoId == item.Id);
+            if (exame is not null && (exame.TipoExameId is not null || exame.ExcluidoEm is not null))
+                continue;
+
+            var tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
+                ResolvedorTipoExameSisreg.NormalizarNome(item.ProcedimentoTexto ?? string.Empty),
+                SoDigitos(item.ProcedimentoCodigoSisreg), SoDigitos(item.ProcedimentoSigtapCodigo), ct);
+            if (tipoExameId is { } tipo)
+                await escopoExameUnidade.GarantirAsync(tipo, solicitacao.UnidadeExecutanteId, ct);
+
+            if (exame is not null)
+            {
+                if (tipoExameId is null) continue;
+                exame.TipoExameId = tipoExameId;
+                exame.AtualizadoEm = agora;
+                exame.AtualizadoPor = usuarioAtual.UsuarioId;
+                if (resultado == ResultadoSatelite.NadaAFazer) resultado = ResultadoSatelite.TipoCompletado;
+                continue;
+            }
+
+            // A posição segue a do item (item 2 → exame 1 → "-1"). Se ela já estiver ocupada (exame
+            // de um item que foi excluído), vai para a próxima livre: accession emitido não se reusa.
+            var ordem = item.Ordem - 1;
+            if (existentes.Any(e => e.Ordem == ordem))
+                ordem = existentes.Max(e => e.Ordem) + 1;
+
+            exame = new ExameImagem
+            {
+                Id = Guid.CreateVersion7(),
+                SolicitacaoId = solicitacao.Id,
+                SolicitacaoPrincipalId = null,
+                Ordem = ordem,
+                SolicitacaoProcedimentoId = item.Id,
+                AccessionNumber = Solicitacoes.ExamesDoPedido.Accession(principal.AccessionNumber, ordem),
+                StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
+                TipoExameId = tipoExameId,
+                Status = StatusSolicitacaoExame.Solicitada,
+                ProximaTentativaEm = null,
+                CriadoEm = agora,
+                CriadoPor = usuarioAtual.UsuarioId,
+            };
+
+            if (solicitacao.AutorizadoEm is not null && principal.Status != StatusSolicitacaoExame.Cancelada)
+            {
+                exame.ProximaTentativaEm = agora;
+                exame.EquipamentoId = await MesmoEquipamentoDoPrincipalAsync(principal, tipoExameId, ct);
+            }
+
+            db.ExamesImagem.Add(exame);
+            existentes.Add(exame);
+            resultado = ResultadoSatelite.Criado;
+        }
+        return resultado;
+    }
+
+    /// <summary>A sala que a recepção escolheu para o principal, quando ela também faz a
+    /// modalidade do extra; senão null, e o envio deduz a estação como faz para qualquer exame.</summary>
+    private async Task<Guid?> MesmoEquipamentoDoPrincipalAsync(
+        ExameImagem principal, Guid? tipoExameId, CancellationToken ct)
+    {
+        if (principal.EquipamentoId is not { } equipamentoId || tipoExameId is not { } tipo) return null;
+        var modalidadeTipo = await db.TiposExame.AsNoTracking()
+            .Where(t => t.Id == tipo).Select(t => (ModalidadeDicom?)t.ModalidadeDicom).FirstOrDefaultAsync(ct);
+        var modalidadeEquip = await db.Equipamentos.AsNoTracking()
+            .Where(e => e.Id == equipamentoId).Select(e => (ModalidadeDicom?)e.ModalidadeDicom).FirstOrDefaultAsync(ct);
+        return modalidadeTipo is not null && modalidadeTipo == modalidadeEquip ? equipamentoId : null;
     }
 
     public async Task<ReparoSatelitesResultado> RepararAsync(int limite, Guid? depoisDe, CancellationToken ct)

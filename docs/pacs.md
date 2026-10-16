@@ -250,6 +250,21 @@ escolher o equipamento resolve sozinho, sem reprocessar nada. Carimbar um AE
 genérico mandaria o exame de uma unidade para a estação de outra. Os equipamentos
 que já operavam entraram pela migration `SeedEquipamentosCdtCmi`, ancorada no CNES.
 
+### O que o item leva, por equipamento (ADR-0074)
+
+Duas coisas do item MWL são **do aparelho**, configuradas no cadastro do equipamento — nunca
+globais, para o remendo de um não cobrar imposto dos outros:
+
+| Configuração | Padrão | O que muda no item |
+|---|---|---|
+| Limite da descrição | 64 (teto do VR `LO`) | corta (0032,1060) e (0040,0007); o Fuji FDR-3000AWS fica em 16 |
+| Código do procedimento | **desligado** | acrescenta o código interno do SISREG em **(0008,0100)**, com (0008,0102) = esquema (`99SMS` por padrão) e (0008,0104) = descrição sem acento, dentro de (0032,1064) e/ou de (0040,0100)›(0040,0008) |
+
+Desligado, o item sai byte a byte como antes (teste `CodigoProcedimentoWorklistTests`). O código é o
+do procedimento que **aquele exame** executa: um pedido do SISREG com mais de um código interno vira
+um exame por código, com accession `base`, `base-1`… (ADR-0074), e cada item leva o seu. Sem código
+no pedido, vale o do tipo de exame; sem nenhum, a sequência não vai.
+
 ### Isolamento por unidade no servidor (Worklist Label) — ATIVO
 
 Filtrar por `ScheduledStationAETitle` é decisão do **equipamento**: se o técnico não

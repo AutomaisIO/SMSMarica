@@ -82,7 +82,8 @@ public sealed class ConciliacaoCancelamentosSisregService(
 
         var codigos = linhas.Select(l => l.Codigo).ToList();
         var nossas = await db.Solicitacoes
-            .Include(s => s.ExameImagem)
+            // Todos os exames do pedido: o SISREG cancela o pedido inteiro (ADR-0074).
+            .Include(s => s.ExamesImagem)
             .Where(s => s.CodigoSolicitacao != null
                 && codigos.Contains(s.CodigoSolicitacao)
                 && s.ExcluidoEm == null)
@@ -109,8 +110,9 @@ public sealed class ConciliacaoCancelamentosSisregService(
             s.ConfirmadoCanal = Canal;
             s.AtualizadoEm = agora;
 
-            if (s.ExameImagem is { } exame && exame.Status is StatusSolicitacaoExame.Solicitada
-                    or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida)
+            foreach (var exame in s.ExamesImagem.Where(e => e.ExcluidoEm == null && e.Status
+                         is StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada
+                         or StatusSolicitacaoExame.Recebida))
             {
                 exame.Status = StatusSolicitacaoExame.Cancelada;
                 exame.AtualizadoEm = agora;

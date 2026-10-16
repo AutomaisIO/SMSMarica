@@ -93,8 +93,9 @@ public static class ComparadorMarcacao
     /// e executante) — ticket #149.
     ///
     /// <para><b>Código primeiro, nome depois.</b> O <c>pa</c> identifica quando os DOIS lados o
-    /// têm; como ele falta em ~1/3 das linhas, sem ele quem decide é o nome. O SIGTAP NÃO entra: os
-    /// joelhos direito e esquerdo do caso que abriu o ticket têm o mesmo SIGTAP e são dois itens.</para>
+    /// têm; quando falta num dos lados (pedido manual, varredura da agenda), quem decide é o nome. O
+    /// SIGTAP NÃO entra: os joelhos direito e esquerdo do caso que abriu o ticket têm o mesmo SIGTAP e
+    /// são dois itens.</para>
     ///
     /// <para>Sem identidade nenhuma de um dos lados (nem código nem nome), responde "mesmo": não
     /// dá para afirmar que é outro procedimento, e inventar item seria o erro oposto ao do ticket.</para>

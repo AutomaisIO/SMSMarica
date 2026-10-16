@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Data.Configurations;
 
@@ -20,6 +21,14 @@ internal sealed class EquipamentoConfiguration : IEntityTypeConfiguration<Equipa
             .HasColumnName("descricao_max_caracteres")
             .HasDefaultValue(Equipamento.DescricaoMaxPadrao)
             .IsRequired();
+        // Nasce 0 (não envia): ligar o código do procedimento é decisão aparelho a aparelho.
+        builder.Property(e => e.CodigoProcedimentoDestinos)
+            .HasColumnName("codigo_procedimento_destinos")
+            .HasConversion<int>()
+            .HasDefaultValue(DestinoCodigoProcedimento.Nenhum)
+            .IsRequired();
+        builder.Property(e => e.CodigoProcedimentoEsquema)
+            .HasColumnName("codigo_procedimento_esquema").HasMaxLength(16);
         builder.Property(e => e.Ativo).HasColumnName("ativo").IsRequired();
 
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").IsRequired();

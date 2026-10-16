@@ -75,12 +75,14 @@ internal static class ConstrutorMwlItem
     /// </summary>
     public static JsonObject Item(
         ExameImagem s, PacienteResumo paciente, string stationAeTitle,
-        int descricaoMax = Equipamento.DescricaoMaxPadrao)
+        int descricaoMax = Equipamento.DescricaoMaxPadrao,
+        DestinoCodigoProcedimento codigoDestinos = DestinoCodigoProcedimento.Nenhum,
+        string? codigoEsquema = null)
     {
         var tipo = s.TipoExame ?? throw new InvalidOperationException("TipoExame não carregado.");
         var quando = s.Solicitacao!.DataAgendada ?? DateTime.UtcNow;
 
-        return new JsonObject
+        var item = new JsonObject
         {
             ["00080050"] = Sh(s.AccessionNumber),                            // AccessionNumber
             ["00100010"] = Pn(paciente.Nome),                               // PatientName
@@ -112,7 +114,79 @@ internal static class ConstrutorMwlItem
                 },
             },
         }.ComIssuer(PatientId(s, paciente));
+
+        // Código do procedimento — SÓ para o aparelho que pediu (ADR-0074). Desligado, o item sai
+        // exatamente como antes: nada de sequência vazia, nada de campo novo.
+        if (codigoDestinos != DestinoCodigoProcedimento.Nenhum
+            && CodigoDoProcedimento(s, descricaoMax, codigoEsquema) is { } codigo)
+        {
+            if (codigoDestinos.HasFlag(DestinoCodigoProcedimento.ProcedimentoSolicitado))
+                item["00321064"] = SequenciaDeCodigo(codigo);              // RequestedProcedureCodeSequence
+            if (codigoDestinos.HasFlag(DestinoCodigoProcedimento.ProtocoloAgendado))
+            {
+                var sps = (JsonObject)((JsonArray)item["00400100"]!["Value"]!)[0]!;
+                sps["00400008"] = SequenciaDeCodigo(codigo);               // ScheduledProtocolCodeSequence
+            }
+        }
+
+        return item;
     }
+
+    /// <summary>
+    /// O item de código do procedimento: código interno do SISREG em (0008,0100), esquema em
+    /// (0008,0102), descrição em (0008,0104). O código é o do procedimento que ESTE exame executa —
+    /// no pedido com joelho D e E, cada exame leva o seu (<see cref="Solicitacoes.ExamesDoPedido"/>). Sem código no
+    /// pedido (lançado à mão), vale o do tipo de exame; sem nenhum, não há item — e o aparelho
+    /// fica como hoje, com o técnico escolhendo o protocolo.
+    /// </summary>
+    internal static CodigoProcedimento? CodigoDoProcedimento(ExameImagem s, int descricaoMax, string? esquema)
+    {
+        var procedimento = Solicitacoes.ExamesDoPedido.Procedimento(s);
+        var codigo = SoDigitos(procedimento.CodigoSisreg);
+        if (codigo.Length == 0) codigo = SoDigitos(s.TipoExame?.CodigoSisreg);
+        if (codigo.Length == 0) return null;
+
+        var texto = procedimento.Texto ?? s.TipoExame?.Nome ?? string.Empty;
+        return new CodigoProcedimento(
+            codigo,
+            string.IsNullOrWhiteSpace(esquema) ? Equipamento.CodigoProcedimentoEsquemaPadrao : esquema.Trim(),
+            DescricaoDoCodigo(texto, descricaoMax));
+    }
+
+    /// <summary>
+    /// (0008,0104) sem acento e no tamanho que o aparelho aguenta. Abrevia ANTES de cortar: dois
+    /// nomes do SISREG passam de 64 ("...(AP + LATERAL + OBLIQUA + 3 AXIAIS) DIREITO") e, cortados,
+    /// o direito e o esquerdo ficariam iguais.
+    /// </summary>
+    internal static string DescricaoDoCodigo(string texto, int max)
+    {
+        var t = string.Join(' ', Ascii(texto).ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        foreach (var (de, para) in new[] { ("RADIOGRAFIA", "RX"), (" + ", "+"), ("( ", "(") })
+        {
+            if (t.Length <= max) break;
+            t = t.Replace(de, para, StringComparison.Ordinal);
+        }
+        return Truncar(t, max);
+    }
+
+    private static JsonObject SequenciaDeCodigo(CodigoProcedimento c) => new()
+    {
+        ["vr"] = "SQ",
+        ["Value"] = new JsonArray
+        {
+            new JsonObject
+            {
+                ["00080100"] = Sh(c.Valor),      // CodeValue — o código interno do SISREG
+                ["00080102"] = Sh(c.Esquema),    // CodingSchemeDesignator
+                ["00080104"] = Lo(c.Descricao),  // CodeMeaning
+            },
+        },
+    };
+
+    private static string SoDigitos(string? v) =>
+        string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsAsciiDigit)]);
+
+    internal sealed record CodigoProcedimento(string Valor, string Esquema, string Descricao);
 
     /// <summary>Recurso Patient mínimo para registrar/atualizar no dcm4chee antes do
     /// MWL item (o <c>POST /mwlitems</c> exige que o paciente já exista no arquivo).</summary>

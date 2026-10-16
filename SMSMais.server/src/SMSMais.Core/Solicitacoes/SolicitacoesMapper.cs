@@ -58,9 +58,10 @@ internal static class SolicitacoesMapper
             exame?.TipoExameId ?? Guid.Empty,
             exame?.TipoExame?.Nome ?? string.Empty,
             exame?.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
-            reg.ProcedimentoTexto,
+            // O exame extra (ADR-0074) mostra o procedimento DELE, não o principal do pedido.
+            exame?.SolicitacaoProcedimento?.ProcedimentoTexto ?? reg.ProcedimentoTexto,
             reg.EspecialidadeTexto,
-            reg.ProcedimentoSigtapCodigo,
+            exame?.SolicitacaoProcedimento?.ProcedimentoSigtapCodigo ?? reg.ProcedimentoSigtapCodigo,
             reg.UnidadeExecutanteId,
             reg.UnidadeExecutante?.Nome ?? string.Empty,
             reg.UnidadeSolicitanteId,
@@ -122,9 +123,12 @@ internal static class SolicitacoesMapper
         new(p.Ordem, p.ProcedimentoTexto, p.ProcedimentoCodigoSisreg, p.ProcedimentoSigtapCodigo,
             p.ProfissionalExecutanteNome, p.DataAgendada);
 
-    public static SolicitacaoListItemDto ParaListItem(Solicitacao reg, Guid? unidadeReferencia = null)
+    public static SolicitacaoListItemDto ParaListItem(Solicitacao reg, Guid? unidadeReferencia = null) =>
+        ParaListItem(reg, reg.ExameImagem, unidadeReferencia);
+
+    /// <summary>Linha da lista para UM exame do pedido — o principal ou um extra (ADR-0074).</summary>
+    public static SolicitacaoListItemDto ParaListItem(Solicitacao reg, ExameImagem? exame, Guid? unidadeReferencia)
     {
-        var exame = reg.ExameImagem;
         return new(
             exame?.Id ?? reg.Id,
             reg.Id,
@@ -137,7 +141,7 @@ internal static class SolicitacoesMapper
             exame?.TipoExameId ?? Guid.Empty,
             exame?.TipoExame?.Nome ?? string.Empty,
             exame?.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
-            reg.ProcedimentoTexto,
+            exame?.SolicitacaoProcedimento?.ProcedimentoTexto ?? reg.ProcedimentoTexto,
             reg.EspecialidadeTexto,
             reg.UnidadeExecutante?.Nome ?? string.Empty,
             reg.SolicitanteNome,
