@@ -103,8 +103,24 @@ internal static class SolicitacoesMapper
             // CID materializado; na ausência dele (importações anteriores ao ticket #155), lê do RAW.
             // A descrição por extenso é resolvida no enriquecimento do detalhe (precisa do catálogo).
             CidCodigo: reg.CidCodigo
-                ?? Integracoes.SisregWeb.Importacao.AgendaTxtParser.CidDe(reg.RawSisreg));
+                ?? Integracoes.SisregWeb.Importacao.AgendaTxtParser.CidDe(reg.RawSisreg),
+            // Pedido de um procedimento só não tem itens gravados: o item é a própria espinha. Com
+            // 2+ procedimentos, o enriquecimento do detalhe troca esta lista pelos itens (ticket #149).
+            Procedimentos: ProcedimentoPrincipal(reg));
     }
+
+    /// <summary>A espinha lida como item único — o pedido sem <see cref="SolicitacaoProcedimento"/>
+    /// gravado. Vazio quando a solicitação não tem procedimento nenhum (pedido manual sem SIGTAP).</summary>
+    public static IReadOnlyList<SolicitacaoProcedimentoDto> ProcedimentoPrincipal(Solicitacao reg) =>
+        reg.ProcedimentoTexto is null && reg.ProcedimentoCodigoSisreg is null && reg.ProcedimentoSigtapCodigo is null
+            ? []
+            : [new SolicitacaoProcedimentoDto(
+                1, reg.ProcedimentoTexto, reg.ProcedimentoCodigoSisreg, reg.ProcedimentoSigtapCodigo,
+                reg.ProfissionalExecutanteNome, reg.DataAgendada)];
+
+    public static SolicitacaoProcedimentoDto ParaDto(SolicitacaoProcedimento p) =>
+        new(p.Ordem, p.ProcedimentoTexto, p.ProcedimentoCodigoSisreg, p.ProcedimentoSigtapCodigo,
+            p.ProfissionalExecutanteNome, p.DataAgendada);
 
     public static SolicitacaoListItemDto ParaListItem(Solicitacao reg, Guid? unidadeReferencia = null)
     {

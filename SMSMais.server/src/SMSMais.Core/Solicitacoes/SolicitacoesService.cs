@@ -111,6 +111,15 @@ public sealed class SolicitacoesService(
             && await _cidCatalogo.DescricaoAsync(enriquecido.CidCodigo, ct) is { } cidDesc)
             enriquecido = enriquecido with { CidDescricao = cidDesc };
 
+        // Todos os procedimentos do pedido (ticket #149). Itens só existem quando o SISREG mandou
+        // 2+ procedimentos com o mesmo nº; sem eles, fica o item único que o mapper montou da espinha.
+        var itens = await _db.SolicitacaoProcedimentos.AsNoTracking()
+            .Where(p => p.SolicitacaoId == dto.SolicitacaoId && p.ExcluidoEm == null)
+            .OrderBy(p => p.Ordem)
+            .ToListAsync(ct);
+        if (itens.Count > 0)
+            enriquecido = enriquecido with { Procedimentos = [.. itens.Select(SolicitacoesMapper.ParaDto)] };
+
         return enriquecido;
     }
 

@@ -141,6 +141,20 @@ export type Solicitacao = {
   cidCodigo: string | null;
   /** Descrição do CID por extenso quando o catálogo reconhece; null = mostra só o código. */
   cidDescricao: string | null;
+
+  /** TODOS os procedimentos do pedido, na ordem do SISREG (ticket #149). O 1º é o principal (o
+   *  mesmo de `procedimentoTexto`). Pedido de um procedimento só vem com um item. */
+  procedimentos?: SolicitacaoProcedimento[] | null;
+};
+
+/** Um procedimento do pedido. Data e executante são do item — no SISREG cada linha tem os seus. */
+export type SolicitacaoProcedimento = {
+  ordem: number;
+  procedimentoTexto: string | null;
+  procedimentoCodigoSisreg: string | null;
+  procedimentoSigtapCodigo: string | null;
+  profissionalExecutanteNome: string | null;
+  dataAgendada: string | null;
 };
 
 export type SolicitacaoListItem = {
