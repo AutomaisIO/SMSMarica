@@ -33,6 +33,11 @@ export const artigoEquipamentos: Artigo = {
     'DX',
     'ultrassom',
     'mamógrafo',
+    'ECG',
+    'cardiologia',
+    'Holter',
+    'MAPA',
+    'CardioNet',
     'AE Title',
     'identificador DICOM',
     'worklist',
@@ -71,7 +76,7 @@ export const artigoEquipamentos: Artigo = {
     {
       id: 'os-campos',
       titulo: 'Os campos do cadastro',
-      busca: 'nome unidade modalidade AE title identificador DICOM limite descrição ativo Fuji 16 64',
+      busca: 'nome unidade modalidade AE title identificador DICOM limite descrição ativo Fuji 16 64 ECG cardiologia Holter MAPA',
       conteudo: (
         <>
           <Lista>
@@ -82,7 +87,8 @@ export const artigoEquipamentos: Artigo = {
             <Item>
               <strong>Unidade</strong> e <strong>Modalidade</strong> — juntas, dizem quais exames podem
               ir para este aparelho. Quando a unidade tem mais de um aparelho da mesma modalidade, a
-              recepção escolhe a sala ao autorizar.
+              recepção escolhe a sala ao autorizar. Holter e MAPA (cardiologia) usam a modalidade{' '}
+              <strong>ECG</strong> — o aparelho e o tipo de exame precisam estar os dois nela.
             </Item>
             <Item>
               <strong>AE Title</strong> — o nome configurado no próprio aparelho. A worklist só chega

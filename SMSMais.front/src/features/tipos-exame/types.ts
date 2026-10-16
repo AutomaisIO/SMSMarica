@@ -1,6 +1,6 @@
 export type ModalidadeDicom =
   | 'Indefinida'
-  | 'CR' | 'DX' | 'MG' | 'US' | 'CT' | 'MR' | 'NM' | 'PT' | 'OT';
+  | 'CR' | 'DX' | 'MG' | 'US' | 'CT' | 'MR' | 'NM' | 'PT' | 'ECG' | 'OT';
 
 export const MODALIDADES_DICOM: { valor: ModalidadeDicom; rotulo: string }[] = [
   // Primeiro da lista de propósito: é o estado dos tipos que o SISREG criou e ninguém configurou.
@@ -13,6 +13,7 @@ export const MODALIDADES_DICOM: { valor: ModalidadeDicom; rotulo: string }[] = [
   { valor: 'MR', rotulo: 'Ressonância magnética (MR)' },
   { valor: 'NM', rotulo: 'Medicina nuclear (NM)' },
   { valor: 'PT', rotulo: 'PET (PT)' },
+  { valor: 'ECG', rotulo: 'Cardiologia — Holter, MAPA, ECG (ECG)' },
   { valor: 'OT', rotulo: 'Outro (OT)' },
 ];
 

@@ -54,9 +54,19 @@ ldapsearch -x -LLL -H ldap://pacs.marica.automais.cloud:389 -D "cn=admin,dc=dcm4
 
 ## Onde rodar
 
-O host do PACS é `pacs.marica.automais.cloud` (`104.236.203.40`). Se o SSH direto não estiver à
-mão, **o LDAP (389) é alcançável do droplet `smsmarica.online`**, direto e pela VPN — lá já tem
-`ldap-utils` (instalado em 09/09/2026). Credenciais fora deste repositório.
+O host do PACS é `pacs.marica.automais.cloud` (`104.236.203.40`). **Rode no próprio host**, com
+`ldap://localhost:389` e `http://localhost:8080`: do Windows, `plink -ssh -batch -pw <senha>
+-hostkey "SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo" root@pacs.marica.automais.cloud "bash -s"`
+com o script pelo stdin (a senha do LDAP vai como `export W=...` na primeira linha do stdin, não
+dentro do script). O droplet `smsmarica.online`, que era o atalho até 14/10/2026, está **desligado**
+desde a migração para a EVEO.
+
+Credenciais em `docs/credenciais_pacs.txt` (gitignored): linha 2 = SSH root, linha 12 = admin do
+LDAP. **A senha do LDAP NÃO é mais `dcmsecret`** (trocada em 22/07/2026) — com ela o `ldapsearch`
+responde `Invalid credentials (49)`.
+
+O host **não tem** as ferramentas de linha de comando do dcm4che (`storescu`, `mwlscu`): o C-ECHO
+com o Calling AE do aparelho só se prova pelo próprio aparelho ("Testar Conexão").
 
 ## Passo a passo
 
@@ -161,6 +171,17 @@ Acrescentar o aparelho às tabelas de `docs/pacs.md` (§8 e §9.1).
 
 ## Armadilhas já pagas
 
+- **Aparelho que só consulta a worklist não fecha o item.** O CardioNet Client DICOM da cardiologia
+  do CDT (`CARDIO-CDT`, 16/10/2026) é MWL SCU + C-ECHO e nada mais: não manda imagem, laudo nem
+  MPPS. Como quem tira o item da lista é a conciliação do PACS (exame vira *Realizada*), o Holter
+  feito **fica na worklist para sempre**, e o CardioNet traz no máximo 1000 itens. Até existir um
+  fechamento para esse caso, o filtro de **Período** no aparelho segura a lista (`docs/pacs-cardio-cdt.md`
+  §5). Aparelho novo: ler a declaração de conformidade DICOM **antes** — se não houver C-STORE,
+  o ciclo de vida é outro.
+- **Modalidade que o sistema não tem é mudança de código.** `ModalidadeDicom` é enum (int, sem
+  CHECK — não precisa de migration), mas aparece em dois seletores do front (`equipamentos/types.ts`
+  e `tipos-exame/types.ts`) e no rótulo das estatísticas. Foi o caso do `ECG` (Holter e MAPA)
+  em 16/10/2026: deploy antes de cadastrar o equipamento.
 - **Imagem funciona antes de a worklist existir.** A `11112` aceita qualquer Calling AE, então o
   C-STORE passa a funcionar assim que o técnico aponta — e isso dá falsa sensação de que está
   tudo pronto. A worklist é a metade que falta.
