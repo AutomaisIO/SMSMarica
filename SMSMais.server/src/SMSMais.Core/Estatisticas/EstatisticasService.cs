@@ -527,6 +527,7 @@ public sealed class EstatisticasService(
         ModalidadeDicom.MR => "MR — Ressonância",
         ModalidadeDicom.NM => "NM — Med. Nuclear",
         ModalidadeDicom.PT => "PT — PET",
+        ModalidadeDicom.ECG => "ECG — Cardiologia",
         ModalidadeDicom.OT => "OT — Outra",
         _ => "(sem tipo)",
     };

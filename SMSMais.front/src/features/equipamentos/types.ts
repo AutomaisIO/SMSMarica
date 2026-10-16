@@ -1,4 +1,4 @@
-export type ModalidadeDicom = 'CR' | 'DX' | 'MG' | 'US' | 'CT' | 'MR' | 'NM' | 'PT' | 'OT';
+export type ModalidadeDicom = 'CR' | 'DX' | 'MG' | 'US' | 'CT' | 'MR' | 'NM' | 'PT' | 'ECG' | 'OT';
 
 export const MODALIDADES: { id: ModalidadeDicom; rotulo: string }[] = [
   { id: 'US', rotulo: 'US — Ultrassom' },
@@ -9,6 +9,7 @@ export const MODALIDADES: { id: ModalidadeDicom; rotulo: string }[] = [
   { id: 'MR', rotulo: 'MR — Ressonância magnética' },
   { id: 'NM', rotulo: 'NM — Medicina nuclear' },
   { id: 'PT', rotulo: 'PT — PET' },
+  { id: 'ECG', rotulo: 'ECG — Cardiologia (Holter, MAPA, ECG)' },
   { id: 'OT', rotulo: 'OT — Outro' },
 ];
 

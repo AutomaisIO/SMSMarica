@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuração da worklist para a Cardiologia do CDT (CardioNet DICOM)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>Configuração da worklist para a Cardiologia do CDT (CardioNet DICOM)</h1>
+<p>&gt; <strong>Para o técnico da Cardios / da unidade.</strong> Parâmetros para o <strong>CardioNet Client DICOM</strong> do CDT &gt; puxar a <strong>lista de trabalho (worklist)</strong> da plataforma SMSMais: os exames de <strong>Holter 24 horas</strong> e &gt; <strong>MAPA</strong> que o SISREG agenda para o CDT aparecem na tela "Criar novo exame → fonte DICOM → &gt; Procurar...", já com nome, data de nascimento, sexo e nº do pedido. &gt; AE de worklist <strong><code>WORK-CARDIO-CDT</code></strong> (label <code>CARDIO-CDT</code>) criado e validado no servidor em &gt; <strong>2026-10-16</strong> — <code>/aets</code>, <code>/webapps</code>, <code>mwlitems</code> 204 e isolamento 523 = 523.</p>
+<hr>
+<h2>1. O que o CardioNet faz (e o que não faz)</h2>
+<p>Pela declaração de conformidade do próprio CardioNet Client DICOM (manual 01.2900.00079, Apêndice D):</p>
+<ul>
+<li><strong>Consulta a worklist</strong> (Modality Worklist FIND, SCU) e faz <strong>C-ECHO</strong> (Verification). Só isso.</li>
+<li><strong>Não envia nada ao PACS</strong> — nem imagem, nem laudo, nem MPPS. O exame vai para a conta do</li>
+</ul>
+<p>  analista na nuvem da Cardios e o laudo volta por lá.</p>
+<ul>
+<li>Consulta <strong>só quando o operador pede</strong> (ao preparar o gravador), uma associação por vez, no</li>
+</ul>
+<p>  máximo <strong>1000 itens</strong> por consulta (não configurável).</p>
+<ul>
+<li>Texto em <strong>ISO_IR 100 (Latin-1)</strong>. O item da nossa worklist sai sem acento, então nome com</li>
+</ul>
+<p>  acento chega sem acento — não chega corrompido.</p>
+<hr>
+<h2>2. Servidor</h2>
+<div class="tw"><table><thead><tr><th>Item</th><th>Valor</th></tr></thead><tbody>
+<tr><td>Endereço (IP)</td><td><strong><code>104.236.203.40</code></strong></td></tr>
+<tr><td>Hostname (DNS)</td><td><code>pacs.marica.automais.cloud</code></td></tr>
+<tr><td>Porta DICOM</td><td><strong><code>11112</code></strong> (sem TLS — o CardioNet não tem TLS)</td></tr>
+</tbody></table></div>
+<p>&gt; Use o <strong>IP</strong> se a rede do CDT não resolver o DNS público.</p>
+<hr>
+<h2>3. Tela "Configuração DICOM" do CardioNet</h2>
+<div class="tw"><table><thead><tr><th>Campo no CardioNet</th><th>Valor</th><th>Observação</th></tr></thead><tbody>
+<tr><td><strong>Cliente AET</strong></td><td><strong><code>CARDIO-CDT</code></strong></td><td>o padrão de fábrica é <code>CARDIOS</code> — <strong>trocar</strong>. Maiúsculas, exatamente assim</td></tr>
+<tr><td><strong>Servidor AEC</strong></td><td><strong><code>WORK-CARDIO-CDT</code></strong></td><td>maiúsculas, exatamente assim</td></tr>
+<tr><td><strong>IP Servidor</strong></td><td><code>104.236.203.40</code></td><td></td></tr>
+<tr><td><strong>Porta Servidor</strong></td><td><code>11112</code></td><td>a mesma porta das imagens dos outros aparelhos — o que muda é o AE</td></tr>
+</tbody></table></div>
+<p>Depois de preencher, <strong>"Testar Conexão"</strong> tem que dar sucesso (é um C-ECHO).</p>
+<h3>Parâmetros de busca</h3>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Valor recomendado</th><th>Por quê</th></tr></thead><tbody>
+<tr><td><strong>Modalidade</strong></td><td><strong><code>ECG</code></strong> (ou em branco)</td><td>todo exame desta worklist sai com Modality <code>ECG</code> — Holter <strong>e</strong> MAPA. Qualquer outro valor (<code>HD</code>, <code>OT</code>, <code>HOLTER</code>…) devolve a lista <strong>vazia</strong></td></tr>
+<tr><td><strong>Nome da estação</strong></td><td><strong><code>CARDIO-CDT</code></strong> (ou em branco)</td><td>é o Scheduled Station AE Title dos nossos itens</td></tr>
+<tr><td><strong>Período</strong></td><td><strong><code>7</code></strong> dias</td><td>ver §5 — o período segura a lista enxuta</td></tr>
+<tr><td>ID / Nome / Accession</td><td>em branco</td><td>são para busca pontual</td></tr>
+</tbody></table></div>
+<p>&gt; <strong>O <code>WORK-CARDIO-CDT</code> já entrega só os exames deste aparelho</strong>, mesmo sem filtro nenhum: o servidor &gt; recorta pelo Worklist Label (ver <a href="./pacs.md"><code>pacs.md</code></a> §8). Os filtros acima são defesa em &gt; profundidade.</p>
+<hr>
+<h2>4. Resumo (cola rápida)</h2>
+<pre><code>CardioNet Client DICOM → Criar novo exame → fonte "DICOM" → Configurações
+
+  Cliente AET:     CARDIO-CDT
+  Servidor AEC:    WORK-CARDIO-CDT
+  IP Servidor:     104.236.203.40
+  Porta Servidor:  11112
+
+  Busca:  Modalidade = ECG   Nome da estação = CARDIO-CDT   Período = 7</code></pre>
+<hr>
+<h2>5. Pontos de atenção</h2>
+<ul>
+<li><strong>A lista não distingue Holter de MAPA.</strong> O CardioNet não pede nem mostra a descrição do exame</li>
+</ul>
+<p>  (não consulta <code>0032,1060</code> nem <code>0040,0007</code>) e não exibe a modalidade. Quem escolhe "Holter" ou   "MAPA" é o operador, ao criar o exame. Se o mesmo paciente tiver os dois agendados, aparecem   duas linhas com nº de pedido (Accession) diferente.</p>
+<ul>
+<li><strong>O item não sai da lista sozinho.</strong> Nos outros aparelhos, o item some quando a imagem chega ao</li>
+</ul>
+<p>  PACS. O CardioNet não manda nada ao PACS, então o Holter feito continua na lista. Por isso o   filtro de <strong>Período</strong>. Sem ele, a lista cresce até o teto de 1000 itens do CardioNet. (Pendência   do nosso lado: fechar o item de quem não manda imagem — ver <code>pacs.md</code> §8, "Ciclo de vida".)</p>
+<ul>
+<li><strong>O exame leva o nosso nº do pedido e o Study UID</strong> (coluna IOD da conformidade). Se um dia o</li>
+</ul>
+<p>  laudo voltar como DICOM, é por eles que a plataforma casa o laudo com o pedido.</p>
+<hr>
+<h2>6. Rede</h2>
+<p>Liberar no firewall do CDT a <strong>saída</strong> TCP para <code>104.236.203.40:11112</code>. O CardioNet é sempre quem inicia a conexão — o servidor não precisa alcançar o computador do CDT.</p>
+<hr>
+<h2>7. Teste</h2>
+<ol>
+<li><strong>Testar Conexão</strong> na tela de configuração → sucesso.</li>
+<li><strong>Procurar...</strong> → aparecem os Holter/MAPA autorizados na recepção do CDT para os últimos 7 dias.</li>
+</ol>
+<p>   Lista vazia com conexão OK costuma ser: (a) nenhum exame autorizado no período, ou (b) filtro de    Modalidade diferente de <code>ECG</code>. Confirmar com a equipe Automais, que vê no servidor o que o    CardioNet pediu de fato.</p>
+</main>
+</body>
+</html>

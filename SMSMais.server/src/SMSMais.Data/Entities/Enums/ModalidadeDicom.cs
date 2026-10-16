@@ -37,6 +37,14 @@ public enum ModalidadeDicom
     /// <summary>Positron Emission Tomography.</summary>
     PT = 8,
 
+    /// <summary>
+    /// Electrocardiography — também o Holter (Ambulatory ECG Waveform é modalidade ECG no padrão)
+    /// e, por convenção nossa, a MAPA: o DICOM não tem modalidade de pressão arterial ambulatorial,
+    /// e no CDT as duas saem do mesmo aparelho (CardioNet DICOM, AE <c>CARDIO-CDT</c>). Uma
+    /// modalidade só para o aparelho evita que a recepção tenha de escolher a sala.
+    /// </summary>
+    ECG = 9,
+
     /// <summary>Other.</summary>
     OT = 99,
 }
