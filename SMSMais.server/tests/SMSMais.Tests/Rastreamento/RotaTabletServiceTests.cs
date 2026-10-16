@@ -199,7 +199,8 @@ public partial class RotaTabletServiceTests(PostgresFixture fixture)
 
         Assert.Equal(rotaId, rota.RotaId);
         Assert.Equal("Motorista Simulado", rota.MotoristaNome);
-        Assert.Collection(rota.Paradas,
+        // A ida (a volta da unidade externa está em RotaTabletServiceTests.Volta).
+        Assert.Collection(rota.Paradas.Where(p => p.Trecho == RotaTabletService.Ida),
             beatriz =>
             {
                 Assert.Equal(TipoParada.Coleta, beatriz.Tipo);

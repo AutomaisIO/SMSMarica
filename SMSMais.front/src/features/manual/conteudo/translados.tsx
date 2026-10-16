@@ -68,6 +68,12 @@ export const artigoTranslados: Artigo = {
     'isolamento',
     'veículo exclusivo',
     'veículo alto',
+    'volta',
+    'retorno',
+    'espera',
+    'puxar',
+    'aguardando retorno',
+    'fora do município',
   ],
   secoes: () => [
     {
@@ -233,6 +239,49 @@ export const artigoTranslados: Artigo = {
       ),
     },
     {
+      id: 'volta',
+      titulo: 'A volta: depende do destino',
+      busca: 'volta retorno espera fora do município maricá puxar aguardando a volta pronto tempo médio buscar na unidade entregar em casa',
+      conteudo: (
+        <>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Fora do município',
+                descricao: (
+                  <>
+                    A van <strong>espera</strong>. No tablet, depois do destino, vem “Volta — unidade”, com
+                    a hora prevista (chegada + tempo médio do tratamento), e depois a entrega na casa de
+                    cada um. Quem faltou na ida não entra na volta.
+                  </>
+                ),
+              },
+              {
+                termo: 'Em Maricá',
+                descricao: (
+                  <>
+                    A van <strong>não espera</strong>: a rota acaba no destino. Quem desceu aparece em{' '}
+                    <strong>Aguardando a volta</strong>, no detalhe de qualquer translado planejado ou em
+                    andamento, com a hora em que deve estar pronto. <BotaoRef variante="outline">Puxar para esta rota</BotaoRef>{' '}
+                    põe a volta na rota: o tablet passa a mostrar a busca na unidade e a entrega em casa.
+                  </>
+                ),
+              },
+            ]}
+          />
+          <Callout tipo="dica" titulo="Van cheia">
+            O lugar segue a condição do paciente e os acompanhantes, como na geração. Sem lugar na rota,
+            o sistema avisa: puxe para outra, ou crie um translado só para a volta (Novo translado, mesmo
+            veículo) e puxe para ele.
+          </Callout>
+          <P>
+            Quem não estava na unidade quando o carro saiu fica <strong>aguardando a volta</strong> e
+            aparece na lista para ser puxado — mesmo fora do município.
+          </P>
+        </>
+      ),
+    },
+    {
       id: 'o-que-conta',
       titulo: 'O que conta: o transporte feito',
       busca: 'realizada não realizada transporte feito atendimento faturamento bpa contabiliza translado desembarque ausência',
@@ -254,7 +303,11 @@ export const artigoTranslados: Artigo = {
               },
             ]}
           />
-          <P>Acompanhante embarcando ou faltando fica registrado, mas não muda a viagem do paciente.</P>
+          <P>
+            Acompanhante embarcando ou faltando fica registrado, mas não muda a viagem do paciente. A volta
+            não muda a contagem: o translado já foi contado na ida; ela só completa a saída da unidade e a
+            chegada em casa.
+          </P>
         </>
       ),
     },
@@ -298,6 +351,7 @@ export const artigoTranslados: Artigo = {
             { termo: 'Translados — Edição', descricao: 'Alocar e desalocar, iniciar, concluir.' },
             { termo: 'Unidades — Edição', descricao: 'Marcar no mapa os endereços que o Google não achou.' },
             { termo: 'Atendimentos — Edição', descricao: 'Corrigir a viagem (o botão Corrigir).' },
+            { termo: 'Rastreamento — Consulta / Edição', descricao: 'Ver quem aguarda a volta / puxar para uma rota.' },
           ]}
         />
       ),

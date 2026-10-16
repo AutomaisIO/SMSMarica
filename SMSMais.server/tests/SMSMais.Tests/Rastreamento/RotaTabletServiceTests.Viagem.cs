@@ -78,7 +78,7 @@ public partial class RotaTabletServiceTests
         Assert.Equal(RotaTabletService.Embarcou, coletaAna.Passageiros.Single().Situacao);
         Assert.Equal(RotaTabletService.Embarcou, coletaAna.Passageiros.Single().Acompanhantes.Single().Situacao);
         Assert.Equal(RotaTabletService.Ausente, noMeio.Paradas.Single(p => p.Id == $"coleta:{beatriz}").Passageiros.Single().Situacao);
-        Assert.False(noMeio.Paradas.Single(p => p.Tipo == TipoParada.Destino).Concluida);
+        Assert.False(noMeio.Paradas.Single(p => p.Id.StartsWith("destino:")).Concluida);
 
         await viagem.RegistrarDoTabletAsync(f.Tablet, Marca(rotaId, TipoEventoViagem.Desembarque, ana));
         await viagem.RegistrarDoTabletAsync(f.Tablet, Marca(rotaId, TipoEventoViagem.Conclusao));
@@ -95,7 +95,8 @@ public partial class RotaTabletServiceTests
         Assert.Equal(StatusFaturamento.Pendente, registro.Status);
         Assert.False(await db.RegistrosFaturamento.AnyAsync(r => r.SessaoId == beatriz));
         Assert.Equal(StatusRota.Concluida, (await db.Rotas.AsNoTracking().SingleAsync(r => r.Id == rotaId)).Status);
-        Assert.True((await Servico(db).RotasDoDiaAsync(f.Tablet)).Single().Paradas.All(p => p.Concluida));
+        Assert.True((await Servico(db).RotasDoDiaAsync(f.Tablet)).Single().Paradas
+            .Where(p => p.Trecho == RotaTabletService.Ida).All(p => p.Concluida));
     }
 
     [Fact]

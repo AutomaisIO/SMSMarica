@@ -22,6 +22,7 @@ internal sealed class EventoViagemConfiguration : IEntityTypeConfiguration<Event
         builder.Property(e => e.Pessoa).HasColumnName("pessoa").HasConversion<int?>();
         builder.Property(e => e.AcompanhanteOrdem).HasColumnName("acompanhante_ordem");
         builder.Property(e => e.AcompanhanteId).HasColumnName("acompanhante_id");
+        builder.Property(e => e.Volta).HasColumnName("volta").IsRequired();
         builder.Property(e => e.Latitude).HasColumnName("latitude");
         builder.Property(e => e.Longitude).HasColumnName("longitude");
         builder.Property(e => e.PrecisaoM).HasColumnName("precisao_m");

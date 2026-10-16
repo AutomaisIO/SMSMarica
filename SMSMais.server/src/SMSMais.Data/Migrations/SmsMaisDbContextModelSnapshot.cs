@@ -3209,6 +3209,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("veiculo_id");
 
+                    b.Property<bool>("Volta")
+                        .HasColumnType("boolean")
+                        .HasColumnName("volta");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AcompanhanteId");
