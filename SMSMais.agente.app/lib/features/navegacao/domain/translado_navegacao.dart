@@ -90,8 +90,22 @@ class PassageiroTranslado {
 
   bool get temAcompanhante => acompanhante != null;
 
+  /// Id da pessoa "acompanhante deste paciente" na conferência da parada.
+  String get idAcompanhante => '$id:acompanhante';
+
   int get mensagensNaoLidas =>
       mensagens.where((m) => !m.doMotorista).length;
+
+  /// O mesmo paciente, sem o acompanhante (que faltou na coleta).
+  PassageiroTranslado semAcompanhante() => PassageiroTranslado(
+        id: id,
+        nome: nome,
+        confirmacao: confirmacao,
+        telefone: telefone,
+        observacao: observacao,
+        assento: assento,
+        mensagens: mensagens,
+      );
 }
 
 /// Uma parada (waypoint) da rota otimizada.
@@ -127,7 +141,11 @@ class ParadaNavegacao {
 
   final bool concluida;
 
-  ParadaNavegacao copyWith({bool? concluida}) => ParadaNavegacao(
+  ParadaNavegacao copyWith({
+    bool? concluida,
+    List<PassageiroTranslado>? passageiros,
+  }) =>
+      ParadaNavegacao(
         id: id,
         ordem: ordem,
         tipo: tipo,
@@ -136,7 +154,7 @@ class ParadaNavegacao {
         latitude: latitude,
         longitude: longitude,
         horarioPrevisto: horarioPrevisto,
-        passageiros: passageiros,
+        passageiros: passageiros ?? this.passageiros,
         concluida: concluida ?? this.concluida,
       );
 }
@@ -159,5 +177,38 @@ class TransladoNavegacao {
       if (!p.concluida) return p;
     }
     return null;
+  }
+
+  /// Paradas com o andamento aplicado: [concluidas] (ids de parada) marcadas
+  /// e, no destino, só desembarca quem embarcou — [ausentes] são ids de
+  /// pessoa (paciente ou [PassageiroTranslado.idAcompanhante]) que faltaram
+  /// na coleta. Paciente ausente sai do destino junto com o acompanhante.
+  /// Destino sem ninguém para desembarcar fica **dispensado** (conta como
+  /// concluído e sai da rota).
+  List<ParadaNavegacao> paradasComAndamento({
+    required Set<String> concluidas,
+    required Set<String> ausentes,
+  }) => [
+        for (final p in paradas)
+          if (p.tipo == TipoParada.destino)
+            _destinoSemAusentes(p, concluidas, ausentes)
+          else
+            p.copyWith(concluida: concluidas.contains(p.id)),
+      ];
+
+  static ParadaNavegacao _destinoSemAusentes(
+    ParadaNavegacao parada,
+    Set<String> concluidas,
+    Set<String> ausentes,
+  ) {
+    final quemDesce = [
+      for (final p in parada.passageiros)
+        if (!ausentes.contains(p.id))
+          ausentes.contains(p.idAcompanhante) ? p.semAcompanhante() : p,
+    ];
+    return parada.copyWith(
+      passageiros: quemDesce,
+      concluida: concluidas.contains(parada.id) || quemDesce.isEmpty,
+    );
   }
 }

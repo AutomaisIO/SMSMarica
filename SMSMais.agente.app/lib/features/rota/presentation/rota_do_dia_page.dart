@@ -1,5 +1,6 @@
 import 'package:agente/app/theme.dart';
 import 'package:agente/features/auth/facial/presentation/reconhecimento_facial_page.dart';
+import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
 import 'package:agente/features/rota/data/rota_repository.dart';
 import 'package:agente/features/rota/domain/parada.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
@@ -35,6 +36,11 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
       appBar: AppBar(
         title: const Text('Rota do dia'),
         actions: [
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: BotaoReport(sobreBarra: true),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.face),
             tooltip: 'Reconhecimento facial',

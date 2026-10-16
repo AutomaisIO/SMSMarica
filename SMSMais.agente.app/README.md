@@ -84,7 +84,10 @@ app assinado com outra chave.
    - **Faça backup dos dois arquivos.** Perder a chave = desinstalar e reinstalar o app em todos os
      tablets (e refazer a restrição da chave do Google).
    - SHA-1 do certificado (restrição da chave do GCP, junto com o package `io.automais.smsmais.agente`):
-     `98:FB:AB:5C:14:E3:F8:FE:81:AA:74:B1:7C:F8:F9:37:96:EE:AA:BA`.
+     `86:C8:C5:64:60:32:63:A5:E3:30:0C:77:72:F1:98:C4:B7:B9:6F:97` (alias `smsmais-agente`).
+     A chave foi **recriada em 15/10/2026**: a anterior (SHA-1 `98:FB:AB:…:AA:BA`) não estava em
+     nenhum PC da equipe e nenhum tablet tinha o app com ela. Para conferir o SHA-1 sem digitar a
+     senha: `cd android && ./gradlew :app:signingReport` (variante `release`).
 3. **Publicar**: Automais.IO › Managed Devices › aba **Mobile** › **Apps gerenciados** › enviar o
    `app-release.apk` (pacote e versão são lidos do APK). A cada versão nova, suba o APK de novo com o
    `version` do `pubspec.yaml` incrementado (o `+N` é o versionCode, precisa crescer).

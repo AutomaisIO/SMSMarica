@@ -39,7 +39,7 @@
 
     <application
         android:label="SMSMais Agente"
-        android:name="${applicationName}"
+        android:name=".AgenteApplication"
         android:icon="@mipmap/ic_launcher">
 
         <!-- Chave do Google Navigation SDK. Valor vem de manifestPlaceholders

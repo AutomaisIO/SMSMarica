@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:agente/app/theme.dart';
+import 'package:agente/features/deslocamento/application/deslocamento_controller.dart';
 import 'package:agente/features/navegacao/data/navegacao_repository.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
 import 'package:agente/features/navegacao/presentation/widgets/confirmacao_parada_sheet.dart';
 import 'package:agente/features/navegacao/presentation/widgets/painel_passageiro.dart';
+import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
+import 'package:agente/shared/plataforma/canal_dispositivo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
@@ -33,6 +36,12 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   TransladoNavegacao? _translado;
   final Set<String> _concluidas = {};
 
+  /// Pessoas (paciente ou acompanhante) que faltaram na coleta.
+  final Set<String> _ausentes = {};
+
+  /// Simulação ligada (teste com o tablet parado): retoma a cada parada.
+  bool _simulando = false;
+
   bool _sessaoPronta = false;
   bool _confirmando = false;
   bool _painelVisivel = true;
@@ -40,8 +49,22 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   String? _erro;
   String _status = 'Preparando navegação…';
 
+  /// Cada [_preparar] invalida o anterior: resposta tardia do SDK a uma
+  /// tentativa antiga é ignorada.
+  int _tentativa = 0;
+
+  /// Termos sem resposta depois de [_prazoTermos]: oferece "Tentar de novo".
+  /// Não cancela a espera — o motorista pode estar lendo a janela.
+  Timer? _termosTimer;
+  bool _termosDemorando = false;
+  static const _prazoTermos = Duration(seconds: 20);
+
   /// Tempo que o painel do passageiro fica visível antes de se auto-ocultar.
   static const _tempoAutoOcultar = Duration(seconds: 9);
+
+  static const _msgSemChave =
+      'Este app foi gerado sem a chave do Google Maps e a navegação não '
+      'funciona sem ela. Avise o suporte (MAPS_API_KEY ausente no build).';
 
   @override
   void initState() {
@@ -52,13 +75,34 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   @override
   void dispose() {
     _autoOcultarTimer?.cancel();
+    _termosTimer?.cancel();
     _arrivalSub?.cancel();
-    try {
-      GoogleMapsNavigator.cleanup();
-    } on Object catch (_) {
-      // Sessão pode não estar inicializada — ignorar.
-    }
+    unawaited(_encerrarSessao());
     super.dispose();
+  }
+
+  /// Encerra a sessão do SDK ao sair. Sem sessão iniciada (termos recusados,
+  /// sem chave) o `cleanup` falha com SessionNotInitializedException — e falha
+  /// depois, de forma assíncrona: por isso o `await` dentro do `try`.
+  static Future<void> _encerrarSessao() async {
+    try {
+      await GoogleMapsNavigator.cleanup();
+    } on Object catch (_) {}
+  }
+
+  void _pararVigiaTermos() {
+    _termosTimer?.cancel();
+    _termosTimer = null;
+    if (_termosDemorando && mounted) setState(() => _termosDemorando = false);
+  }
+
+  void _tentarDeNovo() {
+    _pararVigiaTermos();
+    setState(() {
+      _erro = null;
+      _status = 'Preparando navegação…';
+    });
+    unawaited(_preparar());
   }
 
   void _agendarAutoOcultar() {
@@ -117,10 +161,13 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     } on Object catch (_) {}
   }
 
+  /// Paradas com o andamento: concluídas marcadas e, no destino, só quem
+  /// embarcou (destino sem ninguém fica dispensado).
   List<ParadaNavegacao> get _paradas =>
-      _translado?.paradas
-          .map((p) => p.copyWith(concluida: _concluidas.contains(p.id)))
-          .toList() ??
+      _translado?.paradasComAndamento(
+        concluidas: _concluidas,
+        ausentes: _ausentes,
+      ) ??
       const [];
 
   ParadaNavegacao? get _proxima {
@@ -138,19 +185,39 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   }
 
   Future<void> _preparar() async {
+    final tentativa = ++_tentativa;
+    bool vigente() => mounted && tentativa == _tentativa;
     try {
       final translado =
           await ref.read(navegacaoRepositoryProvider).obterTransladoAtual();
-      if (!mounted) return;
+      if (!vigente()) return;
       setState(() => _translado = translado);
 
-      // 1) Termos de uso do Navigation SDK (exigência do Google).
+      // 0) Sem a chave do Google o SDK só registra "Authorization failure" e
+      //    a sessão falha como se os termos não tivessem sido aceitos.
+      if (!await const CanalDispositivo().temChaveMaps()) {
+        if (vigente()) setState(() => _erro = _msgSemChave);
+        return;
+      }
+
+      // 1) Termos de uso do Navigation SDK (exigência do Google). Se o SDK
+      //    não mostrar a janela nem responder, a tela oferece "Tentar de novo".
+      if (!vigente()) return;
       setState(() => _status = 'Verificando termos de uso…');
-      final termsOk = await GoogleMapsNavigator.areTermsAccepted() ||
-          await GoogleMapsNavigator.showTermsAndConditionsDialog(
-            'SMS Maricá — Agente',
-            'Prefeitura de Maricá',
-          );
+      _termosTimer = Timer(_prazoTermos, () {
+        if (vigente()) setState(() => _termosDemorando = true);
+      });
+      final bool termsOk;
+      try {
+        termsOk = await GoogleMapsNavigator.areTermsAccepted() ||
+            await GoogleMapsNavigator.showTermsAndConditionsDialog(
+              'SMS Maricá — Agente',
+              'Prefeitura de Maricá',
+            );
+      } finally {
+        if (vigente()) _pararVigiaTermos();
+      }
+      if (!vigente()) return;
       if (!termsOk) {
         setState(() => _erro = 'Os termos do Navigation não foram aceitos.');
         return;
@@ -159,6 +226,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       // 2) Permissão de localização.
       setState(() => _status = 'Permissão de localização…');
       final locOk = await const PermissoesLocalizacao().solicitarForeground();
+      if (!vigente()) return;
       if (!locOk) {
         setState(() => _erro = 'Permissão de localização negada.');
         return;
@@ -167,28 +235,33 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       // 3) Inicializa a sessão e ouve as chegadas.
       setState(() => _status = 'Iniciando sessão de navegação…');
       await GoogleMapsNavigator.initializeNavigationSession();
+      if (!vigente()) return;
       _arrivalSub = GoogleMapsNavigator.setOnArrivalListener(_aoChegar);
 
       // 4) Lança a rota única (todas as paradas como waypoints) e guia.
       setState(() => _status = 'Calculando a rota…');
       await _definirRotaEGuide();
 
-      if (!mounted) return;
+      if (!vigente()) return;
       setState(() => _sessaoPronta = true);
+      // Distância e tempo do translado contam sozinhos a partir daqui.
+      ref.read(deslocamentoProvider.notifier).iniciarSeParado();
     } on SessionInitializationException catch (e) {
-      if (mounted) setState(() => _erro = _msgInit(e.code));
+      if (vigente()) setState(() => _erro = _msgInit(e.code));
     } on Object catch (e) {
-      if (mounted) setState(() => _erro = 'Falha ao preparar navegação: $e');
+      if (vigente()) setState(() => _erro = 'Falha ao preparar navegação: $e');
     }
   }
 
   String _msgInit(SessionInitializationError code) => switch (code) {
         SessionInitializationError.termsNotAccepted =>
-          'Termos do Navigation não aceitos.',
+          'O Google ainda não registrou o aceite dos termos de uso. '
+              'Toque em Tentar de novo.',
         SessionInitializationError.locationPermissionMissing =>
           'Falta permissão de localização.',
         SessionInitializationError.notAuthorized =>
-          'Chave de API ausente/sem autorização para o Navigation SDK.',
+          'O Google recusou a chave do mapa para este app. Avise o suporte '
+              '(pacote ou assinatura sem autorização no Google Cloud).',
       };
 
   Future<void> _definirRotaEGuide() async {
@@ -223,10 +296,14 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
   void _aoChegar(OnArrivalEvent event) {
     final parada = _paradaPorId(event.waypoint.title);
-    if (parada != null) {
-      _mostrarPainel();
-      unawaited(_confirmarParada(parada));
+    if (parada == null) return;
+    if (parada.concluida) {
+      // Parada já resolvida (ex.: destino dispensado): segue sem parar.
+      unawaited(_seguirProxima());
+      return;
     }
+    _mostrarPainel();
+    unawaited(_confirmarParada(parada));
   }
 
   Future<void> _confirmarParada(ParadaNavegacao parada) async {
@@ -239,7 +316,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     } on Object catch (_) {}
 
     if (!mounted) return;
-    final ok = await showModalBottomSheet<bool>(
+    final marcas = await showModalBottomSheet<Map<String, bool>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -248,8 +325,17 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
     if (!mounted) return;
 
-    if (ok ?? false) {
-      setState(() => _concluidas.add(parada.id));
+    if (marcas != null) {
+      setState(() {
+        _concluidas.add(parada.id);
+        // Quem faltou na coleta não é esperado no destino.
+        if (parada.tipo == TipoParada.coleta) {
+          _ausentes.addAll([
+            for (final m in marcas.entries)
+              if (!m.value) m.key,
+          ]);
+        }
+      });
       await _seguirProxima();
     } else {
       // Retoma a guidance na mesma parada.
@@ -260,25 +346,42 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     if (mounted) setState(() => _confirmando = false);
   }
 
+  /// Avança para a próxima parada pendente na MESMA sessão (sem nova
+  /// cobrança): tira do SDK a parada atual e as dispensadas no caminho
+  /// (destino de quem faltou). Se o SDK não tiver a parada esperada, refaz a
+  /// rota só com as pendentes — antes, um `waypoint == null` aqui deixava a
+  /// navegação parada sem rota. Com a simulação ligada, o carro segue sozinho.
   Future<void> _seguirProxima() async {
-    if (_proxima == null) {
-      // Fim do translado: encerra guidance e limpa destinos (mesma sessão).
+    final proxima = _proxima;
+    if (proxima == null) {
+      // Fim do translado: encerra guidance e limpa destinos (mesma sessão) e
+      // congela distância e tempo do translado na tela de Deslocamento.
+      _simulando = false;
+      if (mounted) ref.read(deslocamentoProvider.notifier).parar();
       try {
         await GoogleMapsNavigator.stopGuidance();
         await GoogleMapsNavigator.clearDestinations();
       } on Object catch (_) {}
       return;
     }
-    // Mesma sessão: avança ao próximo waypoint, sem recriar (sem nova cobra).
     try {
-      final resp = await GoogleMapsNavigator.continueToNextDestination();
-      if (resp.waypoint != null) {
+      var atual = (await GoogleMapsNavigator.continueToNextDestination())
+          .waypoint;
+      while (atual != null && atual.title != proxima.id) {
+        atual = (await GoogleMapsNavigator.continueToNextDestination())
+            .waypoint;
+      }
+      debugPrint('[navegacao] próxima=${proxima.id} sdk=${atual?.title}');
+      if (atual == null) {
+        await _definirRotaEGuide();
+      } else {
         await GoogleMapsNavigator.startGuidance();
       }
-    } on Object catch (_) {
-      // Fallback raro: redefine a rota com as paradas restantes (1 sessão).
+    } on Object catch (e) {
+      debugPrint('[navegacao] continuar falhou ($e): refazendo a rota');
       await _definirRotaEGuide();
     }
+    if (_simulando && mounted) await _simularTrajeto();
   }
 
   Future<void> _onViewCreated(GoogleNavigationViewController controller) async {
@@ -320,6 +423,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
           .simulateLocationsAlongExistingRouteWithOptions(
         SimulationOptions(speedMultiplier: 8),
       );
+      _simulando = true;
     } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -384,8 +488,11 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
                 padding: const EdgeInsets.only(right: 8),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const BotaoReport(),
+                    const SizedBox(height: 16),
                     _FabRedondo(
                       icone: _modoNoite ? Icons.light_mode : Icons.dark_mode,
                       onTap: _alternarNoite,
@@ -452,23 +559,35 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   }
 
   Widget _telaCarregando() => Scaffold(
-        appBar: AppBar(title: const Text('Navegação')),
+        appBar: _barraComReport(),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(_status),
-            ],
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(_status),
+                if (_termosDemorando) ...[
+                  const SizedBox(height: 24),
+                  const Text(
+                    'A janela dos termos de uso não apareceu?',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  _botoesVoltarTentar(),
+                ],
+              ],
+            ),
           ),
         ),
       );
 
   Widget _telaErro(String msg) => Scaffold(
-        appBar: AppBar(title: const Text('Navegação')),
+        appBar: _barraComReport(),
         body: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -477,13 +596,46 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
                 const SizedBox(height: 12),
                 Text(msg, textAlign: TextAlign.center),
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: const Text('Voltar'),
-                ),
+                _botoesVoltarTentar(),
               ],
             ),
           ),
+        ),
+      );
+
+  /// Barra das telas de espera/erro: o REPORT continua à mão.
+  PreferredSizeWidget _barraComReport() => AppBar(
+        title: const Text('Navegação'),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.fromLTRB(0, 6, 12, 6),
+            child: BotaoReport(sobreBarra: true),
+          ),
+        ],
+      );
+
+  /// Voltar à rota + Tentar de novo, lado a lado (tablet em paisagem).
+  Widget _botoesVoltarTentar() => SizedBox(
+        width: 520,
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Voltar'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _tentarDeNovo,
+                child: const Text('Tentar de novo'),
+              ),
+            ),
+          ],
         ),
       );
 }
