@@ -24,6 +24,7 @@ import {
   SecaoSiscan,
   TabelaCirurgiasSiscan,
 } from '@/features/anamnese/components/SecaoSiscan';
+import { TipoMamografiaSiscan } from '@/features/anamnese/components/TipoMamografiaSiscan';
 import { useSessaoSiscan } from '@/features/anamnese/api/siscanApi';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -35,6 +36,7 @@ import {
   ROTULOS_SINTOMAS,
   SINTOMAS_QUEIXA,
   conteudoVazio,
+  mesclarDiagnostica,
   type AnamneseMamografiaConteudo,
   type ClassificacaoRisco,
 } from '@/features/anamnese/types';
@@ -144,6 +146,8 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           ...carregado.siscan,
           radioterapia: { ...base.siscan.radioterapia, ...carregado.siscan?.radioterapia },
           cirurgias: carregado.siscan?.cirurgias ?? base.siscan.cirurgias,
+          // Anterior a 16/10/2026 não tem o tipo de mamografia: abre em branco ("pela idade").
+          diagnostica: mesclarDiagnostica(carregado.siscan?.diagnostica),
         },
       };
       setConteudo(merged);
@@ -411,7 +415,7 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
       </section>
 
       {somenteLeitura ? (
-        <AnamneseLeitura conteudo={conteudo} />
+        <AnamneseLeitura conteudo={conteudo} idade={idade} />
       ) : (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* 2. Avaliação clínica pelo profissional */}
@@ -911,6 +915,16 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
             somenteLeitura={somenteLeitura}
             aoMudar={(mudanca) =>
               setConteudo((c) => ({ ...c, siscan: { ...c.siscan, ...mudanca } }))
+            }
+            blocoTipo={
+              <TipoMamografiaSiscan
+                conteudo={conteudo}
+                idade={idade}
+                somenteLeitura={somenteLeitura}
+                aoMudar={(mudanca) =>
+                  setConteudo((c) => ({ ...c, siscan: { ...c.siscan, ...mudanca } }))
+                }
+              />
             }
           />
         </section>

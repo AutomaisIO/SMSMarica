@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   RISCO_ELEVADO_SISCAN,
   ROTULOS_CIRURGIA,
@@ -30,6 +31,12 @@ export type SecaoSiscanProps = {
   jaFezMamografia: boolean;
   somenteLeitura: boolean;
   aoMudar: (mudanca: Partial<ComplementoSiscan>) => void;
+  /**
+   * O bloco "TIPO DE MAMOGRAFIA" (TipoMamografiaSiscan). Vem pronto de fora porque precisa da
+   * anamnese inteira (idade, avaliação de risco) — e fica onde fica na tela do SISCAN: logo
+   * antes do responsável.
+   */
+  blocoTipo?: ReactNode;
 };
 
 const OPCOES_MAMAS: MamasExaminadasAntes[] = ['sim', 'nunca', 'naoSabe'];
@@ -42,11 +49,16 @@ export function Opcao<T extends string>({
   atual,
   rotulo,
   aoEscolher,
+  desabilitada = false,
+  titulo,
 }: {
   valor: T;
   atual: T | null;
   rotulo: string;
   aoEscolher: (v: T | null) => void;
+  /** Opção que a tela do SISCAN trava (ex.: população de risco elevado sem risco elevado = Sim). */
+  desabilitada?: boolean;
+  titulo?: string;
 }) {
   const marcada = atual === valor;
   return (
@@ -54,7 +66,9 @@ export function Opcao<T extends string>({
       type="button"
       onClick={() => aoEscolher(marcada ? null : valor)}
       aria-pressed={marcada}
-      className={`rounded-full border px-3 py-1 text-sm transition ${
+      disabled={desabilitada}
+      title={titulo}
+      className={`rounded-full border px-3 py-1 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
         marcada
           ? 'border-teal-600 bg-teal-600 font-semibold text-white'
           : 'border-gray-300 bg-white text-gray-700 hover:border-teal-400'
@@ -96,6 +110,7 @@ export function SecaoSiscan({
   jaFezMamografia,
   somenteLeitura,
   aoMudar,
+  blocoTipo,
 }: SecaoSiscanProps) {
   function mudarRadioterapia(mudanca: Partial<ComplementoSiscan['radioterapia']>) {
     aoMudar({ radioterapia: { ...valor.radioterapia, ...mudanca } });
@@ -214,6 +229,8 @@ export function SecaoSiscan({
         Cirurgias de mama: informadas na seção 3, na tabela que abre em &quot;Já realizou cirurgia
         mamária?&quot;.
       </p>
+
+      {blocoTipo}
 
       {/* Responsável pela requisição */}
       <div className="border-t border-gray-100 pt-4">

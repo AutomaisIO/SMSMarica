@@ -406,6 +406,202 @@ public class SiscanRequisicaoMapperTests
         campos.Should().NotContainKey(SiscanRequisicaoMapper.CampoPopulacaoRastreamento);
     }
 
+    // ------------------------------------------- tipo de mamografia escolhido na anamnese (16/10/2026)
+
+    private const string SemCirurgia = """{"jaRealizouCirurgiaMamaria":{"resposta":false}}""";
+
+    /// <summary>
+    /// Na tela do SISCAN o tipo é escolha de quem preenche. A anamnese passou a perguntar; a idade
+    /// ficou como sugestão — e como regra para toda anamnese que não escolheu.
+    /// </summary>
+    [Theory]
+    [InlineData("""{"tipoMamografia":"diagnostica"}""", 1965, "01", false)]   // 61 anos, escolheu diagnóstica
+    [InlineData("""{"tipoMamografia":"rastreamento"}""", 2000, "02", false)]  // 26 anos, escolheu rastreamento
+    [InlineData("""{}""", 1965, "02", true)]                                    // sem escolha: idade
+    [InlineData("""{}""", 2000, "01", true)]
+    public void Tipo_escolhido_na_anamnese_vence_a_idade(string siscan, int anoNascimento, string tipo, bool pelaIdade)
+    {
+        SiscanRequisicaoMapper.TipoMamografiaEfetivo(Json(corpoSiscan: siscan), new DateOnly(anoNascimento, 1, 1), Hoje)
+            .Should().Be((tipo, pelaIdade));
+    }
+
+    /// <summary>
+    /// O caso real de 16/10/2026 (2610052649, 30 anos): diagnóstica sem indicação — o SISCAN
+    /// recusou no Salvar. Agora a falta aparece ANTES, como lacuna, e a requisição não sai.
+    /// </summary>
+    [Fact]
+    public void Diagnostica_sem_indicacao_vira_lacuna()
+    {
+        var campos = SiscanRequisicaoMapper.Montar(Json(historico: SemCirurgia), Prontuario, Hoje, "01");
+
+        campos.Lacunas.Should().ContainSingle().Which.Campo.Should().Be("siscan.diagnostica");
+    }
+
+    /// <summary>
+    /// O que a operação lançava à mão para quem tem até 35 anos (8 de 8 relidas em 16/10/2026):
+    /// revisão de mamografia de outra instituição, BI-RADS 0 nas duas mamas.
+    /// </summary>
+    [Fact]
+    public void Diagnostica_revisao_de_mamografia_vai_com_a_categoria_por_mama()
+    {
+        var siscan = """
+            {"diagnostica":{"revisaoMamografia":{"marcada":true,"categoriaDireita":"0","categoriaEsquerda":"0"}}}
+            """;
+
+        var resultado = SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia), Prontuario, Hoje, "01");
+        var campos = Agrupar(resultado);
+
+        resultado.Lacunas.Should().BeEmpty();
+        campos["frm:revisaoMamografia"].Should().Equal(SiscanRequisicaoMapper.Marcado);
+        campos["frm:revisaoCategoria0Direita"].Should().Equal("S");
+        campos["frm:revisaoCategoria0Esquerda"].Should().Equal("S");
+        campos.Should().NotContainKey(SiscanRequisicaoMapper.CampoPopulacaoRastreamento);
+    }
+
+    /// <summary>
+    /// Os nomes que não seguem o padrão são deles e foram medidos: a descarga da mama direita não
+    /// tem sufixo, e o espessamento é "Lcalizacao". Região vai pelo código, na ordem da tela.
+    /// </summary>
+    [Fact]
+    public void Achados_no_exame_clinico_usam_os_nomes_e_codigos_da_tela()
+    {
+        var siscan = """
+            {"diagnostica":{"achadosExameClinico":{"marcada":true,
+              "direita":{"lesaoPapilar":true,"descargaPapilar":"cristalina","nodulo":["QIM","QSL"],
+                         "espessamento":[],"linfonodo":["axilar"]},
+              "esquerda":{"lesaoPapilar":false,"descargaPapilar":"hemorragica","nodulo":[],
+                          "espessamento":["RRA"],"linfonodo":["supraclavicular"]}}}}
+            """;
+
+        var resultado = SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia), Prontuario, Hoje, "01");
+        var campos = Agrupar(resultado);
+
+        resultado.Lacunas.Should().BeEmpty();
+        campos["frm:achadosExameClinico"].Should().Equal(SiscanRequisicaoMapper.Marcado);
+        campos["frm:lesaoPapilarDireita"].Should().Equal("S");
+        campos["frm:descargaPapilar"].Should().Equal("01");
+        campos["frm:descargaPapilarEsquerda"].Should().Equal("02");
+        campos["frm:noduloLocalizacaoDireita"].Should().Equal("01", "04");
+        campos["frm:espessamentoLcalizacaoEsquerda"].Should().Equal("09");
+        campos["frm:linfonodoPalpavelDireita"].Should().Equal("01");
+        campos["frm:linfonodoPalpavelEsquerda"].Should().Equal("02");
+        campos.Should().NotContainKey("frm:lesaoPapilarEsquerda");
+    }
+
+    [Theory]
+    [InlineData("controleRadiologico", "frm:controleRadiologicoLesao", "frm:radiologicoNoduloEsquerda")]
+    [InlineData("lesaoDiagnosticoCancer", "frm:lesaoDiagnosticoCancer", "frm:lesaoCancerNoduloEsquerda")]
+    [InlineData("controleAposBiopsia", "frm:controleLesao", "frm:controleLesaoNoduloEsquerda")]
+    public void Grade_de_achados_vai_por_achado_e_mama(string chave, string indicacao, string campoEsperado)
+    {
+        var siscan = """
+            {"diagnostica":{"CHAVE":{"marcada":true,"achados":{
+              "nodulo":{"direita":false,"esquerda":true},
+              "linfonodoAxilar":{"direita":true,"esquerda":false}}}}}
+            """.Replace("CHAVE", chave, StringComparison.Ordinal);
+
+        var campos = Agrupar(SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia), Prontuario, Hoje, "01"));
+
+        campos[indicacao].Should().Equal(SiscanRequisicaoMapper.Marcado);
+        campos[campoEsperado].Should().Equal("S");
+        // "Axiliar" (sic): o nome do campo deles.
+        campos.Keys.Should().Contain(k => k.EndsWith("LinfonodoAxiliarDireita", StringComparison.Ordinal));
+    }
+
+    /// <summary>A mesma inversão da radioterapia: 02 = direita, 01 = esquerda.</summary>
+    [Fact]
+    public void Resposta_a_quimioterapia_leva_o_lado_com_o_codigo_deles()
+    {
+        var siscan = """{"diagnostica":{"respostaQuimioterapia":{"marcada":true,"lado":"direita"}}}""";
+
+        var campos = Agrupar(SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia), Prontuario, Hoje, "01"));
+
+        campos["frm:avaliacaoRespostaQuimiNeo"].Should().Equal("02");
+    }
+
+    /// <summary>Indicação marcada sem nada dentro não informa nada — e escolher por ela é inventar.</summary>
+    [Fact]
+    public void Indicacao_marcada_sem_detalhe_vira_lacuna_e_nao_vai()
+    {
+        var siscan = """{"diagnostica":{"achadosExameClinico":{"marcada":true}}}""";
+
+        var resultado = SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia), Prontuario, Hoje, "01");
+
+        resultado.Lacunas.Should().ContainSingle()
+            .Which.Campo.Should().Be("siscan.diagnostica.achadosExameClinico");
+        resultado.Campos.Should().NotContain(c => c.Key == "frm:achadosExameClinico");
+    }
+
+    /// <summary>Resíduo de diagnóstica numa anamnese que ficou como rastreamento não vai.</summary>
+    [Fact]
+    public void Rastreamento_nao_leva_a_diagnostica()
+    {
+        var siscan = """{"diagnostica":{"revisaoMamografia":{"marcada":true,"categoriaDireita":"3"}}}""";
+
+        var campos = Agrupar(SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia), Prontuario, Hoje, "02"));
+
+        campos.Keys.Where(SiscanRequisicaoMapper.EhCampoDaDiagnostica).Should().BeEmpty();
+        campos[SiscanRequisicaoMapper.CampoPopulacaoRastreamento].Should().Equal("01");
+    }
+
+    [Fact]
+    public void Populacao_escolhida_na_anamnese_vence_os_criterios()
+    {
+        var siscan = """{"populacaoRastreamento":"jaTratada"}""";
+
+        var campos = Agrupar(SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia, risco: """{"familiar1GrauCancerMama":true}"""),
+            Prontuario, Hoje, "02"));
+
+        campos[SiscanRequisicaoMapper.CampoPopulacaoRastreamento].Should().Equal("03");
+    }
+
+    /// <summary>
+    /// Na tela do SISCAN a população "risco elevado" só habilita com "Apresenta risco elevado" = Sim
+    /// (medido em 16/10/2026). Sugerida pelos critérios com o risco em Não/Não sabe, vai como
+    /// população alvo — o que a tela deixa e o que a operação marcava. Escolhida assim, é lacuna.
+    /// </summary>
+    [Theory]
+    [InlineData("""{"riscoElevado":"nao","populacaoRastreamento":"riscoElevado"}""", null)]
+    [InlineData("""{"riscoElevado":"naoSabe"}""", "01")]   // sugerida 02 pelos critérios, risco "não sabe"
+    [InlineData("""{"riscoElevado":"sim","populacaoRastreamento":"riscoElevado"}""", "02")]
+    [InlineData("""{}""", "02")]                            // sugerida 02, risco deduzido Sim pelos critérios
+    public void Populacao_de_risco_elevado_so_com_risco_elevado_sim(string siscan, string? esperada)
+    {
+        var resultado = SiscanRequisicaoMapper.Montar(
+            Json(corpoSiscan: siscan, historico: SemCirurgia, risco: """{"familiar1GrauCancerMama":true}"""),
+            Prontuario, Hoje, "02");
+
+        if (esperada is not null)
+        {
+            Agrupar(resultado)[SiscanRequisicaoMapper.CampoPopulacaoRastreamento].Should().Equal(esperada);
+            resultado.Lacunas.Should().BeEmpty();
+        }
+        else
+        {
+            resultado.Lacunas.Should().ContainSingle().Which.Campo.Should().Be("siscan.populacaoRastreamento");
+            resultado.Campos.Should().NotContain(c => c.Key == SiscanRequisicaoMapper.CampoPopulacaoRastreamento);
+        }
+    }
+
+    /// <summary>A prévia do modal lê o campo como a tela o mostra — nunca o nome cru do campo.</summary>
+    [Theory]
+    [InlineData("frm:revisaoMamografia", "on", "Diagnóstica — indicação", "Revisão de mamografia com lesão realizada em outra instituição")]
+    [InlineData("frm:revisaoCategoria0Esquerda", "S", "Revisão de mamografia — mama esquerda", "BI-RADS categoria 0")]
+    [InlineData("frm:noduloLocalizacaoDireita", "09", "Achados no exame clínico — mama direita", "nódulo RRA")]
+    [InlineData("frm:controleLesaoLinfonodoAxiliarDireita", "S",
+        "Controle de lesão após biópsia de fragmento ou PAAF com resultado benigno — mama direita", "linfonodo axilar")]
+    public void Previa_da_diagnostica_fala_a_lingua_da_tela(string campo, string valor, string pergunta, string resposta)
+    {
+        SiscanRequisicaoMapper.RotularDiagnostica(campo, valor).Should().Be((pergunta, resposta));
+    }
+
     // ------------------------------------------------------------------ o resto
 
     [Fact]

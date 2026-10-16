@@ -229,7 +229,7 @@ paginar: o total conta únicos, o offset conta linhas brutas); mapa de endpoints
 
 ---
 
-## 6. `Automais.SISCAN` — 12 scripts
+## 6. `Automais.SISCAN` — 15 scripts
 
 Protocolo em `docs/FLUXO-NOVA-REQUISICAO.md`; pacote em `siscan/`; `capturas/` e `casos.py` são
 gitignored (PII). ⚠️ A credencial do `.env` é de um **radiologista real** e sessão única no SISCAN
@@ -241,7 +241,13 @@ no CADSUS — para no Avançar e imprime só estrutura), `probe_duplicidade.py` 
 requisição?"), `probe_leitura_lote.py` (ler muitas requisições sem pagar o menu),
 `probe_sessao_unica.py` (o mesmo login derruba a sessão anterior?), `mapear_requisicao_nova.py`
 (varre os ramos condicionais da tela de criação), `conferir_requisicao.py` (relê uma requisição
-nossa)
+nossa), `conferir_tipo_mamografia.py` (abre requisições nossas e mostra o tipo de mamografia, a
+população do rastreamento e as indicações da diagnóstica GRAVADOS — 16/10/2026),
+`mapear_tipo_mamografia.py` (desce a árvore Diagnóstica × Rastreamento até o fim — as 6 indicações
+abrem 103 campos; e a população 02 só habilita com risco elevado = Sim; mapa em
+`docs/FLUXO-NOVA-REQUISICAO.md` §6b-2 — 16/10/2026), `reler_requisicoes.py` (relê pelo PROTOCOLO —
+serve para as lançadas à mão — e grava em JSON todas as respostas da etapa 2, para comparar com o
+que o `SiscanRequisicaoMapper` geraria da anamnese — 16/10/2026)
 
 **Escrita / backfill (PRODUÇÃO):** `criar_requisicao.py` (CRIA requisição — OK por ação; casos em
 `casos.py`), `espelho_requisicoes.py` (espelho das requisições lançadas à mão),

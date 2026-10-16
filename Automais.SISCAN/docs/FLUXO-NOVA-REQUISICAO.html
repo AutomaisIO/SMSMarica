@@ -129,6 +129,39 @@ python probe_nova_requisicao.py --cns &lt;CNS&gt; --unidade 35 \
 <tr><td></td><td>02 Rastreamento</td><td>abre os 3 radios <code>tipoMamografiaRastreamento</code></td></tr>
 </tbody></table></div>
 <p><strong>Armadilha do próprio método</strong> (quase publiquei um mapa errado): <code>client.campos()</code> imita o navegador e <strong>ignora radio/checkbox não marcado</strong>. Com ele, "radioterapia = Sim" aparecia como <em>não abre nada</em> — porque o que abre é um grupo de radios desmarcados. O mapeador compara <strong>presença</strong> (<code>name=value</code> para radio/checkbox), não submissibilidade. Quem for escrever outra sonda de varredura: o mesmo vale para qualquer tela do SISCAN.</p>
+<h2>6b-2. Diagnóstica × Rastreamento — o mapa até o fim (16/10/2026)</h2>
+<p>Varrido por <a href="../mapear_tipo_mamografia.py"><code>mapear_tipo_mamografia.py</code></a> (marca cada indicação e o que ela abrir, comparando a tela INTEIRA; sem Salvar). O §6b parava no primeiro nível ("abre 6 checkboxes") e isso escondia o tamanho da diferença: <strong>a diagnóstica abre até 103 campos</strong>.</p>
+<p><strong>Fora do bloco do tipo nada muda</strong> — nódulo, risco, mamas examinadas, mamografia/radioterapia/ cirurgia são as mesmas perguntas nos dois. Mudam o bloco e a lista de <strong>Responsável</strong> (nesta conta: 12 no rastreamento, 9 na diagnóstica).</p>
+<p><strong>Rastreamento</strong> — 1 escolha, 3 opções, nenhuma chama o servidor:</p>
+<div class="tw"><table><thead><tr><th>Opção</th><th>Habilitada quando</th></tr></thead><tbody>
+<tr><td>01 População alvo</td><td>sempre</td></tr>
+<tr><td>02 População de risco elevado (história familiar)</td><td><strong>só com "Apresenta risco elevado" = Sim</strong> — o A4J de <code>j_id91</code> reRenderiza <code>frm:mamografiaRastreamento</code> e tira o <code>disabled</code>; Não / Não sabe põem de volta</td></tr>
+<tr><td>03 Paciente já tratado de câncer de mama</td><td>sempre</td></tr>
+</tbody></table></div>
+<p><strong>Armadilha medida:</strong> o <code>disabled</code> da 02 é <strong>só de tela</strong>. Enviada direto no POST, ela grava mesmo com risco = Não sabe (relido em 16/10: 2610051839 e 261005861 estão no SISCAN como "risco elevado: não sabe" + "população de risco elevado"). Ou seja, dá para gravar uma combinação que a tela não deixa uma pessoa montar. Na produção, 32 das 99 requisições com população 02 foram assim.</p>
+<p><strong>Diagnóstica</strong> — bloco obrigatório ("ao menos um"), 6 indicações; cada uma é A4J e abre o seu sub-bloco:</p>
+<div class="tw"><table><thead><tr><th>Indicação (checkbox)</th><th>Abre</th><th>Campos</th></tr></thead><tbody>
+<tr><td><code>achadosExameClinico</code> — Achados no exame clínico</td><td>por mama (Direita/Esquerda): <strong>lesão papilar</strong> (<code>lesaoPapilarDireita</code>/<code>Esquerda</code>=S); <strong>descarga papilar espontânea</strong> cristalina 01 / hemorrágica 02, exclusivas (<code>descargaPapilar</code> — a direita é SEM sufixo — e <code>descargaPapilarEsquerda</code>); <strong>nódulo — localização</strong> e <strong>espessamento — localização</strong>, 10 regiões cada (<code>noduloLocalizacaoDireita</code>, <code>espessamentoLcalizacaoDireita</code> — o typo "Lcalizacao" é do SISCAN): 01 QSL · 02 QIL · 03 QSM · 04 QIM · 05 UQLat · 06 UQsup · 07 UQmed · 08 UQinf · 09 RRA · 10 PA; <strong>linfonodo palpável</strong> 01 axilar / 02 supraclavicular</td><td>50</td></tr>
+<tr><td><code>controleRadiologicoLesao</code> — Controle radiológico de lesão categoria 3</td><td>7 achados × 2 mamas, <code>radiologico&lt;Achado&gt;&lt;Lado&gt;</code>=S</td><td>14</td></tr>
+<tr><td><code>lesaoDiagnosticoCancer</code> — Lesão com diagnóstico de câncer</td><td>os mesmos 7 × 2, <code>lesaoCancer&lt;Achado&gt;&lt;Lado&gt;</code>=S</td><td>14</td></tr>
+<tr><td><code>avaliacaoRespostaQuimioterapia</code> — Resposta de QT neoadjuvante</td><td>lado: <code>avaliacaoRespostaQuimiNeo</code> 02 direita · 01 esquerda · 03 ambas (<strong>02 é a direita</strong>)</td><td>3</td></tr>
+<tr><td><code>revisaoMamografia</code> — Revisão de mamografia com lesão de outra instituição</td><td>BI-RADS por mama: <code>revisaoCategoria{0,3,4,5}{Direita,Esquerda}</code>=S, exclusivo por lado (JS <code>preencherCategoriaBiRads</code>)</td><td>8</td></tr>
+<tr><td><code>controleLesao</code> — Controle de lesão após biópsia/PAAF benigna</td><td>7 × 2, <code>controleLesao&lt;Achado&gt;&lt;Lado&gt;</code>=S</td><td>14</td></tr>
+</tbody></table></div>
+<p>Os 7 achados radiológicos: <code>Nodulo</code>, <code>Microcalcificacoes</code>, <code>AssimetriaFocal</code>, <code>AssimetriaDifusa</code>, <code>AreaDensa</code>, <code>DistorcaoFocal</code>, <code>LinfonodoAxiliar</code> (sic). Nenhum sub-campo tem <code>*</code> na legenda — se o servidor exige ao menos um achado dentro da indicação marcada, só o Salvar diz (não testado).</p>
+<p>Todos os A4J do bloco são <code>ajaxSingle</code> (processam só quem disparou). Desmarcar "Achados no exame clínico" pede confirmação ("As informações da mamografia diagnosticada desta(s) mama(s) serão perdidas") — o sub-bloco é apagado.</p>
+<h3>Validação contra o que a operação lançou à mão (16/10/2026)</h3>
+<p><a href="../reler_requisicoes.py"><code>reler_requisicoes.py</code></a> releu 39 requisições lançadas à mão antes da plataforma (8 de até 35 anos + 31 em quatro faixas acima), e o <code>SiscanRequisicaoMapper</code> real rodou sobre as mesmas anamneses:</p>
+<ul>
+<li><strong>Tipo: 39 de 39 iguais</strong> — a operação usava a mesma régua (até 35 diagnóstica, 36+ rastreamento).</li>
+<li><strong>Até 35: a operação marcava sempre</strong> "Revisão de mamografia com lesão realizada em outra</li>
+</ul>
+<p>  instituição" + <strong>BI-RADS 0</strong> (7 nas duas mamas, 1 só na direita) — e "fez mamografia = Sim". Em 6   das 8 a anamnese diz que a paciente <strong>nunca fez mamografia</strong>: não havia exame externo para revisar.   Era um jeito de passar pelo obrigatório. <strong>Não reproduzir</strong> (decisão do Bernardo, 16/10/2026): o   BI-RADS da requisição é o de um exame ANTERIOR de outra instituição — o do exame atual é da   médica, no resultado. A indicação fica em branco na anamnese e quem atende marca a verdadeira.</p>
+<ul>
+<li><strong>36+:</strong> a operação usava um gabarito fixo (risco "não sabe", nódulo "não", fez mamografia "sim",</li>
+</ul>
+<p>  população alvo); o modelo responde pela anamnese — é o que a plataforma faz desde 23/09.</p>
+<p><strong>Régua da população, depois disso:</strong> sem escolha na anamnese, a 02 sugerida pelos critérios só vai com risco elevado = Sim; senão vai <strong>alvo</strong> (o que a tela deixa e o que a operação marcava). Escolhida explicitamente com o risco em Não/Não sabe, é lacuna.</p>
 <h2>6c. De-para com uma ficha do SISREG — o que dá para preencher sozinho</h2>
 <p>Exercitado com uma solicitação real de MAMOGRAFIA BILATERAL (validado contra a tela, sem gravar). A ficha do SISREG (<code>smsmarica.solicitacao</code>, campo <code>raw_sisreg</code>, 38 posições separadas por <code>;</code>) resolve a identificação inteira; <strong>a anamnese não vem de lugar nenhum</strong>.</p>
 <div class="tw"><table><thead><tr><th>Campo do SISCAN</th><th>De onde sai</th></tr></thead><tbody>
@@ -162,6 +195,7 @@ python probe_nova_requisicao.py --cns &lt;CNS&gt; --unidade 35 \
 <tr><td><strong>&lt; 36 anos</strong></td><td><code>01</code> Diagnóstica</td></tr>
 </tbody></table></div>
 <p>Não é o critério do INCA (50–69 para rastreamento populacional) — é a régua operacional daqui. Consequência que não é óbvia: como a lista do combo <strong>Responsável muda</strong> entre diagnóstica e rastreamento, <strong>a idade da paciente também decide quem pode assinar a requisição</strong>.</p>
+<p><strong>Desde 16/10/2026 a idade é sugestão:</strong> a seção 7 da anamnese tem o bloco Tipo de mamografia (<code>siscan.tipoMamografia</code>), marcado pela idade e trocável — como na tela do SISCAN, onde o tipo é escolha de quem preenche. Sem escolha, vale a régua. Ver §6b-2.</p>
 <p><strong>O que a ficha do SISREG NÃO responde — e são 5 obrigatórios:</strong> tem nódulo ou caroço na mama; apresenta risco elevado para câncer de mama; antes desta consulta teve as mamas examinadas por profissional; fez mamografia alguma vez (+ ano); fez radioterapia na mama ou no plastrão (+ lado + ano); fez cirurgia de mama (+ até 26 anos). Mais o Nº do Prontuário (opcional) e, no rastreamento, a população-alvo.</p>
 <p>É o mesmo diagnóstico que o de-para do laudo já tinha dado por outro caminho: <strong>são perguntas da paciente</strong>, e nenhuma ficha de regulação as carrega. Qualquer promessa de "gerar a requisição do SISCAN a partir do SISREG" tem de dizer quem responde essas seis — ou nasce com um formulário para alguém preencher.</p>
 <p><strong>De brinde:</strong> se o paciente não tem exame no SISCAN, o painel do CNS volta <strong>sem</strong> a tabela <code>listaExamePacientePaginada</code>. A ausência da tabela é, portanto, uma leitura barata de "esse CNS ainda não tem exame no SISCAN" — sem passar pela pesquisa com período obrigatório.</p>

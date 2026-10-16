@@ -73,7 +73,12 @@ public sealed record SiscanPreparoDto(
     SiscanOpcaoDto? RacaCorEscolhida = null,
     /// <summary>Raça/Cor Indígena: o SISCAN pede também a etnia. Estas são as opções dele.</summary>
     IReadOnlyList<SiscanOpcaoDto>? EtniaOpcoes = null,
-    SiscanOpcaoDto? EtniaEscolhida = null);
+    SiscanOpcaoDto? EtniaEscolhida = null,
+    /// <summary>
+    /// O tipo saiu da régua da idade porque a anamnese não escolheu (seção 7). False = escolhido
+    /// na anamnese — o modal diz de onde veio.
+    /// </summary>
+    bool TipoMamografiaPelaIdade = true);
 
 /// <summary>
 /// Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade.

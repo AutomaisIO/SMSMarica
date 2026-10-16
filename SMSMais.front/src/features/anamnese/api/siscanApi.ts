@@ -57,6 +57,8 @@ export type PreparoSiscan = {
   unidadeNome: string;
   tipoMamografia: string;
   tipoMamografiaRotulo: string;
+  /** O tipo saiu da régua da idade (a anamnese não escolheu na seção 7). False = escolhido lá. */
+  tipoMamografiaPelaIdade?: boolean;
   responsaveis: ResponsavelSiscan[];
   cnsResponsavelSugerido: string | null;
   nomeSolicitanteDaFicha: string | null;

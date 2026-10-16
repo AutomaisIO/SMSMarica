@@ -38,6 +38,20 @@ export const artigoAnamnese: Artigo = {
     'siscan fora do ar',
     'tente de novo',
     'erro ao entrar no siscan',
+    'tipo de mamografia',
+    'população alvo',
+    'indicação da diagnóstica',
+    'achados no exame clínico',
+    'descarga papilar',
+    'BI-RADS',
+    'categoria 0',
+    'revisão de mamografia',
+    'quimioterapia neoadjuvante',
+    'controle radiológico',
+    'PAAF',
+    'retroareolar',
+    '35 anos',
+    '36 anos',
     'diagnóstico inicial',
     'CID',
     'CID-10',
@@ -198,7 +212,7 @@ export const artigoAnamnese: Artigo = {
               {
                 termo: '7 · Requisição do SISCAN',
                 descricao:
-                  'As demais perguntas que existem porque o SISCAN as exige — e que o formulário de papel não tinha. Ver a seção abaixo.',
+                  'As demais perguntas que existem porque o SISCAN as exige — e que o formulário de papel não tinha —, e o bloco Tipo de mamografia (rastreamento ou diagnóstica), igual ao da tela do SISCAN. Ver as seções abaixo.',
               },
             ]}
           />
@@ -295,6 +309,82 @@ export const artigoAnamnese: Artigo = {
             essa pergunta, a requisição <strong>não é gerada</strong> — o sistema avisa o que falta
             em vez de afirmar por você que ela nunca operou.
           </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'tipo-mamografia',
+      titulo: 'Tipo de mamografia: rastreamento ou diagnóstica',
+      busca:
+        'tipo de mamografia rastreamento diagnóstica idade 35 36 anos população alvo risco elevado história familiar '
+        + 'já tratada indicação achados no exame clínico lesão papilar descarga papilar cristalina hemorrágica '
+        + 'nódulo espessamento localização quadrante QSL QIL QSM QIM UQLat UQsup UQmed UQinf RRA PA retroareolar '
+        + 'prolongamento axilar linfonodo palpável axilar supraclavicular controle radiológico categoria 3 '
+        + 'lesão com diagnóstico de câncer quimioterapia neoadjuvante revisão de mamografia outra instituição '
+        + 'BI-RADS categoria 0 3 4 5 biópsia PAAF benigno microcalcificações assimetria área densa distorção',
+      conteudo: (
+        <>
+          <P>
+            No fim da seção 7 fica o bloco <strong>Tipo de mamografia</strong>, com a mesma dinâmica
+            da tela do SISCAN: o que você marca nele abre as perguntas seguintes, e é o que vai na
+            requisição.
+          </P>
+          <Sub>Já vem marcado pela idade</Sub>
+          <P>
+            Até <strong>35 anos</strong>, diagnóstica; a partir de <strong>36</strong>,
+            rastreamento — a régua do serviço. O bloco mostra “marcado pela idade” e você pode
+            trocar: no SISCAN o tipo é escolha de quem preenche, e o que você deixar marcado aqui é o
+            que vai.
+          </P>
+          <Sub>Rastreamento: a população</Sub>
+          <P>
+            Três opções, como lá: <em>População alvo</em>, <em>População de risco elevado (história
+            familiar)</em> e <em>Paciente já tratado de câncer de mama</em>. Sem escolha, vale o que
+            a avaliação de risco da seção 5 indica: histórico pessoal → já tratada; familiar de 1º
+            grau ou câncer antes dos 50 na família → risco elevado, se “Apresenta risco elevado”
+            estiver em Sim; nos demais casos, alvo.
+          </P>
+          <Callout tipo="regra" titulo="“Risco elevado” só com risco elevado = Sim">
+            No SISCAN, a população de risco elevado fica <strong>travada</strong> até a pergunta
+            “Apresenta risco elevado para câncer de mama?” (seção 5) estar em Sim. Aqui é igual: a
+            opção aparece apagada enquanto a resposta for Não ou Não sabe.
+          </Callout>
+          <Sub>Diagnóstica: ao menos uma indicação, e o que ela viu</Sub>
+          <P>
+            Seis indicações, com o texto do SISCAN. Marcar uma abre o que ela pede:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Achados no exame clínico',
+                descricao:
+                  'Por mama: lesão papilar; descarga papilar espontânea (cristalina ou hemorrágica); nódulo e espessamento com a localização (QSL, QIL, QSM, QIM, UQLat, UQsup, UQmed, UQinf, RRA, PA — passe o mouse para ver o nome); linfonodo palpável (axilar, supraclavicular).',
+              },
+              {
+                termo: 'Controle radiológico de lesão categoria 3 · Lesão com diagnóstico de câncer · Controle de lesão após biópsia/PAAF benigna',
+                descricao:
+                  'A mesma grade: nódulo, microcalcificações, assimetria focal, assimetria difusa, área densa, distorção focal e linfonodo axilar, marcados por mama.',
+              },
+              {
+                termo: 'Avaliação da resposta de quimioterapia neoadjuvante',
+                descricao: 'Em qual mama: direita, esquerda ou ambas.',
+              },
+              {
+                termo: 'Revisão de mamografia com lesão realizada em outra instituição',
+                descricao: 'A categoria BI-RADS de cada mama: 0, 3, 4 ou 5 (uma por mama).',
+              },
+            ]}
+          />
+          <Callout tipo="atencao" titulo="Sem indicação, sem requisição">
+            O SISCAN recusa a diagnóstica sem nenhuma indicação (“É obrigatório informar ao menos um
+            dos campos de Diagnóstica”). Por isso o sistema não deixa gerar: nem sem indicação, nem
+            com uma indicação marcada sem nada dentro — escolher o achado por você seria inventar o
+            exame.
+          </Callout>
+          <P>
+            Desmarcar uma indicação, ou trocar o tipo, <strong>apaga</strong> o que estava dentro — o
+            SISCAN faz igual e pergunta antes; aqui também.
+          </P>
         </>
       ),
     },
@@ -445,13 +535,12 @@ export const artigoAnamnese: Artigo = {
         + 'autodeclarada branca preta parda amarela indígena etnia sem raça',
       conteudo: (
         <>
-          <Sub>Rastreamento ou diagnóstica — quem decide é a idade</Sub>
+          <Sub>Rastreamento ou diagnóstica — e quem pode assinar</Sub>
           <P>
-            A partir de <strong>36 anos</strong> a mamografia entra como{' '}
-            <strong>rastreamento</strong>; abaixo disso, como <strong>diagnóstica</strong>. Isso não
-            é escolha da tela e tem uma consequência que surpreende: a lista de responsáveis do
-            SISCAN <strong>muda</strong> entre os dois tipos. Ou seja, a idade da paciente também
-            decide quem pode assinar a requisição.
+            O tipo vem da seção 7: marcado pela idade (até 35, diagnóstica; 36 ou mais,
+            rastreamento) se ninguém trocou. O modal de gerar diz de onde ele veio. E tem uma
+            consequência que surpreende: a lista de responsáveis do SISCAN <strong>muda</strong>{' '}
+            entre os dois tipos — o tipo também decide quem pode assinar a requisição.
           </P>
 
           <Sub>“Este pedido já tem requisição no SISCAN”</Sub>
@@ -624,6 +713,16 @@ export const artigoAnamnese: Artigo = {
               termo: 'Preciso digitar minha senha do SISCAN toda vez?',
               descricao:
                 'Não. Uma vez por sessão. Ela vale enquanto você estiver no sistema e cai quando você sai.',
+            },
+            {
+              termo: 'Por que “População de risco elevado” está apagada?',
+              descricao:
+                'Porque “Apresenta risco elevado para câncer de mama?” (seção 5) não está em Sim. No SISCAN ela fica travada do mesmo jeito. Se a paciente tem risco elevado, responda Sim lá e a opção abre.',
+            },
+            {
+              termo: 'A paciente tem até 35 anos e a requisição não sai. O que falta?',
+              descricao:
+                'Quase sempre a indicação da diagnóstica: marque ao menos uma no bloco Tipo de mamografia (seção 7) e o que ela pede — mama, achado ou categoria. O modal de gerar lista exatamente o que falta.',
             },
             {
               termo: 'A anamnese antiga, de antes das perguntas do SISCAN, ainda abre?',

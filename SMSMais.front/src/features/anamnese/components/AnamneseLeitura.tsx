@@ -1,5 +1,12 @@
 import { DiagramaMamas } from '@/features/anamnese/components/DiagramaMamas';
+import { descreverIndicacao } from '@/features/anamnese/components/TipoMamografiaSiscan';
 import {
+  INDICACOES_DIAGNOSTICA,
+  ROTULOS_POPULACAO,
+  ROTULOS_TIPO_MAMOGRAFIA,
+  populacaoPelosCriterios,
+  riscoElevadoEfetivo,
+  tipoPelaIdade,
   CRITERIOS_RISCO,
   PERGUNTAS_HISTORICO,
   ROTULOS_CIRURGIA,
@@ -61,9 +68,23 @@ function TextoLeitura({ label, valor }: { label: string; valor: string }) {
  * checkboxes/inputs, mostra a frase com a marcação selecionada e os campos de
  * texto apenas com o conteúdo, dentro de uma div de linha fina.
  */
-export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaConteudo }) {
+export function AnamneseLeitura({
+  conteudo,
+  idade = null,
+}: {
+  conteudo: AnamneseMamografiaConteudo;
+  /** Para mostrar o tipo de mamografia "pela idade" quando a anamnese não escolheu. */
+  idade?: number | null;
+}) {
   const { avaliacaoClinica, historicoClinico, queixas, avaliacaoRisco, saudeReprodutiva, siscan } =
     conteudo;
+  // Tipo de mamografia como vai ao SISCAN: o escolhido, ou a régua da idade (o servidor faz igual).
+  const tipo = siscan?.tipoMamografia ?? tipoPelaIdade(idade);
+  const populacaoEscolhida = siscan ? (siscan.populacaoRastreamento ?? populacaoPelosCriterios(conteudo)) : null;
+  const populacao =
+    populacaoEscolhida === 'riscoElevado' && riscoElevadoEfetivo(conteudo) !== 'sim' ? null : populacaoEscolhida;
+  const diagnostica = siscan?.diagnostica;
+  const indicacoes = diagnostica ? INDICACOES_DIAGNOSTICA.filter(([chave]) => diagnostica[chave]?.marcada) : [];
   const dataMenstruacao = saudeReprodutiva?.aindaMenstrua?.dataUltimaMenstruacao?.trim();
   // Anos da radioterapia, montados só com o que foi informado.
   const anosRadioterapia = [
@@ -321,6 +342,57 @@ export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaCont
                     </span>
                   ) : null}
                 </span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-800">Tipo de mamografia</span>
+              {tipo ? (
+                <span className="text-right">
+                  <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+                    {ROTULOS_TIPO_MAMOGRAFIA[tipo]}
+                  </span>
+                  {siscan.tipoMamografia ? null : (
+                    <span className="mt-0.5 block text-xs text-gray-500">pela idade</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-xs italic text-gray-400">não informado</span>
+              )}
+            </div>
+            {tipo === 'rastreamento' ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-800">População do rastreamento</span>
+                {populacao ? (
+                  <span className="text-right">
+                    <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+                      {ROTULOS_POPULACAO[populacao]}
+                    </span>
+                    {siscan.populacaoRastreamento ? null : (
+                      <span className="mt-0.5 block text-xs text-gray-500">pela avaliação de risco</span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-xs italic text-amber-700">falta escolher</span>
+                )}
+              </div>
+            ) : null}
+            {tipo === 'diagnostica' ? (
+              <div>
+                <span className="text-sm text-gray-800">Indicação da diagnóstica</span>
+                {indicacoes.length ? (
+                  <ul className="mt-1 space-y-1">
+                    {indicacoes.map(([chave, rotulo]) => (
+                      <li key={chave} className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs">
+                        <span className="font-semibold text-teal-700">{rotulo}</span>
+                        {diagnostica && descreverIndicacao(diagnostica, chave) ? (
+                          <span className="block text-gray-700">{descreverIndicacao(diagnostica, chave)}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="ml-2 text-xs italic text-amber-700">nenhuma marcada</span>
+                )}
               </div>
             ) : null}
             {siscan.responsavel ? (

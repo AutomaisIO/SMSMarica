@@ -86,7 +86,8 @@ public sealed class SiscanRequisicaoService(
             return new SiscanPreparoDto(
                 true, protocolo, numeroExame, caso.PacienteNome,
                 caso.CnesUnidade, caso.UnidadeNome, caso.TipoMamografia,
-                RotuloTipo(caso.TipoMamografia), [], null, caso.SolicitanteDaFicha, [], []);
+                RotuloTipo(caso.TipoMamografia), [], null, caso.SolicitanteDaFicha, [], [],
+                TipoMamografiaPelaIdade: caso.TipoPelaIdade);
         }
 
         var sessao = sessoes.Exigir(SessaoId());
@@ -113,7 +114,8 @@ public sealed class SiscanRequisicaoService(
             return new SiscanPreparoDto(
                 false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
                 caso.TipoMamografia, RotuloTipo(caso.TipoMamografia), [], null,
-                caso.SolicitanteDaFicha, [], [], EncontradaPeloProntuario: critica.Nossa);
+                caso.SolicitanteDaFicha, [], [], EncontradaPeloProntuario: critica.Nossa,
+                TipoMamografiaPelaIdade: caso.TipoPelaIdade);
         }
 
         if (critica.DeOutroPedido.Count > 0)
@@ -121,7 +123,8 @@ public sealed class SiscanRequisicaoService(
             return new SiscanPreparoDto(
                 false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
                 caso.TipoMamografia, RotuloTipo(caso.TipoMamografia), [], null,
-                caso.SolicitanteDaFicha, [], [], Duplicidades: critica.DeOutroPedido);
+                caso.SolicitanteDaFicha, [], [], Duplicidades: critica.DeOutroPedido,
+                TipoMamografiaPelaIdade: caso.TipoPelaIdade);
         }
 
         var percurso = await PercorrerAsync(sessao, caso, critica.Html, escolhas, cancellationToken);
@@ -162,7 +165,8 @@ public sealed class SiscanRequisicaoService(
             RacaCorOpcoes: Opcoes(paciente.OpcoesRacaCor),
             RacaCorEscolhida: Opcao(paciente.RacaCor),
             EtniaOpcoes: Opcoes(paciente.OpcoesEtnia),
-            EtniaEscolhida: Opcao(paciente.Etnia));
+            EtniaEscolhida: Opcao(paciente.Etnia),
+            TipoMamografiaPelaIdade: caso.TipoPelaIdade);
     }
 
     public async Task<SiscanRequisicaoDto> GerarAsync(
@@ -266,6 +270,8 @@ public sealed class SiscanRequisicaoService(
 
         var html = await EscolherResponsavelAsync(sessao, percurso.Html, responsavel, cancellationToken);
         html = await AbrirCondicionaisAsync(sessao, html, campos.Campos, cancellationToken);
+        html = await AbrirBlocoDoTipoAsync(
+            sessao, html, campos.Campos, caso.TipoMamografia, cancellationToken);
 
         var doc = SiscanHtml.Documento(html);
 
@@ -824,6 +830,82 @@ public sealed class SiscanRequisicaoService(
         return html;
     }
 
+    /// <summary>
+    /// O bloco do tipo de mamografia, aberto como uma pessoa o abre na tela (mapa em
+    /// <c>Automais.SISCAN/docs/FLUXO-NOVA-REQUISICAO.md</c> §6b-2, medido em 16/10/2026).
+    ///
+    /// <para><b>Rastreamento:</b> a população 02 (risco elevado) nasce desabilitada e só habilita com
+    /// o A4J de "Apresenta risco elevado = Sim". O servidor deles aceita a 02 sem esse passo, mas aí
+    /// grava uma ficha que a tela não deixa montar — então o passo é dado, como na tela.</para>
+    ///
+    /// <para><b>Diagnóstica:</b> cada indicação é um checkbox com A4J (<c>ajaxSingle</c>) que desenha
+    /// o seu sub-bloco; os campos de lado/achado/categoria <b>só existem depois dele</b>. Mandá-los
+    /// no Salvar sem ter aberto a região é mandar campo que o servidor não conhece — ignorado, sem
+    /// erro. Por isso, no fim, tudo o que vamos mandar é conferido na tela.</para>
+    /// </summary>
+    private static async Task<string> AbrirBlocoDoTipoAsync(
+        ISiscanWebSessao sessao, string html, List<KeyValuePair<string, string>> campos, string tipo,
+        CancellationToken cancellationToken)
+    {
+        string? Valor(string campo) => campos.FirstOrDefault(c => c.Key == campo).Value;
+
+        if (tipo == SiscanRequisicaoMapper.Rastreamento)
+        {
+            if (Valor(SiscanRequisicaoMapper.CampoPopulacaoRastreamento) == "02"
+                && Valor(SiscanRequisicaoMapper.CampoRiscoElevado) == SiscanRequisicaoMapper.Sim)
+            {
+                html = await DispararRadioAsync(
+                    sessao, html, "APRESENTA RISCO ELEVADO", SiscanRequisicaoMapper.Sim, cancellationToken);
+            }
+
+            return html;
+        }
+
+        var doc = SiscanHtml.Documento(html);
+        var nomeDoTipo = SiscanHtml.CampoPorLegenda(doc, "TIPO DE MAMOGRAFIA")
+                         ?? throw new ValidacaoException(
+                             "siscan.tela_mudou",
+                             "Não achei a pergunta 'TIPO DE MAMOGRAFIA' na tela do SISCAN.");
+
+        // Os A4J são ajaxSingle (processam só quem disparou), mas o que já foi empurrado vai junto
+        // de novo: o parcial não devolve marcado o que marcou (FLUXO §5), e repostar não custa nada.
+        var empurrados = new Dictionary<string, string>(StringComparer.Ordinal) { [nomeDoTipo] = tipo };
+        foreach (var indicacao in SiscanRequisicaoMapper.IndicacoesDiagnostica)
+        {
+            if (Valor(indicacao.Campo) is null) continue;
+
+            doc = SiscanHtml.Documento(html);
+            var caixa = doc.QuerySelector($"input[name='{indicacao.Campo}']")
+                        ?? throw new ValidacaoException(
+                            "siscan.tela_mudou",
+                            $"A indicação '{indicacao.Rotulo}' não está na tela do SISCAN — o bloco "
+                            + "DIAGNÓSTICA não abriu.");
+
+            empurrados[indicacao.Campo] = SiscanRequisicaoMapper.Marcado;
+            html = await sessao.SubmeterA4JAsync(
+                html, SiscanHtml.FormPrincipal, new Dictionary<string, string>(empurrados),
+                SiscanHtml.ParametrosA4JDoElemento(caixa), cancellationToken);
+        }
+
+        doc = SiscanHtml.Documento(html);
+        var foraDaTela = campos
+            .Select(c => c.Key)
+            .Where(SiscanRequisicaoMapper.EhCampoDaDiagnostica)
+            .Distinct(StringComparer.Ordinal)
+            .Where(nome => doc.QuerySelector($"input[name='{nome}']") is null)
+            .ToList();
+        if (foraDaTela.Count > 0)
+        {
+            throw new ValidacaoException(
+                "siscan.tela_mudou",
+                "Campos da diagnóstica que não apareceram na tela do SISCAN depois de marcar a "
+                + $"indicação: {string.Join(", ", foraDaTela.Take(5))}. A tela mudou — o de-para "
+                + "precisa ser refeito antes de gravar.");
+        }
+
+        return html;
+    }
+
     private static async Task<string> DispararRadioAsync(
         ISiscanWebSessao sessao, string html, string legenda, string valor,
         CancellationToken cancellationToken)
@@ -1089,7 +1171,8 @@ public sealed class SiscanRequisicaoService(
     private sealed record Caso(
         ExameImagem Exame, string Cns, string PacienteNome, string CnesUnidade, string UnidadeNome,
         DateOnly DataSolicitacao, DateOnly DataDoExame, string TipoMamografia,
-        string? ConteudoAnamnese, string? SolicitanteDaFicha, string? AvisoData);
+        string? ConteudoAnamnese, string? SolicitanteDaFicha, string? AvisoData,
+        bool TipoPelaIdade);
 
     /// <summary>
     /// A data que vai no campo <b>"Data da Solicitação"</b> da requisição do SISCAN.
@@ -1265,13 +1348,15 @@ public sealed class SiscanRequisicaoService(
                           ?? DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
         var (dataDoExame, avisoData) = ResolverDataDoExame(exame, anamnese);
 
-        var tipo = SiscanRequisicaoMapper.TipoMamografiaPorIdade(
-            nascimento, DateOnly.FromDateTime(DateTime.Today));
+        // O tipo escolhido na anamnese vale; sem escolha, a régua da idade (o que a seção 7 mostra
+        // marcado "pela idade").
+        var (tipo, pelaIdade) = SiscanRequisicaoMapper.TipoMamografiaEfetivo(
+            anamnese?.ConteudoJson, nascimento, DateOnly.FromDateTime(DateTime.Today));
 
         return new Caso(
             exame, cns, paciente.Nome ?? string.Empty, unidade.Cnes!, unidade.Nome ?? string.Empty,
             dataDaFicha, dataDoExame, tipo, anamnese?.ConteudoJson, solicitacao.SolicitanteNome,
-            avisoData);
+            avisoData, pelaIdade);
     }
 
     /// <param name="correcaoAno">
@@ -1487,7 +1572,31 @@ public sealed class SiscanRequisicaoService(
             ["S"] = "Sim", ["N"] = "Não",
         };
 
-        return campos.Select(c =>
+        var linhas = new List<SiscanCampoEnvioDto>();
+        foreach (var c in campos)
+        {
+            // A diagnóstica manda um campo por achado (nódulo QSL, nódulo QIM…): a prévia junta os da
+            // mesma mama numa linha, senão o modal vira uma lista de 20 linhas iguais.
+            if (SiscanRequisicaoMapper.RotularDiagnostica(c.Key, c.Value) is { } dg)
+            {
+                if (linhas.Count > 0 && linhas[^1].Pergunta == dg.Pergunta)
+                {
+                    linhas[^1] = linhas[^1] with { Resposta = $"{linhas[^1].Resposta}, {dg.Resposta}" };
+                }
+                else
+                {
+                    linhas.Add(new SiscanCampoEnvioDto(dg.Pergunta, dg.Resposta));
+                }
+
+                continue;
+            }
+
+            linhas.Add(Linha(c));
+        }
+
+        return linhas;
+
+        SiscanCampoEnvioDto Linha(KeyValuePair<string, string> c)
         {
             var pergunta = rotulos.TryGetValue(c.Key, out var r) ? r : RotuloDeAno(c.Key) ?? c.Key;
 
@@ -1523,7 +1632,7 @@ public sealed class SiscanRequisicaoService(
             };
 
             return new SiscanCampoEnvioDto(pergunta, resposta);
-        }).ToList();
+        }
     }
 
     private string SessaoId() =>

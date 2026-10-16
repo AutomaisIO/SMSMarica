@@ -450,7 +450,11 @@ export function ModalGerarRequisicaoSiscan({
               <dt className="text-gray-500">Tipo de mamografia</dt>
               <dd className="font-medium text-gray-900">
                 {dados.tipoMamografiaRotulo}{' '}
-                <span className="text-xs text-gray-500">(pela idade da paciente)</span>
+                <span className="text-xs text-gray-500">
+                  {dados.tipoMamografiaPelaIdade === false
+                    ? '(escolhido na anamnese)'
+                    : '(pela idade da paciente — dá para trocar na seção 7 da anamnese)'}
+                </span>
               </dd>
             </div>
           </dl>

@@ -206,6 +206,69 @@ navegador e **ignora radio/checkbox não marcado**. Com ele, "radioterapia = Sim
 **presença** (`name=value` para radio/checkbox), não submissibilidade. Quem for escrever outra
 sonda de varredura: o mesmo vale para qualquer tela do SISCAN.
 
+## 6b-2. Diagnóstica × Rastreamento — o mapa até o fim (16/10/2026)
+
+Varrido por [`mapear_tipo_mamografia.py`](../mapear_tipo_mamografia.py) (marca cada indicação e o que
+ela abrir, comparando a tela INTEIRA; sem Salvar). O §6b parava no primeiro nível ("abre 6
+checkboxes") e isso escondia o tamanho da diferença: **a diagnóstica abre até 103 campos**.
+
+**Fora do bloco do tipo nada muda** — nódulo, risco, mamas examinadas, mamografia/radioterapia/
+cirurgia são as mesmas perguntas nos dois. Mudam o bloco e a lista de **Responsável** (nesta conta:
+12 no rastreamento, 9 na diagnóstica).
+
+**Rastreamento** — 1 escolha, 3 opções, nenhuma chama o servidor:
+
+| Opção | Habilitada quando |
+|---|---|
+| 01 População alvo | sempre |
+| 02 População de risco elevado (história familiar) | **só com "Apresenta risco elevado" = Sim** — o A4J de `j_id91` reRenderiza `frm:mamografiaRastreamento` e tira o `disabled`; Não / Não sabe põem de volta |
+| 03 Paciente já tratado de câncer de mama | sempre |
+
+**Armadilha medida:** o `disabled` da 02 é **só de tela**. Enviada direto no POST, ela grava mesmo com
+risco = Não sabe (relido em 16/10: 2610051839 e 261005861 estão no SISCAN como "risco elevado: não
+sabe" + "população de risco elevado"). Ou seja, dá para gravar uma combinação que a tela não deixa
+uma pessoa montar. Na produção, 32 das 99 requisições com população 02 foram assim.
+
+**Diagnóstica** — bloco obrigatório ("ao menos um"), 6 indicações; cada uma é A4J e abre o seu
+sub-bloco:
+
+| Indicação (checkbox) | Abre | Campos |
+|---|---|---|
+| `achadosExameClinico` — Achados no exame clínico | por mama (Direita/Esquerda): **lesão papilar** (`lesaoPapilarDireita`/`Esquerda`=S); **descarga papilar espontânea** cristalina 01 / hemorrágica 02, exclusivas (`descargaPapilar` — a direita é SEM sufixo — e `descargaPapilarEsquerda`); **nódulo — localização** e **espessamento — localização**, 10 regiões cada (`noduloLocalizacaoDireita`, `espessamentoLcalizacaoDireita` — o typo "Lcalizacao" é do SISCAN): 01 QSL · 02 QIL · 03 QSM · 04 QIM · 05 UQLat · 06 UQsup · 07 UQmed · 08 UQinf · 09 RRA · 10 PA; **linfonodo palpável** 01 axilar / 02 supraclavicular | 50 |
+| `controleRadiologicoLesao` — Controle radiológico de lesão categoria 3 | 7 achados × 2 mamas, `radiologico<Achado><Lado>`=S | 14 |
+| `lesaoDiagnosticoCancer` — Lesão com diagnóstico de câncer | os mesmos 7 × 2, `lesaoCancer<Achado><Lado>`=S | 14 |
+| `avaliacaoRespostaQuimioterapia` — Resposta de QT neoadjuvante | lado: `avaliacaoRespostaQuimiNeo` 02 direita · 01 esquerda · 03 ambas (**02 é a direita**) | 3 |
+| `revisaoMamografia` — Revisão de mamografia com lesão de outra instituição | BI-RADS por mama: `revisaoCategoria{0,3,4,5}{Direita,Esquerda}`=S, exclusivo por lado (JS `preencherCategoriaBiRads`) | 8 |
+| `controleLesao` — Controle de lesão após biópsia/PAAF benigna | 7 × 2, `controleLesao<Achado><Lado>`=S | 14 |
+
+Os 7 achados radiológicos: `Nodulo`, `Microcalcificacoes`, `AssimetriaFocal`, `AssimetriaDifusa`,
+`AreaDensa`, `DistorcaoFocal`, `LinfonodoAxiliar` (sic). Nenhum sub-campo tem `*` na legenda —
+se o servidor exige ao menos um achado dentro da indicação marcada, só o Salvar diz (não testado).
+
+Todos os A4J do bloco são `ajaxSingle` (processam só quem disparou). Desmarcar "Achados no exame
+clínico" pede confirmação ("As informações da mamografia diagnosticada desta(s) mama(s) serão
+perdidas") — o sub-bloco é apagado.
+
+### Validação contra o que a operação lançou à mão (16/10/2026)
+
+[`reler_requisicoes.py`](../reler_requisicoes.py) releu 39 requisições lançadas à mão antes da
+plataforma (8 de até 35 anos + 31 em quatro faixas acima), e o `SiscanRequisicaoMapper` real rodou
+sobre as mesmas anamneses:
+
+- **Tipo: 39 de 39 iguais** — a operação usava a mesma régua (até 35 diagnóstica, 36+ rastreamento).
+- **Até 35: a operação marcava sempre** "Revisão de mamografia com lesão realizada em outra
+  instituição" + **BI-RADS 0** (7 nas duas mamas, 1 só na direita) — e "fez mamografia = Sim". Em 6
+  das 8 a anamnese diz que a paciente **nunca fez mamografia**: não havia exame externo para revisar.
+  Era um jeito de passar pelo obrigatório. **Não reproduzir** (decisão do Bernardo, 16/10/2026): o
+  BI-RADS da requisição é o de um exame ANTERIOR de outra instituição — o do exame atual é da
+  médica, no resultado. A indicação fica em branco na anamnese e quem atende marca a verdadeira.
+- **36+:** a operação usava um gabarito fixo (risco "não sabe", nódulo "não", fez mamografia "sim",
+  população alvo); o modelo responde pela anamnese — é o que a plataforma faz desde 23/09.
+
+**Régua da população, depois disso:** sem escolha na anamnese, a 02 sugerida pelos critérios só vai
+com risco elevado = Sim; senão vai **alvo** (o que a tela deixa e o que a operação marcava).
+Escolhida explicitamente com o risco em Não/Não sabe, é lacuna.
+
 ## 6c. De-para com uma ficha do SISREG — o que dá para preencher sozinho
 
 Exercitado com uma solicitação real de MAMOGRAFIA BILATERAL (validado contra a tela, sem gravar).
@@ -252,6 +315,10 @@ Régua do CDT Maricá (Bernardo, 22/09/2026), em `tipo_mamografia_por_idade()`:
 Não é o critério do INCA (50–69 para rastreamento populacional) — é a régua operacional daqui.
 Consequência que não é óbvia: como a lista do combo **Responsável muda** entre diagnóstica e
 rastreamento, **a idade da paciente também decide quem pode assinar a requisição**.
+
+**Desde 16/10/2026 a idade é sugestão:** a seção 7 da anamnese tem o bloco Tipo de mamografia
+(`siscan.tipoMamografia`), marcado pela idade e trocável — como na tela do SISCAN, onde o tipo é
+escolha de quem preenche. Sem escolha, vale a régua. Ver §6b-2.
 
 **O que a ficha do SISREG NÃO responde — e são 5 obrigatórios:** tem nódulo ou caroço na mama;
 apresenta risco elevado para câncer de mama; antes desta consulta teve as mamas examinadas por

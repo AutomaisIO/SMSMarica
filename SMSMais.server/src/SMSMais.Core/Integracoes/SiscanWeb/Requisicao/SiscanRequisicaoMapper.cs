@@ -51,7 +51,7 @@ public sealed record CamposRequisicao(
 ///
 /// <para>Códigos medidos contra o SISCAN real (ver <c>Automais.SISCAN/docs/</c>), não deduzidos.</para>
 /// </summary>
-public static class SiscanRequisicaoMapper
+public static partial class SiscanRequisicaoMapper
 {
     // Os nomes dos campos são auto-gerados pelo JSF (`j_idNN`) e mudam quando o DATASUS
     // recompila. Ficam aqui porque a tela não oferece outro jeito de endereçá-los — e por isso
@@ -111,15 +111,7 @@ public static class SiscanRequisicaoMapper
         var campos = new List<KeyValuePair<string, string>>();
         var lacunas = new List<LacunaAnamnese>();
 
-        JsonElement raiz;
-        try
-        {
-            raiz = JsonDocument.Parse(conteudoJson ?? "{}").RootElement.Clone();
-        }
-        catch (JsonException)
-        {
-            raiz = JsonDocument.Parse("{}").RootElement.Clone();
-        }
+        var raiz = Raiz(conteudoJson);
 
         var historico = Objeto(raiz, "historicoClinico");
         var queixas = Objeto(raiz, "queixas");
@@ -139,10 +131,27 @@ public static class SiscanRequisicaoMapper
 
         if (tipoMamografia == Rastreamento)
         {
-            campos.Add(new(CampoPopulacaoRastreamento, PopulacaoRastreamento(risco)));
+            MontarRastreamento(risco, siscan, campos, lacunas);
+        }
+        else
+        {
+            MontarDiagnostica(siscan, campos, lacunas);
         }
 
         return new CamposRequisicao(campos, lacunas);
+    }
+
+    /// <summary>A raiz do JSON da anamnese — JSON quebrado vira documento vazio, nunca exceção.</summary>
+    private static JsonElement Raiz(string? conteudoJson)
+    {
+        try
+        {
+            return JsonDocument.Parse(conteudoJson ?? "{}").RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return JsonDocument.Parse("{}").RootElement.Clone();
+        }
     }
 
     // ------------------------------------------------------------------ perguntas
@@ -416,7 +425,8 @@ public static class SiscanRequisicaoMapper
     }
 
     /// <summary>
-    /// População-alvo do rastreamento: 01 alvo · 02 risco elevado (história familiar) ·
+    /// População-alvo do rastreamento, quando a anamnese não escolheu (<c>siscan.populacaoRastreamento</c>,
+    /// a pergunta como ela é no SISCAN — 16/10/2026): 01 alvo · 02 risco elevado (história familiar) ·
     /// 03 já tratada de câncer de mama. Sai dos critérios da seção 5 — histórico pessoal manda.
     /// </summary>
     private static string PopulacaoRastreamento(JsonElement risco)

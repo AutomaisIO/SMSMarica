@@ -188,8 +188,240 @@ export const RISCO_ELEVADO_SISCAN = [
   'Mulheres com história pessoal de câncer de mama;',
 ] as const;
 
+// ---- Tipo de mamografia, como o bloco da requisição do SISCAN (16/10/2026) ----
+//
+// Mapa medido na tela deles, sem gravar (Automais.SISCAN/docs/FLUXO-NOVA-REQUISICAO.md §6b-2):
+// o rastreamento pede uma população; a diagnóstica pede ao menos uma de 6 indicações, e cada uma
+// abre o seu sub-bloco. Os códigos de cada opção estão no SiscanRequisicaoMapper do servidor.
+
+export type TipoMamografia = 'diagnostica' | 'rastreamento';
+
+export const ROTULOS_TIPO_MAMOGRAFIA: Record<TipoMamografia, string> = {
+  diagnostica: 'Diagnóstica',
+  rastreamento: 'Rastreamento',
+};
+
+export type PopulacaoRastreamento = 'alvo' | 'riscoElevado' | 'jaTratada';
+
+/** Texto da tela do SISCAN. */
+export const ROTULOS_POPULACAO: Record<PopulacaoRastreamento, string> = {
+  alvo: 'População alvo',
+  riscoElevado: 'População de risco elevado (história familiar)',
+  jaTratada: 'Paciente já tratado de câncer de mama',
+};
+
+/** As 10 regiões da mama do exame clínico, na ordem da tela, com o significado da sigla. */
+export const REGIOES_MAMA = [
+  ['QSL', 'Quadrante superior lateral'],
+  ['QIL', 'Quadrante inferior lateral'],
+  ['QSM', 'Quadrante superior medial'],
+  ['QIM', 'Quadrante inferior medial'],
+  ['UQLat', 'União dos quadrantes laterais'],
+  ['UQsup', 'União dos quadrantes superiores'],
+  ['UQmed', 'União dos quadrantes mediais'],
+  ['UQinf', 'União dos quadrantes inferiores'],
+  ['RRA', 'Região retroareolar'],
+  ['PA', 'Prolongamento axilar'],
+] as const;
+
+export type RegiaoMama = (typeof REGIOES_MAMA)[number][0];
+
+export type DescargaPapilar = 'cristalina' | 'hemorragica';
+export type LinfonodoPalpavel = 'axilar' | 'supraclavicular';
+export type CategoriaBiRads = '0' | '3' | '4' | '5';
+
+export const CATEGORIAS_BIRADS: CategoriaBiRads[] = ['0', '3', '4', '5'];
+
+/** Os 7 achados da grade que três indicações repetem, × 2 mamas. */
+export const ACHADOS_RADIOLOGICOS = [
+  ['nodulo', 'Nódulo'],
+  ['microcalcificacoes', 'Microcalcificações'],
+  ['assimetriaFocal', 'Assimetria focal'],
+  ['assimetriaDifusa', 'Assimetria difusa'],
+  ['areaDensa', 'Área densa'],
+  ['distorcaoFocal', 'Distorção focal'],
+  ['linfonodoAxilar', 'Linfonodo axilar'],
+] as const;
+
+export type AchadoRadiologico = (typeof ACHADOS_RADIOLOGICOS)[number][0];
+export type GradeAchados = Record<AchadoRadiologico, { direita: boolean; esquerda: boolean }>;
+
+/** "Achados no exame clínico" de uma mama. */
+export type AchadosClinicosMama = {
+  lesaoPapilar: boolean;
+  /** Exclusiva: na tela, marcar uma desmarca a outra. */
+  descargaPapilar: DescargaPapilar | null;
+  nodulo: RegiaoMama[];
+  espessamento: RegiaoMama[];
+  linfonodo: LinfonodoPalpavel[];
+};
+
+export type DiagnosticaSiscan = {
+  achadosExameClinico: { marcada: boolean; direita: AchadosClinicosMama; esquerda: AchadosClinicosMama };
+  controleRadiologico: { marcada: boolean; achados: GradeAchados };
+  lesaoDiagnosticoCancer: { marcada: boolean; achados: GradeAchados };
+  respostaQuimioterapia: { marcada: boolean; lado: LadoOuAmbas | null };
+  /** Uma categoria BI-RADS por mama (exclusiva por lado, como na tela). */
+  revisaoMamografia: {
+    marcada: boolean;
+    categoriaDireita: CategoriaBiRads | null;
+    categoriaEsquerda: CategoriaBiRads | null;
+  };
+  controleAposBiopsia: { marcada: boolean; achados: GradeAchados };
+};
+
+export type IndicacaoDiagnostica = keyof DiagnosticaSiscan;
+
+/** As 6 indicações, na ordem e com o texto da tela do SISCAN. */
+export const INDICACOES_DIAGNOSTICA: [IndicacaoDiagnostica, string][] = [
+  ['achadosExameClinico', 'Achados no exame clínico'],
+  ['controleRadiologico', 'Controle radiológico de lesão categoria 3'],
+  ['lesaoDiagnosticoCancer', 'Lesão com diagnóstico de câncer'],
+  ['respostaQuimioterapia', 'Avaliação da resposta de quimioterapia neoadjuvante'],
+  ['revisaoMamografia', 'Revisão de mamografia com lesão realizada em outra instituição'],
+  ['controleAposBiopsia', 'Controle de lesão após biópsia de fragmento ou PAAF com resultado benigno'],
+];
+
+function gradeVazia(): GradeAchados {
+  const lado = () => ({ direita: false, esquerda: false });
+  return {
+    nodulo: lado(),
+    microcalcificacoes: lado(),
+    assimetriaFocal: lado(),
+    assimetriaDifusa: lado(),
+    areaDensa: lado(),
+    distorcaoFocal: lado(),
+    linfonodoAxilar: lado(),
+  };
+}
+
+function achadosClinicosVazios(): AchadosClinicosMama {
+  return { lesaoPapilar: false, descargaPapilar: null, nodulo: [], espessamento: [], linfonodo: [] };
+}
+
+/** O sub-bloco de uma indicação, em branco — é o que a tela deixa ao desmarcá-la. */
+export function indicacaoVazia<K extends IndicacaoDiagnostica>(chave: K): DiagnosticaSiscan[K] {
+  return diagnosticaVazia()[chave];
+}
+
+export function diagnosticaVazia(): DiagnosticaSiscan {
+  return {
+    achadosExameClinico: {
+      marcada: false,
+      direita: achadosClinicosVazios(),
+      esquerda: achadosClinicosVazios(),
+    },
+    controleRadiologico: { marcada: false, achados: gradeVazia() },
+    lesaoDiagnosticoCancer: { marcada: false, achados: gradeVazia() },
+    respostaQuimioterapia: { marcada: false, lado: null },
+    revisaoMamografia: { marcada: false, categoriaDireita: null, categoriaEsquerda: null },
+    controleAposBiopsia: { marcada: false, achados: gradeVazia() },
+  };
+}
+
+/** Merge defensivo do bloco gravado sobre o vazio (anamnese anterior a 16/10/2026 não tem). */
+export function mesclarDiagnostica(gravada?: Partial<DiagnosticaSiscan>): DiagnosticaSiscan {
+  const base = diagnosticaVazia();
+  if (!gravada) return base;
+  const grade = (g?: Partial<GradeAchados>) => ({ ...gradeVazia(), ...g });
+  return {
+    achadosExameClinico: {
+      ...base.achadosExameClinico,
+      ...gravada.achadosExameClinico,
+      direita: { ...achadosClinicosVazios(), ...gravada.achadosExameClinico?.direita },
+      esquerda: { ...achadosClinicosVazios(), ...gravada.achadosExameClinico?.esquerda },
+    },
+    controleRadiologico: {
+      ...base.controleRadiologico,
+      ...gravada.controleRadiologico,
+      achados: grade(gravada.controleRadiologico?.achados),
+    },
+    lesaoDiagnosticoCancer: {
+      ...base.lesaoDiagnosticoCancer,
+      ...gravada.lesaoDiagnosticoCancer,
+      achados: grade(gravada.lesaoDiagnosticoCancer?.achados),
+    },
+    respostaQuimioterapia: { ...base.respostaQuimioterapia, ...gravada.respostaQuimioterapia },
+    revisaoMamografia: { ...base.revisaoMamografia, ...gravada.revisaoMamografia },
+    controleAposBiopsia: {
+      ...base.controleAposBiopsia,
+      ...gravada.controleAposBiopsia,
+      achados: grade(gravada.controleAposBiopsia?.achados),
+    },
+  };
+}
+
+/** A indicação tem algo dentro (mama, achado, categoria)? Sem isso o servidor não gera. */
+export function indicacaoPreenchida(d: DiagnosticaSiscan, chave: IndicacaoDiagnostica): boolean {
+  switch (chave) {
+    case 'achadosExameClinico': {
+      const mama = (m: AchadosClinicosMama) =>
+        m.lesaoPapilar ||
+        m.descargaPapilar !== null ||
+        m.nodulo.length > 0 ||
+        m.espessamento.length > 0 ||
+        m.linfonodo.length > 0;
+      return mama(d.achadosExameClinico.direita) || mama(d.achadosExameClinico.esquerda);
+    }
+    case 'respostaQuimioterapia':
+      return d.respostaQuimioterapia.lado !== null;
+    case 'revisaoMamografia':
+      return d.revisaoMamografia.categoriaDireita !== null || d.revisaoMamografia.categoriaEsquerda !== null;
+    default:
+      return Object.values(d[chave].achados).some((l) => l.direita || l.esquerda);
+  }
+}
+
+/**
+ * Régua do CDT Maricá (22/09/2026) — a mesma de `SiscanRequisicaoMapper.TipoMamografiaPorIdade`:
+ * 36 anos ou mais = rastreamento; até 35 = diagnóstica. É sugestão: o tipo é escolha na tela do
+ * SISCAN, e a seção 7 deixa trocar.
+ */
+export function tipoPelaIdade(idade: number | null): TipoMamografia | null {
+  if (idade === null) return null;
+  return idade >= 36 ? 'rastreamento' : 'diagnostica';
+}
+
+/**
+ * "Apresenta risco elevado?" como vai ao SISCAN — espelho de `SiscanRequisicaoMapper.RiscoElevado`:
+ * a resposta explícita da seção 5 vence; sem ela, Moderado/Alto = Sim, Baixo = Não; sem
+ * classificação, qualquer critério marcado = Sim, todos "não" = Não, senão Não sabe.
+ */
+export function riscoElevadoEfetivo(c: AnamneseMamografiaConteudo): SimNaoNaoSabe {
+  if (c.siscan.riscoElevado) return c.siscan.riscoElevado;
+  const classificacao = c.avaliacaoRisco.classificacao;
+  if (classificacao === 'Alto' || classificacao === 'Moderado') return 'sim';
+  if (classificacao === 'Baixo') return 'nao';
+  const criterios = CRITERIOS_RISCO.map(([chave]) => c.avaliacaoRisco[chave]);
+  if (criterios.some((v) => v === true)) return 'sim';
+  return criterios.every((v) => v === false) ? 'nao' : 'naoSabe';
+}
+
+/**
+ * A população que os critérios da seção 5 indicam — espelho de `SiscanRequisicaoMapper`
+ * (PopulacaoRastreamento + MontarRastreamento): histórico pessoal manda; familiar de 1º grau ou
+ * câncer antes dos 50 na família = risco elevado — mas só se "Apresenta risco elevado" for Sim, que
+ * é quando a tela do SISCAN destrava essa opção; senão, população alvo (o que a operação marcava).
+ */
+export function populacaoPelosCriterios(c: AnamneseMamografiaConteudo): PopulacaoRastreamento {
+  if (c.avaliacaoRisco.historicoPessoalCancer === true) return 'jaTratada';
+  if (c.avaliacaoRisco.familiar1GrauCancerMama === true || c.avaliacaoRisco.cancerMamaAntes50Familia === true) {
+    return riscoElevadoEfetivo(c) === 'sim' ? 'riscoElevado' : 'alvo';
+  }
+  return 'alvo';
+}
+
 /** Bloco v2 — respostas que existem só porque o SISCAN pede. */
 export type ComplementoSiscan = {
+  /**
+   * "TIPO DE MAMOGRAFIA" (16/10/2026). Null = ninguém escolheu: vale a régua da idade, que a
+   * seção 7 mostra marcada "pela idade".
+   */
+  tipoMamografia: TipoMamografia | null;
+  /** "MAMOGRAFIA DE RASTREAMENTO". Null = vale o que os critérios da seção 5 indicam. */
+  populacaoRastreamento: PopulacaoRastreamento | null;
+  /** "DIAGNÓSTICA": as 6 indicações e o que cada uma abre. */
+  diagnostica: DiagnosticaSiscan;
   /**
    * "Apresenta risco elevado para câncer de mama?" como o SISCAN pergunta (ticket #139).
    * Convive com a avaliação de risco da seção 5; quando respondida, é ela que vai ao SISCAN.
@@ -315,6 +547,9 @@ export function conteudoVazio(): AnamneseMamografiaConteudo {
       numeroFilhos: null,
     },
     siscan: {
+      tipoMamografia: null,
+      populacaoRastreamento: null,
+      diagnostica: diagnosticaVazia(),
       riscoElevado: null,
       mamasExaminadasAntes: null,
       radioterapia: { resposta: null, lado: null, anoDireita: '', anoEsquerda: '' },
