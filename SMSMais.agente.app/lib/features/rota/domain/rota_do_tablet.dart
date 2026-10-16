@@ -71,6 +71,7 @@ class RotaDoTablet {
       longitude: (p['longitude'] as num?)?.toDouble(),
       horarioPrevisto: _hora(p['horarioPrevisto'] as String?, dia),
       observacoes: p['observacoes'] as String?,
+      volta: p['trecho'] == 'Volta',
       passageiros: [
         for (final x in p['passageiros'] as List<dynamic>? ?? const [])
           _passageiro(x as Map<String, dynamic>),
@@ -128,6 +129,13 @@ class RotaDoTablet {
       for (final (k, x) in quem.indexed) {
         final passageiro = paradas[i].passageiros[k];
         final m = x as Map<String, dynamic>;
+        if (paradas[i].volta) {
+          // Na volta só conta o paciente: quem não estava na unidade.
+          if (m['situacao'] == 'Ausente') {
+            ausentes.add(idAusenteNaVolta(passageiro.id));
+          }
+          continue;
+        }
         if (m['situacao'] == 'Ausente') ausentes.add(passageiro.id);
         final acomp = m['acompanhantes'] as List<dynamic>? ?? const [];
         for (final (n, a) in acomp.indexed) {
