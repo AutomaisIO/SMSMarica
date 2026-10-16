@@ -19,6 +19,10 @@ export type AlocacaoDto = {
   fileiraOrdem: number;
   numeroAssento: number;
   tipo: TipoAlocacao;
+  /** Situação da viagem: o tablet marca realizada/não realizada; a central corrige. */
+  statusSessao: string;
+  /** A central confirmou/corrigiu a viagem no painel — vale isso, não o tablet. */
+  corrigidaNoPainel: boolean;
 };
 
 export type SessaoElegivel = {
@@ -135,4 +139,42 @@ export type ResultadoGeracao = {
   totalAlocadas: number;
   rotas: RotaGerada[];
   naoAlocadas: SessaoNaoAlocada[];
+};
+
+// ---- Viagem registrada pelo tablet do veículo (etapa 2) ----
+
+export const TIPOS_EVENTO_VIAGEM = ['Inicio', 'Embarque', 'Ausencia', 'Desembarque', 'Conclusao'] as const;
+export type TipoEventoViagem = (typeof TIPOS_EVENTO_VIAGEM)[number];
+
+/** Uma marcação do tablet. `aplicado=false`: não mudou a viagem (a central já tinha corrigido
+ * no painel, sessão ou rota cancelada) — o motivo vem ao lado. */
+export type EventoViagem = {
+  id: string;
+  tipo: TipoEventoViagem;
+  ocorridoEm: string;
+  recebidoEm: string;
+  sessaoId: string | null;
+  pacienteNome: string | null;
+  pessoa: 'Paciente' | 'Acompanhante' | null;
+  acompanhanteNome: string | null;
+  motoristaNome: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  aplicado: boolean;
+  motivoNaoAplicado: string | null;
+};
+
+// ---- Endereços que o Google não localizou (revisão de geocódigos) ----
+
+/** Endereço do paciente sem ponto confiável no mapa. `enderecoNormalizado` vem sem acento e em
+ * minúsculas (é a chave do cache). */
+export type EnderecoParaRevisar = {
+  id: string;
+  enderecoNormalizado: string;
+  latitude: number;
+  longitude: number;
+  fonte: string;
+  precisao: string | null;
+  revisaoPendente: boolean;
+  geocodificadoEm: string;
 };

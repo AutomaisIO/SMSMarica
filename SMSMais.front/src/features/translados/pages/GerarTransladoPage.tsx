@@ -12,7 +12,9 @@ import {
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
+import { RevisaoEnderecos } from '@/features/translados/components/RevisaoEnderecos';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { useGerarTranslado } from '@/features/translados/api/queries';
@@ -63,7 +65,7 @@ export function GerarTransladoPage() {
 
   function executar(confirmar: boolean) {
     if (confirmar && !window.confirm(
-      `Gerar e salvar as rotas de ${formatarDataBr(data)}? As rotas geradas anteriormente para esta data (não concluídas) serão recriadas.`,
+      `Gerar e salvar as rotas de ${formatarDataBr(data)}? As rotas geradas que ainda estão planejadas para esta data serão refeitas; as em andamento e as concluídas ficam como estão.`,
     )) {
       return;
     }
@@ -86,6 +88,7 @@ export function GerarTransladoPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
           <Wand2 className="h-6 w-6 text-primary-600" />
           Gerar translado automático
+          <AjudaManual artigo="translados" />
         </h1>
         <p className="text-sm text-gray-600">
           Distribui os pacientes elegíveis do dia nos veículos e otimiza a ordem de coleta. A
@@ -222,6 +225,7 @@ function Resultado({ resultado, aoAbrirLista }: { resultado: ResultadoGeracao; a
               </li>
             ))}
           </ul>
+          {resultado.naoAlocadas.some((s) => s.motivo.startsWith('Sem geolocalização')) ? <RevisaoEnderecos /> : null}
         </section>
       ) : null}
     </div>

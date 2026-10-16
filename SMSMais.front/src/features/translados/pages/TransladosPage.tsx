@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
@@ -107,7 +108,10 @@ export function TransladosPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Translados</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold text-gray-900">Translados</h1>
+            <AjudaManual artigo="translados" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">
             Rotas diárias. Clique em uma data para operar alocações de pacientes nos assentos.
           </p>

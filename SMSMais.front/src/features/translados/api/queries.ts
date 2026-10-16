@@ -9,6 +9,9 @@ import {
   iniciarRota,
   listarRotas,
   listarSessoesElegiveis,
+  listarViagem,
+  listarEnderecosParaRevisar,
+  fixarPontoDoEndereco,
   obterRotaPorId,
   removerAlocacao,
 } from '@/features/translados/api/transladosApi';
@@ -25,6 +28,7 @@ export const transladosKeys = {
   lista: (f: FiltrosListarRotas = {}) => ['rotas', 'lista', f.data ?? null, f.motoristaId ?? null, f.veiculoId ?? null] as const,
   detalhe: (id: string) => ['rotas', 'detalhe', id] as const,
   sessoesElegiveis: (rotaId: string) => ['rotas', 'sessoes-elegiveis', rotaId] as const,
+  viagem: (rotaId: string) => ['rotas', 'viagem', rotaId] as const,
 };
 
 export function useListarRotas(filtros: FiltrosListarRotas = {}) {
@@ -144,5 +148,30 @@ export function useRemoverAlocacao() {
       client.invalidateQueries({ queryKey: transladosKeys.raiz });
       client.invalidateQueries({ queryKey: ['tratamentos'] });
     },
+  });
+}
+
+/** Viagem do tablet. Com a rota em andamento, atualiza sozinha a cada 30 s. */
+export function useViagemDaRota(rotaId: string | null, emAndamento: boolean) {
+  return useQuery({
+    queryKey: rotaId ? transladosKeys.viagem(rotaId) : ['rotas', 'viagem', 'nenhum'],
+    queryFn: () => listarViagem(rotaId!),
+    enabled: Boolean(rotaId),
+    refetchInterval: emAndamento ? 30_000 : false,
+  });
+}
+
+const chaveRevisao = ['geo', 'revisao'] as const;
+
+export function useEnderecosParaRevisar(ativo: boolean) {
+  return useQuery({ queryKey: chaveRevisao, queryFn: listarEnderecosParaRevisar, enabled: ativo });
+}
+
+export function useFixarPontoDoEndereco() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; latitude: number; longitude: number }) =>
+      fixarPontoDoEndereco(v.id, v.latitude, v.longitude),
+    onSuccess: () => client.invalidateQueries({ queryKey: chaveRevisao }),
   });
 }

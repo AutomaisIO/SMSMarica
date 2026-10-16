@@ -3133,6 +3133,100 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("rastreamento_evento_chegada", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.EventoViagem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AcompanhanteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("acompanhante_id");
+
+                    b.Property<int?>("AcompanhanteOrdem")
+                        .HasColumnType("integer")
+                        .HasColumnName("acompanhante_ordem");
+
+                    b.Property<bool>("Aplicado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("aplicado");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dispositivo_id");
+
+                    b.Property<Guid>("IdLocal")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id_local");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("MotivoNaoAplicado")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("motivo_nao_aplicado");
+
+                    b.Property<Guid?>("MotoristaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("motorista_id");
+
+                    b.Property<DateTime>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<int?>("Pessoa")
+                        .HasColumnType("integer")
+                        .HasColumnName("pessoa");
+
+                    b.Property<double?>("PrecisaoM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("precisao_m");
+
+                    b.Property<DateTime>("RecebidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recebido_em");
+
+                    b.Property<Guid>("RotaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rota_id");
+
+                    b.Property<Guid?>("SessaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sessao_id");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<Guid>("VeiculoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("veiculo_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcompanhanteId");
+
+                    b.HasIndex("IdLocal")
+                        .IsUnique();
+
+                    b.HasIndex("MotoristaId");
+
+                    b.HasIndex("SessaoId");
+
+                    b.HasIndex("VeiculoId");
+
+                    b.HasIndex("RotaId", "OcorridoEm");
+
+                    b.ToTable("translado_evento_viagem", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.ExameAssociacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -17010,6 +17104,36 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Geofence");
 
                     b.Navigation("RotaDiaria");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EventoViagem", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Acompanhante", null)
+                        .WithMany()
+                        .HasForeignKey("AcompanhanteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.Motorista", null)
+                        .WithMany()
+                        .HasForeignKey("MotoristaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.RotaDiaria", null)
+                        .WithMany()
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.SessaoDeTratamento", null)
+                        .WithMany()
+                        .HasForeignKey("SessaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.Veiculo", null)
+                        .WithMany()
+                        .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.ExameAssociacao", b =>

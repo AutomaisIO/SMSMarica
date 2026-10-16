@@ -376,7 +376,9 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
                 assento.Id,
                 fileira.Ordem,
                 assento.Numero,
-                a.Tipo);
+                a.Tipo,
+                s.Status,
+                s.ConfirmadaPorUsuarioId != null);
 
         var dtos = await query.ToListAsync(cancellationToken);
         var nomes = await _pacienteResolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), cancellationToken);

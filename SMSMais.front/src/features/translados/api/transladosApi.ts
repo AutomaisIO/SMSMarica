@@ -3,6 +3,8 @@ import type {
   AtualizarRotaPayload,
   CadastrarRotaPayload,
   CriarAlocacaoPayload,
+  EnderecoParaRevisar,
+  EventoViagem,
   FiltrosListarRotas,
   GerarTransladoPayload,
   ResultadoGeracao,
@@ -66,4 +68,21 @@ export async function criarAlocacao(rotaId: string, payload: CriarAlocacaoPayloa
 
 export async function removerAlocacao(rotaId: string, alocacaoId: string): Promise<void> {
   await http.delete(`/rotas/${rotaId}/alocacoes/${alocacaoId}`);
+}
+
+/** A viagem como o tablet registrou, na ordem em que aconteceu. */
+export async function listarViagem(rotaId: string): Promise<EventoViagem[]> {
+  const { data } = await http.get<EventoViagem[]>(`/rotas/${rotaId}/viagem`);
+  return data;
+}
+
+/** Endereços que o Google não localizou (ou localizou mal): ficam fora da geração até alguém
+ * marcar o ponto no mapa. */
+export async function listarEnderecosParaRevisar(): Promise<EnderecoParaRevisar[]> {
+  const { data } = await http.get<EnderecoParaRevisar[]>('/geo/revisao');
+  return data;
+}
+
+export async function fixarPontoDoEndereco(id: string, latitude: number, longitude: number): Promise<void> {
+  await http.post('/geo/fixar', { id, latitude, longitude });
 }
