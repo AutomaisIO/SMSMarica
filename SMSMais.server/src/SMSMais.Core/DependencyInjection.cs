@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<ITransladoService, TransladoService>();
         services.AddScoped<IRastreamentoService, RastreamentoService>();
         services.AddScoped<Rastreamento.Dispositivos.IDispositivoVeiculoService, Rastreamento.Dispositivos.DispositivoVeiculoService>();
+        services.AddScoped<Rastreamento.Dispositivos.IRotaTabletService, Rastreamento.Dispositivos.RotaTabletService>();
         services.AddScoped<Rastreamento.Ocorrencias.IOcorrenciaVeiculoService, Rastreamento.Ocorrencias.OcorrenciaVeiculoService>();
         // Login do motorista no tablet pelo rosto (ADR-0073)
         services.AddScoped<Rastreamento.Biometria.IBiometriaTabletService, Rastreamento.Biometria.BiometriaTabletService>();
