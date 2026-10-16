@@ -3,6 +3,7 @@ import 'package:agente/app/theme.dart';
 import 'package:agente/features/auth/application/entrada_motorista_service.dart';
 import 'package:agente/features/dispositivo/application/envio_posicoes_service.dart';
 import 'package:agente/features/ocorrencia/application/ocorrencias_controller.dart';
+import 'package:agente/features/viagem/application/viagem_controller.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -20,12 +21,13 @@ class AgenteApp extends ConsumerWidget {
     // ServicoGps (POST /rastreamento/pontos com motoristaId mock, sem auth)
     // foi desligado: só gerava 401. Ver docs/modulos/tfd/deslocamento-tablet.md.
     // A fila do REPORT também: aviso guardado sem rede sai sozinho depois.
-    // E a das conferências do motorista (ADR-0073).
+    // E a das conferências do motorista (ADR-0073) e a das marcações da viagem.
     ref
       ..watch(gpsAoVivoProvider.notifier)
       ..watch(envioPosicoesProvider)
       ..watch(ocorrenciasProvider.notifier)
-      ..watch(conferenciasProvider.notifier);
+      ..watch(conferenciasProvider.notifier)
+      ..watch(viagemProvider.notifier);
 
     // Sempre pt-BR, mesmo com o tablet em inglês (o nativo também fixa pt-BR
     // para a narração do Navigation SDK — ver MainActivity).
