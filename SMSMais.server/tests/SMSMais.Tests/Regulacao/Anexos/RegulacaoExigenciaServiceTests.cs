@@ -8,6 +8,7 @@ using NSubstitute;
 
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Identidade.Dtos;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
@@ -67,6 +68,27 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
         var escopo = new RegulacaoEscopo(db, acessor, Substitute.For<IIdentidadeService>());
         var eventos = new RegulacaoEventoService(db, acessor);
         return (new RegulacaoExigenciaService(db, store, config, acessor, escopo, eventos), store);
+    }
+
+    /// <summary>
+    /// Serviço com um usuário logado que é AGENTE (módulo RegulacaoTriagem) — o escopo devolve
+    /// "tudo", então não é preciso montar RBAC de unidade. Usado para exercitar o caminho em que
+    /// o download registra o acesso na trilha (que só roda com usuário no contexto).
+    /// </summary>
+    private static RegulacaoExigenciaService ServicoComAgente(SmsMaisDbContext db, Guid usuarioId)
+    {
+        var acessor = new UsuarioAtualAccessorFake(usuarioId);
+        var config = new RegulacaoConfiguracaoService(
+            db, new MemoryCache(new MemoryCacheOptions()), acessor);
+        var identidade = Substitute.For<IIdentidadeService>();
+        identidade.ObterPermissoesResolvidasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new PermissoesResolvidasDto(
+                Herdadas: [],
+                Overrides: [],
+                Resolvidas: [new PermissaoModuloDto(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]));
+        var escopo = new RegulacaoEscopo(db, acessor, identidade);
+        var eventos = new RegulacaoEventoService(db, acessor);
+        return new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo, eventos);
     }
 
     private static byte[] Bytes(int tamanho) => Encoding.UTF8.GetBytes(new string('x', tamanho));
@@ -285,5 +307,35 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
         var acao = () => servico.ObterConteudoAsync(s2.Id, a.Id, CancellationToken.None);
 
         await acao.Should().ThrowAsync<NaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task Download_por_usuario_registra_acesso_uma_vez_na_trilha()
+    {
+        await using var db = fixture.CriarDbContext();
+        var s = await SolicitacaoAsync(db);
+        var e = await CaixinhaDeRegraAsync(db, s.Id);
+        var usuarioId = Guid.CreateVersion7();
+        var servico = ServicoComAgente(db, usuarioId);
+
+        var a = await servico.AnexarAsync(
+            s.Id, e.Id, "guia.pdf", "application/pdf", Bytes(10), CancellationToken.None);
+
+        // Baixar duas vezes. Antes do fix, o LIKE sobre a coluna jsonb `detalhe_json` estourava
+        // (42883: operator does not exist: jsonb ~~ jsonb) já na primeira chamada. E o acesso
+        // repetido do mesmo usuário não pode duplicar o evento na trilha.
+        var c1 = await servico.ObterConteudoAsync(s.Id, a.Id, CancellationToken.None);
+        var c2 = await servico.ObterConteudoAsync(s.Id, a.Id, CancellationToken.None);
+
+        c1.Conteudo.Should().HaveCount(10);
+        c2.Conteudo.Should().HaveCount(10);
+
+        var eventos = await db.RegulacaoEventos.AsNoTracking()
+            .Where(x => x.SolicitacaoId == s.Id && x.Tipo == TipoEventoRegulacao.DocumentoAcessado)
+            .ToListAsync();
+
+        eventos.Should().ContainSingle("duas aberturas do mesmo usuário geram um único evento");
+        eventos[0].UsuarioId.Should().Be(usuarioId);
+        eventos[0].Papel.Should().Be(PapelEventoRegulacao.Agente);
     }
 }
