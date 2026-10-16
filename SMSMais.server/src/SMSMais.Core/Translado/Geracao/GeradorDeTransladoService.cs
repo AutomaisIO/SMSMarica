@@ -48,7 +48,7 @@ public sealed class GeradorDeTransladoService(
                 UnidadeNome = u.Nome,
                 Lat = (double?)u.Gps!.Latitude,
                 Lng = (double?)u.Gps!.Longitude,
-                Acomp = s.AcompanhanteEsperado == true,
+                AcompEsperado = s.AcompanhanteEsperado,
                 t.Mobilidade,
                 t.DificuldadeVeiculoAlto,
                 t.Isolamento,
@@ -59,11 +59,11 @@ public sealed class GeradorDeTransladoService(
                 LimiteAcomp = t.QuantidadeAcompanhantes,
             }).ToListAsync(ct);
 
-        // Condição do paciente e acompanhantes só seguem para a tela — a distribuição ainda não os usa.
+        // Condição do paciente e acompanhantes: vão para a tela e decidem veículo e assentos (etapa 4).
         var leituraPorSessao = rows.ToDictionary(
             r => r.Id,
             r => (Necessidades: new NecessidadesDto(r.Mobilidade, r.DificuldadeVeiculoAlto, r.Isolamento, r.UsaOxigenio, r.NecessitaAjuda, r.AjudaDescricao),
-                  Previstos: r.AcompEscolhidos > 0 ? r.AcompEscolhidos : (r.Acomp ? 1 : 0),
+                  Previstos: AcomodacaoNoVeiculo.AcompanhantesDaViagem(r.AcompEsperado, r.AcompEscolhidos, r.LimiteAcomp),
                   Limite: r.LimiteAcomp));
 
         var naoAlocadas = new List<SessaoNaoAlocadaDto>();
@@ -98,7 +98,8 @@ public sealed class GeradorDeTransladoService(
                     pinfo.Origem is null ? "Sem geolocalização do paciente (revisar endereço)" : "Unidade de atendimento sem coordenada (revisar o cadastro)"));
                 continue;
             }
-            candidatos.Add(new Candidato(r.Id, r.PacienteId, pinfo.Nome, r.UnidadeId, r.UnidadeNome, pinfo.Origem, destino, r.Acomp));
+            candidatos.Add(new Candidato(r.Id, r.PacienteId, pinfo.Nome, r.UnidadeId, r.UnidadeNome, pinfo.Origem, destino,
+                new NecessidadeViagem(r.Id, r.Mobilidade, r.Isolamento, r.DificuldadeVeiculoAlto, leituraPorSessao[r.Id].Previstos)));
         }
 
         // 3) Frota e motoristas disponíveis.
@@ -118,7 +119,8 @@ public sealed class GeradorDeTransladoService(
 
         // Monta o plano de um veículo+chunk: ordem de coleta via Google Routes (haversine como fallback).
         async Task<PlanoRota> MontarPlanoAsync(
-            Veiculo v, Motorista motorista, Guid unidadeId, string unidadeNome, List<Candidato> chunk, List<Assento> livres)
+            Veiculo v, Motorista motorista, Guid unidadeId, string unidadeNome, List<Candidato> chunk,
+            Dictionary<Guid, Acomodacao> acomodacao)
         {
             var destino = chunk[0].Destino;
             List<Candidato> ordenado;
@@ -157,25 +159,26 @@ public sealed class GeradorDeTransladoService(
                 duracaoSeg = (int)Math.Round(metrosTotal / VelocidadeMediaMs);
             }
 
-            return new PlanoRota(v, motorista, unidadeId, unidadeNome, ordenado, livres, metrosTotal, duracaoSeg, otimizado);
+            return new PlanoRota(v, motorista, unidadeId, unidadeNome, ordenado, acomodacao, metrosTotal, duracaoSeg, otimizado);
         }
 
-        // Empacota por capacidade (acompanhante = 2 assentos); remove os usados de 'pendentes'.
-        static List<Candidato> Empacotar(List<Candidato> pendentes, int capacidade)
+        // Enche o veículo na ordem de 'pendentes' com quem cabe pela condição (assento de cadeirante, maca,
+        // isolamento, um banco por acompanhante); tira de 'pendentes' quem entrou. Isolamento vai sozinho.
+        static (List<Candidato> Chunk, Dictionary<Guid, Acomodacao> Acomodacao) Empacotar(
+            List<Candidato> pendentes, Veiculo v, List<Assento> livres)
         {
             var chunk = new List<Candidato>();
-            var usados = 0;
+            var acomodacao = new Dictionary<Guid, Acomodacao>();
             foreach (var c in pendentes.ToList())
             {
-                var precisa = 1 + (c.ComAcompanhante ? 1 : 0);
-                if (usados + precisa <= capacidade)
-                {
-                    chunk.Add(c);
-                    usados += precisa;
-                    pendentes.Remove(c);
-                }
+                if (chunk.Count > 0 && (c.Necessidade.Isolamento || chunk[0].Necessidade.Isolamento)) continue;
+                var tentativa = AcomodacaoNoVeiculo.Acomodar(v, livres, [.. chunk.Select(x => x.Necessidade), c.Necessidade]);
+                if (tentativa is null) continue;
+                chunk.Add(c);
+                acomodacao = tentativa;
+                pendentes.Remove(c);
             }
-            return chunk;
+            return (chunk, acomodacao);
         }
 
         var usouIa = false;
@@ -217,12 +220,11 @@ public sealed class GeradorDeTransladoService(
                     .GroupBy(c => new { VeiculoId = mapa[c.SessaoId], c.UnidadeId, c.UnidadeNome }))
                 {
                     var v = porVeiculo[g.Key.VeiculoId];
-                    var livres = AssentosLivres(v);
-                    var pendentes = g.ToList();
-                    var chunk = Empacotar(pendentes, livres.Count);
+                    var pendentes = g.OrderBy(c => AcomodacaoNoVeiculo.Exigencia(c.Necessidade)).ToList();
+                    var (chunk, acomodacao) = Empacotar(pendentes, v, AssentosLivres(v));
                     if (chunk.Count == 0) continue;
 
-                    var plano = await MontarPlanoAsync(v, ProximoMotorista(), g.Key.UnidadeId, g.Key.UnidadeNome, chunk, livres);
+                    var plano = await MontarPlanoAsync(v, ProximoMotorista(), g.Key.UnidadeId, g.Key.UnidadeNome, chunk, acomodacao);
                     planos.Add(plano with { Justificativa = justificativaIa });
                     foreach (var c in chunk) atendidos.Add(c.SessaoId);
                 }
@@ -230,34 +232,47 @@ public sealed class GeradorDeTransladoService(
                 foreach (var c in candidatos.Where(c => !atendidos.Contains(c.SessaoId)))
                 {
                     naoAlocadas.Add(new SessaoNaoAlocadaDto(c.SessaoId, c.PacienteId, c.Nome,
-                        c.UnidadeId, c.UnidadeNome, "Não alocado pela IA (capacidade/distribuição)"));
+                        c.UnidadeId, c.UnidadeNome, "Não coube no veículo sugerido pela IA (assentos ou condição do paciente)"));
                 }
             }
         }
 
-        // 4b) Heurística (IA desligada ou indisponível): por destino, empacota nos veículos em sequência.
+        // 4b) Heurística (IA desligada ou indisponível): por destino, quem mais exige (maca, isolamento,
+        // cadeirante na cadeira, acompanhantes) escolhe veículo primeiro — o que serve para ele e menos faz
+        // falta aos outros — e o veículo é completado com quem couber. Um veículo por rota.
         if (!usouIa)
         {
-            var iVeiculo = 0;
-            foreach (var grupo in candidatos.GroupBy(c => new { c.UnidadeId, c.UnidadeNome }))
+            var restantes = veiculos.ToList();
+            var grupos = candidatos
+                .GroupBy(c => new { c.UnidadeId, c.UnidadeNome })
+                .OrderBy(g => g.Min(c => AcomodacaoNoVeiculo.Exigencia(c.Necessidade)));
+            foreach (var grupo in grupos)
             {
-                var pendentes = grupo.ToList();
+                var pendentes = grupo.OrderBy(c => AcomodacaoNoVeiculo.Exigencia(c.Necessidade)).ToList();
                 while (pendentes.Count > 0)
                 {
-                    if (iVeiculo >= veiculos.Count || motoristas.Count == 0)
+                    var primeiro = pendentes[0];
+                    var v = motoristas.Count == 0 ? null : restantes
+                        .Select((x, i) => (Veiculo: x, Ordem: i, Livres: AssentosLivres(x)))
+                        .Where(x => AcomodacaoNoVeiculo.Acomodar(x.Veiculo, x.Livres, [primeiro.Necessidade]) is not null)
+                        .OrderBy(x => AcomodacaoNoVeiculo.Preferencia(x.Veiculo, x.Livres, primeiro.Necessidade))
+                        .ThenBy(x => x.Ordem)
+                        .Select(x => x.Veiculo)
+                        .FirstOrDefault();
+                    if (v is null)
                     {
-                        foreach (var c in pendentes)
-                            naoAlocadas.Add(new SessaoNaoAlocadaDto(c.SessaoId, c.PacienteId, c.Nome, c.UnidadeId, c.UnidadeNome, "Sem veículo/motorista disponível"));
-                        pendentes.Clear();
-                        break;
+                        naoAlocadas.Add(new SessaoNaoAlocadaDto(primeiro.SessaoId, primeiro.PacienteId, primeiro.Nome,
+                            primeiro.UnidadeId, primeiro.UnidadeNome,
+                            restantes.Count == 0 || motoristas.Count == 0
+                                ? "Sem veículo/motorista disponível"
+                                : AcomodacaoNoVeiculo.MotivoSemVeiculo(primeiro.Necessidade)));
+                        pendentes.RemoveAt(0);
+                        continue;
                     }
 
-                    var v = veiculos[iVeiculo++];
-                    var livres = AssentosLivres(v);
-                    var chunk = Empacotar(pendentes, livres.Count);
-                    if (chunk.Count == 0) continue; // veículo sem assentos suficientes — pula
-
-                    planos.Add(await MontarPlanoAsync(v, ProximoMotorista(), grupo.Key.UnidadeId, grupo.Key.UnidadeNome, chunk, livres));
+                    restantes.Remove(v);
+                    var (chunk, acomodacao) = Empacotar(pendentes, v, AssentosLivres(v));
+                    planos.Add(await MontarPlanoAsync(v, ProximoMotorista(), grupo.Key.UnidadeId, grupo.Key.UnidadeNome, chunk, acomodacao));
                 }
             }
         }
@@ -327,53 +342,26 @@ public sealed class GeradorDeTransladoService(
         };
         db.Rotas.Add(rota);
 
-        var usadas = new HashSet<Guid>();
-        Assento? Pegar(bool acompanhante)
+        // Os assentos já foram decididos ao montar o plano (AcomodacaoNoVeiculo): o que foi conferido é o
+        // que se grava.
+        Alocacao Alocar(Guid sessaoId, Assento assento, TipoAlocacao tipo, int ordem) => new()
         {
-            var disp = p.Livres.Where(a => !usadas.Contains(a.Id));
-            var pick = acompanhante
-                ? disp.FirstOrDefault(a => a.Tipo == TipoAssento.Acompanhante) ?? disp.FirstOrDefault()
-                : disp.FirstOrDefault(a => a.Tipo == TipoAssento.Passageiro) ?? disp.FirstOrDefault();
-            if (pick is not null) usadas.Add(pick.Id);
-            return pick;
-        }
-
+            Id = Guid.CreateVersion7(),
+            RotaDiariaId = rota.Id,
+            SessaoId = sessaoId,
+            AssentoId = assento.Id,
+            Tipo = tipo,
+            Parada = TipoParada.Coleta,
+            OrdemParada = ordem,
+            CriadoEm = agora,
+        };
         for (var i = 0; i < p.Ordenado.Count; i++)
         {
             var c = p.Ordenado[i];
-            var assento = Pegar(acompanhante: false);
-            if (assento is null) break; // capacidade já validada; segurança
-
-            db.Alocacoes.Add(new Alocacao
-            {
-                Id = Guid.CreateVersion7(),
-                RotaDiariaId = rota.Id,
-                SessaoId = c.SessaoId,
-                AssentoId = assento.Id,
-                Tipo = TipoAlocacao.Paciente,
-                Parada = TipoParada.Coleta,
-                OrdemParada = i + 1,
-                CriadoEm = agora,
-            });
-
-            if (c.ComAcompanhante)
-            {
-                var assentoAcomp = Pegar(acompanhante: true);
-                if (assentoAcomp is not null)
-                {
-                    db.Alocacoes.Add(new Alocacao
-                    {
-                        Id = Guid.CreateVersion7(),
-                        RotaDiariaId = rota.Id,
-                        SessaoId = c.SessaoId,
-                        AssentoId = assentoAcomp.Id,
-                        Tipo = TipoAlocacao.Acompanhante,
-                        Parada = TipoParada.Coleta,
-                        OrdemParada = i + 1,
-                        CriadoEm = agora,
-                    });
-                }
-            }
+            var lugar = p.Acomodacao[c.SessaoId];
+            db.Alocacoes.Add(Alocar(c.SessaoId, lugar.Paciente, TipoAlocacao.Paciente, i + 1));
+            foreach (var a in lugar.Acompanhantes)
+                db.Alocacoes.Add(Alocar(c.SessaoId, a, TipoAlocacao.Acompanhante, i + 1));
         }
 
         await db.SaveChangesAsync(ct);
@@ -402,6 +390,7 @@ public sealed class GeradorDeTransladoService(
             pacienteId = c.PacienteId,
             paciente = c.Nome,
             comAcompanhante = c.ComAcompanhante,
+            acompanhantes = c.Necessidade.Acompanhantes,
             lat = c.Origem.Latitude,
             lng = c.Origem.Longitude,
         }),
@@ -420,10 +409,13 @@ public sealed class GeradorDeTransladoService(
 
     private sealed record Candidato(
         Guid SessaoId, Guid PacienteId, string Nome, Guid UnidadeId, string UnidadeNome,
-        Coordenada Origem, Coordenada Destino, bool ComAcompanhante);
+        Coordenada Origem, Coordenada Destino, NecessidadeViagem Necessidade)
+    {
+        public bool ComAcompanhante => Necessidade.Acompanhantes > 0;
+    }
 
     private sealed record PlanoRota(
         Veiculo Veiculo, Motorista Motorista, Guid UnidadeId, string UnidadeNome,
-        List<Candidato> Ordenado, List<Assento> Livres, int DistanciaMetros, int DuracaoSeg, bool Otimizado,
-        string? Justificativa = null);
+        List<Candidato> Ordenado, Dictionary<Guid, Acomodacao> Acomodacao, int DistanciaMetros, int DuracaoSeg,
+        bool Otimizado, string? Justificativa = null);
 }

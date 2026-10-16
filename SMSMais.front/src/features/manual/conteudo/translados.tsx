@@ -62,6 +62,12 @@ export const artigoTranslados: Artigo = {
     'faturamento',
     'em andamento',
     'concluir',
+    'cadeirante',
+    'maca',
+    'ambulância',
+    'isolamento',
+    'veículo exclusivo',
+    'veículo alto',
   ],
   secoes: () => [
     {
@@ -87,7 +93,7 @@ export const artigoTranslados: Artigo = {
     {
       id: 'gerar',
       titulo: 'Gerar as rotas do dia',
-      busca: 'gerar automático pré-visualizar gerar e salvar data usar ia distribuir veículos ordem de coleta elegíveis',
+      busca: 'gerar automático pré-visualizar gerar e salvar data usar ia distribuir veículos ordem de coleta elegíveis cadeirante assento de cadeirante maca ambulância isolamento exclusivo veículo alto carro acompanhantes banco',
       conteudo: (
         <>
           <Passos
@@ -109,9 +115,24 @@ export const artigoTranslados: Artigo = {
             replanejado junto. Rota <strong>em andamento</strong> (o carro está na rua, com o tablet
             seguindo ela), <strong>concluída</strong> ou <strong>cancelada</strong> fica como está.
           </Callout>
+          <Sub>Como o veículo e o assento são escolhidos</Sub>
+          <Lista>
+            <Item>Cadeirante que viaja na própria cadeira vai no <strong>assento de cadeirante</strong>.</Item>
+            <Item>Quem vai de <strong>maca</strong>, só em <strong>ambulância</strong> — uma por veículo.</Item>
+            <Item>Imunodeficiente (isolamento) vai em <strong>veículo exclusivo</strong>, só com os acompanhantes dele.</Item>
+            <Item>Cada <strong>acompanhante</strong> da viagem ganha um banco (até 2).</Item>
+            <Item>
+              Quem não sobe em veículo alto vai de <strong>carro</strong> quando houver um livre. A
+              ambulância e o veículo adaptado ficam, de preferência, para quem precisa deles.
+            </Item>
+          </Lista>
+          <P>
+            Quem mais exige escolhe primeiro (maca, isolamento, cadeirante, acompanhantes), e cada
+            veículo é completado com quem couber.
+          </P>
           <P>
             “Usar IA” pede a uma IA para distribuir os pacientes nos veículos; o sistema confere a
-            sugestão e, se ela não servir, distribui sozinho.
+            sugestão pelas mesmas regras e, se ela não servir, distribui sozinho.
           </P>
         </>
       ),
@@ -119,7 +140,7 @@ export const artigoTranslados: Artigo = {
     {
       id: 'nao-alocados',
       titulo: 'Não alocados e endereços para marcar no mapa',
-      busca: 'não alocados sem geolocalização revisar endereço marcar no mapa salvar ponto latitude longitude unidade sem coordenada',
+      busca: 'não alocados sem geolocalização revisar endereço marcar no mapa salvar ponto latitude longitude unidade sem coordenada precisa de ambulância assento de cadeirante acompanhantes',
       conteudo: (
         <>
           <P>
@@ -135,6 +156,10 @@ export const artigoTranslados: Artigo = {
               {
                 termo: 'Unidade de atendimento sem coordenada',
                 descricao: 'O destino está sem o ponto no mapa — corrija no cadastro da unidade.',
+              },
+              {
+                termo: 'Precisa de ambulância / de assento de cadeirante / lugar para os acompanhantes',
+                descricao: 'Não sobrou veículo livre que atenda a condição do paciente. Libere um veículo, monte a rota à mão ou confira o cadastro do atendimento.',
               },
             ]}
           />

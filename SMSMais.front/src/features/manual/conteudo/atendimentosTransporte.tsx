@@ -204,10 +204,11 @@ export const artigoAtendimentosTransporte: Artigo = {
             etiquetas curtas, como <SeloRef cor="alerta">Cadeirante — veículo adaptado</SeloRef> e{' '}
             <SeloRef cor="alerta">Veículo exclusivo</SeloRef>.
           </P>
-          <Callout tipo="atencao" titulo="Quem monta a rota decide">
-            Por enquanto a geração automática da rota <strong>não</strong> escolhe o veículo pela
-            condição do paciente, e reserva só 1 lugar de acompanhante. Confira as etiquetas antes de
-            confirmar a rota.
+          <Callout tipo="regra" titulo="A geração automática usa a condição">
+            Cadeirante que viaja na cadeira vai no assento de cadeirante; quem vai de maca, só em
+            ambulância; imunodeficiente vai em veículo exclusivo; quem não sobe em veículo alto vai de
+            carro quando houver; e cada acompanhante da viagem ganha um banco (até 2). Quem não couber
+            aparece em “não alocados”, com o motivo — veja o artigo de Translados.
           </Callout>
         </>
       ),
