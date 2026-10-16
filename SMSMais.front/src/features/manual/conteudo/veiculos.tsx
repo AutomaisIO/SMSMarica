@@ -25,7 +25,7 @@ export const artigoVeiculos: Artigo = {
   icone: Bus,
   rota: '/app/veiculos',
   publico: 'Quem cadastra a frota e monta os translados do transporte de pacientes',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-15',
   palavrasChave: [
     'veículo',
     'tablet',
@@ -333,7 +333,7 @@ export const artigoVeiculos: Artigo = {
     {
       id: 'tablet',
       titulo: 'Tablet do carro e o Mapa da frota',
-      busca: 'tablet vincular código ativação desvincular trocar tablet mapa da frota gps posição velocidade km/h sem rota última posição app do motorista',
+      busca: 'tablet vincular código ativação desvincular trocar tablet mapa da frota gps posição velocidade km/h sem rota última posição app do motorista ocorrência report vermelho',
       conteudo: (
         <>
           <P>
@@ -357,6 +357,11 @@ export const artigoVeiculos: Artigo = {
                 termo: 'No mapa',
                 descricao:
                   'O carro aparece em azul-piscina quando não tem rota no dia ("Tablet (sem rota)"); com rota, fica na cor do status da rota. Em movimento, mostra a velocidade embaixo do ícone. O mapa atualiza a cada 5 segundos.',
+              },
+              {
+                termo: 'Carro vermelho com anel pulsando',
+                descricao:
+                  'O motorista mandou um REPORT (acidente, pane, paciente passou mal...) que ainda está em aberto. O balão mostra o tipo e leva à tela Ocorrências — ver o artigo "Ocorrências dos veículos".',
               },
               {
                 termo: 'Trocar o tablet',

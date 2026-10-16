@@ -16,6 +16,7 @@ import { useRecursosFiltro } from '@/shared/regulacao/recursosFiltroPreferencia'
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
+import { AlertaOcorrencias } from '@/features/ocorrencias/components/AlertaOcorrencias';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { ModalTicketRespondido } from '@/features/tickets/components/ModalTicketRespondido';
 
@@ -130,6 +131,9 @@ export function Layout() {
 
       {/* Chat flutuante global (só aparece para quem tem o módulo Conversas). */}
       <ChatWidget />
+
+      {/* Aviso vermelho global do REPORT dos tablets (módulo Rastreamento). */}
+      <AlertaOcorrencias />
 
       {/* Modal global: avisa o autor quando a equipe responde/conclui um ticket dele. */}
       <ModalTicketRespondido />

@@ -42,6 +42,7 @@ import {
   ScanLine,
   ScrollText,
   Settings2,
+  Siren,
   Sparkles,
   Star,
   Stethoscope,
@@ -75,7 +76,7 @@ export type ItemMenu = {
    * Chave de badge/contador exibido ao lado do rótulo (notificação de tickets, ticket #42).
    * O valor numérico é resolvido no Sidebar via `useTicketsBadges`.
    */
-  badge?: 'meusTickets' | 'ticketsGestao' | 'painelInicio';
+  badge?: 'meusTickets' | 'ticketsGestao' | 'painelInicio' | 'ocorrenciasAbertas';
   /**
    * Gancho de encadeamento: destino/tela padrão interno do menu. Quando o menu
    * for favoritado na tela Início, o redirect leva a este destino em vez da
@@ -136,6 +137,7 @@ export const SECOES: SecaoMenu[] = [
       { rotulo: 'Tipos de tratamento', to: '/app/tipos-tratamento', icone: ClipboardList, modulo: 'TiposTratamento', descricao: 'Catálogo do transporte e o tempo médio de cada tratamento.' },
       { rotulo: 'Translados', to: '/app/translados', icone: Route, modulo: 'Translados', descricao: 'Rotas diárias e alocação de assentos.' },
       { rotulo: 'Mapa da frota', to: '/app/rastreamento/mapa', icone: Map, modulo: 'Rastreamento', descricao: 'Posição dos veículos no mapa.' },
+      { rotulo: 'Ocorrências', to: '/app/rastreamento/ocorrencias', icone: Siren, modulo: 'Rastreamento', badge: 'ocorrenciasAbertas', descricao: 'Avisos dos motoristas pelo botão REPORT do tablet: acidente, pane, paciente passou mal.' },
       { rotulo: 'Rastreamento', to: '/app/rastreamento', icone: Activity, modulo: 'Rastreamento', end: true, descricao: 'GPS e geofences.' },
       { rotulo: 'Veículos', to: '/app/veiculos', icone: Bus, modulo: 'Veiculos', descricao: 'Frota do transporte.' },
       { rotulo: 'Motoristas', to: '/app/motoristas', icone: Truck, modulo: 'Motoristas', descricao: 'Agentes de transporte sanitário.' },

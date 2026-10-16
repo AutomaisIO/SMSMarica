@@ -1,3 +1,5 @@
+import type { TipoOcorrencia } from '@/features/ocorrencias/types';
+
 export type TipoGeofence = 'Unidade' | 'Paciente' | 'PontoLogistico';
 
 /** StatusRota do backend (enum serializado como string): Planejada | EmAndamento | Concluida | Cancelada. */
@@ -18,6 +20,8 @@ export type FrotaVeiculo = {
   rumo: number | null;
   /** De onde veio a posição: app do motorista ou tablet do carro. */
   origem: 'motorista' | 'tablet';
+  /** Tipo da ocorrência mais recente em aberto do veículo (REPORT do tablet), se houver. */
+  ocorrenciaAberta: TipoOcorrencia | null;
 };
 
 export type Geofence = {

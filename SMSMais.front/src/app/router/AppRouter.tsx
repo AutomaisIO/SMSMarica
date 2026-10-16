@@ -42,6 +42,7 @@ import { TiposExamePage } from '@/features/tipos-exame/pages/TiposExamePage';
 import { PerfisPage } from '@/features/perfis/pages/PerfisPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
 import { MapaFrotaPage } from '@/features/rastreamento/pages/MapaFrotaPage';
+import { OcorrenciasPage } from '@/features/ocorrencias/pages/OcorrenciasPage';
 import { TiposTratamentoPage } from '@/features/tiposTratamento/pages/TiposTratamentoPage';
 import { TransladoDetalhePage } from '@/features/translados/pages/TransladoDetalhePage';
 import { TransladoFormPage } from '@/features/translados/pages/TransladoFormPage';
@@ -211,6 +212,9 @@ export function AppRouter() {
           <Route path="translados/:id/editar" element={<TransladoFormPage />} />
           <Route path="rastreamento" element={<RastreamentoPage />} />
           <Route path="rastreamento/mapa" element={<MapaFrotaPage />} />
+          <Route element={<RotaComModulo modulo="Rastreamento" rotulo="Ocorrências dos veículos" />}>
+            <Route path="rastreamento/ocorrencias" element={<OcorrenciasPage />} />
+          </Route>
           <Route path="faturamento" element={<FaturamentoPage />} />
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
           <Route path="pacs" element={<PacsListagemPage />} />
