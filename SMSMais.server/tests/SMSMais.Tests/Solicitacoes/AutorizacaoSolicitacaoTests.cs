@@ -226,6 +226,28 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Reenviar_worklist_de_um_Recebida_volta_para_a_fila_de_envio()
+    {
+        // 16/10/2026: o CARDIO-CDT passou a receber o médico solicitante e o item da paciente do dia
+        // precisava ser refeito. O reenvio de um Recebida só marcava ProximaTentativaEm — e o worker
+        // só pega Solicitada/Enviada: o botão não fazia nada. Tem de voltar à fila de verdade.
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        s.Solicitacao!.AutorizadoEm = DateTime.UtcNow;
+        s.Status = StatusSolicitacaoExame.Recebida;
+        s.WorklistItemUid = "SPS-1";
+        await db.SaveChangesAsync();
+        var service = CriarService(db, null, pacienteId);
+
+        await service.ReenviarWorklistAsync(s.Id);
+
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.Equal(StatusSolicitacaoExame.Solicitada, atual.Status);
+        Assert.NotNull(atual.ProximaTentativaEm);
+    }
+
+    [Fact]
     public async Task Reenviar_worklist_recusa_quando_o_tipo_esta_com_envio_desligado()
     {
         // Caso real 260908001 (08/09/2026): a autorização carimbou o impedimento e abriu o

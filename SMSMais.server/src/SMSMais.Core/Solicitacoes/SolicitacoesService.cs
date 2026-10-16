@@ -1126,6 +1126,15 @@ public sealed class SolicitacoesService(
             throw new ConflitoException("solicitacaoExame.envio_impedido", impedimento);
         }
 
+        // Enviada/Recebida já têm item no PACS: reenviar é REFAZER o item com o cadastro de agora
+        // (ex.: o aparelho passou a receber o médico solicitante). O worker só pega Solicitada e
+        // Enviada — até 16/10/2026 o reenvio de um Recebida só marcava a fila, o worker nunca o
+        // pegava e o botão não fazia nada, calado. Voltando a Solicitada (a autorização continua
+        // valendo), o worker recria o item — o POST /mwlitems é upsert por StudyUID + SPS ID — e
+        // confirma de novo até Recebida.
+        if (s.Status is StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida)
+            s.Status = StatusSolicitacaoExame.Solicitada;
+
         s.ProximaTentativaEm = DateTime.UtcNow;
         s.ErroIntegracaoPacs = null;
         s.AtualizadoEm = DateTime.UtcNow;
