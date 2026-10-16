@@ -4,6 +4,7 @@ import { artigoAnaliseRegrasEspelho } from '@/features/manual/conteudo/analiseRe
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendimentosTransporte';
+import { artigoAvaliacoes } from '@/features/manual/conteudo/avaliacoes';
 import { artigoAvisosCelular } from '@/features/manual/conteudo/avisosCelular';
 import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
@@ -107,6 +108,7 @@ export const ARTIGOS: Artigo[] = [
   artigoAnamnese,
   artigoAssinaturaLaudo,
   artigoAtendimentosTransporte,
+  artigoAvaliacoes,
   artigoAvisosCelular,
   artigoAvisosConexao,
   artigoConfirmacoes,

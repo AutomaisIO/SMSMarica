@@ -14,6 +14,17 @@ class DemoAdapter implements HttpClientAdapter {
   final Duration atraso;
   bool _consentiu;
   final List<Map<String, dynamic>> _enviados = [];
+  /// Viagens já feitas (demonstração): uma para avaliar, outra já avaliada.
+  late final List<Map<String, dynamic>> _viagensParaAvaliar = [
+    {'sessaoId': 'sv1', 'data': _diaRelativo(-2), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': null, 'comentario': null},
+    {'sessaoId': 'sv2', 'data': _diaRelativo(-9), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': 5, 'comentario': null},
+  ];
+
+  static String _diaRelativo(int dias) {
+    final h = DateTime.now();
+    return DateTime(h.year, h.month, h.day + dias).toIso8601String().substring(0, 10);
+  }
+
   final List<Map<String, dynamic>> _acompanhantes = [
     {
       'id': 'a1',
@@ -307,6 +318,8 @@ class DemoAdapter implements HttpClientAdapter {
         return (200, _acompanhantes);
       case ('POST', '/auth/paciente/me/acompanhantes/consulta'):
         return (200, {'cpf': (corpo! as Map)['cpf'], 'nome': 'ANA PAULA EXEMPLO', 'dataNascimento': '1990-01-01', 'jaCadastrado': false});
+      case ('GET', '/auth/paciente/viagens-para-avaliar'):
+        return (200, _viagensParaAvaliar);
       case ('POST', '/auth/paciente/me/acompanhantes'):
         _acompanhantes.add({
           'id': 'a${_acompanhantes.length + 1}',
@@ -318,6 +331,14 @@ class DemoAdapter implements HttpClientAdapter {
           'origem': 'App',
         });
         return (201, _acompanhantes.last);
+    }
+
+    final avaliacao = RegExp(r'^/auth/paciente/viagens/([^/]+)/avaliacao$').firstMatch(caminho);
+    if (metodo == 'POST' && avaliacao != null) {
+      final v = _viagensParaAvaliar.firstWhere((x) => x['sessaoId'] == avaliacao.group(1));
+      v['nota'] = (corpo! as Map)['nota'];
+      v['comentario'] = (corpo as Map)['comentario'];
+      return (201, 'av-demo');
     }
 
     final exameDetalhe = RegExp(r'^/auth/paciente/agendamentos/exames/([^/]+)$').firstMatch(caminho);
