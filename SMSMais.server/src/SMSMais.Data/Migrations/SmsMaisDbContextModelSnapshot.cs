@@ -5478,6 +5478,60 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("laudo_verificacao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.LiberacaoMotorista", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("codigo_hash");
+
+                    b.Property<DateTime>("CriadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criada_em");
+
+                    b.Property<Guid?>("CriadaPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criada_por");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.Property<Guid>("MotoristaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("motorista_id");
+
+                    b.Property<int>("TentativasErradas")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentativas_erradas");
+
+                    b.Property<DateTime?>("UsadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("usada_em");
+
+                    b.Property<Guid?>("UsadaPorDispositivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usada_por_dispositivo_id");
+
+                    b.Property<Guid>("VeiculoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("veiculo_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MotoristaId");
+
+                    b.HasIndex("VeiculoId", "CriadaEm");
+
+                    b.ToTable("rastreamento_liberacao_motorista", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Midia", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5607,6 +5661,62 @@ namespace SMSMais.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("motorista", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.MotoristaReferenciaFacial", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CadastradaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cadastrada_em");
+
+                    b.Property<Guid?>("DispositivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dispositivo_id");
+
+                    b.Property<string>("FotoBase64")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("foto_base64");
+
+                    b.Property<string>("FotoHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("foto_hash");
+
+                    b.Property<Guid>("MotoristaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("motorista_id");
+
+                    b.Property<string>("TermoHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("termo_hash");
+
+                    b.Property<string>("TermoVersao")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("termo_versao");
+
+                    b.Property<Guid?>("VeiculoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("veiculo_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MotoristaId")
+                        .IsUnique();
+
+                    b.HasIndex("VeiculoId");
+
+                    b.ToTable("motorista_referencia_facial", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.AgendamentoExterno", b =>
@@ -16426,6 +16536,110 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("veiculo", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.VerificacaoFacialMotorista", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Aprovada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("aprovada");
+
+                    b.Property<DateTime>("CapturadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("capturada_em");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dispositivo_id");
+
+                    b.Property<Guid>("IdLocal")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id_local");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<Guid?>("LiberacaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("liberacao_id");
+
+                    b.Property<double?>("Limiar")
+                        .HasColumnType("double precision")
+                        .HasColumnName("limiar");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<int>("Meio")
+                        .HasColumnType("integer")
+                        .HasColumnName("meio");
+
+                    b.Property<string>("ModeloVersao")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("modelo_versao");
+
+                    b.Property<int>("Momento")
+                        .HasColumnType("integer")
+                        .HasColumnName("momento");
+
+                    b.Property<Guid?>("MotoristaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("motorista_id");
+
+                    b.Property<double?>("Nota")
+                        .HasColumnType("double precision")
+                        .HasColumnName("nota");
+
+                    b.Property<double?>("PrecisaoM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("precisao_m");
+
+                    b.Property<bool>("ProvaDeVida")
+                        .HasColumnType("boolean")
+                        .HasColumnName("prova_de_vida");
+
+                    b.Property<DateTime>("RecebidaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recebida_em");
+
+                    b.Property<Guid?>("RotaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rota_id");
+
+                    b.Property<DateTime?>("SelfieApagadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("selfie_apagada_em");
+
+                    b.Property<string>("SelfieBase64")
+                        .HasColumnType("text")
+                        .HasColumnName("selfie_base64");
+
+                    b.Property<Guid>("VeiculoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("veiculo_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdLocal")
+                        .IsUnique();
+
+                    b.HasIndex("LiberacaoId");
+
+                    b.HasIndex("RotaId");
+
+                    b.HasIndex("MotoristaId", "RecebidaEm");
+
+                    b.HasIndex("VeiculoId", "RecebidaEm");
+
+                    b.ToTable("rastreamento_verificacao_facial", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.AgendamentoConfirmacaoEstado", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.ComunicacaoPaciente", "ComunicacaoPaciente")
@@ -17138,6 +17352,21 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Laudo");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.LiberacaoMotorista", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Motorista", null)
+                        .WithMany()
+                        .HasForeignKey("MotoristaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Veiculo", null)
+                        .WithMany()
+                        .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Midia", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Usuario", "CriadoPorUsuario")
@@ -17157,6 +17386,20 @@ namespace SMSMais.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.MotoristaReferenciaFacial", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Motorista", null)
+                        .WithMany()
+                        .HasForeignKey("MotoristaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Veiculo", null)
+                        .WithMany()
+                        .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.AtendimentoConfirmacao", b =>
@@ -18549,6 +18792,30 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Perfil");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.VerificacaoFacialMotorista", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.LiberacaoMotorista", null)
+                        .WithMany()
+                        .HasForeignKey("LiberacaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.Motorista", null)
+                        .WithMany()
+                        .HasForeignKey("MotoristaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.RotaDiaria", null)
+                        .WithMany()
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.Veiculo", null)
+                        .WithMany()
+                        .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.CidadaoAcesso", b =>

@@ -112,7 +112,7 @@ Galaxy Tab A (SM-T290). Configuração nativa em vigor:
    (exigido pelo SDK porque `minSdk 26 < 34`).
 3. **Package**: `applicationId`/`namespace` = **`io.automais.smsmais.agente`** (era
    `online.smsmarica.agente` até o commit 759b4f7) — a chave do GCP é restrita a esse package +
-   SHA-1 do certificado de **release** (`98:FB:AB:5C:14:E3:F8:FE:81:AA:74:B1:7C:F8:F9:37:96:EE:AA:BA`,
+   SHA-1 do certificado de **release** (`86:C8:C5:64:60:32:63:A5:E3:30:0C:77:72:F1:98:C4:B7:B9:6F:97`, chave recriada em 15/10/2026;
    keystore em `SMSMais.agente.app/android/keystore/`, ver README "Distribuição pelo MDM").
    Restrição antiga (package velho / SHA-1 de debug) faz a navegação recusar a chave. **Android-only**
    ([ADR-0003](../../adr/0003-flutter-android-only-agente.md)).
@@ -128,6 +128,32 @@ tablet parado.
 > **Pegadinha de layout (resolvida):** o `Stack` da tela precisa de
 > `fit: StackFit.expand` (e FABs como `Positioned`), senão encolhe para a altura
 > do maior filho não-posicionado e o mapa renderiza só numa faixa no topo.
+
+### No tablet da frota (14–15/10/2026)
+
+Validado no aparelho da frota (Qualcomm msm8953, Android 9, **sem Play Services
+funcionando**, quiosque do MDM, sempre em paisagem). O Navigation SDK funciona sem
+Play Services (`client version: 0`).
+
+- **Builds de teste** (debug e profile) usam o pacote `io.automais.smsmais.agente.debug`
+  (instala ao lado do app do MDM) com a assinatura de debug. A chave do GCP ganhou
+  uma 2ª restrição para esse pacote + SHA-1 de debug — **tirar depois da
+  homologação**. Para medir desempenho no tablet, `--profile` (o debug tem JIT lento
+  e dá ANR). A release falha no build se faltar `MAPS_API_KEY`.
+- **Voz em pt-BR**: o SDK escolhe o idioma da narração no início do processo, então o
+  locale é fixado na `AgenteApplication` (não basta na Activity).
+- **Termos do Google e chave**: se a janela de termos não responde em 20 s ou falta a
+  chave, a tela avisa e oferece Voltar / Tentar de novo (antes ficava presa).
+- **Rota não calculada (`networkError`)**: acontece na primeira tentativa depois de
+  muito tempo parado; "Tentar de novo" resolve (visto em 15/10, com internet normal).
+- **Confirmação por pessoa**: paciente e acompanhante conferidos separadamente
+  (Embarcou / Ausente); a rota segue para a próxima parada e quem ficou ausente sai do
+  desembarque (`paradasComAndamento`). Ainda só no app — persistir no servidor é
+  pendência abaixo.
+- **Quem está dirigindo**: antes de abrir a navegação, o tablet confere de novo o rosto
+  do motorista da sessão ([ADR-0073](../../adr/0073-login-facial-motorista-tablet.md)).
+- O contador de distância/tempo do Deslocamento liga sozinho com a sessão de navegação
+  e para no fim.
 
 ## Integrações
 
@@ -145,4 +171,5 @@ item da mesma seção. Ver [memória de integrações de credenciais].
 - Endpoint/serviço de **otimização de rota** (Routes API) server-side,
   devolvendo a ordem dos waypoints já resolvida.
 - Canal de **mensagens** translado (paciente ↔ motorista) + push.
-- Marcar **embarque/ausência** por pessoa na parada (persistência).
+- Marcar **embarque/ausência** por pessoa na parada (persistência) — a tela já
+  confere por pessoa; falta o servidor guardar.

@@ -1,5 +1,14 @@
 # Pedido de backend — App do Motorista (TFD) com login facial on-device
 
+> **Atualização 15/10/2026 — implementado pelo [ADR-0073](../../adr/0073-login-facial-motorista-tablet.md),
+> com mudanças em relação a este pedido de junho:** tudo do tablet vai pelo **token do veículo**
+> (sem JWT de motorista); o **próprio motorista** cadastra o rosto no primeiro acesso (CPF + código
+> no WhatsApp + termo), não o gestor; só entra o **escalado do dia** naquele veículo; sem
+> reconhecimento, a **central libera** por código de uso único. BE-1 e BE-2 entraram nesse formato,
+> o BE-4 ficou só para o primeiro acesso e o BE-3 ficou para depois. Contrato atual em
+> [`deslocamento-tablet.md`](./deslocamento-tablet.md#entrada-do-motorista-no-tablet-adr-0073).
+> O texto abaixo é o pedido original, mantido como histórico.
+
 > Documento de **interface**: o que o app Flutter do motorista (`SMSMais.agente.app`)
 > precisa do `SMSMais.server`. O reconhecimento facial roda **on-device** (ML Kit +
 > MobileFaceNet TFLite); o servidor **não** faz matching — guarda a foto de referência e

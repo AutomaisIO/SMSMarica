@@ -43,6 +43,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<DispositivoVeiculo> DispositivosVeiculo => Set<DispositivoVeiculo>();
     public DbSet<PosicaoVeiculo> PosicoesVeiculo => Set<PosicaoVeiculo>();
     public DbSet<OcorrenciaVeiculo> OcorrenciasVeiculo => Set<OcorrenciaVeiculo>();
+    public DbSet<MotoristaReferenciaFacial> ReferenciasFaciaisMotorista => Set<MotoristaReferenciaFacial>();
+    public DbSet<VerificacaoFacialMotorista> VerificacoesFaciaisMotorista => Set<VerificacaoFacialMotorista>();
+    public DbSet<LiberacaoMotorista> LiberacoesMotorista => Set<LiberacaoMotorista>();
     public DbSet<Geofence> Geofences => Set<Geofence>();
     public DbSet<EventoChegada> EventosChegada => Set<EventoChegada>();
     public DbSet<Avaliacao> Avaliacoes => Set<Avaliacao>();
