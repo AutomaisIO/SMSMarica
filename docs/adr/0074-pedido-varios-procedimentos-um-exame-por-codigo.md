@@ -168,3 +168,38 @@ SISREG que temos guardados (1.016.979 linhas, de 2019 a 2026) e no banco de prod
 4. Worklist: código interno no (0008,0100), nas duas sequências.
 5. Telas (selo "vinculado a", procedimentos na solicitação) e Manual.
 6. Segunda etapa: laudo por exame, para o caso do aparelho que parte o exame em dois estudos.
+
+## Adendo (16/10/2026) — campos opcionais da worklist por equipamento, com a tag escolhida
+
+O CardioNet DICOM da cardiologia do CDT (`CARDIO-CDT`, Holter/MAPA) importou o paciente da worklist
+e o Bernardo pediu também o **médico solicitante** e a **"clínica"** — que, no console dele, é a
+unidade **executante**. A mesma régua do código (ligado aparelho a aparelho, desligado = item igual
+byte a byte) passa a valer para três campos, e a tag deixa de ser fixa:
+
+| Campo | Liga com | Tag padrão (editável) | Valor |
+|---|---|---|---|
+| Código do procedimento | marcação | `0008,0100` = dentro das sequências, como acima | código interno do SISREG |
+| Médico solicitante | marcação | `0008,0090` Referring Physician's Name | `SolicitanteNome` do pedido, em PN |
+| Unidade (clínica) | marcação + **origem do dado** (executante ou solicitante) | `0008,0080` Institution Name (executante) · `0032,1033` Requesting Service (solicitante) | nome da unidade |
+
+- **Tag livre, com trava.** Cada aparelho lê um campo, e quem descobre qual é o técnico, testando —
+  por isso a tag é editável. Ela passa pelo dicionário DICOM (fo-dicom): tem de existir, não ser
+  privada e ser de texto (PN, LO, SH, ST, LT, UT); e não pode ser uma das que o item já preenche
+  (paciente, accession, Study UID, descrição, label, chaves da etapa agendada). Dois campos não
+  dividem uma tag. O construtor aplica a mesma régua de novo e ignora tag que deixou de servir, em
+  vez de confiar no cadastro.
+- **Código numa tag de texto.** Tag do código diferente de `0008,0100` = o código vai sozinho, como
+  texto, naquela tag; as sequências (0032,1064)/(0040,0008) e o esquema deixam de ser usados.
+- **Nível do atributo.** Os atributos de texto do módulo Scheduled Procedure Step (0040,0006,
+  0040,0011, 0040,0012, 0040,0400, 0032,1070) vão dentro da (0040,0100); o resto, no nível do item.
+- **Texto** sem acento (o item não declara charset), sem barra invertida, no teto do VR; PN na mesma
+  régua do paciente (`SOBRENOME^NOMES`). Sem valor no pedido, a tag não entra.
+- **Gravação:** `equipamento.codigo_procedimento_tag`, `medico_solicitante_tag`, `unidade_tag`
+  (8 dígitos hex, nulo = desligado/padrão) e `unidade_origem` (0 executante, 1 solicitante). Na API,
+  omitido = mantém, como os demais campos da worklist.
+- **O que o CardioNet pede** (captura do C-FIND em 16/10/2026): (0008,0090), (0032,1060), paciente
+  com endereço/região/país/telefone/peso/altura/tabagismo, e na etapa agendada Modality, Station AE e
+  período de datas. **Nenhum campo de instituição** — se a "clínica" dele for cadastro local, a tag
+  da unidade não aparece lá; a tag editável existe justamente para o teste.
+- Vale para os itens **enviados depois** de salvar; o que já está na lista do aparelho só muda com
+  *Reenviar worklist*.

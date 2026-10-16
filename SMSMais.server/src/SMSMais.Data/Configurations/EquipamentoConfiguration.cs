@@ -29,6 +29,18 @@ internal sealed class EquipamentoConfiguration : IEntityTypeConfiguration<Equipa
             .IsRequired();
         builder.Property(e => e.CodigoProcedimentoEsquema)
             .HasColumnName("codigo_procedimento_esquema").HasMaxLength(16);
+        // Campos opcionais (adendo do ADR-0074): tudo nasce nulo = o item sai como sempre saiu.
+        builder.Property(e => e.CodigoProcedimentoTag)
+            .HasColumnName("codigo_procedimento_tag").HasMaxLength(8);
+        builder.Property(e => e.MedicoSolicitanteTag)
+            .HasColumnName("medico_solicitante_tag").HasMaxLength(8);
+        builder.Property(e => e.UnidadeTag)
+            .HasColumnName("unidade_tag").HasMaxLength(8);
+        builder.Property(e => e.UnidadeOrigem)
+            .HasColumnName("unidade_origem")
+            .HasConversion<int>()
+            .HasDefaultValue(OrigemUnidadeWorklist.Executante)
+            .IsRequired();
         builder.Property(e => e.Ativo).HasColumnName("ativo").IsRequired();
 
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").IsRequired();

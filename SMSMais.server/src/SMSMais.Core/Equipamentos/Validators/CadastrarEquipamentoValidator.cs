@@ -2,6 +2,7 @@ using FluentValidation;
 using SMSMais.Core.Equipamentos.Dtos;
 using SMSMais.Core.Worklist;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Equipamentos.Validators;
 
@@ -25,5 +26,22 @@ public sealed class CadastrarEquipamentoValidator : AbstractValidator<CadastrarE
         RuleFor(e => e.CodigoProcedimentoEsquema)
             .Must(RegrasCodigoProcedimento.EsquemaValido)
             .WithMessage(RegrasCodigoProcedimento.MensagemEsquema);
+
+        RuleFor(e => e.CodigoProcedimentoTag)
+            .Must(t => RegrasCamposWorklist.ProblemaTagCodigo(t) is null)
+            .WithMessage((_, t) => RegrasCamposWorklist.ProblemaTagCodigo(t));
+        RuleFor(e => e.MedicoSolicitanteTag)
+            .Must(t => RegrasCamposWorklist.ProblemaTagCampo(t) is null)
+            .WithMessage((_, t) => RegrasCamposWorklist.ProblemaTagCampo(t))
+            .When(e => e.EnviarMedicoSolicitante);
+        RuleFor(e => e.UnidadeOrigem).IsInEnum();
+        RuleFor(e => e.UnidadeTag)
+            .Must(t => RegrasCamposWorklist.ProblemaTagCampo(t) is null)
+            .WithMessage((_, t) => RegrasCamposWorklist.ProblemaTagCampo(t))
+            .When(e => e.EnviarUnidade);
+        RuleFor(e => e)
+            .Must(e => RegrasCamposWorklist.Repetida(e.CodigoProcedimentoTag, e.EnviarMedicoSolicitante, e.MedicoSolicitanteTag, e.EnviarUnidade, e.UnidadeOrigem, e.UnidadeTag) is null)
+            .WithMessage(e => RegrasCamposWorklist.Repetida(e.CodigoProcedimentoTag, e.EnviarMedicoSolicitante, e.MedicoSolicitanteTag, e.EnviarUnidade, e.UnidadeOrigem, e.UnidadeTag))
+            .WithName("CamposWorklist");
     }
 }

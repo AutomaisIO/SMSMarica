@@ -2125,6 +2125,11 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("codigo_procedimento_esquema");
 
+                    b.Property<string>("CodigoProcedimentoTag")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("codigo_procedimento_tag");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
@@ -2152,6 +2157,11 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("identificador_dicom");
 
+                    b.Property<string>("MedicoSolicitanteTag")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("medico_solicitante_tag");
+
                     b.Property<int>("ModalidadeDicom")
                         .HasColumnType("integer")
                         .HasColumnName("modalidade_dicom");
@@ -2165,6 +2175,17 @@ namespace SMSMais.Data.Migrations
                     b.Property<Guid>("UnidadeId")
                         .HasColumnType("uuid")
                         .HasColumnName("unidade_id");
+
+                    b.Property<int>("UnidadeOrigem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("unidade_origem");
+
+                    b.Property<string>("UnidadeTag")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("unidade_tag");
 
                     b.HasKey("Id");
 

@@ -16,8 +16,15 @@ import {
   DESCRICAO_MAX_MINIMO,
   DESCRICAO_MAX_PADRAO,
   MODALIDADES,
+  ORIGENS_UNIDADE,
+  TAG_CODIGO_PADRAO,
+  TAG_MEDICO_PADRAO,
+  TAG_UNIDADE_PADRAO,
+  normalizarTag,
+  tagCodigoEhPadrao,
   type EquipamentoListItem,
   type ModalidadeDicom,
+  type OrigemUnidadeWorklist,
 } from '@/features/equipamentos/types';
 
 type FormEquip = {
@@ -33,6 +40,14 @@ type FormEquip = {
   codigoNoProcedimentoSolicitado: boolean;
   codigoNoProtocoloAgendado: boolean;
   codigoProcedimentoEsquema: string;
+  /** Onde vai o código: 0008,0100 = na sequência (o padrão); outra tag = como texto nela. */
+  codigoTag: string;
+  /** Médico solicitante e unidade ("clínica") — adendo do ADR-0074, cada um na tag que o aparelho lê. */
+  enviarMedico: boolean;
+  medicoTag: string;
+  enviarUnidade: boolean;
+  unidadeOrigem: OrigemUnidadeWorklist;
+  unidadeTag: string;
 };
 
 function formVazio(unidadeIdFixa?: string): FormEquip {
@@ -48,6 +63,12 @@ function formVazio(unidadeIdFixa?: string): FormEquip {
     codigoNoProcedimentoSolicitado: false,
     codigoNoProtocoloAgendado: false,
     codigoProcedimentoEsquema: '',
+    codigoTag: TAG_CODIGO_PADRAO,
+    enviarMedico: false,
+    medicoTag: TAG_MEDICO_PADRAO,
+    enviarUnidade: false,
+    unidadeOrigem: 'Executante',
+    unidadeTag: TAG_UNIDADE_PADRAO.Executante,
   };
 }
 
@@ -92,10 +113,19 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
         identificadorDicom: equipamento.identificadorDicom ?? '',
         descricaoMaxCaracteres: equipamento.descricaoMaxCaracteres ?? DESCRICAO_MAX_PADRAO,
         ativo: equipamento.ativo,
-        enviarCodigo: equipamento.codigoNoProcedimentoSolicitado || equipamento.codigoNoProtocoloAgendado,
+        enviarCodigo:
+          equipamento.codigoNoProcedimentoSolicitado ||
+          equipamento.codigoNoProtocoloAgendado ||
+          equipamento.codigoProcedimentoTag !== null,
         codigoNoProcedimentoSolicitado: equipamento.codigoNoProcedimentoSolicitado,
         codigoNoProtocoloAgendado: equipamento.codigoNoProtocoloAgendado,
         codigoProcedimentoEsquema: equipamento.codigoProcedimentoEsquema ?? '',
+        codigoTag: equipamento.codigoProcedimentoTag ?? TAG_CODIGO_PADRAO,
+        enviarMedico: equipamento.medicoSolicitanteTag !== null,
+        medicoTag: equipamento.medicoSolicitanteTag ?? TAG_MEDICO_PADRAO,
+        enviarUnidade: equipamento.unidadeTag !== null,
+        unidadeOrigem: equipamento.unidadeOrigem ?? 'Executante',
+        unidadeTag: equipamento.unidadeTag ?? TAG_UNIDADE_PADRAO[equipamento.unidadeOrigem ?? 'Executante'],
       });
     } else {
       setForm(formVazio(unidadeIdFixa));
@@ -111,7 +141,13 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
       setErro('Selecione a unidade.');
       return;
     }
-    if (form.enviarCodigo && !form.codigoNoProcedimentoSolicitado && !form.codigoNoProtocoloAgendado) {
+    const codigoNaSequencia = tagCodigoEhPadrao(form.codigoTag);
+    if (
+      form.enviarCodigo &&
+      codigoNaSequencia &&
+      !form.codigoNoProcedimentoSolicitado &&
+      !form.codigoNoProtocoloAgendado
+    ) {
       setErro('Marque em que sequência o código do procedimento vai (ou desligue o envio do código).');
       return;
     }
@@ -122,9 +158,17 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
       identificadorDicom: form.identificadorDicom.trim() || null,
       descricaoMaxCaracteres: form.descricaoMaxCaracteres,
       ativo: form.ativo,
-      codigoNoProcedimentoSolicitado: form.enviarCodigo && form.codigoNoProcedimentoSolicitado,
-      codigoNoProtocoloAgendado: form.enviarCodigo && form.codigoNoProtocoloAgendado,
-      codigoProcedimentoEsquema: form.enviarCodigo ? form.codigoProcedimentoEsquema.trim() || null : null,
+      codigoNoProcedimentoSolicitado: form.enviarCodigo && codigoNaSequencia && form.codigoNoProcedimentoSolicitado,
+      codigoNoProtocoloAgendado: form.enviarCodigo && codigoNaSequencia && form.codigoNoProtocoloAgendado,
+      codigoProcedimentoEsquema:
+        form.enviarCodigo && codigoNaSequencia ? form.codigoProcedimentoEsquema.trim() || null : null,
+      // Sempre mandado (o servidor trata ausente como "mantém"): o padrão desliga a tag de texto.
+      codigoProcedimentoTag: form.enviarCodigo && !codigoNaSequencia ? form.codigoTag.trim() : TAG_CODIGO_PADRAO,
+      enviarMedicoSolicitante: form.enviarMedico,
+      medicoSolicitanteTag: form.enviarMedico ? form.medicoTag.trim() || null : null,
+      enviarUnidade: form.enviarUnidade,
+      unidadeOrigem: form.unidadeOrigem,
+      unidadeTag: form.enviarUnidade ? form.unidadeTag.trim() || null : null,
     };
     const opcoes = {
       onSuccess: () => aoFechar(),
@@ -218,71 +262,193 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
           />
         </Campo>
 
-        <fieldset className="space-y-3 rounded-md border border-gray-200 p-3">
-          <legend className="px-1 text-sm font-medium text-gray-800">Código do procedimento na worklist</legend>
-          <label className="flex items-start gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={form.enviarCodigo}
-              onChange={(e) => {
-                const ligar = e.target.checked;
-                // Ao ligar, as duas sequências já vêm marcadas: cada aparelho lê numa, e mandar
-                // nas duas é inofensivo quando não se sabe qual.
-                setForm((f) => ({
-                  ...f,
-                  enviarCodigo: ligar,
-                  codigoNoProcedimentoSolicitado: ligar ? true : f.codigoNoProcedimentoSolicitado,
-                  codigoNoProtocoloAgendado: ligar ? true : f.codigoNoProtocoloAgendado,
-                }));
-              }}
-            />
-            <span>
-              Enviar o código do procedimento em <strong>(0008,0100)</strong>
-              <span className="block text-xs text-gray-500">
-                Cada exame vai com o código interno do SISREG do seu procedimento, para o aparelho escolher o
-                protocolo sozinho. Ligue só se este aparelho foi cadastrado com esses códigos (a lista do
-                fornecedor). Desligado, o item da worklist sai exatamente como sempre saiu.
-              </span>
-            </span>
-          </label>
+        <fieldset className="space-y-4 rounded-md border border-gray-200 p-3">
+          <legend className="px-1 text-sm font-medium text-gray-800">O que vai na worklist deste aparelho</legend>
+          <p className="text-xs text-gray-500">
+            Cada campo vai na tag DICOM que o aparelho lê. A tag já vem com o padrão — mude só se o técnico do
+            aparelho pedir outra. Tudo desligado, o item da worklist sai exatamente como sempre saiu.
+          </p>
 
-          {form.enviarCodigo ? (
-            <div className="space-y-3 pl-6">
-              <div className="space-y-1.5 text-sm text-gray-700">
-                <span className="text-xs font-medium text-gray-600">Em que sequência o aparelho lê o código</span>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.codigoNoProcedimentoSolicitado}
-                    onChange={(e) => setForm((f) => ({ ...f, codigoNoProcedimentoSolicitado: e.target.checked }))}
+          <div className="space-y-3">
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={form.enviarCodigo}
+                onChange={(e) => {
+                  const ligar = e.target.checked;
+                  // Ao ligar, as duas sequências já vêm marcadas: cada aparelho lê numa, e mandar
+                  // nas duas é inofensivo quando não se sabe qual.
+                  setForm((f) => ({
+                    ...f,
+                    enviarCodigo: ligar,
+                    codigoNoProcedimentoSolicitado: ligar ? true : f.codigoNoProcedimentoSolicitado,
+                    codigoNoProtocoloAgendado: ligar ? true : f.codigoNoProtocoloAgendado,
+                  }));
+                }}
+              />
+              <span>
+                Código do procedimento
+                <span className="block text-xs text-gray-500">
+                  O código interno do SISREG de cada exame, para o aparelho escolher o protocolo sozinho. Ligue só
+                  se este aparelho foi cadastrado com esses códigos (a lista do fornecedor).
+                </span>
+              </span>
+            </label>
+
+            {form.enviarCodigo ? (
+              <div className="space-y-3 pl-6">
+                <Campo
+                  label="Tag DICOM do código"
+                  htmlFor="eq-codigo-tag"
+                  dica={`Padrão ${TAG_CODIGO_PADRAO}: o código vai dentro da sequência de código, com esquema e descrição. Outra tag (ex.: 0040,2400): o código vai como texto simples nela.`}
+                >
+                  <Input
+                    id="eq-codigo-tag"
+                    value={form.codigoTag}
+                    onChange={(e) => setForm((f) => ({ ...f, codigoTag: e.target.value }))}
+                    placeholder={TAG_CODIGO_PADRAO}
+                    maxLength={11}
+                    className="font-mono"
                   />
-                  Procedimento solicitado — (0032,1064) › (0008,0100)
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.codigoNoProtocoloAgendado}
-                    onChange={(e) => setForm((f) => ({ ...f, codigoNoProtocoloAgendado: e.target.checked }))}
-                  />
-                  Protocolo agendado — (0040,0100) › (0040,0008) › (0008,0100)
-                </label>
+                </Campo>
+                {tagCodigoEhPadrao(form.codigoTag) ? (
+                  <>
+                    <div className="space-y-1.5 text-sm text-gray-700">
+                      <span className="text-xs font-medium text-gray-600">Em que sequência o aparelho lê o código</span>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={form.codigoNoProcedimentoSolicitado}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, codigoNoProcedimentoSolicitado: e.target.checked }))
+                          }
+                        />
+                        Procedimento solicitado — (0032,1064) › (0008,0100)
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={form.codigoNoProtocoloAgendado}
+                          onChange={(e) => setForm((f) => ({ ...f, codigoNoProtocoloAgendado: e.target.checked }))}
+                        />
+                        Protocolo agendado — (0040,0100) › (0040,0008) › (0008,0100)
+                      </label>
+                    </div>
+                    <Campo
+                      label="Esquema do código (0008,0102)"
+                      htmlFor="eq-codigo-esquema"
+                      dica={`Identifica de onde vem o código. Em branco vale ${CODIGO_ESQUEMA_PADRAO} (esquema privado). Só mude se o fornecedor pedir outro. Até 16 caracteres: letras, números, ponto, hífen ou sublinhado.`}
+                    >
+                      <Input
+                        id="eq-codigo-esquema"
+                        value={form.codigoProcedimentoEsquema}
+                        onChange={(e) => setForm((f) => ({ ...f, codigoProcedimentoEsquema: e.target.value }))}
+                        placeholder={CODIGO_ESQUEMA_PADRAO}
+                        maxLength={16}
+                      />
+                    </Campo>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    O código vai como texto em ({form.codigoTag.trim()}), sem sequência e sem esquema.
+                  </p>
+                )}
               </div>
-              <Campo
-                label="Esquema do código (0008,0102)"
-                htmlFor="eq-codigo-esquema"
-                dica={`Identifica de onde vem o código. Em branco vale ${CODIGO_ESQUEMA_PADRAO} (esquema privado). Só mude se o fornecedor pedir outro. Até 16 caracteres: letras, números, ponto, hífen ou sublinhado.`}
-              >
-                <Input
-                  id="eq-codigo-esquema"
-                  value={form.codigoProcedimentoEsquema}
-                  onChange={(e) => setForm((f) => ({ ...f, codigoProcedimentoEsquema: e.target.value }))}
-                  placeholder={CODIGO_ESQUEMA_PADRAO}
-                  maxLength={16}
-                />
-              </Campo>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={form.enviarMedico}
+                onChange={(e) => setForm((f) => ({ ...f, enviarMedico: e.target.checked }))}
+              />
+              <span>
+                Médico solicitante
+                <span className="block text-xs text-gray-500">
+                  O nome de quem pediu o exame, como veio no pedido.
+                </span>
+              </span>
+            </label>
+            {form.enviarMedico ? (
+              <div className="pl-6">
+                <Campo
+                  label="Tag DICOM do médico"
+                  htmlFor="eq-medico-tag"
+                  dica={`Padrão ${TAG_MEDICO_PADRAO} (Referring Physician's Name) — é o que o CardioNet e a maioria dos consoles mostram.`}
+                >
+                  <Input
+                    id="eq-medico-tag"
+                    value={form.medicoTag}
+                    onChange={(e) => setForm((f) => ({ ...f, medicoTag: e.target.value }))}
+                    placeholder={TAG_MEDICO_PADRAO}
+                    maxLength={11}
+                    className="font-mono"
+                  />
+                </Campo>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={form.enviarUnidade}
+                onChange={(e) => setForm((f) => ({ ...f, enviarUnidade: e.target.checked }))}
+              />
+              <span>
+                Unidade (clínica)
+                <span className="block text-xs text-gray-500">
+                  O nome da unidade — a executante ou a que pediu o exame, conforme a origem escolhida.
+                </span>
+              </span>
+            </label>
+            {form.enviarUnidade ? (
+              <div className="grid grid-cols-1 gap-3 pl-6 sm:grid-cols-2">
+                <Campo label="Origem do dado" htmlFor="eq-unidade-origem">
+                  <Select
+                    id="eq-unidade-origem"
+                    value={form.unidadeOrigem}
+                    onChange={(e) => {
+                      const origem = e.target.value as OrigemUnidadeWorklist;
+                      // Tag ainda no padrão da origem anterior (ou vazia) acompanha a troca;
+                      // tag escolhida à mão fica.
+                      setForm((f) => {
+                        const tagAtual = normalizarTag(f.unidadeTag);
+                        const noPadrao = !f.unidadeTag.trim() || tagAtual === normalizarTag(TAG_UNIDADE_PADRAO[f.unidadeOrigem]);
+                        return { ...f, unidadeOrigem: origem, unidadeTag: noPadrao ? TAG_UNIDADE_PADRAO[origem] : f.unidadeTag };
+                      });
+                    }}
+                  >
+                    {ORIGENS_UNIDADE.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Campo>
+                <Campo
+                  label="Tag DICOM da unidade"
+                  htmlFor="eq-unidade-tag"
+                  dica={`Padrão ${TAG_UNIDADE_PADRAO.Executante} (Institution Name) para a executante e ${TAG_UNIDADE_PADRAO.Solicitante} (Requesting Service) para a solicitante.`}
+                >
+                  <Input
+                    id="eq-unidade-tag"
+                    value={form.unidadeTag}
+                    onChange={(e) => setForm((f) => ({ ...f, unidadeTag: e.target.value }))}
+                    placeholder={TAG_UNIDADE_PADRAO[form.unidadeOrigem]}
+                    maxLength={11}
+                    className="font-mono"
+                  />
+                </Campo>
+              </div>
+            ) : null}
+          </div>
         </fieldset>
 
         {form.id ? (

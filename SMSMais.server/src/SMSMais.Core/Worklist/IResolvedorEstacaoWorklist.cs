@@ -7,10 +7,11 @@ namespace SMSMais.Core.Worklist;
 public sealed record EquipamentoCandidato(
     Guid Id, string Nome, string AeTitle, int DescricaoMaxCaracteres = Equipamento.DescricaoMaxPadrao,
     DestinoCodigoProcedimento CodigoProcedimentoDestinos = DestinoCodigoProcedimento.Nenhum,
-    string? CodigoProcedimentoEsquema = null)
+    string? CodigoProcedimentoEsquema = null,
+    CamposOpcionaisWorklist? Campos = null)
 {
     public EstacaoWorklist ComoEstacao() =>
-        new(AeTitle, DescricaoMaxCaracteres, CodigoProcedimentoDestinos, CodigoProcedimentoEsquema);
+        new(AeTitle, DescricaoMaxCaracteres, CodigoProcedimentoDestinos, CodigoProcedimentoEsquema, Campos);
 }
 
 /// <summary>
@@ -18,13 +19,37 @@ public sealed record EquipamentoCandidato(
 /// o AE Title de propósito: é propriedade do aparelho, não do exame nem da rede — foi por ele ter
 /// sido global que o remendo do Fuji truncava a worklist de todo mundo. O código do procedimento
 /// (ADR-0074) segue a mesma régua: cada aparelho diz se quer e em que sequência; o padrão é não
-/// mandar, e o item sai como sempre saiu.
+/// mandar, e o item sai como sempre saiu. Os campos opcionais (médico, unidade, código fora da
+/// sequência) também.
 /// </summary>
 public sealed record EstacaoWorklist(
     string AeTitle,
     int DescricaoMaxCaracteres,
     DestinoCodigoProcedimento CodigoProcedimentoDestinos = DestinoCodigoProcedimento.Nenhum,
-    string? CodigoProcedimentoEsquema = null);
+    string? CodigoProcedimentoEsquema = null,
+    CamposOpcionaisWorklist? Campos = null);
+
+/// <summary>
+/// Campos opcionais do item de worklist, ligados aparelho a aparelho (ADR-0074, adendo de
+/// 16/10/2026). Tag nula = o campo não vai (médico, unidade) ou vai no padrão (código, em (0008,0100)
+/// dentro da sequência). Tags em 8 dígitos hexadecimais, como gravadas no equipamento.
+/// </summary>
+public sealed record CamposOpcionaisWorklist(
+    string? MedicoSolicitanteTag = null,
+    string? UnidadeTag = null,
+    OrigemUnidadeWorklist UnidadeOrigem = OrigemUnidadeWorklist.Executante,
+    string? CodigoProcedimentoTag = null)
+{
+    /// <summary>Do cadastro do equipamento; null quando nada está ligado (o caso de quase todos).</summary>
+    public static CamposOpcionaisWorklist? De(Equipamento e) =>
+        De(e.MedicoSolicitanteTag, e.UnidadeTag, e.UnidadeOrigem, e.CodigoProcedimentoTag);
+
+    public static CamposOpcionaisWorklist? De(
+        string? medicoTag, string? unidadeTag, OrigemUnidadeWorklist unidadeOrigem, string? codigoTag) =>
+        medicoTag is null && unidadeTag is null && codigoTag is null
+            ? null
+            : new(medicoTag, unidadeTag, unidadeOrigem, codigoTag);
+}
 
 /// <summary>
 /// Descobre qual estação (AE Title) deve executar um exame, para carimbar o
