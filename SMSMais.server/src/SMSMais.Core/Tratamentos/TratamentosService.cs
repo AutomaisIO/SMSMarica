@@ -434,6 +434,12 @@ public sealed class TratamentosService(
             throw new ConflitoException("sessao.cancelada", "Sessão cancelada não pode ser confirmada.");
         }
 
+        // Não aconteceu: sai do faturamento antes de mudar a sessão (já no BPA, recusa e nada muda).
+        if (!request.Realizada)
+        {
+            await faturamento.CancelarDaSessaoAsync(sessaoId, cancellationToken);
+        }
+
         if (request.AcompanhanteIds is { } ids)
         {
             await DefinirAcompanhantesAsync(sessao, ids, cancellationToken);
@@ -441,6 +447,8 @@ public sealed class TratamentosService(
 
         sessao.Status = request.Realizada ? StatusSessao.Realizada : StatusSessao.NaoRealizada;
         sessao.RealizadaEm = DateTime.UtcNow;
+        // Quem confirmou no painel: daqui em diante o tablet não muda mais esta viagem (vale o painel).
+        sessao.ConfirmadaPorUsuarioId = usuarioAtual.UsuarioId;
         sessao.MotoristaIdaId = request.MotoristaIdaId;
         sessao.VeiculoIdaId = request.VeiculoIdaId;
         sessao.HoraSaidaResidencia = request.HoraSaidaResidencia;
