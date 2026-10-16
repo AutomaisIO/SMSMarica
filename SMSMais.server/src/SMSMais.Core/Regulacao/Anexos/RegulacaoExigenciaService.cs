@@ -465,14 +465,18 @@ public sealed class RegulacaoExigenciaService(
         var usuarioId = usuarioAtual.UsuarioId;
         if (usuarioId is null) return;
 
+        // Dedup em memória, não no banco: DetalheJson é jsonb e um LIKE sobre jsonb estoura
+        // (42883: operator does not exist: jsonb ~~ jsonb). Os acessos deste usuário a ESTA
+        // solicitação são poucos (um por arquivo aberto), então carregá-los é barato.
         var chave = arquivo.Id.ToString();
-        var jaRegistrado = await db.RegulacaoEventos.AsNoTracking()
-            .AnyAsync(e => e.SolicitacaoId == solicitacaoId
+        var detalhes = await db.RegulacaoEventos.AsNoTracking()
+            .Where(e => e.SolicitacaoId == solicitacaoId
                 && e.Tipo == TipoEventoRegulacao.DocumentoAcessado
                 && e.UsuarioId == usuarioId
-                && e.DetalheJson != null
-                && e.DetalheJson.Contains(chave), ct);
-        if (jaRegistrado) return;
+                && e.DetalheJson != null)
+            .Select(e => e.DetalheJson)
+            .ToListAsync(ct);
+        if (detalhes.Any(d => d is not null && d.Contains(chave, StringComparison.Ordinal))) return;
 
         var papel = await escopoRegulacao.EhAgenteAsync(ct)
             ? PapelEventoRegulacao.Agente
