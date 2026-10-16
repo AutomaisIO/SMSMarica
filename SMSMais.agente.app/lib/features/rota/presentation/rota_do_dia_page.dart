@@ -96,14 +96,31 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro ao carregar: $e')),
               data: (paradas) => RefreshIndicator(
-                onRefresh: () async => ref.refresh(rotaDoDiaProvider.future),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: paradas.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) =>
-                      _ParadaCard(parada: paradas[i], onNavegar: _navegar),
-                ),
+                onRefresh: () async => ref.refresh(rotasDoDiaProvider.future),
+                child: paradas.isEmpty
+                    ? ListView(
+                        padding: const EdgeInsets.all(32),
+                        children: const [
+                          Icon(Icons.event_busy, size: 48, color: Colors.grey),
+                          SizedBox(height: 12),
+                          Text(
+                            'Nenhum translado hoje para este veículo. '
+                            'Puxe a tela para baixo para atualizar ou fale '
+                            'com a central.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: paradas.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) => _ParadaCard(
+                          parada: paradas[i],
+                          onNavegar: _navegar,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -152,8 +169,11 @@ class _ParadaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hh = parada.horarioPrevisto.hour.toString().padLeft(2, '0');
-    final mm = parada.horarioPrevisto.minute.toString().padLeft(2, '0');
+    final previsto = parada.horarioPrevisto;
+    final hora = previsto == null
+        ? null
+        : '${previsto.hour.toString().padLeft(2, '0')}:'
+              '${previsto.minute.toString().padLeft(2, '0')}';
 
     return Card(
       elevation: 1,
@@ -176,8 +196,10 @@ class _ParadaCard extends StatelessWidget {
           children: [
             const SizedBox(height: 4),
             Text(parada.endereco),
-            const SizedBox(height: 4),
-            Text('Previsto: $hh:$mm'),
+            if (hora != null) ...[
+              const SizedBox(height: 4),
+              Text('Previsto: $hora'),
+            ],
           ],
         ),
         trailing: IconButton(
