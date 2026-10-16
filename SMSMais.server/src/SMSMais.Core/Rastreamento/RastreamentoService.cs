@@ -230,6 +230,20 @@ public sealed class RastreamentoService(
             }
         }
 
+        // Veículo com ocorrência em aberto (REPORT do tablet) fica destacado no mapa.
+        var abertas = await _db.OcorrenciasVeiculo.AsNoTracking()
+            .Where(o => o.Situacao != SituacaoOcorrenciaVeiculo.Encerrada)
+            .OrderByDescending(o => o.RecebidaEm)
+            .Select(o => new { o.VeiculoId, o.Tipo })
+            .ToListAsync(cancellationToken);
+        if (abertas.Count > 0)
+        {
+            var porVeiculo = abertas.GroupBy(o => o.VeiculoId).ToDictionary(g => g.Key, g => g.First().Tipo);
+            frota = frota
+                .Select(f => porVeiculo.TryGetValue(f.VeiculoId, out var tipo) ? f with { OcorrenciaAberta = tipo } : f)
+                .ToList();
+        }
+
         return frota;
     }
 

@@ -7,6 +7,7 @@ namespace SMSMais.Core.Rastreamento.Dtos;
 /// dia (posição do app do motorista) e/ou do tablet fixo no carro (<see cref="Origem"/> = "tablet",
 /// docs/modulos/tfd/deslocamento-tablet.md). Item só de tablet tem <see cref="RotaId"/>,
 /// <see cref="Status"/> e <see cref="MotoristaId"/> nulos. Posição null = ainda sem GPS no dia.
+/// <see cref="OcorrenciaAberta"/> = tipo da ocorrência mais recente em aberto (REPORT do tablet).
 /// </summary>
 public sealed record FrotaVeiculoDto(
     Guid? RotaId,
@@ -22,7 +23,8 @@ public sealed record FrotaVeiculoDto(
     DateTime? AtualizadoEm,
     double? VelocidadeKmh = null,
     double? Rumo = null,
-    string Origem = "motorista");
+    string Origem = "motorista",
+    TipoOcorrenciaVeiculo? OcorrenciaAberta = null);
 
 /// <summary>
 /// Paciente que terminou o atendimento fora de Maricá e aguarda o carro para a volta.
