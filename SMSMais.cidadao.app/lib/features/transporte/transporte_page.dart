@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sms_mais_cidadao/features/transporte/avaliar_viagens.dart';
 import 'package:sms_mais_cidadao/features/transporte/meus_acompanhantes.dart';
 import 'package:sms_mais_cidadao/shared/api/api.dart';
 import 'package:sms_mais_cidadao/shared/api/modelos.dart';
@@ -35,7 +36,7 @@ class TransportePage extends ConsumerWidget {
       descricaoVazio:
           'Quando o transporte da Prefeitura estiver agendado para o seu atendimento, as viagens aparecem aqui.',
       item: (_, v, __) => _CartaoViagem(viagem: v),
-      depois: const [MeusAcompanhantes()],
+      depois: const [AvaliarViagens(), MeusAcompanhantes()],
     );
   }
 }
