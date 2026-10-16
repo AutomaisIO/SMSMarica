@@ -262,8 +262,11 @@ public sealed class GeradorDeTransladoService(
         // 5) Persiste (se confirmar) ou só devolve o preview.
         if (request.Confirmar)
         {
+            // Gerar de novo substitui só o que ainda é plano. Rota em andamento está com o carro na rua
+            // (e com o tablet seguindo ela); concluída e cancelada são histórico. As sessões dessas
+            // rotas não voltam para cá: elegível é só quem não está em rota não cancelada.
             var antigas = await db.Rotas
-                .Where(r => r.Data == data && r.Origem == OrigemRota.Gerada && r.Status != StatusRota.Concluida)
+                .Where(r => r.Data == data && r.Origem == OrigemRota.Gerada && r.Status == StatusRota.Planejada)
                 .Include(r => r.Alocacoes)
                 .ToListAsync(ct);
             db.Alocacoes.RemoveRange(antigas.SelectMany(r => r.Alocacoes));
