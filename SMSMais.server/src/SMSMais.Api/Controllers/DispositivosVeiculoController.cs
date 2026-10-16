@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Rastreamento.Dispositivos;
 using SMSMais.Core.Rastreamento.Ocorrencias;
+using SMSMais.Core.Translado.Viagem;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -17,7 +18,8 @@ namespace SMSMais.Api.Controllers;
 public sealed class DispositivosVeiculoController(
     IDispositivoVeiculoService service,
     IOcorrenciaVeiculoService ocorrencias,
-    IRotaTabletService rotasTablet) : ControllerBase
+    IRotaTabletService rotasTablet,
+    IViagemService viagem) : ControllerBase
 {
     public const string PoliticaDeLimite = "tablet-veiculo";
     private const string CabecalhoToken = "X-Dispositivo-Token";
@@ -106,5 +108,21 @@ public sealed class DispositivosVeiculoController(
         if (d is null) return Unauthorized();
         var registrada = await ocorrencias.RegistrarAsync(d, request, ct);
         return StatusCode(StatusCodes.Status201Created, registrada);
+    }
+
+    /// <summary>
+    /// Marcação da viagem pelo tablet: início, embarque, ausência, desembarque e conclusão. Idempotente
+    /// pelo <c>idLocal</c> (a fila sem rede reenvia). O desembarque do paciente conta o translado como
+    /// realizado; a correção é no painel, e o que o painel corrigiu o tablet não muda mais.
+    /// </summary>
+    [HttpPost("rastreamento/dispositivos/viagem/eventos")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> EventoViagem([FromBody] RegistrarEventoViagemRequest request, CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        if (d is null) return Unauthorized();
+        var registrado = await viagem.RegistrarDoTabletAsync(d, request, ct);
+        return StatusCode(StatusCodes.Status201Created, registrado);
     }
 }

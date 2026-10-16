@@ -25,8 +25,13 @@
 
 ## Fluxo
 
-1. **Conclusão da sessão** (`SessaoDeTratamento.RealizadaEm`) dispara
-   `IFaturamentoService.ContabilizarAsync(sessao)`.
+1. **Translado feito** dispara `IFaturamentoService.ContabilizarAsync(sessao)`: o
+   **desembarque do paciente** registrado pelo tablet do veículo (etapa 2) ou a confirmação
+   "realizada" no painel. O que conta é o transporte, não o atendimento na unidade.
+   **Não aconteceu** (ausência na coleta pelo tablet, ou correção para "não realizada" no
+   painel) → `CancelarDaSessaoAsync`: o registro `Pendente` vira `Cancelado` e sai dos totais
+   do resumo (continua na lista). Já `EmBpa`/`Faturado`, a correção é recusada. Corrigido de
+   volta para realizada, o registro volta a `Pendente`.
 2. Calcula **km a bordo** (do `PlanoRotaJson`/trechos da `Alocacao`; opção de reconciliar com
    o GPS real) → **unidades = km ÷ 50** → cria/atualiza o `RegistroFaturamento` (`Pendente`).
 3. **Geração do BPA por competência:** `IGeradorBpaService.GerarAsync(competencia)` agrega as

@@ -12,6 +12,10 @@ public interface IFaturamentoService
     /// <summary>Contabiliza (cria/atualiza) o registro de faturamento de uma sessão realizada.</summary>
     Task<RegistroFaturamentoDto> ContabilizarAsync(Guid sessaoId, CancellationToken ct = default);
 
+    /// <summary>A viagem não aconteceu (ausência no tablet ou correção no painel): o registro pendente
+    /// da sessão fica cancelado e sai dos totais. Já no BPA ou faturado, recusa.</summary>
+    Task CancelarDaSessaoAsync(Guid sessaoId, CancellationToken ct = default);
+
     Task<IReadOnlyList<RegistroFaturamentoDto>> ListarAsync(
         int? competencia, DateOnly? de, DateOnly? ate, CancellationToken ct = default);
 
