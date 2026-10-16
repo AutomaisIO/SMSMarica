@@ -35,6 +35,8 @@ class Acompanhante {
     required this.nome,
     required this.confirmacao,
     this.assento,
+    this.id,
+    this.ordem,
   });
 
   final String nome;
@@ -42,6 +44,21 @@ class Acompanhante {
 
   /// Assento alocado no planejamento (ex.: "Banco 2 — janela").
   final String? assento;
+
+  /// Id do cadastro na central (nulo quando a sessão só tem o nome).
+  final String? id;
+
+  /// Posição na lista da sessão (1 ou 2). Fica a mesma quando o outro falta:
+  /// é por ela que o tablet diz à central quem embarcou e quem desceu.
+  final int? ordem;
+
+  Acompanhante naOrdem(int ordem) => Acompanhante(
+        nome: nome,
+        confirmacao: confirmacao,
+        assento: assento,
+        id: id,
+        ordem: ordem,
+      );
 }
 
 /// Mensagem trocada entre paciente e motorista (dentro do app).
@@ -92,10 +109,17 @@ class PassageiroTranslado {
 
   bool get temAcompanhante => acompanhantes.isNotEmpty;
 
+  /// Posição do [i]-ésimo acompanhante na lista da sessão (1 ou 2).
+  int ordemDoAcompanhante(int i) =>
+      (i < acompanhantes.length ? acompanhantes[i].ordem : null) ?? i + 1;
+
   /// Id do [i]-ésimo acompanhante deste paciente na conferência da parada
-  /// (o primeiro é `<paciente>:acompanhante`).
-  String idAcompanhante([int i = 0]) =>
-      i == 0 ? '$id:acompanhante' : '$id:acompanhante:${i + 1}';
+  /// (o primeiro da sessão é `<paciente>:acompanhante`). Segue a posição na
+  /// sessão: no destino, sem o que faltou, o outro mantém o mesmo id.
+  String idAcompanhante([int i = 0]) {
+    final ordem = ordemDoAcompanhante(i);
+    return ordem == 1 ? '$id:acompanhante' : '$id:acompanhante:$ordem';
+  }
 
   int get mensagensNaoLidas =>
       mensagens.where((m) => !m.doMotorista).length;
@@ -111,7 +135,8 @@ class PassageiroTranslado {
         assento: assento,
         acompanhantes: [
           for (var i = 0; i < acompanhantes.length; i++)
-            if (!ausentes.contains(idAcompanhante(i))) acompanhantes[i],
+            if (!ausentes.contains(idAcompanhante(i)))
+              acompanhantes[i].naOrdem(ordemDoAcompanhante(i)),
         ],
         mensagens: mensagens,
       );
