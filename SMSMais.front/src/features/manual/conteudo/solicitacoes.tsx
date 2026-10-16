@@ -13,7 +13,8 @@ import type { Artigo } from '@/features/manual/tipos';
  *
  * Conferido em `features/solicitacoes` (SolicitacoesPage, SolicitacaoDetalhePage,
  * SituacaoSolicitacao) e no backend (`SolicitacoesService.ListarAsync`, `AutorizarAsync`,
- * `CancelarAsync`; `SolicitacoesController` para as permissões).
+ * `CancelarAsync`; `SolicitacoesController` para as permissões). Pedido com mais de um código
+ * interno (ADR-0074): `SolicitacoesService.LinhasDoPedido`, `SateliteImagemSisreg`, `SeloVinculado`.
  */
 export const artigoSolicitacoes: Artigo = {
   slug: 'solicitacoes',
@@ -24,7 +25,7 @@ export const artigoSolicitacoes: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/solicitacoes',
   publico: 'Recepção das unidades e quem acompanha os agendamentos',
-  atualizadoEm: '2026-10-06',
+  atualizadoEm: '2026-10-16',
   palavrasChave: [
     'diagnóstico inicial',
     'CID',
@@ -61,6 +62,14 @@ export const artigoSolicitacoes: Artigo = {
     'accession',
     'nº do pedido',
     'especialidade',
+    'vinculado',
+    'vinculado a',
+    'mais de um procedimento',
+    'dois procedimentos',
+    'direito e esquerdo',
+    'código interno',
+    'accession com sufixo',
+    'procedimentos deste pedido',
   ],
   secoes: () => [
     {
@@ -137,7 +146,7 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'como-ler',
       titulo: 'Como ler uma linha',
-      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada',
+      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada vinculado a selo',
       conteudo: (
         <>
           <Sub>As colunas</Sub>
@@ -146,7 +155,8 @@ export const artigoSolicitacoes: Artigo = {
               <strong>Pedido</strong> — a seta verde (para dentro) é o que a sua unidade recebe para
               realizar; a azul (para fora), o que ela pediu. No exame de imagem aparece o nº do
               pedido e, embaixo, o do SISREG. Na consulta não existe nº do pedido: o nº do SISREG
-              ocupa o lugar.
+              ocupa o lugar. O selo <strong>vinculado a</strong> marca um pedido com mais de um
+              procedimento — ver a seção <em>Pedido com mais de um procedimento</em>, abaixo.
             </Item>
             <Item>
               <strong>Procedimento</strong> — no exame, o tipo de exame com a modalidade (MG, US…);
@@ -185,7 +195,7 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'detalhe',
       titulo: 'O detalhe: exame e consulta',
-      busca: 'detalhe exame consulta ciclo do exame equipamento worklist PACS laudo histórico de mensagens seção SISREG diagnóstico inicial CID CID-10 hipótese diagnóstica',
+      busca: 'detalhe exame consulta ciclo do exame equipamento worklist PACS laudo histórico de mensagens seção SISREG diagnóstico inicial CID CID-10 hipótese diagnóstica procedimentos deste pedido',
       conteudo: (
         <>
           <P>
@@ -210,9 +220,65 @@ export const artigoSolicitacoes: Artigo = {
       ),
     },
     {
+      id: 'varios-procedimentos',
+      titulo: 'Pedido com mais de um procedimento',
+      busca:
+        'vinculado vinculado a selo dois procedimentos mais de um procedimento direito esquerdo joelho mesmo número SISREG código interno accession sufixo -1 -2 procedimentos deste pedido um laudo por exame anamnese do pedido',
+      conteudo: (
+        <>
+          <P>
+            Às vezes o SISREG manda um pedido só com mais de um procedimento — por exemplo, raio-X do
+            joelho direito e do esquerdo com o mesmo nº. Para o SISREG o pedido é um só: ele cancela,
+            marca presença e marca falta no pedido inteiro, nunca num procedimento.
+          </P>
+          <P>
+            Aqui, cada procedimento vira um <strong>exame</strong>, porque cada um vai ao aparelho com o
+            seu código, gera o seu estudo e recebe o seu laudo. O primeiro fica com o nº do pedido de
+            sempre; os seguintes, com o mesmo nº e um sufixo:
+          </P>
+          <Lista>
+            <Item>
+              <strong>261016019</strong> — joelho direito (o primeiro procedimento do pedido);
+            </Item>
+            <Item>
+              <strong>261016019-1</strong> — joelho esquerdo (o segundo), e assim por diante (-2, -3…).
+            </Item>
+          </Lista>
+          <P>
+            Na lista, o pedido aparece em uma linha por exame, e cada linha tem o selo{' '}
+            <strong>vinculado a</strong> com o nº da outra. No detalhe, o cartão do exame mostra{' '}
+            <strong>Procedimentos deste pedido</strong>: o nº, o código interno e a situação de cada
+            um, com atalho para abrir o outro.
+          </P>
+          <Sub>O que vale para o pedido inteiro</Sub>
+          <Lista>
+            <Item>
+              <strong>Chegada</strong> — <BotaoRef>Autorizar e enviar</BotaoRef> em qualquer uma das
+              linhas recebe o pedido e manda <strong>todos</strong> os exames dele para a worklist. Não
+              é preciso autorizar duas vezes.
+            </Item>
+            <Item>
+              <strong>Cancelar</strong> — cancela o pedido inteiro: todos os exames que ainda não foram
+              feitos saem da worklist.
+            </Item>
+            <Item>
+              <strong>Anamnese</strong> — é uma só para o pedido. Preenchida em qualquer linha, vale
+              para as duas, e o laudo de cada exame a encontra.
+            </Item>
+          </Lista>
+          <Callout tipo="dica" titulo="Um código, um exame">
+            Só vira mais de um exame quando o SISREG manda mais de um código. Um procedimento que já
+            é dos dois lados num código só (ex.: “quadril direito e esquerdo”) continua sendo um exame.
+            E o mais comum — direito e esquerdo em pedidos separados — já chega como dois pedidos, sem
+            selo nenhum.
+          </Callout>
+        </>
+      ),
+    },
+    {
       id: 'chegada',
       titulo: 'Registrar a chegada',
-      busca: 'chegada autorizar chave de confirmação registrar chegada recepção CPF telefone verificado dispensa equipamento',
+      busca: 'chegada autorizar chave de confirmação registrar chegada recepção CPF telefone verificado dispensa equipamento todos os exames do pedido vinculado',
       conteudo: (
         <>
           <P>
@@ -229,7 +295,8 @@ export const artigoSolicitacoes: Artigo = {
               No <strong>exame de imagem</strong>, o botão é <BotaoRef>Autorizar e enviar</BotaoRef>{' '}
               e ele também libera o envio ao aparelho. Por isso exige CPF, telefone verificado (ou a
               dispensa registrada) e, quando a unidade tem mais de uma sala, a escolha do
-              equipamento.
+              equipamento. Num pedido com mais de um procedimento, um clique envia todos os exames
+              dele.
             </Item>
           </Lista>
           <Callout tipo="dica" titulo="Presença vence a resposta do WhatsApp">
@@ -242,14 +309,15 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'cancelar',
       titulo: 'Cancelar',
-      busca: 'cancelar cancelamento motivo SISREG dcm4chee worklist',
+      busca: 'cancelar cancelamento motivo SISREG dcm4chee worklist pedido inteiro vinculado',
       conteudo: (
         <>
           <P>
             <BotaoRef>Cancelar</BotaoRef> pede um motivo — é o que responde, semanas depois, por que
             a vaga foi cancelada. A consulta pode ser cancelada enquanto estiver Solicitada ou
             Agendada; o exame de imagem, antes de ser executado, e nesse caso o item também sai da
-            worklist do aparelho.
+            worklist do aparelho. Num pedido com mais de um procedimento, cancela o pedido inteiro —
+            como o SISREG faz.
           </P>
           <Callout tipo="atencao" titulo="Cancelar aqui não cancela no SISREG">
             O cancelamento vale no sistema. No SISREG ele continua sendo feito por lá.

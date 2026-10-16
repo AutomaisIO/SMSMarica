@@ -10,6 +10,7 @@ import {
 } from '@/features/equipamentos/api/queries';
 import { ModalEquipamento } from '@/features/equipamentos/components/ModalEquipamento';
 import { rotuloModalidade, type EquipamentoListItem } from '@/features/equipamentos/types';
+import { SeloCodigoProcedimento } from '@/features/equipamentos/components/SeloCodigoProcedimento';
 
 type Props = { unidadeId: string };
 
@@ -49,7 +50,10 @@ export function EquipamentosDaUnidadeSecao({ unidadeId }: Props) {
       cabecalho: 'AE Title',
       render: (e) =>
         e.identificadorDicom ? (
-          <span className="font-mono text-xs text-gray-800">{e.identificadorDicom}</span>
+          <span className="whitespace-nowrap">
+            <span className="font-mono text-xs text-gray-800">{e.identificadorDicom}</span>
+            <SeloCodigoProcedimento equipamento={e} />
+          </span>
         ) : (
           <span className="text-xs text-gray-400">—</span>
         ),

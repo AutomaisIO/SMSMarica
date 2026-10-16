@@ -56,6 +56,7 @@ import type { HistoricoComunicacao } from '@/features/solicitacoes/types';
 import { rotuloFinalidade } from '@/features/mensageria/lib/rotulos';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes/api/solicitacoesApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes/components/StatusBadgeSolicitacao';
+import { SeloVinculado } from '@/features/solicitacoes/components/SeloVinculado';
 import { CategoriaBadge, ROTULO_CATEGORIA } from '@/features/solicitacoes/components/CategoriaBadge';
 import { VagaBadge } from '@/features/solicitacoes/components/VagaBadge';
 import { ConfirmacaoBadge, canalConfirmacaoTexto } from '@/features/solicitacoes/components/ConfirmacaoBadge';
@@ -226,6 +227,7 @@ export function SolicitacaoDetalhePage() {
             <StatusBadgeSolicitacao status={s.status} />
             <ConfirmacaoBadge status={s.statusConfirmacao} />
             <VagaBadge tipoVaga={s.tipoVaga} mostrarPrimeiraVez />
+            <SeloVinculado accessions={s.accessionsVinculados} />
             {exameRealizado && (
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
@@ -381,6 +383,46 @@ export function SolicitacaoDetalhePage() {
             </span>
             <span className="font-mono text-xs">Study {s.studyInstanceUID}</span>
           </div>
+          {/* Pedido com mais de um código interno (ADR-0074): cada procedimento é um exame, com a sua
+              worklist e o seu laudo. A recepção recebe e cancela o pedido inteiro. */}
+          {(s.procedimentos?.length ?? 0) > 1 ? (
+            <div className="mt-2 border-t border-gray-100 pt-2">
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                Procedimentos deste pedido
+              </div>
+              <ul className="space-y-1">
+                {s.procedimentos!.map((p) => {
+                  const esteExame = p.exameId === s.id;
+                  return (
+                    <li key={p.ordem} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                      {p.accessionNumber ? (
+                        esteExame || !p.exameId ? (
+                          <span className="font-mono text-xs text-gray-800">{p.accessionNumber}</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="font-mono text-xs text-primary-700 underline hover:text-primary-900"
+                            onClick={() => navigate(`/app/solicitacoes/${p.exameId}`)}
+                            title="Abrir o exame deste procedimento"
+                          >
+                            {p.accessionNumber}
+                          </button>
+                        )
+                      ) : null}
+                      <span className={esteExame ? 'font-medium text-gray-900' : 'text-gray-700'}>
+                        {p.procedimentoTexto}
+                      </span>
+                      {p.procedimentoCodigoSisreg ? (
+                        <span className="font-mono text-xs text-gray-500">código {p.procedimentoCodigoSisreg}</span>
+                      ) : null}
+                      {p.statusExame ? <StatusBadgeSolicitacao status={p.statusExame} /> : null}
+                      {esteExame ? <span className="text-xs text-gray-500">(este exame)</span> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
           {/* Estação de destino enviada ao PACS + troca de equipamento (ticket #72). */}
           <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2 text-sm">
             <span className="inline-flex items-center gap-1.5 text-gray-700">

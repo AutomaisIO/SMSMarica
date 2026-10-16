@@ -613,6 +613,10 @@ public sealed class ImportacaoSisregService(
             {
                 Id = Guid.CreateVersion7(),
                 Solicitacao = solic,
+                // O exame da 1ª linha é o PRINCIPAL (ADR-0074); outro procedimento do mesmo nº,
+                // quando a linha dele chegar, vira exame extra com accession -1, -2…
+                SolicitacaoPrincipalId = solic.Id,
+                Ordem = 0,
                 AccessionNumber = accession,
                 StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
                 TipoExameId = tipoExameId, // nullable = mapeamento pendente

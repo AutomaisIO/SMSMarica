@@ -2114,6 +2114,17 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("atualizado_por");
 
+                    b.Property<int>("CodigoProcedimentoDestinos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("codigo_procedimento_destinos");
+
+                    b.Property<string>("CodigoProcedimentoEsquema")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("codigo_procedimento_esquema");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
@@ -3292,6 +3303,12 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("iniciado_em");
 
+                    b.Property<int>("Ordem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("ordem");
+
                     b.Property<DateTime?>("ProximaTentativaEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("proxima_tentativa_em");
@@ -3333,6 +3350,14 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("solicitacao_id");
 
+                    b.Property<Guid?>("SolicitacaoPrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitacao_principal_id");
+
+                    b.Property<Guid?>("SolicitacaoProcedimentoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitacao_procedimento_id");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -3373,17 +3398,29 @@ namespace SMSMais.Data.Migrations
                         .HasDatabaseName("ix_exame_imagem_siscan_protocolo")
                         .HasFilter("siscan_protocolo IS NOT NULL");
 
-                    b.HasIndex("SolicitacaoId")
+                    b.HasIndex("SolicitacaoId");
+
+                    b.HasIndex("SolicitacaoPrincipalId")
                         .IsUnique();
+
+                    b.HasIndex("SolicitacaoProcedimentoId")
+                        .IsUnique()
+                        .HasFilter("solicitacao_procedimento_id IS NOT NULL");
 
                     b.HasIndex("StudyInstanceUID")
                         .IsUnique();
 
                     b.HasIndex("TipoExameId");
 
+                    b.HasIndex("SolicitacaoId", "Ordem")
+                        .IsUnique();
+
                     b.HasIndex("Status", "ProximaTentativaEm");
 
-                    b.ToTable("exame_imagem", "smsmarica");
+                    b.ToTable("exame_imagem", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_exame_imagem_principal", "(solicitacao_principal_id IS NULL AND ordem > 0) OR (solicitacao_principal_id = solicitacao_id AND ordem = 0)");
+                        });
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.ExtensaoAtivacao", b =>
@@ -15411,6 +15448,87 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("solicitacao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.SolicitacaoProcedimento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime?>("DataAgendada")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_agendada");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem");
+
+                    b.Property<string>("ProcedimentoCodigoSisreg")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("procedimento_codigo_sisreg");
+
+                    b.Property<string>("ProcedimentoSigtapCodigo")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("procedimento_sigtap_codigo");
+
+                    b.Property<string>("ProcedimentoTexto")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("procedimento_texto");
+
+                    b.Property<string>("ProfissionalExecutanteCpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("profissional_executante_cpf");
+
+                    b.Property<string>("ProfissionalExecutanteNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("profissional_executante_nome");
+
+                    b.Property<string>("RawSisreg")
+                        .HasColumnType("text")
+                        .HasColumnName("raw_sisreg");
+
+                    b.Property<Guid>("SolicitacaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitacao_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoId", "Ordem")
+                        .IsUnique()
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.ToTable("solicitacao_procedimento", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Tfd.RegistroFaturamento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -17031,10 +17149,20 @@ namespace SMSMais.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SMSMais.Data.Entities.Solicitacao", "Solicitacao")
-                        .WithOne("ExameImagem")
-                        .HasForeignKey("SMSMais.Data.Entities.ExameImagem", "SolicitacaoId")
+                        .WithMany("ExamesImagem")
+                        .HasForeignKey("SolicitacaoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Solicitacao", null)
+                        .WithOne("ExameImagem")
+                        .HasForeignKey("SMSMais.Data.Entities.ExameImagem", "SolicitacaoPrincipalId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("SMSMais.Data.Entities.SolicitacaoProcedimento", "SolicitacaoProcedimento")
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoProcedimentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SMSMais.Data.Entities.TipoExame", "TipoExame")
                         .WithMany()
@@ -17044,6 +17172,8 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Equipamento");
 
                     b.Navigation("Solicitacao");
+
+                    b.Navigation("SolicitacaoProcedimento");
 
                     b.Navigation("TipoExame");
                 });
@@ -18428,6 +18558,17 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("UnidadeSolicitante");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.SolicitacaoProcedimento", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Solicitacao", "Solicitacao")
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Solicitacao");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Tfd.RegistroFaturamento", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.SessaoDeTratamento", "Sessao")
@@ -18988,6 +19129,8 @@ namespace SMSMais.Data.Migrations
             modelBuilder.Entity("SMSMais.Data.Entities.Solicitacao", b =>
                 {
                     b.Navigation("ExameImagem");
+
+                    b.Navigation("ExamesImagem");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Ticket", b =>

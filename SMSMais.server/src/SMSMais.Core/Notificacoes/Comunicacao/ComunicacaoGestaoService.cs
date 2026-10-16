@@ -59,7 +59,8 @@ public sealed class ComunicacaoGestaoService(
         {
             var t = filtro.Texto.Trim();
             query = query.Where(n => (n.Solicitacao != null
-                    && ((n.Solicitacao.ExameImagem != null && n.Solicitacao.ExameImagem.AccessionNumber.Contains(t))
+                    // Qualquer exame do pedido — o -1 também é deste pedido (ADR-0074).
+                    && (n.Solicitacao.ExamesImagem.Any(e => e.AccessionNumber.Contains(t))
                         || (n.Solicitacao.CodigoSolicitacao != null && n.Solicitacao.CodigoSolicitacao.Contains(t))))
                 || (n.AgendamentoExterno != null && n.AgendamentoExterno.NumeroExterno.Contains(t))
                 || (n.Telefone != null && n.Telefone.Contains(t)));

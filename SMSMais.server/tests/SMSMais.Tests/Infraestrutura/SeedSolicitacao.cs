@@ -59,6 +59,8 @@ internal static class SeedSolicitacao
         {
             Id = Guid.NewGuid(),
             Solicitacao = solicitacao,
+            SolicitacaoPrincipalId = solicitacao.Id,
+            Ordem = 0,
             AccessionNumber = $"T{sufixo}",
             StudyInstanceUID = $"2.25.{Random.Shared.NextInt64(1_000_000_000):D10}{Random.Shared.NextInt64(1_000_000_000):D10}",
             TipoExameId = tipo.Id,

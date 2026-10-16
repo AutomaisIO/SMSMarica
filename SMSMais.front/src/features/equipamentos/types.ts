@@ -26,7 +26,7 @@ export type Equipamento = {
   descricaoMaxCaracteres: number;
   ativo: boolean;
   criadoEm: string;
-};
+} & CodigoProcedimentoConfig;
 
 export type EquipamentoListItem = {
   id: string;
@@ -37,6 +37,20 @@ export type EquipamentoListItem = {
   identificadorDicom: string | null;
   descricaoMaxCaracteres: number;
   ativo: boolean;
+} & CodigoProcedimentoConfig;
+
+/**
+ * Código do procedimento no item de worklist (ADR-0074): o código interno do SISREG vai em
+ * (0008,0100), dentro da sequência que o aparelho lê. Desligado por padrão — liga-se aparelho a
+ * aparelho, quando ele está cadastrado com esses códigos (ex.: o raio-X do CDT).
+ */
+export type CodigoProcedimentoConfig = {
+  /** Requested Procedure Code Sequence (0032,1064). */
+  codigoNoProcedimentoSolicitado: boolean;
+  /** Scheduled Protocol Code Sequence (0040,0008), dentro do passo agendado. */
+  codigoNoProtocoloAgendado: boolean;
+  /** Esquema em (0008,0102). Vazio = o padrão, 99SMS. */
+  codigoProcedimentoEsquema: string | null;
 };
 
 export type SalvarEquipamentoPayload = {
@@ -46,7 +60,10 @@ export type SalvarEquipamentoPayload = {
   identificadorDicom?: string | null;
   descricaoMaxCaracteres?: number;
   ativo?: boolean;
-};
+} & Partial<CodigoProcedimentoConfig>;
+
+/** Esquema do código quando o campo fica vazio (esquema privado: começa com "99"). */
+export const CODIGO_ESQUEMA_PADRAO = '99SMS';
 
 /**
  * Teto do VR `LO` do DICOM — nenhum aparelho lê mais que isto, e é o padrão de todo

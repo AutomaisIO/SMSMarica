@@ -4,6 +4,7 @@ using SMSMais.Core.Equipamentos.Dtos;
 using SMSMais.Core.Identidade;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Equipamentos;
 
@@ -57,6 +58,9 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
             ModalidadeDicom = request.ModalidadeDicom,
             IdentificadorDicom = Normalizar(request.IdentificadorDicom),
             DescricaoMaxCaracteres = request.DescricaoMaxCaracteres,
+            CodigoProcedimentoDestinos = EquipamentosMapper.Destinos(
+                request.CodigoNoProcedimentoSolicitado, request.CodigoNoProtocoloAgendado),
+            CodigoProcedimentoEsquema = Normalizar(request.CodigoProcedimentoEsquema),
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
@@ -80,7 +84,16 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
         e.UnidadeId = request.UnidadeId;
         e.ModalidadeDicom = request.ModalidadeDicom;
         e.IdentificadorDicom = Normalizar(request.IdentificadorDicom);
-        e.DescricaoMaxCaracteres = request.DescricaoMaxCaracteres;
+        // Omitido = mantém (ver AtualizarEquipamentoRequest): edição de nome não desfaz o aparelho.
+        if (request.DescricaoMaxCaracteres is { } descricaoMax) e.DescricaoMaxCaracteres = descricaoMax;
+        if (request.CodigoNoProcedimentoSolicitado is not null || request.CodigoNoProtocoloAgendado is not null)
+        {
+            var atual = e.CodigoProcedimentoDestinos;
+            e.CodigoProcedimentoDestinos = EquipamentosMapper.Destinos(
+                request.CodigoNoProcedimentoSolicitado ?? atual.HasFlag(DestinoCodigoProcedimento.ProcedimentoSolicitado),
+                request.CodigoNoProtocoloAgendado ?? atual.HasFlag(DestinoCodigoProcedimento.ProtocoloAgendado));
+            e.CodigoProcedimentoEsquema = Normalizar(request.CodigoProcedimentoEsquema);
+        }
         e.Ativo = request.Ativo;
         e.AtualizadoEm = DateTime.UtcNow;
         e.AtualizadoPor = _usuarioAtual.UsuarioId;

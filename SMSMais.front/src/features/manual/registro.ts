@@ -8,6 +8,7 @@ import { artigoAvisosCelular } from '@/features/manual/conteudo/avisosCelular';
 import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoEnvioMensagens } from '@/features/manual/conteudo/envioMensagens';
+import { artigoEquipamentos } from '@/features/manual/conteudo/equipamentos';
 import { artigoEsusSaoGoncalo } from '@/features/manual/conteudo/esusSaoGoncalo';
 import { artigoExtensaoChrome } from '@/features/manual/conteudo/extensaoChrome';
 import { artigoExtensaoChromeGerenciar } from '@/features/manual/conteudo/extensaoChromeGerenciar';
@@ -109,6 +110,7 @@ export const ARTIGOS: Artigo[] = [
   artigoExtensaoChromeGerenciar,
   artigoFluxoAtendimentoWhatsApp,
   artigoEnvioMensagens,
+  artigoEquipamentos,
   artigoIndicadoresRegulacao,
   artigoMensageria,
   artigoMotoristas,

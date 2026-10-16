@@ -1254,8 +1254,10 @@ public sealed class SiscanRequisicaoService(
                 + "rastreamento ou diagnóstica.");
         }
 
+        // A anamnese é do PEDIDO e mora no exame principal (ADR-0074).
+        var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(db, exame.Id, cancellationToken);
         var anamnese = await db.Anamneses.AsNoTracking()
-            .FirstOrDefaultAsync(a => a.ExameImagemId == exame.Id && a.ExcluidoEm == null, cancellationToken);
+            .FirstOrDefaultAsync(a => a.ExameImagemId == exameDaAnamnese && a.ExcluidoEm == null, cancellationToken);
 
         // A data da ficha do SISREG NÃO vai mais para o SISCAN — serve só para alargar a busca
         // até requisições antigas, criadas quando era ela que gravávamos. Pode ser nula.
@@ -1330,8 +1332,9 @@ public sealed class SiscanRequisicaoService(
         UnidadeRequisitanteEscolhida? unidade, RacaCorInformada? raca, DateTime agora,
         CancellationToken cancellationToken)
     {
+        var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(db, exame.Id, cancellationToken);
         var anamnese = await db.Anamneses
-            .FirstOrDefaultAsync(a => a.ExameImagemId == exame.Id && a.ExcluidoEm == null, cancellationToken);
+            .FirstOrDefaultAsync(a => a.ExameImagemId == exameDaAnamnese && a.ExcluidoEm == null, cancellationToken);
         if (anamnese is null) return;
 
         var conteudo = anamnese.ConteudoJson;

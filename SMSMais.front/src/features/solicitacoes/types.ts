@@ -145,6 +145,8 @@ export type Solicitacao = {
   /** TODOS os procedimentos do pedido, na ordem do SISREG (ticket #149). O 1º é o principal (o
    *  mesmo de `procedimentoTexto`). Pedido de um procedimento só vem com um item. */
   procedimentos?: SolicitacaoProcedimento[] | null;
+  /** Accessions dos OUTROS exames do mesmo pedido (ADR-0074) — o selo "vinculado a". */
+  accessionsVinculados?: string[] | null;
 };
 
 /** Um procedimento do pedido. Data e executante são do item — no SISREG cada linha tem os seus. */
@@ -155,6 +157,10 @@ export type SolicitacaoProcedimento = {
   procedimentoSigtapCodigo: string | null;
   profissionalExecutanteNome: string | null;
   dataAgendada: string | null;
+  /** Em pedido de imagem, o exame deste procedimento (ADR-0074): um exame por código interno. */
+  exameId?: string | null;
+  accessionNumber?: string | null;
+  statusExame?: StatusSolicitacao | null;
 };
 
 export type SolicitacaoListItem = {
@@ -205,6 +211,9 @@ export type SolicitacaoListItem = {
   temAnamnese: boolean;
   /** Protocolo da requisição no SISCAN, quando já foi gerada. Null = ainda não. */
   siscanProtocolo: string | null;
+  /** Accessions dos OUTROS exames do mesmo pedido (ADR-0074): o pedido com joelho D e E aparece em
+   *  duas linhas, cada uma com o selo "vinculado a" a outra. Null no pedido de um exame só. */
+  accessionsVinculados?: string[] | null;
 };
 
 /** Resumo da comunicação para os checks na lista. */

@@ -34,8 +34,10 @@ public sealed class AnamnesesService(
             ?? throw new NaoEncontradoException(nameof(ExameImagem),
                 solicitacaoExameId?.ToString() ?? accessionNumber!);
 
+        // A anamnese é do PEDIDO e mora no exame principal (ADR-0074): o exame -1 mostra a mesma.
+        var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(db, sol.Id, cancellationToken);
         var anamnese = await db.Anamneses.AsNoTracking()
-            .Where(a => a.ExameImagemId == sol.Id && a.ExcluidoEm == null)
+            .Where(a => a.ExameImagemId == exameDaAnamnese && a.ExcluidoEm == null)
             .FirstOrDefaultAsync(cancellationToken);
 
         var paciente = await pacienteResolver.ResolverAsync(sol.Solicitacao!.PacienteId, cancellationToken);
@@ -66,6 +68,9 @@ public sealed class AnamnesesService(
     public async Task<AnamneseDto> SalvarAsync(
         Guid solicitacaoExameId, SalvarAnamneseDto dto, CancellationToken cancellationToken = default)
     {
+        // Salvar pelo exame -1 grava a anamnese do pedido, no exame principal (ADR-0074).
+        solicitacaoExameId = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(db, solicitacaoExameId, cancellationToken);
+
         var exame = await db.ExamesImagem.AsNoTracking()
             .Where(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null)
             .Select(s => new { s.SiscanProtocolo })

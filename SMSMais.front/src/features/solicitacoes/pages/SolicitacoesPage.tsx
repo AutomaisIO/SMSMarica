@@ -37,6 +37,7 @@ import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes/api/solicitacoesApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes/components/StatusBadgeSolicitacao';
+import { SeloVinculado } from '@/features/solicitacoes/components/SeloVinculado';
 import { VagaBadge } from '@/features/solicitacoes/components/VagaBadge';
 import { CategoriaBadge, ROTULO_CATEGORIA } from '@/features/solicitacoes/components/CategoriaBadge';
 import { SituacaoBadge, derivarSituacao } from '@/features/solicitacoes/components/SituacaoSolicitacao';
@@ -366,6 +367,8 @@ export function SolicitacoesPage() {
                 {s.codigoSolicitacao ? (
                   <div className="truncate text-xs text-gray-500">SISREG {s.codigoSolicitacao}</div>
                 ) : null}
+                {/* Pedido com mais de um código interno: um exame por código (ADR-0074). */}
+                <SeloVinculado accessions={s.accessionsVinculados} />
               </>
             ) : (
               <>

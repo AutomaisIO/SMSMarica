@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0074 — Pedido do SISREG com mais de um procedimento: um exame por código interno, número de acesso com sufixo, código interno no (0008,0100)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0074 — Pedido do SISREG com mais de um procedimento: um exame por código interno, número de acesso com sufixo, código interno no (0008,0100)</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-16 · <strong>Implementação:</strong> branch <code>feat/rx-varios-procedimentos</code> <strong>Relacionado:</strong> <a href="./0021-ecossistema-solicitacao-e-fulfillment.md">ADR-0021</a> (solicitação como espinha, satélite de imagem) · <a href="./0056-escopo-de-exame-por-unidade.md">ADR-0056</a> (tipo × unidade decide worklist e aparelho) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (SISREG só leitura) · ticket #149 (pedido com vários procedimentos) · <a href="../pacs.md"><code>docs/pacs.md</code></a></p>
+<h2>Contexto</h2>
+<p>O fornecedor do raio-X vai cadastrar os procedimentos no aparelho e escolher o protocolo pelo código que chega na worklist, no campo (0008,0100). Para decidir <strong>qual código</strong> mandar e <strong>o que fazer quando um pedido traz mais de um procedimento</strong>, foi medido em 16/10/2026, nos 1.462 arquivos exportados do SISREG que temos guardados (1.016.979 linhas, de 2019 a 2026) e no banco de produção:</p>
+<p><strong>O código interno do SISREG</strong> (coluna 1 da linha exportada; a coluna 2 é o SIGTAP):</p>
+<ul>
+<li>vem em <strong>100%</strong> das linhas exportadas;</li>
+<li>cada um dos 1.127 códigos tem <strong>uma descrição só e um SIGTAP só</strong>, sem exceção;</li>
+<li>o SIGTAP é mais genérico: 120 dos 300 SIGTAPs têm mais de um código interno (direito e esquerdo,</li>
+</ul>
+<p>  variações do mesmo exame, tabela antiga). O SIGTAP não diferencia lado, o código interno diferencia;</p>
+<ul>
+<li>na nossa base, 612 de 1,05 milhão de pedidos estão sem código (lançados à mão, varredura da agenda,</li>
+</ul>
+<p>  linhas antigas). <strong>Dos pedidos agendados daqui para a frente, nenhum.</strong> A nota "~1/3 vem vazio" nos   comentários do código é de uma amostra de 10/08/2026 e não vale mais.</p>
+<p><strong>Pedidos com mais de um procedimento</strong> (o mesmo número do SISREG em várias linhas, uma por código):</p>
+<ul>
+<li>são 2.986; em <strong>todos</strong>, as linhas têm a mesma data, a mesma hora, a mesma unidade executante e a</li>
+</ul>
+<p>  mesma situação de chegada;</p>
+<ul>
+<li>o SISREG trata o pedido como <strong>um só</strong>: cancelar, marcar presença ou falta vale para todas as linhas,</li>
+</ul>
+<p>  nunca para uma;</p>
+<ul>
+<li>no raio-X os procedimentos do mesmo pedido são sempre do próprio raio-X.</li>
+</ul>
+<p><strong>Raio-X, lado direito e esquerdo:</strong></p>
+<ul>
+<li>quase sempre chegam como <strong>pedidos separados</strong>, um número e um código por lado: 4.275 casos do</li>
+</ul>
+<p>  mesmo paciente no mesmo dia. No mesmo pedido, só 4 em todo o histórico;</p>
+<ul>
+<li>coluna nunca veio com dois segmentos no mesmo pedido (7.635 pedidos);</li>
+<li>91 pedidos usam <strong>um código só que já é dos dois lados</strong> (quadril D e E <code>1304129</code>, ATM bilateral</li>
+</ul>
+<p>  <code>1304005</code>, fêmur D e E <code>1304127</code>, órbitas <code>1304003</code>).</p>
+<p><strong>Como está hoje:</strong></p>
+<ul>
+<li>uma solicitação tem no máximo <strong>um</strong> exame de imagem (índice único em <code>exame_imagem.solicitacao_id</code>),</li>
+</ul>
+<p>  e uns 30 arquivos do backend contam com isso;</p>
+<ul>
+<li>quando a segunda linha de um pedido chega, ela <strong>substitui</strong> a primeira (é o ticket #149, cuja correção</li>
+</ul>
+<p>  — <code>solicitacao_procedimento</code> — existe só localmente);</p>
+<ul>
+<li>a worklist <strong>não envia</strong> o (0008,0100): o campo <code>tipo_exame.codigos_protocolo</code> existe e nada o lê;</li>
+<li>o número de acesso é <code>AAMMDD</code> + sequência do dia (<code>GeradorIdentificadores.ProximoAccessionAsync</code>);</li>
+<li>o laudo é amarrado ao estudo (<code>laudo.study_instance_uid</code>);</li>
+<li>a sincronização não manda nada ao PACS: o exame só vai à worklist quando a recepção <strong>autoriza</strong> o</li>
+</ul>
+<p>  pedido, com o paciente no balcão (<code>POST /solicitacoes/{id}/autorizar</code>).</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>O código do procedimento para o aparelho é o código interno do SISREG.</strong> Ele vai em (0008,0100),</li>
+</ol>
+<p>   com o esquema em (0008,0102) e a descrição em (0008,0104).    - <strong>Liga-se por equipamento, e nasce desligado.</strong> O cadastro do equipamento diz se ele recebe o      código e em que sequência(s): a do procedimento solicitado (0032,1064) e/ou a do protocolo      agendado (0040,0008). Desligado, o item sai <strong>byte a byte</strong> como antes — os outros DX, os US, os      MG e o Fuji não mudam. Ao ligar, as duas sequências vêm marcadas: mandar nas duas evita      depender de qual delas cada aparelho lê. Destino novo é um valor a mais no campo combinável      (<code>DestinoCodigoProcedimento</code>), sem mexer nos já cadastrados.    - O primeiro a ligar é o raio-X do CDT, depois do deploy, quando o fornecedor tiver a lista.    - A descrição sai <strong>sem acento</strong>, pela mesma regra do resto da worklist (o Fuji não aceita acento e      não declaramos o conjunto de caracteres), com no máximo 64 caracteres, abreviando em vez de      cortar (<code>RADIOGRAFIA</code> → <code>RX</code>), para não perder o lado.    - O código vem do <strong>procedimento que o exame representa</strong>, não do tipo de exame. Pedido sem código      (lançado à mão) usa o código do tipo de exame; sem nenhum, a sequência não é enviada e o técnico      escolhe o protocolo no aparelho.    - Esquema configurável por equipamento; vazio = <code>99SMS</code> (esquema privado; os privados começam      com "99").</p>
+<ol>
+<li><strong>Um pedido é uma solicitação; cada código interno é um exame.</strong> O pedido continua sendo **uma</li>
+</ol>
+<p>   solicitação só<strong>, como no SISREG, com os seus procedimentos guardados como itens (a correção do    #149). Cada procedimento gera </strong>um exame de imagem<strong>, com o seu número de acesso, o seu item de    worklist, o seu estudo e o seu laudo.    - </strong>Um código é um exame.** Só há mais de um exame quando o SISREG manda mais de um código. Código      que já é dos dois lados (quadril D e E etc.) continua sendo um exame; não se desdobra.</p>
+<ol>
+<li><strong>Número de acesso: o primeiro sem sufixo, os seguintes com <code>-1</code>, <code>-2</code>, <code>-3</code>.</strong> Exemplo:</li>
+</ol>
+<p>   <code>261016019</code> (joelho D) e <code>261016019-1</code> (joelho E), na ordem em que os procedimentos chegaram.    - <strong>Um número já enviado nunca muda.</strong> Procedimento que chega depois ganha o próximo sufixo.    - Cabe no limite do campo (16 caracteres) e o gerador de números continua certo: o número base      sempre existe, então a sequência do dia segue contada.</p>
+<ol>
+<li><strong>O que é do pedido fica na solicitação, uma vez só.</strong> Cancelamento, presença, falta, confirmação no</li>
+</ol>
+<p>   WhatsApp, chave de confirmação, anamnese, contatos e remarcação são da solicitação e valem para    todos os exames dela. O exame guarda só a execução: procedimento, número de acesso, estudo, item de    worklist, aparelho, situação da execução e laudo.    - Cancelar (pela tela, pela atendente ou pela conciliação com o SISREG), excluir e trocar a unidade      executante agem em <strong>todos</strong> os exames do pedido; a trava de "já tem imagem" olha todos.    - A anamnese continua gravada num exame (é a tabela que existe), mas é a do <strong>principal</strong>: o exame      extra lê e grava a dele, e o laudo do <code>-1</code> a encontra (<code>ExamesDoPedido.ExameDaAnamneseAsync</code>).</p>
+<ol>
+<li>**Na recepção, autorizar o pedido envia todos os exames dele à worklist, automaticamente, sem</li>
+</ol>
+<p>   modal.** Cada exame vai ao aparelho definido para o seu tipo naquela unidade (ADR-0056). Se um    procedimento chegar depois de o pedido já estar autorizado, o exame novo também vai à worklist.</p>
+<ol>
+<li><strong>Um laudo por exame.</strong> Cada exame tem o seu estudo e o seu laudo. "Criar laudo" e "abrir imagem"</li>
+</ol>
+<p>   continuam diretos, sem modal: cada estudo chega ligado ao seu exame pelo número de acesso.</p>
+<ol>
+<li><strong>Nas telas, o vínculo fica visível.</strong> A lista pagina por PEDIDO e mostra uma linha por exame vivo,</li>
+</ol>
+<p>   cada uma com o seu procedimento, o seu número de acesso e o selo <strong>"vinculado a 261016019"</strong>; os    filtros de situação, tipo e número de acesso olham todos os exames do pedido. No detalhe, o cartão    do exame lista <strong>Procedimentos deste pedido</strong> (número, código interno, situação, atalho para o    irmão). O Manual muda no mesmo commit (artigos <em>Exames e consultas</em>, <em>Anamnese</em> e o novo    <em>Equipamentos de imagem</em>).</p>
+<ol>
+<li><strong>Escopo: raio-X (DX).</strong> Serve para qualquer modalidade em que cada código é um estudo. A tomografia</li>
+</ol>
+<p>   com várias regiões no mesmo pedido (330 pedidos, ex.: tórax + abdome) costuma ser <strong>um estudo só</strong>    para tudo; se a tomografia entrar na worklist, este ponto é revisto.</p>
+<h2>Alternativas descartadas</h2>
+<ul>
+<li><strong>Duas solicitações "irmãs", uma por linha.</strong> Tudo o que é do pedido ficaria gravado duas vezes e teria</li>
+</ul>
+<p>  de ser copiado a cada ação (cancelar pela equipe, resposta no WhatsApp, recepção, CPF, contatos,   remarcação). Uma cópia esquecida deixaria uma irmã cancelada e a outra não. Também obrigaria a revisar   os 54 arquivos que procuram a solicitação pelo número do SISREG e as contagens, que dobrariam.</p>
+<ul>
+<li><strong>Laudo por estudo, com modal para escolher o estudo ou o procedimento.</strong> Desnecessário: com um item</li>
+</ul>
+<p>  de worklist por código, cada estudo já chega ligado ao seu exame pelo número de acesso.</p>
+<ul>
+<li><strong>Desdobrar os códigos que já são dos dois lados</strong> (quadril D e E nos códigos de cada lado). Decisão:</li>
+</ul>
+<p>  um código é um exame.</p>
+<ul>
+<li><strong>Sufixo começando em <code>-2</code>.</strong> Funciona, mas o <code>-2</code> faz procurar um <code>-1</code> que é, na verdade, o original</li>
+</ul>
+<p>  sem sufixo.</p>
+<ul>
+<li><strong>SIGTAP como código do aparelho.</strong> Não diferencia lado e agrupa exames diferentes.</li>
+</ul>
+<h2>Consequências</h2>
+<ul>
+<li><strong>O #149 entra junto</strong> (mesma migration, <code>ProcedimentosDaSolicitacaoEExamePorCodigo</code>), porque sem ele</li>
+</ul>
+<p>  a segunda linha do pedido se perde.</p>
+<ul>
+<li><strong>A solicitação passa a ter vários exames sem mudar o sentido de <code>Solicitacao.ExameImagem</code>.</strong> Ele</li>
+</ul>
+<p>  continua sendo "o" exame do pedido — agora o principal, por uma coluna própria   (<code>exame_imagem.solicitacao_principal_id</code>, única, preenchida só no de ordem 0) — e a lista completa   fica em <code>Solicitacao.ExamesImagem</code>. Assim os ~95 acessos que leem o exame da solicitação (telas,   confirmações, robô) continuam certos; só o que precisa agir em todos (enviar, cancelar, excluir,   trocar unidade) passou a usar a lista. A trava <code>ck_exame_imagem_principal</code> garante que o principal   é o de ordem 0 e do próprio pedido.</p>
+<ul>
+<li><strong>Cadastro de equipamento: "omitido = mantém".</strong> O painel não enviava o limite de descrição, e cada</li>
+</ul>
+<p>  edição gravava 64 por cima do 16 do Fuji. O painel passou a enviar, e o servidor trata campo da   worklist ausente como "mantém".</p>
+<ul>
+<li><strong>A importação</strong>, ao receber uma linha nova de um pedido existente, cria o procedimento e o exame com o</li>
+</ul>
+<p>  próximo sufixo.</p>
+<ul>
+<li><strong>A conciliação com o PACS não muda:</strong> continua pelo número de acesso exato.</li>
+<li><strong>Não mudam:</strong> faturamento, confirmação no WhatsApp (uma por pedido), contagens, anamnese (uma por</li>
+</ul>
+<p>  pedido).</p>
+<ul>
+<li>A lista para o fornecedor foi gerada em 16/10/2026: 128 códigos da tabela atual (<code>1304xxx</code>), sem a</li>
+</ul>
+<p>  tabela antiga (<code>0309xxx</code>, último pedido em 02/08/2023) e sem a panorâmica (odontológica).</p>
+<h2>Pendências (não bloqueiam o ADR)</h2>
+<ul>
+<li><strong>Confirmar com o técnico</strong> que ele inicia um item de cada vez. Selecionar dois itens juntos no</li>
+</ul>
+<p>  aparelho pode juntá-los num estudo só.</p>
+<ul>
+<li><strong>Aparelho que parte um exame em dois estudos:</strong> aconteceu 4 vezes (joelho D duas vezes, joelho E com</li>
+</ul>
+<p>  carga, coluna cervical com flexão). Os dois estudos têm o mesmo número de acesso; para caberem num   laudo só, o laudo precisa passar a ser do exame e não do estudo. Fica para uma segunda etapa.</p>
+<ul>
+<li><strong>Corrigir os comentários "~1/3 vem vazio"</strong> (<code>AgendaTxtParser</code>, <code>Solicitacao</code>,</li>
+</ul>
+<p>  <code>ResolvedorTipoExameSisreg</code>).</p>
+<ul>
+<li><strong>Histórico:</strong> os 2.986 pedidos antigos que perderam linhas não vão à worklist (são passado). Recompô-los</li>
+</ul>
+<p>  pelos arquivos exportados é decisão à parte (ver #149).</p>
+<h2>Ordem de implementação</h2>
+<ol>
+<li>Levar o #149 (procedimentos da solicitação) para produção.</li>
+<li>Vários exames por solicitação: um por procedimento, número de acesso com sufixo, importação criando o</li>
+</ol>
+<p>   exame quando a linha nova chega.</p>
+<ol>
+<li>Recepção: autorizar envia todos os exames do pedido.</li>
+<li>Worklist: código interno no (0008,0100), nas duas sequências.</li>
+<li>Telas (selo "vinculado a", procedimentos na solicitação) e Manual.</li>
+<li>Segunda etapa: laudo por exame, para o caso do aparelho que parte o exame em dois estudos.</li>
+</ol>
+</main>
+</body>
+</html>

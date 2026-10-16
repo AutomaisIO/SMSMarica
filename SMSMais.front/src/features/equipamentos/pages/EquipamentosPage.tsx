@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Edit2, Plus, ScanLine, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
@@ -9,6 +10,7 @@ import {
   useListarEquipamentos,
 } from '@/features/equipamentos/api/queries';
 import { ModalEquipamento } from '@/features/equipamentos/components/ModalEquipamento';
+import { SeloCodigoProcedimento } from '@/features/equipamentos/components/SeloCodigoProcedimento';
 import { rotuloModalidade, type EquipamentoListItem } from '@/features/equipamentos/types';
 
 export function EquipamentosPage() {
@@ -43,7 +45,10 @@ export function EquipamentosPage() {
       cabecalho: 'AE Title',
       render: (e) =>
         e.identificadorDicom ? (
-          <span className="font-mono text-xs text-gray-800">{e.identificadorDicom}</span>
+          <span className="whitespace-nowrap">
+            <span className="font-mono text-xs text-gray-800">{e.identificadorDicom}</span>
+            <SeloCodigoProcedimento equipamento={e} />
+          </span>
         ) : (
           <span className="text-xs text-gray-400">—</span>
         ),
@@ -83,6 +88,7 @@ export function EquipamentosPage() {
           <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
             <ScanLine className="h-6 w-6 text-primary-600" />
             Equipamentos
+            <AjudaManual artigo="equipamentos" />
           </h1>
           <p className="mt-1 text-sm text-gray-600">Equipamentos das unidades, agendáveis para exames de imagem.</p>
         </div>

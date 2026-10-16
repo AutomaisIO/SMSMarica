@@ -12,6 +12,7 @@ import {
   useCadastrarEquipamento,
 } from '@/features/equipamentos/api/queries';
 import {
+  CODIGO_ESQUEMA_PADRAO,
   DESCRICAO_MAX_MINIMO,
   DESCRICAO_MAX_PADRAO,
   MODALIDADES,
@@ -27,6 +28,11 @@ type FormEquip = {
   identificadorDicom: string;
   descricaoMaxCaracteres: number;
   ativo: boolean;
+  /** Liga o código do procedimento (0008,0100) na worklist deste aparelho — ADR-0074. */
+  enviarCodigo: boolean;
+  codigoNoProcedimentoSolicitado: boolean;
+  codigoNoProtocoloAgendado: boolean;
+  codigoProcedimentoEsquema: string;
 };
 
 function formVazio(unidadeIdFixa?: string): FormEquip {
@@ -38,6 +44,10 @@ function formVazio(unidadeIdFixa?: string): FormEquip {
     identificadorDicom: '',
     descricaoMaxCaracteres: DESCRICAO_MAX_PADRAO,
     ativo: true,
+    enviarCodigo: false,
+    codigoNoProcedimentoSolicitado: false,
+    codigoNoProtocoloAgendado: false,
+    codigoProcedimentoEsquema: '',
   };
 }
 
@@ -82,6 +92,10 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
         identificadorDicom: equipamento.identificadorDicom ?? '',
         descricaoMaxCaracteres: equipamento.descricaoMaxCaracteres ?? DESCRICAO_MAX_PADRAO,
         ativo: equipamento.ativo,
+        enviarCodigo: equipamento.codigoNoProcedimentoSolicitado || equipamento.codigoNoProtocoloAgendado,
+        codigoNoProcedimentoSolicitado: equipamento.codigoNoProcedimentoSolicitado,
+        codigoNoProtocoloAgendado: equipamento.codigoNoProtocoloAgendado,
+        codigoProcedimentoEsquema: equipamento.codigoProcedimentoEsquema ?? '',
       });
     } else {
       setForm(formVazio(unidadeIdFixa));
@@ -97,6 +111,10 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
       setErro('Selecione a unidade.');
       return;
     }
+    if (form.enviarCodigo && !form.codigoNoProcedimentoSolicitado && !form.codigoNoProtocoloAgendado) {
+      setErro('Marque em que sequência o código do procedimento vai (ou desligue o envio do código).');
+      return;
+    }
     const payload = {
       nome: form.nome.trim(),
       unidadeId,
@@ -104,6 +122,9 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
       identificadorDicom: form.identificadorDicom.trim() || null,
       descricaoMaxCaracteres: form.descricaoMaxCaracteres,
       ativo: form.ativo,
+      codigoNoProcedimentoSolicitado: form.enviarCodigo && form.codigoNoProcedimentoSolicitado,
+      codigoNoProtocoloAgendado: form.enviarCodigo && form.codigoNoProtocoloAgendado,
+      codigoProcedimentoEsquema: form.enviarCodigo ? form.codigoProcedimentoEsquema.trim() || null : null,
     };
     const opcoes = {
       onSuccess: () => aoFechar(),
@@ -196,6 +217,73 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
             }
           />
         </Campo>
+
+        <fieldset className="space-y-3 rounded-md border border-gray-200 p-3">
+          <legend className="px-1 text-sm font-medium text-gray-800">Código do procedimento na worklist</legend>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={form.enviarCodigo}
+              onChange={(e) => {
+                const ligar = e.target.checked;
+                // Ao ligar, as duas sequências já vêm marcadas: cada aparelho lê numa, e mandar
+                // nas duas é inofensivo quando não se sabe qual.
+                setForm((f) => ({
+                  ...f,
+                  enviarCodigo: ligar,
+                  codigoNoProcedimentoSolicitado: ligar ? true : f.codigoNoProcedimentoSolicitado,
+                  codigoNoProtocoloAgendado: ligar ? true : f.codigoNoProtocoloAgendado,
+                }));
+              }}
+            />
+            <span>
+              Enviar o código do procedimento em <strong>(0008,0100)</strong>
+              <span className="block text-xs text-gray-500">
+                Cada exame vai com o código interno do SISREG do seu procedimento, para o aparelho escolher o
+                protocolo sozinho. Ligue só se este aparelho foi cadastrado com esses códigos (a lista do
+                fornecedor). Desligado, o item da worklist sai exatamente como sempre saiu.
+              </span>
+            </span>
+          </label>
+
+          {form.enviarCodigo ? (
+            <div className="space-y-3 pl-6">
+              <div className="space-y-1.5 text-sm text-gray-700">
+                <span className="text-xs font-medium text-gray-600">Em que sequência o aparelho lê o código</span>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.codigoNoProcedimentoSolicitado}
+                    onChange={(e) => setForm((f) => ({ ...f, codigoNoProcedimentoSolicitado: e.target.checked }))}
+                  />
+                  Procedimento solicitado — (0032,1064) › (0008,0100)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.codigoNoProtocoloAgendado}
+                    onChange={(e) => setForm((f) => ({ ...f, codigoNoProtocoloAgendado: e.target.checked }))}
+                  />
+                  Protocolo agendado — (0040,0100) › (0040,0008) › (0008,0100)
+                </label>
+              </div>
+              <Campo
+                label="Esquema do código (0008,0102)"
+                htmlFor="eq-codigo-esquema"
+                dica={`Identifica de onde vem o código. Em branco vale ${CODIGO_ESQUEMA_PADRAO} (esquema privado). Só mude se o fornecedor pedir outro. Até 16 caracteres: letras, números, ponto, hífen ou sublinhado.`}
+              >
+                <Input
+                  id="eq-codigo-esquema"
+                  value={form.codigoProcedimentoEsquema}
+                  onChange={(e) => setForm((f) => ({ ...f, codigoProcedimentoEsquema: e.target.value }))}
+                  placeholder={CODIGO_ESQUEMA_PADRAO}
+                  maxLength={16}
+                />
+              </Campo>
+            </div>
+          ) : null}
+        </fieldset>
 
         {form.id ? (
           <label className="flex items-center gap-2 text-sm text-gray-700">

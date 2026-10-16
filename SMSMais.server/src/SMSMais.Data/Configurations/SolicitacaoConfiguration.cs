@@ -108,10 +108,16 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
         builder.HasOne(s => s.SolicitanteUsuario)
             .WithMany().HasForeignKey(s => s.SolicitanteUsuarioId).OnDelete(DeleteBehavior.Restrict);
 
-        // Satélite de execução (0..1). FK do lado ExameImagem (ver ExameImagemConfiguration).
-        builder.HasOne(s => s.ExameImagem)
+        // Satélites de execução: um por código interno do pedido (ADR-0074). Todos penduram em
+        // solicitacao_id; o PRINCIPAL (ordem 0) também em solicitacao_principal_id, que é o que
+        // mantém Solicitacao.ExameImagem com o sentido de sempre ("o" exame do pedido).
+        builder.HasMany(s => s.ExamesImagem)
             .WithOne(e => e.Solicitacao)
-            .HasForeignKey<ExameImagem>(e => e.SolicitacaoId)
+            .HasForeignKey(e => e.SolicitacaoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(s => s.ExameImagem)
+            .WithOne()
+            .HasForeignKey<ExameImagem>(e => e.SolicitacaoPrincipalId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Idempotência do nº SISREG — mesma régua da solicitacao_exame legada

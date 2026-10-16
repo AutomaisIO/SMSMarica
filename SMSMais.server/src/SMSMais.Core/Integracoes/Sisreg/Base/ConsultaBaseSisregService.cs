@@ -115,7 +115,7 @@ public sealed class ConsultaBaseSisregService(
                u.nome "UnidadeExecutante",
                f.situacao "Situacao"
         from filtrado f
-        left join smsmarica.exame_imagem e on e.solicitacao_id = f.id
+        left join smsmarica.exame_imagem e on e.solicitacao_principal_id = f.id
         left join smsmarica.unidade u on u.id = f.unidade_executante_id
         """;
 
