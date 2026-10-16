@@ -252,10 +252,18 @@ public sealed class ImportacaoSisregService(
     public async Task<ImportacaoExecucaoResultado> ExecutarUmAsync(string conteudo, string codigoSolicitacao, string? nomeArquivo, CancellationToken ct)
     {
         var codigo = (codigoSolicitacao ?? string.Empty).Trim();
-        var m = ParseOuFalhar(conteudo, nomeArquivo).Marcacoes.FirstOrDefault(x => x.CodigoSolicitacao == codigo)
-            ?? throw new NaoEncontradoException("importacao.marcacao", codigo);
+        // TODAS as linhas do nº: o SISREG manda um procedimento por linha (ticket #149). A 1ª cria
+        // a solicitação; as seguintes entram como itens dela. Pegar só a primeira perdia o resto.
+        var linhas = ParseOuFalhar(conteudo, nomeArquivo).Marcacoes.Where(x => x.CodigoSolicitacao == codigo).ToList();
+        if (linhas.Count == 0) throw new NaoEncontradoException("importacao.marcacao", codigo);
+        var m = linhas[0];
 
         var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct);
+        if (res.Sucesso || jaExistia)
+        {
+            foreach (var outra in linhas.Skip(1))
+                await ExecutarMarcacaoAsync(outra, ct);
+        }
 
         // O que não entrou fica registrado com o RAW, para o operador corrigir a causa e revalidar.
         // "Já existe" não é erro (é a idempotência funcionando): resolve a pendência, não cria uma.
@@ -303,14 +311,16 @@ public sealed class ImportacaoSisregService(
                 // SISREG remarcasse a consulta, nosso banco ficava com a data velha PARA SEMPRE e
                 // nada denunciava. Agora compara (de graça, a linha já está na mão), aplica o que é
                 // do SISREG e deixa o rastro para o regulador tratar.
-                var alteracoes = await ReconciliarAsync(existente, m, ct);
+                var (alteracoes, procedimentoNovo) = await ReconciliarAsync(existente, m, ct);
                 if (await sateliteImagem.GarantirAsync(existente, null, ct)
                     is ResultadoSatelite.Criado or ResultadoSatelite.TipoCompletado)
                     await db.SaveChangesAsync(ct);
                 return (Falha(
-                    alteracoes == 0
-                        ? "Já existe uma solicitação com esse número do SISREG."
-                        : $"Já existia — {alteracoes} alteração(ões) do SISREG aplicada(s).",
+                    procedimentoNovo
+                        ? "Já existia — procedimento acrescentado ao pedido (o SISREG manda um por linha)."
+                        : alteracoes == 0
+                            ? "Já existe uma solicitação com esse número do SISREG."
+                            : $"Já existia — {alteracoes} alteração(ões) do SISREG aplicada(s).",
                     CausaFalhaImportacao.Outro), true);
             }
             return (await ComplementarManualAsync(existente, m, passos, ct), false);
@@ -658,11 +668,25 @@ public sealed class ImportacaoSisregService(
     /// o complemento na trilha; o "criada à mão por fulano" continua visível em <c>CriadoPor</c>.
     /// </summary>
     /// <summary>
-    /// Confere se o SISREG mudou algo numa solicitação que já veio de importação, aplica o que é
-    /// dele e registra o rastro. Devolve quantas alterações foram detectadas.
+    /// Confere uma linha do SISREG cujo nº já foi importado: ou é OUTRO procedimento do mesmo pedido
+    /// (vira item novo), ou é um procedimento que já temos, relido — e aí compara, aplica o que é do
+    /// SISREG e registra o rastro. Devolve quantas alterações foram detectadas e se a linha trouxe
+    /// procedimento novo.
+    ///
+    /// <para><b>Procedimento novo não é alteração (ticket #149).</b> O SISREG manda cada
+    /// procedimento do pedido numa linha própria, com o mesmo nº. Antes, a 2ª linha sobrescrevia a
+    /// 1ª e entrava na fila como "troca de procedimento"; a cada leitura o pedido virava de um lado
+    /// para o outro (971 trocas falsas em 925 solicitações, medido em 06/10/2026).</para>
+    ///
+    /// <para><b>Procedimento que some não é deduzido aqui.</b> Uma linha só não diz se o pedido
+    /// inteiro veio — a varredura fatia o arquivo, o caminho pontual lê por profissional ×
+    /// procedimento, e a janela de datas pode cortar o pedido ao meio. Concluir "trocou" pela
+    /// ausência seria o mesmo erro que o <see cref="ComparadorMarcacao"/> já se recusa a cometer
+    /// com o cancelamento. Remarcação (data) e troca de executante continuam indo para a fila,
+    /// agora por item.</para>
     ///
     /// <para><b>Custo zero:</b> nenhuma requisição a mais — a linha nova já está em mãos e a antiga
-    /// está no banco. O que era um curto-circuito vira uma comparação de meia dúzia de campos.</para>
+    /// está no banco.</para>
     ///
     /// <para><b>Aplica só o que é do SISREG.</b> Paciente resolvido, exame na worklist, laudo e a
     /// confirmação dada pelo paciente ficam intocados: são trabalho deste lado, e o arquivo não sabe
@@ -672,21 +696,84 @@ public sealed class ImportacaoSisregService(
     /// — inclusive se vale reenviar a mensagem ao paciente. Disparar WhatsApp automaticamente a cada
     /// remarcação seria decidir por ele, e sem saber ainda com que frequência isso acontece.</para>
     /// </summary>
-    private async Task<int> ReconciliarAsync(Solicitacao alvo, MarcacaoSisreg m, CancellationToken ct)
+    private async Task<(int Alteracoes, bool ProcedimentoNovo)> ReconciliarAsync(
+        Solicitacao alvo, MarcacaoSisreg m, CancellationToken ct)
     {
-        var antes = new FotoMarcacao(
-            alvo.DataAgendada,
-            alvo.ProfissionalExecutanteCpf,
-            alvo.ProcedimentoCodigoSisreg,
-            alvo.ProcedimentoTexto);
+        var codigoLinha = SoDigitos(m.CodigoProcedimentoSisreg) is { Length: > 0 } cod ? cod : null;
+        var nomeLinha = ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty) is { Length: > 0 } nome
+            ? nome
+            : null;
+        DateTime? dataLinha = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null;
 
-        var depois = new FotoMarcacao(
-            m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null,
-            m.CpfProfissionalExecutante,
-            SoDigitos(m.CodigoProcedimentoSisreg) is { Length: > 0 } cod ? cod : null,
-            ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty) is { Length: > 0 } nome
-                ? nome
-                : null);
+        // Itens só existem em pedido com 2+ procedimentos (sem carga retroativa): sem eles, o único
+        // procedimento é o principal, nos campos da espinha.
+        var itens = await db.SolicitacaoProcedimentos
+            .Where(p => p.SolicitacaoId == alvo.Id && p.ExcluidoEm == null)
+            .OrderBy(p => p.Ordem)
+            .ToListAsync(ct);
+
+        var item = itens.FirstOrDefault(i => ComparadorMarcacao.MesmoProcedimento(
+            i.ProcedimentoCodigoSisreg, i.ProcedimentoTexto, codigoLinha, nomeLinha));
+        var ehPrincipal = itens.Count == 0
+            ? ComparadorMarcacao.MesmoProcedimento(
+                alvo.ProcedimentoCodigoSisreg, alvo.ProcedimentoTexto, codigoLinha, nomeLinha)
+            : item is { Ordem: 1 };
+
+        var agora = DateTime.UtcNow;
+
+        // ---- Outro procedimento do mesmo pedido: acrescenta, sem tocar no principal ----
+        if (itens.Count == 0 ? !ehPrincipal : item is null)
+        {
+            // O 1º item nasce agora, dos campos da espinha — é o momento em que o pedido deixa de
+            // ser de um procedimento só.
+            if (itens.Count == 0)
+            {
+                db.SolicitacaoProcedimentos.Add(new SolicitacaoProcedimento
+                {
+                    Id = Guid.CreateVersion7(),
+                    SolicitacaoId = alvo.Id,
+                    Ordem = 1,
+                    ProcedimentoCodigoSisreg = alvo.ProcedimentoCodigoSisreg,
+                    ProcedimentoSigtapCodigo = alvo.ProcedimentoSigtapCodigo,
+                    ProcedimentoTexto = alvo.ProcedimentoTexto,
+                    ProfissionalExecutanteCpf = alvo.ProfissionalExecutanteCpf,
+                    ProfissionalExecutanteNome = alvo.ProfissionalExecutanteNome,
+                    DataAgendada = alvo.DataAgendada,
+                    RawSisreg = alvo.RawSisreg,
+                    CriadoEm = agora,
+                    CriadoPor = UsuarioIdAtual,
+                });
+            }
+
+            db.SolicitacaoProcedimentos.Add(new SolicitacaoProcedimento
+            {
+                Id = Guid.CreateVersion7(),
+                SolicitacaoId = alvo.Id,
+                Ordem = itens.Count == 0 ? 2 : itens.Max(i => i.Ordem) + 1,
+                ProcedimentoCodigoSisreg = codigoLinha,
+                ProcedimentoSigtapCodigo = SoDigitos(m.CodigoSigtap) is { Length: > 0 } sig ? sig : null,
+                ProcedimentoTexto = nomeLinha,
+                ProfissionalExecutanteCpf = m.CpfProfissionalExecutante,
+                ProfissionalExecutanteNome = m.NomeProfissionalExecutante,
+                DataAgendada = dataLinha,
+                RawSisreg = m.LinhaRaw,
+                CriadoEm = agora,
+                CriadoPor = UsuarioIdAtual,
+            });
+            PromoverParaAgendada(alvo);
+
+            await db.SaveChangesAsync(ct);
+            return (0, true);
+        }
+
+        // ---- O mesmo procedimento, relido: compara data e executante DESTE item ----
+        // O procedimento não entra na comparação: a identidade já foi decidida acima, e o que
+        // sobra (nome que ganhou acento, código que apareceu) é notícia sobre o arquivo, não sobre
+        // a agenda de alguém.
+        var antes = ehPrincipal
+            ? new FotoMarcacao(alvo.DataAgendada, alvo.ProfissionalExecutanteCpf, null, null)
+            : new FotoMarcacao(item!.DataAgendada, item.ProfissionalExecutanteCpf, null, null);
+        var depois = new FotoMarcacao(dataLinha, m.CpfProfissionalExecutante, null, null);
 
         var alteracoes = ComparadorMarcacao.Comparar(antes, depois);
         if (alteracoes.Count == 0)
@@ -694,10 +781,12 @@ public sealed class ImportacaoSisregService(
             // Nada mudou no SISREG, mas a linha pode ter nascido Solicitada com data (bug antigo do
             // importador). Corrige ao revê-la — não é alteração do SISREG, não vai para a trilha.
             if (PromoverParaAgendada(alvo)) await db.SaveChangesAsync(ct);
-            return 0;
+            return (0, false);
         }
 
-        var agora = DateTime.UtcNow;
+        // A fila mostra o procedimento PRINCIPAL da solicitação; alteração de outro item leva o nome
+        // dele no valor, senão o regulador leria a remarcação do joelho esquerdo como a do direito.
+        var prefixo = ehPrincipal ? string.Empty : $"{item!.ProcedimentoTexto ?? "Outro procedimento"}: ";
         foreach (var alteracao in alteracoes)
         {
             db.SisregAlteracoesAgenda.Add(new SisregAlteracaoAgenda
@@ -706,8 +795,8 @@ public sealed class ImportacaoSisregService(
                 SolicitacaoId = alvo.Id,
                 CodigoSolicitacao = alvo.CodigoSolicitacao,
                 Tipo = alteracao.Tipo,
-                ValorAntes = Truncar(alteracao.Antes, 300),
-                ValorDepois = Truncar(alteracao.Depois, 300),
+                ValorAntes = Truncar(alteracao.Antes is null ? null : prefixo + alteracao.Antes, 300),
+                ValorDepois = Truncar(alteracao.Depois is null ? null : prefixo + alteracao.Depois, 300),
                 UnidadeExecutanteId = alvo.UnidadeExecutanteId,
                 UnidadeSolicitanteId = alvo.UnidadeSolicitanteId,
                 DetectadaEm = agora,
@@ -715,18 +804,35 @@ public sealed class ImportacaoSisregService(
         }
 
         // Aplica DEPOIS de montar o rastro: o "antes" precisa ser lido da entidade ainda intacta.
-        if (depois.DataAgendadaUtc is { } novaData) alvo.DataAgendada = novaData;
-        if (!string.IsNullOrWhiteSpace(depois.ExecutanteCpf))
+        // O principal vive nos campos da espinha e, quando o pedido tem itens, também no item 1.
+        if (ehPrincipal)
         {
-            alvo.ProfissionalExecutanteCpf = depois.ExecutanteCpf;
-            alvo.ProfissionalExecutanteNome = m.NomeProfissionalExecutante ?? alvo.ProfissionalExecutanteNome;
+            if (dataLinha is { } novaData) alvo.DataAgendada = novaData;
+            if (!string.IsNullOrWhiteSpace(m.CpfProfissionalExecutante))
+            {
+                alvo.ProfissionalExecutanteCpf = m.CpfProfissionalExecutante;
+                alvo.ProfissionalExecutanteNome = m.NomeProfissionalExecutante ?? alvo.ProfissionalExecutanteNome;
+            }
+            if (codigoLinha is not null) alvo.ProcedimentoCodigoSisreg = codigoLinha;
+            if (nomeLinha is not null) alvo.ProcedimentoTexto = nomeLinha;
+            alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg;
         }
-        if (!string.IsNullOrWhiteSpace(depois.ProcedimentoCodigo))
-            alvo.ProcedimentoCodigoSisreg = depois.ProcedimentoCodigo;
-        if (!string.IsNullOrWhiteSpace(depois.ProcedimentoNome))
-            alvo.ProcedimentoTexto = depois.ProcedimentoNome;
+        if (item is not null)
+        {
+            if (dataLinha is { } novaData) item.DataAgendada = novaData;
+            if (!string.IsNullOrWhiteSpace(m.CpfProfissionalExecutante))
+            {
+                item.ProfissionalExecutanteCpf = m.CpfProfissionalExecutante;
+                item.ProfissionalExecutanteNome = m.NomeProfissionalExecutante ?? item.ProfissionalExecutanteNome;
+            }
+            if (codigoLinha is not null) item.ProcedimentoCodigoSisreg = codigoLinha;
+            if (nomeLinha is not null) item.ProcedimentoTexto = nomeLinha;
+            item.RawSisreg = m.LinhaRaw ?? item.RawSisreg;
+            item.AtualizadoEm = agora;
+            item.AtualizadoPor = UsuarioIdAtual;
+        }
 
-        alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg;
+        // CID e natureza da vaga são do PEDIDO, não do item — valem venham de qual linha vierem.
         if (!string.IsNullOrWhiteSpace(m.Cid)) alvo.CidCodigo = m.Cid;
         if (VagaDe(m.EhRetorno) is { } tipoVaga) alvo.TipoVaga = tipoVaga;
         PromoverParaAgendada(alvo);
@@ -737,7 +843,7 @@ public sealed class ImportacaoSisregService(
         // rastro aqui é durável na tabela — que é onde alguém de fato vai olhar.
         await db.SaveChangesAsync(ct);
 
-        return alteracoes.Count;
+        return (alteracoes.Count, false);
     }
 
     private async Task<ImportacaoExecucaoResultado> ComplementarManualAsync(

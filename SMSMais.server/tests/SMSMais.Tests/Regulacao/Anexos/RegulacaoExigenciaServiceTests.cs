@@ -316,6 +316,11 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
         var s = await SolicitacaoAsync(db);
         var e = await CaixinhaDeRegraAsync(db, s.Id);
         var usuarioId = Guid.CreateVersion7();
+        // A solicitação do seed é RASCUNHO, e rascunho só é visível a quem o criou
+        // (RegulacaoEscopo.RascunhoVisivel) — com outro autor, o escopo responde "não encontrado"
+        // antes de chegar ao download. O usuário logado do teste é o autor.
+        s.CriadoPorUsuarioId = usuarioId;
+        await db.SaveChangesAsync();
         var servico = ServicoComAgente(db, usuarioId);
 
         var a = await servico.AnexarAsync(

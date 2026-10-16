@@ -120,7 +120,20 @@ public sealed record SolicitacaoDto(
     string? CidCodigo = null,
     // Descrição do CID por extenso, resolvida no catálogo canônico (enriquecimento do detalhe).
     // Null = catálogo não reconhece o código → a tela mostra só o código.
-    string? CidDescricao = null);
+    string? CidDescricao = null,
+    // TODOS os procedimentos do pedido, na ordem do SISREG (ticket #149). O 1º é o principal — o
+    // mesmo de ProcedimentoTexto. Pedido de um procedimento só vem com um item, montado da espinha.
+    IReadOnlyList<SolicitacaoProcedimentoDto>? Procedimentos = null);
+
+/// <summary>Um procedimento do pedido (ticket #149). Data e executante são do item: no SISREG cada
+/// linha tem os seus. CPF do executante não sai — a tela só precisa do nome.</summary>
+public sealed record SolicitacaoProcedimentoDto(
+    int Ordem,
+    string? ProcedimentoTexto,
+    string? ProcedimentoCodigoSisreg,
+    string? ProcedimentoSigtapCodigo,
+    string? ProfissionalExecutanteNome,
+    DateTime? DataAgendada);
 
 /// <summary>
 /// Direção da solicitação RELATIVA à unidade ativa da sessão. <c>Recebida</c> = a unidade

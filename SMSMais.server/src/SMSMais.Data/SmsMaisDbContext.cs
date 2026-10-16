@@ -68,6 +68,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<TipoExame> TiposExame => Set<TipoExame>();
     // Ecossistema de solicitação (ADR-0021): espinha de regulação + satélite de execução de imagem.
     public DbSet<Solicitacao> Solicitacoes => Set<Solicitacao>();
+    public DbSet<SolicitacaoProcedimento> SolicitacaoProcedimentos => Set<SolicitacaoProcedimento>();
     public DbSet<ExameImagem> ExamesImagem => Set<ExameImagem>();
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();
     public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();

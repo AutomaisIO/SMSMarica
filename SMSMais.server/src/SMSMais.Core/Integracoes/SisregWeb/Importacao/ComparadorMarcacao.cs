@@ -35,6 +35,11 @@ public sealed record AlteracaoDetectada(TipoAlteracaoAgenda Tipo, string? Antes,
 /// simplesmente para de vir no arquivo — não é campo alterado, é linha ausente. Detectar isso exige
 /// comparar o conjunto de códigos da janela, com o cuidado de nunca concluir "cancelado" a partir de
 /// uma exportação truncada ou parcial. Fica para tratamento próprio.</para>
+///
+/// <para><b>Procedimento diferente com o mesmo nº não é troca (ticket #149).</b> O SISREG manda
+/// cada procedimento do pedido numa linha própria, com o mesmo código de solicitação. Quem chama
+/// decide primeiro se a linha é do mesmo item (<see cref="MesmoProcedimento"/>) — e só então
+/// compara; procedimento que ainda não estava no pedido vira item novo, não alteração.</para>
 /// </summary>
 public static class ComparadorMarcacao
 {
@@ -80,6 +85,33 @@ public static class ComparadorMarcacao
         }
 
         return alteracoes;
+    }
+
+    /// <summary>
+    /// A linha do SISREG fala do MESMO procedimento que este item do pedido? É o que separa
+    /// "outro procedimento do mesmo pedido" (vira item novo) de "o mesmo item, relido" (compara data
+    /// e executante) — ticket #149.
+    ///
+    /// <para><b>Código primeiro, nome depois.</b> O <c>pa</c> identifica quando os DOIS lados o
+    /// têm; como ele falta em ~1/3 das linhas, sem ele quem decide é o nome. O SIGTAP NÃO entra: os
+    /// joelhos direito e esquerdo do caso que abriu o ticket têm o mesmo SIGTAP e são dois itens.</para>
+    ///
+    /// <para>Sem identidade nenhuma de um dos lados (nem código nem nome), responde "mesmo": não
+    /// dá para afirmar que é outro procedimento, e inventar item seria o erro oposto ao do ticket.</para>
+    /// </summary>
+    public static bool MesmoProcedimento(string? codigoA, string? nomeA, string? codigoB, string? nomeB)
+    {
+        var ca = codigoA?.Trim();
+        var cb = codigoB?.Trim();
+        if (!string.IsNullOrEmpty(ca) && !string.IsNullOrEmpty(cb))
+            return string.Equals(ca, cb, StringComparison.Ordinal);
+
+        var na = nomeA?.Trim();
+        var nb = nomeB?.Trim();
+        if (!string.IsNullOrEmpty(na) && !string.IsNullOrEmpty(nb))
+            return string.Equals(na, nb, StringComparison.OrdinalIgnoreCase);
+
+        return true;
     }
 
     /// <summary>

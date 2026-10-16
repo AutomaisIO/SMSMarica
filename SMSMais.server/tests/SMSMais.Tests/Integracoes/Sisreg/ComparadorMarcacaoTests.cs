@@ -225,4 +225,45 @@ public class ComparadorMarcacaoTests
         Assert.Contains(alteracoes, a => a.Tipo == TipoAlteracaoAgenda.DataHora);
         Assert.Contains(alteracoes, a => a.Tipo == TipoAlteracaoAgenda.Executante);
     }
+
+    // ---- Identidade do item do pedido (ticket #149) ----
+
+    private const string JoelhoDireito = "RADIOGRAFIA DE JOELHO (AP + LATERAL) DIREITO";
+    private const string JoelhoEsquerdo = "RADIOGRAFIA DE JOELHO (AP + LATERAL) ESQUERDO";
+
+    /// <summary>
+    /// O caso que abriu o ticket: mesmo nº do SISREG, mesmo SIGTAP (0204060125), dois procedimentos.
+    /// Tratá-los como o mesmo item é o que fazia a 2ª linha sobrescrever a 1ª e virar "troca".
+    /// </summary>
+    [Fact]
+    public void Joelhos_direito_e_esquerdo_sao_procedimentos_diferentes()
+    {
+        Assert.False(ComparadorMarcacao.MesmoProcedimento("1304085", JoelhoDireito, "1304086", JoelhoEsquerdo));
+    }
+
+    /// <summary>O <c>pa</c> falta em ~1/3 das linhas: sem ele dos dois lados, quem decide é o nome.</summary>
+    [Fact]
+    public void Sem_codigo_de_um_lado_decide_pelo_nome()
+    {
+        Assert.False(ComparadorMarcacao.MesmoProcedimento("1304085", JoelhoDireito, null, JoelhoEsquerdo));
+        Assert.True(ComparadorMarcacao.MesmoProcedimento(null, JoelhoDireito, "1304085", "radiografia de joelho (ap + lateral) direito "));
+    }
+
+    /// <summary>Com código dos dois lados, ele manda: nome que mudou de grafia é o mesmo item.</summary>
+    [Fact]
+    public void Mesmo_codigo_e_o_mesmo_item_mesmo_com_nome_diferente()
+    {
+        Assert.True(ComparadorMarcacao.MesmoProcedimento("1304085", JoelhoDireito, "1304085", "RX JOELHO D"));
+    }
+
+    /// <summary>
+    /// Linha sem código e sem nome não prova que é outro procedimento — e inventar item novo seria
+    /// o erro oposto ao do ticket.
+    /// </summary>
+    [Fact]
+    public void Sem_identidade_nenhuma_nao_inventa_item_novo()
+    {
+        Assert.True(ComparadorMarcacao.MesmoProcedimento("1304085", JoelhoDireito, null, null));
+        Assert.True(ComparadorMarcacao.MesmoProcedimento(null, null, "1304086", JoelhoEsquerdo));
+    }
 }
