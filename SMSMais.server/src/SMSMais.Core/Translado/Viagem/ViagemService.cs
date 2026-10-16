@@ -11,7 +11,8 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.Translado.Viagem;
 
 /// <summary>O que o tablet manda a cada marcação da viagem. <paramref name="AcompanhanteOrdem"/> é a
-/// posição do acompanhante na lista da sessão (1 ou 2), como o tablet recebeu.</summary>
+/// posição do acompanhante na lista da sessão (1 ou 2), como o tablet recebeu. <paramref name="Volta"/>:
+/// marcação da volta (embarque na unidade, chegada em casa).</summary>
 public sealed record RegistrarEventoViagemRequest(
     Guid IdLocal,
     Guid RotaId,
@@ -24,7 +25,8 @@ public sealed record RegistrarEventoViagemRequest(
     DateTime OcorridoEm,
     double? Latitude,
     double? Longitude,
-    double? PrecisaoM);
+    double? PrecisaoM,
+    bool Volta = false);
 
 public sealed record EventoViagemRegistradoDto(Guid Id, bool Aplicado, string? MotivoNaoAplicado, DateTime RecebidoEm);
 
@@ -42,7 +44,8 @@ public sealed record EventoViagemDto(
     double? Latitude,
     double? Longitude,
     bool Aplicado,
-    string? MotivoNaoAplicado);
+    string? MotivoNaoAplicado,
+    bool Volta = false);
 
 public interface IViagemService
 {
@@ -114,6 +117,7 @@ public sealed class ViagemService(
             AcompanhanteOrdem = pessoa == PessoaViagem.Acompanhante && request.AcompanhanteOrdem is >= 1 and <= 2
                 ? request.AcompanhanteOrdem : null,
             AcompanhanteId = acompanhanteId,
+            Volta = request.Volta && sessao is not null,
             Latitude = lat,
             Longitude = lon,
             PrecisaoM = lat is not null && request.PrecisaoM is >= 0 ? request.PrecisaoM : null,
@@ -212,13 +216,13 @@ public sealed class ViagemService(
                 ? r.Nome : null,
             e.Pessoa, NomeAcompanhante(e),
             e.MotoristaId is { } mid ? motoristas.GetValueOrDefault(mid) : null,
-            e.Latitude, e.Longitude, e.Aplicado, e.MotivoNaoAplicado))];
+            e.Latitude, e.Longitude, e.Aplicado, e.MotivoNaoAplicado, e.Volta))];
     }
 
-    /// <summary>A última marcação de cada pessoa nas rotas: paciente na ordem 0, acompanhantes 1 e 2.
-    /// É o que o tablet usa para retomar a viagem depois de reiniciar. Vale o que o tablet marcou,
-    /// aplicado ou não (a correção do painel fica na sessão).</summary>
-    internal static async Task<Dictionary<(Guid RotaId, Guid SessaoId, int Ordem), TipoEventoViagem>> UltimasMarcacoesAsync(
+    /// <summary>A última marcação de cada pessoa nas rotas, na ida e na volta: paciente na ordem 0,
+    /// acompanhantes 1 e 2. É o que o tablet usa para retomar a viagem depois de reiniciar. Vale o que o
+    /// tablet marcou, aplicado ou não (a correção do painel fica na sessão).</summary>
+    internal static async Task<Dictionary<(Guid RotaId, Guid SessaoId, int Ordem, bool Volta), TipoEventoViagem>> UltimasMarcacoesAsync(
         SmsMaisDbContext db, IReadOnlyCollection<Guid> rotaIds, CancellationToken ct)
     {
         var marcacoes = await db.EventosViagem.AsNoTracking()
@@ -226,14 +230,14 @@ public sealed class ViagemService(
                 && (e.Tipo == TipoEventoViagem.Embarque || e.Tipo == TipoEventoViagem.Ausencia
                     || e.Tipo == TipoEventoViagem.Desembarque))
             .OrderBy(e => e.OcorridoEm).ThenBy(e => e.RecebidoEm)
-            .Select(e => new { e.RotaId, e.SessaoId, e.Pessoa, e.AcompanhanteOrdem, e.Tipo })
+            .Select(e => new { e.RotaId, e.SessaoId, e.Pessoa, e.AcompanhanteOrdem, e.Tipo, e.Volta })
             .ToListAsync(ct);
 
-        var ultimas = new Dictionary<(Guid, Guid, int), TipoEventoViagem>();
+        var ultimas = new Dictionary<(Guid, Guid, int, bool), TipoEventoViagem>();
         foreach (var e in marcacoes)
         {
             var ordem = e.Pessoa == PessoaViagem.Acompanhante ? e.AcompanhanteOrdem ?? 1 : 0;
-            ultimas[(e.RotaId, e.SessaoId!.Value, ordem)] = e.Tipo;
+            ultimas[(e.RotaId, e.SessaoId!.Value, ordem, e.Volta)] = e.Tipo;
         }
         return ultimas;
     }
@@ -275,9 +279,11 @@ public sealed class ViagemService(
         // campo de hora do painel aparece vazio e a confirmação apagaria a hora do tablet.
         var local = FusoBrasilia.ParaExibicao(e.OcorridoEm);
         var hora = new TimeOnly(local.Hour, local.Minute);
+        s.AtualizadoEm = agora;
+        if (e.Volta) return AplicarVolta(rota, s, e, hora);
+
         s.MotoristaIdaId = e.MotoristaId ?? s.MotoristaIdaId ?? rota.MotoristaId;
         s.VeiculoIdaId = rota.VeiculoId;
-        s.AtualizadoEm = agora;
         switch (e.Tipo)
         {
             case TipoEventoViagem.Embarque:
@@ -295,6 +301,32 @@ public sealed class ViagemService(
                 s.MotivoNaoRealizacao = null;
                 return new Efeito(true, null, Faturamento: 1);
         }
+    }
+
+    /// <summary>Volta: o translado já foi contado na ida. Embarque na unidade e chegada em casa preenchem
+    /// a volta da sessão; quem não estava na unidade quando o carro saiu fica aguardando retorno (entra
+    /// na fila de puxar do painel).</summary>
+    private static Efeito AplicarVolta(RotaDiaria rota, SessaoDeTratamento s, EventoViagem e, TimeOnly hora)
+    {
+        if (s.Status is not (StatusSessao.Realizada or StatusSessao.AguardandoRetorno))
+            return Efeito.Nao("A ida desta viagem não foi feita; a volta não muda a sessão.");
+
+        switch (e.Tipo)
+        {
+            case TipoEventoViagem.Ausencia:
+                s.Status = StatusSessao.AguardandoRetorno;
+                return Efeito.Sim;
+            case TipoEventoViagem.Embarque:
+                s.HoraSaidaUnidade = hora;
+                break;
+            default: // Desembarque em casa
+                s.HoraChegadaResidencia = hora;
+                break;
+        }
+        s.MotoristaVoltaId = e.MotoristaId ?? s.MotoristaVoltaId ?? rota.MotoristaId;
+        s.VeiculoVoltaId = rota.VeiculoId;
+        s.Status = StatusSessao.Realizada;
+        return Efeito.Sim;
     }
 
     private static void Iniciar(RotaDiaria rota, DateTime quando)

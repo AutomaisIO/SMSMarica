@@ -25,6 +25,7 @@ import {
 import { ListaSessoesElegiveis } from '@/features/translados/components/ListaSessoesElegiveis';
 import { MapaDeAssentosAlocavel } from '@/features/translados/components/MapaDeAssentosAlocavel';
 import { ModalEscolherSessao } from '@/features/translados/components/ModalEscolherSessao';
+import { PuxarAguardando } from '@/features/translados/components/PuxarAguardando';
 import { ViagemDoTablet } from '@/features/translados/components/ViagemDoTablet';
 import type { AlocacaoDto, SessaoElegivel, StatusRota } from '@/features/translados/types';
 import { useVeiculoPorId } from '@/features/veiculos/api/queries';
@@ -317,6 +318,8 @@ export function TransladoDetalhePage() {
       {r.status !== 'Planejada' ? (
         <ViagemDoTablet rotaId={r.id} status={r.status} alocacoes={r.alocacoes} />
       ) : null}
+
+      {r.status === 'Planejada' || r.status === 'EmAndamento' ? <PuxarAguardando rotaId={r.id} /> : null}
 
       <ModalEscolherSessao
         aberto={Boolean(modalAssento)}
