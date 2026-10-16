@@ -27,7 +27,9 @@ public sealed class GeradorDeTransladoService(
     {
         var data = request.Data;
 
-        // 1) Sessões elegíveis do dia (mesma regra de ListarSessoesElegiveis, mas por data).
+        // 1) Sessões elegíveis do dia (mesma regra de ListarSessoesElegiveis, mas por data). Quem está
+        // numa rota gerada ainda planejada deste dia continua elegível: o passo 5 troca essas rotas, e
+        // sem isso o "Gerar e salvar" de novo apagava a rota sem replanejar ninguém.
         var rows = await (
             from s in db.Sessoes.AsNoTracking()
             join t in db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
@@ -36,7 +38,8 @@ public sealed class GeradorDeTransladoService(
                 && (s.Status == StatusSessao.Pendente || s.Status == StatusSessao.Confirmada)
                 && s.DataPrevista <= data
                 && !db.Alocacoes.AsNoTracking().Any(a => a.SessaoId == s.Id
-                    && db.Rotas.Any(r => r.Id == a.RotaDiariaId && r.Status != StatusRota.Cancelada))
+                    && db.Rotas.Any(r => r.Id == a.RotaDiariaId && r.Status != StatusRota.Cancelada
+                        && !(r.Data == data && r.Origem == OrigemRota.Gerada && r.Status == StatusRota.Planejada)))
             select new
             {
                 s.Id,
@@ -263,8 +266,8 @@ public sealed class GeradorDeTransladoService(
         if (request.Confirmar)
         {
             // Gerar de novo substitui só o que ainda é plano. Rota em andamento está com o carro na rua
-            // (e com o tablet seguindo ela); concluída e cancelada são histórico. As sessões dessas
-            // rotas não voltam para cá: elegível é só quem não está em rota não cancelada.
+            // (e com o tablet seguindo ela); concluída e cancelada são histórico. As sessões da em
+            // andamento e da concluída não voltam para cá (passo 1); as da planejada, sim.
             var antigas = await db.Rotas
                 .Where(r => r.Data == data && r.Origem == OrigemRota.Gerada && r.Status == StatusRota.Planejada)
                 .Include(r => r.Alocacoes)

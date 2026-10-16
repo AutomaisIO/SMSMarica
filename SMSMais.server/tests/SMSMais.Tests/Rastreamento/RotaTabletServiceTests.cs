@@ -99,20 +99,21 @@ public class RotaTabletServiceTests(PostgresFixture fixture)
     private static async Task<Guid> SessaoAsync(
         SmsMaisDbContext db, Guid pacienteId, Guid unidadeId, Guid tipoId,
         MobilidadeTransporte mobilidade = MobilidadeTransporte.Independente, bool? acompanhanteEsperado = null,
-        StatusSessao status = StatusSessao.Pendente)
+        StatusSessao status = StatusSessao.Pendente, DateOnly? dia = null)
     {
         var agora = DateTime.UtcNow;
+        var data = dia ?? FusoBrasilia.HojeEmBrasilia();
         var tratamento = new Tratamento
         {
             Id = Guid.NewGuid(), PacienteId = pacienteId, UnidadeAtendimentoId = unidadeId, TipoTratamentoId = tipoId,
-            Descricao = "Atendimento simulado", DataInicio = FusoBrasilia.HojeEmBrasilia(), DiasSemanaMascara = 127,
+            Descricao = "Atendimento simulado", DataInicio = data, DiasSemanaMascara = 127,
             Mobilidade = mobilidade, NecessitaAjuda = mobilidade != MobilidadeTransporte.Independente,
             AjudaDescricao = mobilidade != MobilidadeTransporte.Independente ? "Precisa de ajuda para subir" : null,
             Ativo = true, CriadoEm = agora,
         };
         var sessao = new SessaoDeTratamento
         {
-            Id = Guid.NewGuid(), TratamentoId = tratamento.Id, DataPrevista = FusoBrasilia.HojeEmBrasilia(),
+            Id = Guid.NewGuid(), TratamentoId = tratamento.Id, DataPrevista = data,
             Status = status, AcompanhanteEsperado = acompanhanteEsperado, CriadoEm = agora,
         };
         db.Tratamentos.Add(tratamento);
@@ -294,10 +295,7 @@ public class RotaTabletServiceTests(PostgresFixture fixture)
         var cancelada = await RotaGeradaAsync(db, f, dia, StatusRota.Cancelada);
         var planejada = await RotaGeradaAsync(db, f, dia, StatusRota.Planejada);
 
-        var gerador = new GeradorDeTransladoService(
-            db, _geo, Substitute.For<IGoogleRoutesClient>(), Substitute.For<IDistribuidorIa>(), _pacientes,
-            NullLogger<GeradorDeTransladoService>.Instance);
-        await gerador.GerarAsync(new GerarTransladoRequest(dia, Confirmar: true, UsarIa: false));
+        await Gerador(db).GerarAsync(new GerarTransladoRequest(dia, Confirmar: true, UsarIa: false));
 
         var restantes = await db.Rotas.AsNoTracking().Where(r => r.Data == dia && r.VeiculoId == f.Tablet.VeiculoId)
             .Select(r => r.Id).ToListAsync();
@@ -306,6 +304,36 @@ public class RotaTabletServiceTests(PostgresFixture fixture)
         Assert.Contains(cancelada, restantes);
         Assert.DoesNotContain(planejada, restantes);
     }
+
+    [Fact]
+    public async Task Gerar_e_salvar_de_novo_replaneja_quem_estava_na_rota_planejada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var f = await VeiculoComTabletAsync(db);
+        var (unidadeId, tipoId) = await DestinoAsync(db);
+        // Dia antigo e só deste teste: nenhuma sessão de outro teste entra na geração.
+        var dia = new DateOnly(1999, 1, 5);
+        var anaId = Guid.NewGuid();
+        var sessao = await SessaoAsync(db, anaId, unidadeId, tipoId, dia: dia);
+        var planejada = await RotaGeradaAsync(db, f, dia, StatusRota.Planejada);
+        await AlocarAsync(db, planejada, sessao, f.Assentos[0], TipoAlocacao.Paciente, 1);
+
+        var endereco = new EnderecoDto("24900000", "Rua das Acácias", "7", null, "Itaipuaçu", "Maricá", "RJ", null);
+        _pacientes.ObterPorIdAsync(anaId, Arg.Any<CancellationToken>()).Returns(PacienteFicticio(anaId, "Ana Simulada", endereco));
+        _geo.GeocodificarAsync(Arg.Any<Endereco?>(), Arg.Any<CancellationToken>()).Returns(new Coordenada(-22.95, -42.95));
+
+        var resultado = await Gerador(db).GerarAsync(new GerarTransladoRequest(dia, Confirmar: true, UsarIa: false));
+
+        Assert.Contains(resultado.Rotas, r => r.Paradas.Any(p => p.SessaoId == sessao));
+        var alocacao = await db.Alocacoes.AsNoTracking()
+            .SingleAsync(a => a.SessaoId == sessao && a.Tipo == TipoAlocacao.Paciente);
+        Assert.NotEqual(planejada, alocacao.RotaDiariaId);
+        Assert.False(await db.Rotas.AnyAsync(r => r.Id == planejada));
+    }
+
+    private GeradorDeTransladoService Gerador(SmsMaisDbContext db) =>
+        new(db, _geo, Substitute.For<IGoogleRoutesClient>(), Substitute.For<IDistribuidorIa>(), _pacientes,
+            NullLogger<GeradorDeTransladoService>.Instance);
 
     private static async Task<Guid> RotaGeradaAsync(SmsMaisDbContext db, Frota f, DateOnly dia, StatusRota status)
     {
