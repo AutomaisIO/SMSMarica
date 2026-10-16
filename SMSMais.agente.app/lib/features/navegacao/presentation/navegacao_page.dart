@@ -6,7 +6,14 @@ import 'package:agente/features/navegacao/data/navegacao_repository.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
 import 'package:agente/features/navegacao/presentation/widgets/confirmacao_parada_sheet.dart';
 import 'package:agente/features/navegacao/presentation/widgets/painel_passageiro.dart';
+import 'package:agente/features/ocorrencia/domain/ocorrencia.dart'
+    show novoIdLocal;
 import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
+import 'package:agente/features/viagem/application/viagem_controller.dart';
+import 'package:agente/features/viagem/data/viagem_repository.dart';
+import 'package:agente/features/viagem/domain/viagem.dart';
+import 'package:agente/shared/auth/sessao_controller.dart';
+import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
 import 'package:agente/shared/plataforma/canal_dispositivo.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +45,10 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
   /// Pessoas (paciente ou acompanhante) que faltaram na coleta.
   final Set<String> _ausentes = {};
+
+  /// Onde a viagem está para a central (guardado no tablet): começa com o
+  /// que ficou da última vez e com o que a central já recebeu.
+  AndamentoViagem? _andamento;
 
   /// Simulação ligada (teste com o tablet parado): retoma a cada parada.
   bool _simulando = false;
@@ -188,10 +199,25 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     final tentativa = ++_tentativa;
     bool vigente() => mounted && tentativa == _tentativa;
     try {
-      final translado =
-          await ref.read(navegacaoRepositoryProvider).obterTransladoAtual();
+      final rota =
+          await ref.read(navegacaoRepositoryProvider).obterRotaAtual();
       if (!vigente()) return;
-      setState(() => _translado = translado);
+      final guardado =
+          await ref.read(andamentoLocalProvider).ler(rota.rotaId);
+      if (!vigente()) return;
+      final andamento = (guardado ?? AndamentoViagem(rotaId: rota.rotaId))
+          .unir(rota.andamento);
+      setState(() {
+        _translado = rota.translado;
+        _andamento = andamento;
+        _concluidas
+          ..clear()
+          ..addAll(andamento.concluidas);
+        _ausentes
+          ..clear()
+          ..addAll(andamento.ausentes);
+      });
+      unawaited(_registrarInicio());
 
       // 0) Sem a chave do Google o SDK só registra "Authorization failure" e
       //    a sessão falha como se os termos não tivessem sido aceitos.
@@ -348,6 +374,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
           ]);
         }
       });
+      await _registrarParada(parada, marcas);
       await _seguirProxima();
     } else {
       // Retoma a guidance na mesma parada.
@@ -356,6 +383,70 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       } on Object catch (_) {}
     }
     if (mounted) setState(() => _confirmando = false);
+  }
+
+  /// O motorista foi conferido pelo rosto antes de abrir a navegação (Rota do
+  /// dia): daqui a viagem começa para a central. Uma vez por rota.
+  Future<void> _registrarInicio() async {
+    final a = _andamento;
+    if (a == null || a.iniciada) return;
+    await _salvarAndamento(a.copyWith(iniciada: true));
+    await ref
+        .read(viagemProvider.notifier)
+        .registrar([_evento(a.rotaId, TipoEventoViagem.inicio)]);
+  }
+
+  /// Leva à central quem embarcou, faltou ou desceu na parada e, se era a
+  /// última, que a rota acabou. Sem rede, fica na fila do tablet.
+  Future<void> _registrarParada(
+    ParadaNavegacao parada,
+    Map<String, bool> marcas,
+  ) async {
+    final a = _andamento;
+    if (a == null) return;
+    final fix = ref.read(gpsAoVivoProvider);
+    final eventos = eventosDaParada(
+      rotaId: a.rotaId,
+      parada: parada,
+      marcas: marcas,
+      novoId: novoIdLocal,
+      agora: DateTime.now(),
+      motoristaId: ref.read(sessaoProvider)?.motoristaId,
+      latitude: fix?.latitude,
+      longitude: fix?.longitude,
+      precisaoM: fix != null && fix.accuracy > 0 ? fix.accuracy : null,
+    );
+    final acabou = !a.encerrada && _proxima == null;
+    await _salvarAndamento(
+      a.copyWith(
+        concluidas: {..._concluidas},
+        ausentes: {..._ausentes},
+        encerrada: a.encerrada || acabou,
+      ),
+    );
+    await ref.read(viagemProvider.notifier).registrar([
+      ...eventos,
+      if (acabou) _evento(a.rotaId, TipoEventoViagem.conclusao),
+    ]);
+  }
+
+  EventoViagemPendente _evento(String rotaId, TipoEventoViagem tipo) {
+    final fix = ref.read(gpsAoVivoProvider);
+    return EventoViagemPendente(
+      idLocal: novoIdLocal(),
+      rotaId: rotaId,
+      tipo: tipo,
+      ocorridoEm: DateTime.now().toUtc(),
+      motoristaId: ref.read(sessaoProvider)?.motoristaId,
+      latitude: fix?.latitude,
+      longitude: fix?.longitude,
+      precisaoM: fix != null && fix.accuracy > 0 ? fix.accuracy : null,
+    );
+  }
+
+  Future<void> _salvarAndamento(AndamentoViagem a) async {
+    _andamento = a;
+    await ref.read(andamentoLocalProvider).salvar(a);
   }
 
   /// Avança para a próxima parada pendente na MESMA sessão (sem nova
