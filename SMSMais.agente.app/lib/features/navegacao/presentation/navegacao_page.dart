@@ -366,8 +366,14 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     if (marcas != null) {
       setState(() {
         _concluidas.add(parada.id);
-        // Quem faltou na coleta não é esperado no destino.
-        if (parada.tipo == TipoParada.coleta) {
+        // Quem faltou na coleta não é esperado no destino. Na volta, quem
+        // não estava na unidade não é deixado em casa (a ida fica como foi).
+        if (parada.tipo == TipoParada.coleta && parada.volta) {
+          _ausentes.addAll([
+            for (final p in parada.passageiros)
+              if (marcas[p.id] == false) idAusenteNaVolta(p.id),
+          ]);
+        } else if (parada.tipo == TipoParada.coleta) {
           _ausentes.addAll([
             for (final m in marcas.entries)
               if (!m.value) m.key,
