@@ -58,27 +58,12 @@ public interface IResgateService
     Task<int> PerguntarQuemPassouDaPrevisaoAsync(CancellationToken ct = default);
 }
 
-/// <summary>Por onde a pergunta "você já está disponível para retorno?" chega ao paciente fora do app
-/// aberto (push). Sem canal ligado, ela aparece no app e no PWA quando o paciente abre a tela do
-/// Transporte — com os mesmos botões.</summary>
-public interface IEntregaPerguntaResgate
-{
-    /// <summary>Verdadeiro quando entregou (ex.: o push saiu para algum aparelho).</summary>
-    Task<bool> EnviarAsync(Guid pacienteId, string primeiroNome, Guid sessaoId, CancellationToken ct = default);
-}
-
-/// <summary>Enquanto o push do app do cidadão (ADR-0070) não está ligado: a pergunta fica só no app/PWA.</summary>
-public sealed class EntregaPerguntaResgateSoNoApp : IEntregaPerguntaResgate
-{
-    public Task<bool> EnviarAsync(Guid pacienteId, string primeiroNome, Guid sessaoId, CancellationToken ct = default) =>
-        Task.FromResult(false);
-}
 
 public sealed class ResgateService(
     SmsMaisDbContext db,
     IPacienteResolver pacienteResolver,
     IRastreamentoNotificador notificador,
-    IEntregaPerguntaResgate entrega,
+    IAvisoAoPacienteTransporte aviso,
     ILogger<ResgateService> logger) : IResgateService
 {
     /// <summary>Quantos pacientes de uma vez numa marcação (o carro maior não leva mais que isso).</summary>
@@ -239,10 +224,10 @@ public sealed class ResgateService(
         var perguntados = 0;
         foreach (var c in pendentes)
         {
-            var nome = nomes.TryGetValue(c.PacienteId, out var r) ? PrimeiroNome(r.Nome) : string.Empty;
+            var nome = nomes.TryGetValue(c.PacienteId, out var r) ? NomeNoAviso.PrimeiroNome(r.Nome) : string.Empty;
             try
             {
-                if (await entrega.EnviarAsync(c.PacienteId, nome, c.SessaoId, ct)) perguntados++;
+                if (await aviso.PerguntarSeDisponivelAsync(c.PacienteId, nome, c.SessaoId, ct)) perguntados++;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -280,11 +265,7 @@ public sealed class ResgateService(
         return FusoBrasilia.DeBrasiliaParaUtc(hoje.ToDateTime(p));
     }
 
-    private static string PrimeiroNome(string? nome)
-    {
-        var p = (nome ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
-        return p.Length == 0 ? string.Empty : char.ToUpperInvariant(p[0]) + p[1..].ToLowerInvariant();
-    }
+
 
     /// <summary>Sessão de outra pessoa responde como inexistente (não revela que existe).</summary>
     private async Task GarantirDoPacienteAsync(Guid pacienteId, Guid sessaoId, CancellationToken ct)

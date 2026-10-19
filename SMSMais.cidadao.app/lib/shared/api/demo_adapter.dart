@@ -14,10 +14,12 @@ class DemoAdapter implements HttpClientAdapter {
   final Duration atraso;
   bool _consentiu;
   final List<Map<String, dynamic>> _enviados = [];
-  /// Viagens já feitas (demonstração): uma para avaliar, outra já avaliada.
+  /// Trechos de viagem já feitos (demonstração): a ida de hoje para avaliar, o resgate de anteontem
+  /// para avaliar e a ida de anteontem já avaliada.
   late final List<Map<String, dynamic>> _viagensParaAvaliar = [
-    {'sessaoId': 'sv1', 'data': _diaRelativo(-2), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': null, 'comentario': null},
-    {'sessaoId': 'sv2', 'data': _diaRelativo(-9), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': 5, 'comentario': null},
+    {'sessaoId': 'sv0', 'data': _diaRelativo(0), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': null, 'comentario': null, 'trecho': 'Ida', 'hora': '07:40:00'},
+    {'sessaoId': 'sv1', 'data': _diaRelativo(-2), 'destino': 'Hospital Demonstração', 'motorista': 'Marta', 'nota': null, 'comentario': null, 'trecho': 'Resgate', 'hora': '12:10:00'},
+    {'sessaoId': 'sv1', 'data': _diaRelativo(-2), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': 5, 'comentario': null, 'trecho': 'Ida', 'hora': '07:35:00'},
   ];
 
   /// Resgate de hoje (demonstração): na clínica, com a previsão estourada — a pergunta aparece.
@@ -364,9 +366,11 @@ class DemoAdapter implements HttpClientAdapter {
 
     final avaliacao = RegExp(r'^/auth/paciente/viagens/([^/]+)/avaliacao$').firstMatch(caminho);
     if (metodo == 'POST' && avaliacao != null) {
-      final v = _viagensParaAvaliar.firstWhere((x) => x['sessaoId'] == avaliacao.group(1));
-      v['nota'] = (corpo! as Map)['nota'];
-      v['comentario'] = (corpo as Map)['comentario'];
+      final dados = corpo! as Map;
+      final trecho = dados['trecho'] ?? 'Ida';
+      final v = _viagensParaAvaliar.firstWhere((x) => x['sessaoId'] == avaliacao.group(1) && x['trecho'] == trecho);
+      v['nota'] = dados['nota'];
+      v['comentario'] = dados['comentario'];
       return (201, 'av-demo');
     }
 

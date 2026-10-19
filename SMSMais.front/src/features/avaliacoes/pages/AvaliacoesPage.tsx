@@ -50,13 +50,15 @@ export function AvaliacoesPage() {
       render: (a) => (
         <div>
           <div className="text-sm text-gray-900">{a.pacienteNome ?? 'Paciente'}</div>
-          <div className="text-xs text-gray-500">{formatarDia(a.dataViagem)}</div>
+          <div className="text-xs text-gray-500">
+            {formatarDia(a.dataViagem)} · {a.trecho === 'Resgate' ? 'resgate (volta para casa)' : 'ida'}
+          </div>
         </div>
       ),
     },
     {
       chave: 'quem-levou',
-      cabecalho: 'Motorista · veículo',
+      cabecalho: 'Motorista · veículo do trecho',
       render: (a) => (
         <span className="text-sm text-gray-700">
           {a.motoristaNome ?? '—'}

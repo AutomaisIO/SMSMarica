@@ -10,10 +10,12 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.Avaliacoes;
 
 /// <summary>
-/// Notas dos pacientes para o translado. O paciente avalia pelo app do cidadão a viagem que aconteceu
-/// (uma vez, até <see cref="DiasParaAvaliar"/> dias depois); a equipe também pode registrar pelo painel.
-/// A avaliação guarda quem levou, em qual veículo e rota — é assim que o painel lê as notas por motorista
-/// e por veículo, mesmo que a sessão seja corrigida depois.
+/// Notas dos pacientes para o motorista do translado. Cada viagem tem duas: a da <b>ida</b> (pedida ao
+/// desembarcar na unidade) e a do <b>resgate</b> (ao chegar em casa) — podem ser motoristas diferentes
+/// (decisão de 19/10). O paciente avalia pelo app do cidadão (uma vez por trecho, até
+/// <see cref="DiasParaAvaliar"/> dias depois); a equipe também pode registrar pelo painel. A avaliação
+/// guarda quem dirigiu aquele trecho, em qual veículo e rota — é assim que o painel lê as notas por
+/// motorista e por veículo, mesmo que a sessão seja corrigida depois.
 /// </summary>
 public sealed class AvaliacoesService(SmsMaisDbContext db, IPacienteResolver pacienteResolver) : IAvaliacoesService
 {
@@ -75,14 +77,17 @@ public sealed class AvaliacoesService(SmsMaisDbContext db, IPacienteResolver pac
             .FirstOrDefaultAsync(s => s.Id == request.SessaoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SessaoDeTratamento), request.SessaoId);
 
+        var trecho = Enum.IsDefined(request.Trecho) ? request.Trecho : TrechoViagem.Ida;
         var jaAvaliada = await _db.Avaliacoes.AsNoTracking()
-            .AnyAsync(a => a.SessaoId == request.SessaoId, cancellationToken);
+            .AnyAsync(a => a.SessaoId == request.SessaoId && a.Trecho == trecho, cancellationToken);
         if (jaAvaliada)
         {
-            throw new ConflitoException("avaliacao.ja_registrada", "Esta sessão já foi avaliada.");
+            throw new ConflitoException("avaliacao.ja_registrada", trecho == TrechoViagem.Resgate
+                ? "O resgate desta viagem já foi avaliado."
+                : "A ida desta viagem já foi avaliada.");
         }
 
-        var a = await NovaAsync(sessao, request.Nota, request.Comentario, CanalAvaliacao.Painel, cancellationToken);
+        var a = await NovaAsync(sessao, trecho, request.Nota, request.Comentario, CanalAvaliacao.Painel, cancellationToken);
         _db.Avaliacoes.Add(a);
         await _db.SaveChangesAsync(cancellationToken);
         return a.Id;
@@ -116,26 +121,48 @@ public sealed class AvaliacoesService(SmsMaisDbContext db, IPacienteResolver pac
         Guid pacienteId, CancellationToken cancellationToken = default)
     {
         var desde = FusoBrasilia.HojeEmBrasilia().AddDays(-DiasParaAvaliar);
-        var viagens = await (
+        var sessoes = await (
             from s in _db.Sessoes.AsNoTracking()
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
             join u in _db.UnidadesAtendimento.AsNoTracking() on t.UnidadeAtendimentoId equals u.Id
-            join m in _db.Motoristas.AsNoTracking() on s.MotoristaIdaId equals (Guid?)m.Id into ms
-            from m in ms.DefaultIfEmpty()
-            join a in _db.Avaliacoes.AsNoTracking() on s.Id equals a.SessaoId into avs
-            from a in avs.DefaultIfEmpty()
             where t.PacienteId == pacienteId && s.Status == StatusSessao.Realizada && s.DataPrevista >= desde
-            orderby s.DataPrevista descending
+            orderby s.DataPrevista descending, s.HoraChegadaUnidade descending
             select new
             {
-                s.Id, s.DataPrevista, Destino = u.Nome,
-                Motorista = m == null ? null : m.Usuario.NomeCompleto,
-                Nota = a == null ? (int?)null : a.Nota,
-                Comentario = a == null ? null : a.Comentario,
+                s.Id, s.DataPrevista, Destino = u.Nome, s.MotoristaIdaId, s.MotoristaVoltaId,
+                s.HoraChegadaUnidade, s.HoraChegadaResidencia,
             }).Take(20).ToListAsync(cancellationToken);
 
-        return [.. viagens.Select(v => new ViagemParaAvaliarDto(
-            v.Id, v.DataPrevista, v.Destino, PrimeiroNome(v.Motorista), v.Nota, v.Comentario))];
+        var ids = sessoes.Select(x => x.Id).ToList();
+        var notas = await _db.Avaliacoes.AsNoTracking()
+            .Where(a => ids.Contains(a.SessaoId))
+            .Select(a => new { a.SessaoId, a.Trecho, a.Nota, a.Comentario })
+            .ToListAsync(cancellationToken);
+        var motoristaIds = sessoes
+            .SelectMany(x => new[] { x.MotoristaIdaId, x.MotoristaVoltaId })
+            .Where(x => x != null).Select(x => x!.Value).Distinct().ToList();
+        var motoristas = await _db.Motoristas.AsNoTracking()
+            .Where(m => motoristaIds.Contains(m.Id))
+            .Select(m => new { m.Id, Nome = m.Usuario.NomeCompleto })
+            .ToDictionaryAsync(m => m.Id, m => m.Nome, cancellationToken);
+
+        var lista = new List<ViagemParaAvaliarDto>();
+        foreach (var s in sessoes)
+        {
+            ViagemParaAvaliarDto Trecho(TrechoViagem trecho, Guid? motoristaId, TimeOnly? hora)
+            {
+                var n = notas.FirstOrDefault(a => a.SessaoId == s.Id && a.Trecho == trecho);
+                var motorista = motoristaId is { } m ? motoristas.GetValueOrDefault(m) : null;
+                return new ViagemParaAvaliarDto(
+                    s.Id, s.DataPrevista, s.Destino, PrimeiroNome(motorista), n?.Nota, n?.Comentario, trecho, hora);
+            }
+
+            // O resgate (chegou em casa) vem antes da ida do mesmo dia: é o mais recente.
+            if (s.HoraChegadaResidencia is not null && s.MotoristaVoltaId is not null)
+                lista.Add(Trecho(TrechoViagem.Resgate, s.MotoristaVoltaId, s.HoraChegadaResidencia));
+            lista.Add(Trecho(TrechoViagem.Ida, s.MotoristaIdaId, s.HoraChegadaUnidade));
+        }
+        return lista;
     }
 
     public async Task<Guid> AvaliarPeloPacienteAsync(
@@ -145,6 +172,7 @@ public sealed class AvaliacoesService(SmsMaisDbContext db, IPacienteResolver pac
         var sessao = await _db.Sessoes.AsNoTracking().Include(s => s.Tratamento)
             .FirstOrDefaultAsync(s => s.Id == sessaoId && s.Tratamento!.PacienteId == pacienteId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SessaoDeTratamento), sessaoId);
+        var trecho = Enum.IsDefined(request.Trecho) ? request.Trecho : TrechoViagem.Ida;
 
         if (request.Nota is < 1 or > 5)
             throw new ValidacaoException("nota", "Escolha uma nota de 1 a 5.");
@@ -152,12 +180,14 @@ public sealed class AvaliacoesService(SmsMaisDbContext db, IPacienteResolver pac
             throw new ValidacaoException("comentario", $"O comentário pode ter até {TamanhoComentarioApp} caracteres.");
         if (sessao.Status != StatusSessao.Realizada)
             throw new ConflitoException("avaliacao.viagem_nao_realizada", "Só dá para avaliar uma viagem que aconteceu.");
+        if (trecho == TrechoViagem.Resgate && sessao.HoraChegadaResidencia is null)
+            throw new ConflitoException("avaliacao.resgate_nao_feito", "O resgate se avalia depois de chegar em casa.");
         if (sessao.DataPrevista < FusoBrasilia.HojeEmBrasilia().AddDays(-DiasParaAvaliar))
             throw new ConflitoException("avaliacao.prazo", $"O prazo para avaliar esta viagem ({DiasParaAvaliar} dias) acabou.");
-        if (await _db.Avaliacoes.AnyAsync(a => a.SessaoId == sessaoId, cancellationToken))
-            throw new ConflitoException("avaliacao.ja_registrada", "Você já avaliou esta viagem.");
+        if (await _db.Avaliacoes.AnyAsync(a => a.SessaoId == sessaoId && a.Trecho == trecho, cancellationToken))
+            throw new ConflitoException("avaliacao.ja_registrada", "Você já avaliou este motorista nesta viagem.");
 
-        var a = await NovaAsync(sessao, request.Nota, request.Comentario, CanalAvaliacao.AppCidadao, cancellationToken);
+        var a = await NovaAsync(sessao, trecho, request.Nota, request.Comentario, CanalAvaliacao.AppCidadao, cancellationToken);
         _db.Avaliacoes.Add(a);
         try
         {
@@ -166,19 +196,20 @@ public sealed class AvaliacoesService(SmsMaisDbContext db, IPacienteResolver pac
         catch (DbUpdateException)
         {
             // Dois toques no "Enviar" ao mesmo tempo: a primeira vale.
-            throw new ConflitoException("avaliacao.ja_registrada", "Você já avaliou esta viagem.");
+            throw new ConflitoException("avaliacao.ja_registrada", "Você já avaliou este motorista nesta viagem.");
         }
         return a.Id;
     }
 
-    /// <summary>A avaliação com a viagem como ela foi: motorista e veículo da ida e a rota em que a
-    /// sessão estava (a não cancelada mais recente).</summary>
+    /// <summary>A avaliação com o trecho como ele foi: o motorista e o veículo daquele trecho e a rota em
+    /// que ele aconteceu (a ida na rota da ida; o resgate na rota de quem buscou).</summary>
     private async Task<Avaliacao> NovaAsync(
-        SessaoDeTratamento sessao, int nota, string? comentario, CanalAvaliacao canal, CancellationToken ct)
+        SessaoDeTratamento sessao, TrechoViagem trecho, int nota, string? comentario, CanalAvaliacao canal, CancellationToken ct)
     {
+        var resgate = trecho == TrechoViagem.Resgate;
         var rotaId = await (
             from al in _db.Alocacoes.AsNoTracking()
-            where al.SessaoId == sessao.Id
+            where al.SessaoId == sessao.Id && (resgate ? al.Parada == TipoParada.Retorno : al.Parada != TipoParada.Retorno)
             join r in _db.Rotas.AsNoTracking() on al.RotaDiariaId equals r.Id
             where r.Status != StatusRota.Cancelada
             orderby r.CriadoEm descending
@@ -192,8 +223,9 @@ public sealed class AvaliacoesService(SmsMaisDbContext db, IPacienteResolver pac
             Comentario = string.IsNullOrWhiteSpace(comentario) ? null : comentario.Trim(),
             CriadoEm = DateTime.UtcNow,
             Canal = canal,
-            MotoristaId = sessao.MotoristaIdaId,
-            VeiculoId = sessao.VeiculoIdaId,
+            Trecho = trecho,
+            MotoristaId = resgate ? sessao.MotoristaVoltaId : sessao.MotoristaIdaId,
+            VeiculoId = resgate ? sessao.VeiculoVoltaId : sessao.VeiculoIdaId,
             RotaId = rotaId,
         };
     }

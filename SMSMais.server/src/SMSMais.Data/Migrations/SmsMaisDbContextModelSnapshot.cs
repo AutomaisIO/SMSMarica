@@ -830,6 +830,12 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("sessao_id");
 
+                    b.Property<int>("Trecho")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("trecho");
+
                     b.Property<Guid?>("VeiculoId")
                         .HasColumnType("uuid")
                         .HasColumnName("veiculo_id");
@@ -840,10 +846,10 @@ namespace SMSMais.Data.Migrations
 
                     b.HasIndex("RotaId");
 
-                    b.HasIndex("SessaoId")
-                        .IsUnique();
-
                     b.HasIndex("VeiculoId");
+
+                    b.HasIndex("SessaoId", "Trecho")
+                        .IsUnique();
 
                     b.ToTable("avaliacao", "smsmarica");
                 });

@@ -63,6 +63,7 @@ public sealed class ViagemService(
     SmsMaisDbContext db,
     IFaturamentoService faturamento,
     IPacienteResolver pacienteResolver,
+    IAvisoAoPacienteTransporte aviso,
     ILogger<ViagemService> logger) : IViagemService
 {
     public const string MotivoAusencia = "Paciente não estava na coleta (registrado no tablet).";
@@ -172,7 +173,36 @@ public sealed class ViagemService(
                 logger.LogWarning(ex, "Viagem: faturamento da sessão {Sessao} não atualizado.", sessao.Id);
             }
         }
+
+        // Desceu na unidade ou chegou em casa: o paciente avalia o motorista daquele trecho (até 5
+        // estrelas). Sem push ligado, o pedido aparece no app/PWA.
+        if (sessao is not null && evento.Aplicado && evento.Tipo == TipoEventoViagem.Desembarque
+            && evento.Pessoa == PessoaViagem.Paciente)
+        {
+            await PedirAvaliacaoAsync(sessao, evento.Resgate ? TrechoViagem.Resgate : TrechoViagem.Ida, ct);
+        }
         return Registrado(evento);
+    }
+
+    private async Task PedirAvaliacaoAsync(SessaoDeTratamento s, TrechoViagem trecho, CancellationToken ct)
+    {
+        try
+        {
+            var pacienteId = await db.Tratamentos.AsNoTracking()
+                .Where(t => t.Id == s.TratamentoId).Select(t => t.PacienteId).FirstAsync(ct);
+            var motoristaId = trecho == TrechoViagem.Resgate ? s.MotoristaVoltaId : s.MotoristaIdaId;
+            var motorista = motoristaId is { } m
+                ? await db.Motoristas.AsNoTracking().Where(x => x.Id == m).Select(x => x.Usuario.NomeCompleto).FirstOrDefaultAsync(ct)
+                : null;
+            var nomes = await pacienteResolver.ResolverManyAsync([pacienteId], ct);
+            await aviso.PedirAvaliacaoAsync(
+                pacienteId, NomeNoAviso.PrimeiroNome(nomes.TryGetValue(pacienteId, out var r) ? r.Nome : null),
+                s.Id, trecho, NomeNoAviso.PrimeiroNome(motorista), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Viagem: pedido de avaliação da sessão {Sessao} não enviado.", s.Id);
+        }
     }
 
     public async Task<IReadOnlyList<EventoViagemDto>> ListarDaRotaAsync(Guid rotaId, CancellationToken ct = default)

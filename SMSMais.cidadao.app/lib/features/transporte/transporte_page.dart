@@ -37,8 +37,8 @@ class TransportePage extends ConsumerWidget {
       descricaoVazio:
           'Quando o transporte da Prefeitura estiver agendado para o seu atendimento, as viagens aparecem aqui.',
       item: (_, v, __) => _CartaoViagem(viagem: v),
-      antes: const [AguardarResgate()],
-      depois: const [AvaliarViagens(), MeusAcompanhantes()],
+      antes: const [AguardarResgate(), AvaliarViagens()],
+      depois: const [MeusAcompanhantes()],
     );
   }
 }

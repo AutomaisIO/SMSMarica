@@ -26,6 +26,7 @@ export function Transporte() {
   return (
     <>
       <AguardarResgate />
+      <AvaliarViagens />
       <Lista<ViagemTransporte>
         eyebrow="Transporte de Pacientes"
         titulo="Minhas viagens"
@@ -63,7 +64,6 @@ export function Transporte() {
           </Card>
         )}
       />
-      <AvaliarViagens />
       <MeusAcompanhantes />
     </>
   );

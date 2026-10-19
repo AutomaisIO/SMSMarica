@@ -185,6 +185,11 @@ Play Services (`client version: 0`).
   `HoraChegadaResidencia`; não estava no local → sai do resgate da rota e volta para a lista, sem o
   aviso. Encerrar ou cancelar a rota devolve à lista quem ela marcou e não buscou. O resgate não muda
   o faturamento (contado na ida).
+- **Avaliação do motorista** (decisão de 19/10): ao desembarcar na clínica o paciente avalia o
+  motorista da **ida**, e ao chegar em casa o do **resgate** — até 5 estrelas, uma vez por trecho
+  (`Avaliacao.Trecho`, único por sessão + trecho), cada nota com o motorista, o veículo e a rota daquele
+  trecho. O pedido sai no desembarque (`ViagemService` → `IAvisoAoPacienteTransporte.PedirAvaliacaoAsync`,
+  no-op até o push do app chegar) e aparece no topo do Transporte no app/PWA ("Como foi o motorista?").
 - **Lotação** (decisão de 19/10): a central nunca põe no carro mais gente do que ele leva. Na
   alocação manual o paciente vai no assento escolhido e cada acompanhante ganha outro lugar
   sozinho; sem lugar, não aloca. Trocar acompanhantes de quem já está na rota segue a mesma regra;

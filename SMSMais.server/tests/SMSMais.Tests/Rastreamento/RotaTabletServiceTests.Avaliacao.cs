@@ -85,5 +85,45 @@ public partial class RotaTabletServiceTests
         await Assert.ThrowsAsync<ConflitoException>(() =>
             avaliacoes.AvaliarPeloPacienteAsync(pacienteAna, ana, new AvaliarViagemRequest(1, null)));
         Assert.Equal(4, (await db.Avaliacoes.AsNoTracking().SingleAsync(x => x.SessaoId == ana)).Nota);
+        // O resgate só se avalia depois de chegar em casa.
+        var semResgate = await Assert.ThrowsAsync<ConflitoException>(() =>
+            avaliacoes.AvaliarPeloPacienteAsync(pacienteAna, ana, new AvaliarViagemRequest(5, null, TrechoViagem.Resgate)));
+        Assert.Equal("avaliacao.resgate_nao_feito", semResgate.Codigo);
+    }
+
+    [Fact]
+    public async Task Ida_e_resgate_pedem_avaliacao_e_cada_nota_fica_com_o_motorista_do_trecho()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (a, rotaA, ana, _) = await NaClinicaAsync(db); // a van A levou e a Ana desceu na clínica
+        var paciente = await PacienteDaSessaoAsync(db, ana);
+        await _entrega.Received(1).PedirAvaliacaoAsync(
+            paciente, Arg.Any<string>(), ana, TrechoViagem.Ida, "Motorista", Arg.Any<CancellationToken>());
+
+        // O carro B resgata e deixa em casa: pede a avaliação do motorista do resgate.
+        var (b, rotaB, _) = await OutroCarroAsync(db, ana, aBordo: 0);
+        await Resgates(db).MarcarDoTabletAsync(b.Tablet, new(rotaB, [ana]));
+        var viagem = Viagem(db);
+        await NoResgateAsync(viagem, b, rotaB, TipoEventoViagem.Embarque, ana);
+        await NoResgateAsync(viagem, b, rotaB, TipoEventoViagem.Desembarque, ana);
+        await _entrega.Received(1).PedirAvaliacaoAsync(
+            paciente, Arg.Any<string>(), ana, TrechoViagem.Resgate, Arg.Any<string?>(), Arg.Any<CancellationToken>());
+
+        var avaliacoes = Avaliacoes(db);
+        var lista = await avaliacoes.ViagensParaAvaliarAsync(paciente);
+        Assert.Equal([TrechoViagem.Resgate, TrechoViagem.Ida], lista.Select(x => x.Trecho));
+        Assert.All(lista, x => Assert.NotNull(x.Hora));
+
+        await avaliacoes.AvaliarPeloPacienteAsync(paciente, ana, new AvaliarViagemRequest(5, null, TrechoViagem.Ida));
+        await avaliacoes.AvaliarPeloPacienteAsync(paciente, ana, new AvaliarViagemRequest(3, "Demorou", TrechoViagem.Resgate));
+        await Assert.ThrowsAsync<ConflitoException>(() =>
+            avaliacoes.AvaliarPeloPacienteAsync(paciente, ana, new AvaliarViagemRequest(1, null, TrechoViagem.Resgate)));
+
+        var notas = await db.Avaliacoes.AsNoTracking().Where(x => x.SessaoId == ana).ToListAsync();
+        var ida = notas.Single(x => x.Trecho == TrechoViagem.Ida);
+        var resgate = notas.Single(x => x.Trecho == TrechoViagem.Resgate);
+        Assert.Equal((a.MotoristaId, a.Tablet.VeiculoId, rotaA), (ida.MotoristaId!.Value, ida.VeiculoId!.Value, ida.RotaId!.Value));
+        Assert.Equal((b.MotoristaId, b.Tablet.VeiculoId, rotaB), (resgate.MotoristaId!.Value, resgate.VeiculoId!.Value, resgate.RotaId!.Value));
+        Assert.Equal(TrechoViagem.Resgate, (await avaliacoes.ListarAsync()).Single(x => x.Id == resgate.Id).Trecho);
     }
 }

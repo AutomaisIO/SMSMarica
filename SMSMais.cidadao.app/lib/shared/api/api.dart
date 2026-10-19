@@ -169,10 +169,10 @@ class ApiCidadao {
   Future<List<ViagemParaAvaliar>> viagensParaAvaliar() async =>
       _lista(ViagemParaAvaliar.deJson)(await _get('/auth/paciente/viagens-para-avaliar'));
 
-  /// Uma vez por viagem, até 30 dias depois. Nota de 1 a 5.
-  Future<void> avaliarViagem(String sessaoId, int nota, String? comentario) => _dio.post<void>(
+  /// O motorista de cada trecho (ida e resgate), uma vez, até 30 dias depois. Nota de 1 a 5.
+  Future<void> avaliarViagem(String sessaoId, String trecho, int nota, String? comentario) => _dio.post<void>(
         '/auth/paciente/viagens/$sessaoId/avaliacao',
-        data: {'nota': nota, 'comentario': comentario},
+        data: {'nota': nota, 'comentario': comentario, 'trecho': trecho},
       );
 
   // ── Histórico clínico ─────────────────────────────────────────────────────────────────────

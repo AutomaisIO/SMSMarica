@@ -27,7 +27,7 @@ namespace SMSMais.Tests.Rastreamento;
 /// </summary>
 public partial class RotaTabletServiceTests
 {
-    private readonly IEntregaPerguntaResgate _entrega = Substitute.For<IEntregaPerguntaResgate>();
+    private readonly IAvisoAoPacienteTransporte _entrega = Substitute.For<IAvisoAoPacienteTransporte>();
 
     private ResgateService Resgates(SmsMaisDbContext db) =>
         new(db, _resolver, Substitute.For<IRastreamentoNotificador>(), _entrega, NullLogger<ResgateService>.Instance);
@@ -365,12 +365,12 @@ public partial class RotaTabletServiceTests
             {
                 [pacienteDaAna] = new(pacienteDaAna, "ANA SIMULADA TESTE", null, null, null, Sexo.Feminino),
             });
-        _entrega.EnviarAsync(default, default!, default).ReturnsForAnyArgs(true);
+        _entrega.PerguntarSeDisponivelAsync(default, default!, default).ReturnsForAnyArgs(true);
 
         // Ainda dentro da previsão: nada a perguntar.
         Assert.False((await resgates.DoPacienteAsync(pacienteDaAna))!.PerguntaPendente);
         await resgates.PerguntarQuemPassouDaPrevisaoAsync();
-        await _entrega.DidNotReceive().EnviarAsync(pacienteDaAna, Arg.Any<string>(), ana, Arg.Any<CancellationToken>());
+        await _entrega.DidNotReceive().PerguntarSeDisponivelAsync(pacienteDaAna, Arg.Any<string>(), ana, Arg.Any<CancellationToken>());
 
         // A central marcou o retorno para 5 minutos atrás: a previsão estourou.
         var agora = FusoBrasilia.ParaExibicao(DateTime.UtcNow);
@@ -382,7 +382,7 @@ public partial class RotaTabletServiceTests
         Assert.True((await resgates.DoPacienteAsync(pacienteDaAna))!.PerguntaPendente);
         await resgates.PerguntarQuemPassouDaPrevisaoAsync();
         await resgates.PerguntarQuemPassouDaPrevisaoAsync(); // uma vez por rodada
-        await _entrega.Received(1).EnviarAsync(pacienteDaAna, "Ana", ana, Arg.Any<CancellationToken>());
+        await _entrega.Received(1).PerguntarSeDisponivelAsync(pacienteDaAna, "Ana", ana, Arg.Any<CancellationToken>());
 
         // "Não, ainda não terminei": volta para "em atendimento", e a pergunta volta em 10 minutos.
         await resgates.ResponderPeloPacienteAsync(pacienteDaAna, ana, disponivel: false);
@@ -401,7 +401,7 @@ public partial class RotaTabletServiceTests
             .SetProperty(s => s.AindaEmAtendimentoEm, DateTime.UtcNow.AddMinutes(-11)));
         Assert.True((await resgates.DoPacienteAsync(pacienteDaAna))!.PerguntaPendente);
         await resgates.PerguntarQuemPassouDaPrevisaoAsync();
-        await _entrega.Received(2).EnviarAsync(pacienteDaAna, "Ana", ana, Arg.Any<CancellationToken>());
+        await _entrega.Received(2).PerguntarSeDisponivelAsync(pacienteDaAna, "Ana", ana, Arg.Any<CancellationToken>());
 
         // "Sim, já estou disponível": vai para o topo da lista dos motoristas e a pergunta para.
         await resgates.ResponderPeloPacienteAsync(pacienteDaAna, ana, disponivel: true);
@@ -410,7 +410,7 @@ public partial class RotaTabletServiceTests
         Assert.Equal(CanalAvisoResgate.Paciente, pronta.AvisadoPor);
         Assert.False((await resgates.DoPacienteAsync(pacienteDaAna))!.PerguntaPendente);
         await resgates.PerguntarQuemPassouDaPrevisaoAsync();
-        await _entrega.Received(2).EnviarAsync(pacienteDaAna, Arg.Any<string>(), ana, Arg.Any<CancellationToken>());
+        await _entrega.Received(2).PerguntarSeDisponivelAsync(pacienteDaAna, Arg.Any<string>(), ana, Arg.Any<CancellationToken>());
     }
 
     private static async Task<Guid> SessaoComAcompanhantesAsync(

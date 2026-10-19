@@ -185,6 +185,8 @@ class ViagemParaAvaliar {
     this.motorista,
     this.nota,
     this.comentario,
+    this.trecho = 'Ida',
+    this.hora,
   });
 
   factory ViagemParaAvaliar.deJson(Json j) => ViagemParaAvaliar(
@@ -194,6 +196,8 @@ class ViagemParaAvaliar {
         motorista: _s(j['motorista']),
         nota: _i(j['nota']),
         comentario: _s(j['comentario']),
+        trecho: _s(j['trecho']) ?? 'Ida',
+        hora: _s(j['hora']),
       );
 
   final String sessaoId;
@@ -208,6 +212,12 @@ class ViagemParaAvaliar {
   /// Nula = ainda não avaliou.
   final int? nota;
   final String? comentario;
+
+  /// `Ida` (até a unidade) ou `Resgate` (de volta para casa): cada um com o seu motorista.
+  final String trecho;
+
+  /// "HH:mm:ss": quando desceu (na unidade ou em casa).
+  final String? hora;
 }
 
 class ViagemTransporte {
