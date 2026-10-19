@@ -248,6 +248,8 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       ref.read(deslocamentoProvider.notifier).iniciarSeParado();
     } on SessionInitializationException catch (e) {
       if (vigente()) setState(() => _erro = _msgInit(e.code));
+    } on SemTransladoHoje catch (e) {
+      if (vigente()) setState(() => _erro = e.toString());
     } on Object catch (e) {
       if (vigente()) setState(() => _erro = 'Falha ao preparar navegação: $e');
     }
@@ -268,14 +270,24 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     final pendentes = _paradas.where((p) => !p.concluida).toList();
     if (pendentes.isEmpty) return;
 
+    // Parada sem ponto no mapa fica fora da rota do GPS: o motorista vai pelo
+    // endereço (o painel avisa) e marca "Cheguei" do mesmo jeito.
     final waypoints = pendentes
+        .where((p) => p.temPonto)
         .map(
           (p) => NavigationWaypoint.withLatLngTarget(
             title: p.id,
-            target: LatLng(latitude: p.latitude, longitude: p.longitude),
+            target: LatLng(latitude: p.latitude!, longitude: p.longitude!),
           ),
         )
         .toList();
+    if (waypoints.isEmpty) {
+      if (mounted) {
+        setState(() => _erro = 'As paradas que faltam não têm ponto no mapa. '
+            'Siga pelos endereços e marque "Cheguei" em cada uma.');
+      }
+      return;
+    }
 
     final status = await GoogleMapsNavigator.setDestinations(
       Destinations(
@@ -439,7 +451,16 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     if (_translado == null || !_sessaoPronta) return _telaCarregando();
 
     final proxima = _proxima;
-    final cam = proxima ?? _paradas.first;
+    // Câmera inicial na próxima parada com ponto no mapa (sem nenhuma, no
+    // centro de Maricá).
+    final comPonto = [if (proxima != null) proxima, ..._paradas]
+        .where((p) => p.temPonto);
+    final cam = comPonto.isEmpty
+        ? const LatLng(latitude: -22.9186, longitude: -42.8186)
+        : LatLng(
+            latitude: comPonto.first.latitude!,
+            longitude: comPonto.first.longitude!,
+          );
 
     return Scaffold(
       body: Stack(
@@ -453,10 +474,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
             child: GoogleMapsNavigationView(
               onViewCreated: _onViewCreated,
               initialCameraPosition: CameraPosition(
-                target: LatLng(
-                  latitude: cam.latitude,
-                  longitude: cam.longitude,
-                ),
+                target: cam,
                 zoom: 14,
               ),
             ),

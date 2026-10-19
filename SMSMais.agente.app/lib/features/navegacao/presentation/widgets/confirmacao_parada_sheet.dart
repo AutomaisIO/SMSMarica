@@ -48,18 +48,20 @@ class _ConfirmacaoParadaSheetState extends State<ConfirmacaoParadaSheet> {
 
   List<_Pessoa> _pessoasDe(PassageiroTranslado p) => [
     _Pessoa(id: p.id, papel: 'Paciente', nome: p.nome, assento: p.assento),
-    if (p.acompanhante case final a?)
+    for (var i = 0; i < p.acompanhantes.length; i++)
       _Pessoa(
-        id: p.idAcompanhante,
-        papel: 'Acompanhante',
-        nome: a.nome,
-        assento: a.assento,
+        id: p.idAcompanhante(i),
+        papel: p.acompanhantes.length > 1
+            ? 'Acompanhante ${i + 1}'
+            : 'Acompanhante',
+        nome: p.acompanhantes[i].nome,
+        assento: p.acompanhantes[i].assento,
       ),
   ];
 
   int get _total => widget.parada.passageiros.fold(
     0,
-    (n, p) => n + (p.temAcompanhante ? 2 : 1),
+    (n, p) => n + 1 + p.acompanhantes.length,
   );
 
   @override
