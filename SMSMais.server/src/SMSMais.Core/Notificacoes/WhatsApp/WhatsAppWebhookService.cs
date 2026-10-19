@@ -408,16 +408,15 @@ public sealed class WhatsAppWebhookService(
             if (erroConta is not null)
                 situacaoConta?.Parar(erroConta, Conta.OrigemSituacaoConta.Webhook, erro);
         }
-        else if (novo is StatusMensagemWhatsApp.Entregue or StatusMensagemWhatsApp.Lida)
-        {
-            // Entregou: a conta está de pé, qualquer que tenha sido o motivo da parada.
-            situacaoConta?.Liberar(Conta.OrigemSituacaoConta.Webhook);
-        }
         else if (msg.Status is StatusMensagemWhatsApp.Enviada or StatusMensagemWhatsApp.Entregue
                  && novo > msg.Status)
         {
             msg.Status = novo.Value; // promoção monotônica; Lida não regride para Entregue
         }
+
+        // Entregou ou foi lida: a conta está de pé, qualquer que tenha sido o motivo da parada.
+        if (novo is StatusMensagemWhatsApp.Entregue or StatusMensagemWhatsApp.Lida)
+            situacaoConta?.Liberar(Conta.OrigemSituacaoConta.Webhook);
 
         // Espelho na notificação de agendamento (tela de gestão + retentativa em falha de entrega).
         var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(

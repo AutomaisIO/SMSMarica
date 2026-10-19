@@ -25,6 +25,15 @@ public enum EtapaVerificacaoCadastral
     /// recebe por ele (mãe, pai, responsável, outro parente). Fica gravado no cadastro (LGPD).</summary>
     AguardandoVinculo = 6,
 
+    /// <summary>
+    /// Quem ACERTOU CPF e nascimento respondeu "Não" à confirmação do nome: antes de negar o número,
+    /// pergunta-se de novo, sem ambiguidade, se a pessoa recebe as mensagens pelo paciente. Só "Não
+    /// conheço" nega. <para>Caso de 19/10/2026: a esposa, no número do casal, acertou os dados do
+    /// marido e respondeu "Não" a "o paciente é Carlos?" — entendeu "você é o Carlos?" — e o número
+    /// foi negado para ele na hora.</para>
+    /// </summary>
+    AguardandoConfirmacaoNegacao = 8,
+
     /// <summary>Os dados não conferiram; explicamos que são do PACIENTE e perguntamos se a pessoa
     /// quer tentar de novo. "Sim" (ou já mandar os dígitos) recomeça o ciclo do zero.</summary>
     AguardandoNovaTentativa = 4,

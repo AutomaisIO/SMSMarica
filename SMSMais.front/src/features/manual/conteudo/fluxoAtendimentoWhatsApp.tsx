@@ -56,7 +56,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
   grupo: 'atendimento',
   icone: Workflow,
   publico: 'Toda a equipe que atende pelo WhatsApp — e quem precisa explicar o sistema para alguém',
-  atualizadoEm: '2026-10-09',
+  atualizadoEm: '2026-10-19',
   palavrasChave: [
     'fluxo',
     'lógica',
@@ -194,7 +194,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     {
       id: 'identificacao',
       titulo: 'A identificação, passo a passo',
-      busca: 'interrogatório chances erros reorientação recomeço tentar de novo esgotado posto cadastro sem cpf só cns nascimento incompleto',
+      busca: 'interrogatório chances erros reorientação recomeço tentar de novo esgotado posto cadastro sem cpf só cns nascimento incompleto não ao nome recebe as mensagens dele não conheço número negado engano',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -205,7 +205,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
             itens={[
               { termo: '1 · Início do CPF', descricao: 'Os 4 primeiros dígitos do CPF DO PACIENTE (não de quem digita). Mandar o CPF inteiro também vale — o sistema usa só o começo.' },
               { termo: '2 · Mês e ano de nascimento', descricao: 'Formatos tolerantes ("07/1949", "julho de 1949"). Só a data completa errada gasta chance; texto não entendido só re-orienta.' },
-              { termo: '3 · Nome', descricao: 'O sistema mostra o nome completo do candidato e pede um Sim/Não — é a trava contra homônimos de CPF parecido.' },
+              { termo: '3 · Nome', descricao: 'O sistema mostra o nome completo do candidato e pede um Sim/Não — é a trava contra homônimos de CPF parecido. Um "Não" aqui NÃO marca o número na hora: quem acertou CPF e nascimento conhece o paciente, e o "Não" costuma ser "não sou eu" (a esposa no número do casal). O robô pergunta de novo — "Você recebe as mensagens dele(a) por este WhatsApp? [Sim, recebo / Não conheço]" — e só "Não conheço" marca o número como inválido; "Sim" segue para o vínculo.' },
               { termo: '4 · Vínculo', descricao: '"Sou o paciente / Sou responsável / Outro parente" — fica gravado no cadastro: é a resposta de LGPD para "por que essa pessoa recebe o dado daquela".' },
             ]}
           />

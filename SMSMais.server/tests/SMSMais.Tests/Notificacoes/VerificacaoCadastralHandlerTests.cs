@@ -317,8 +317,10 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Negar_o_nome_registra_pendencia_de_numero_errado()
+    public async Task Negar_o_nome_pergunta_de_novo_antes_de_marcar_o_numero()
     {
+        // Quem acertou CPF e nascimento conhece o paciente: o "Não" ao nome (19/10/2026, a esposa no
+        // número do casal) não nega o número de cara — pergunta se a pessoa recebe por ele.
         await using var db = fixture.CriarDbContext();
         var c = await PrepararAsync(db);
 
@@ -326,12 +328,39 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
         await ResponderAsync(db, c, "03/1980");
         await ResponderAsync(db, c, "não");
 
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoConfirmacaoNegacao, (await EstadoAsync(db))!.Etapa);
+        Assert.False(await db.PendenciasCadastro.AsNoTracking().AnyAsync(p => p.TelefoneCanonical == _telefone));
+        await c.Whats.Received().EnviarInterativoBotoesAsync(
+            _telefone, Arg.Is<string>(t => t.Contains("recebe as mensagens")),
+            Arg.Is<IReadOnlyList<BotaoInterativoWhatsApp>>(b => b.Any(x => x.Titulo == "Não conheço")),
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>());
+
+        await ResponderAsync(db, c, "não conheço");
+
         Assert.True(await db.PendenciasCadastro.AsNoTracking()
             .AnyAsync(p => p.TelefoneCanonical == _telefone && p.Tipo == TipoPendenciaCadastro.NumeroErrado));
-
         var comunicacao = await db.ComunicacoesPaciente.AsNoTracking().FirstAsync(n => n.Id == c.Comunicacao.Id);
         // Nada liberado — e fica retida como número inválido, com o motivo explícito.
         Assert.Equal(StatusComunicacao.AguardandoCorrecaoContato, comunicacao.Status);
+    }
+
+    [Fact]
+    public async Task Negar_o_nome_e_depois_dizer_que_recebe_segue_para_o_vinculo_sem_marcar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararAsync(db);
+
+        await ResponderAsync(db, c, "0452");
+        await ResponderAsync(db, c, "03/1980");
+        await ResponderAsync(db, c, "não");
+        await ResponderAsync(db, c, "sim");
+
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoVinculo, (await EstadoAsync(db))!.Etapa);
+        Assert.False(await db.PendenciasCadastro.AsNoTracking().AnyAsync(p => p.TelefoneCanonical == _telefone));
+
+        await ResponderAsync(db, c, "sou a esposa dele");
+        var depois = await db.ComunicacoesPaciente.AsNoTracking().FirstAsync(n => n.Id == c.Comunicacao.Id);
+        Assert.Equal(StatusComunicacao.Pendente, depois.Status);
     }
 
     [Fact]
