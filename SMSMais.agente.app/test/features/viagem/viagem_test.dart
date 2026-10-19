@@ -178,6 +178,92 @@ void main() {
     });
   });
 
+  group('volta', () {
+    const joao = PassageiroTranslado(
+      id: 's2',
+      nome: 'João Simulado',
+      confirmacao: StatusConfirmacao.confirmado,
+    );
+    ParadaNavegacao volta(
+      String id,
+      TipoParada tipo,
+      List<PassageiroTranslado> quem,
+    ) => ParadaNavegacao(
+      id: id,
+      ordem: 1,
+      tipo: tipo,
+      rotulo: id,
+      endereco: 'x',
+      latitude: -22.9,
+      longitude: -42.8,
+      horarioPrevisto: null,
+      passageiros: quem,
+      volta: true,
+    );
+    final translado = TransladoNavegacao(
+      id: 'r1',
+      veiculo: 'SIM1R23',
+      paradas: [
+        volta('retorno:u1', TipoParada.coleta, const [_rita, joao]),
+        volta('casa:s1', TipoParada.destino, const [_rita]),
+        volta('casa:s2', TipoParada.destino, const [joao]),
+      ],
+    );
+
+    test('marcações da volta vão marcadas como volta', () {
+      final e = _eventos(translado.paradas.first, {'s1': true, 's2': false});
+      expect(e.map((x) => x.tipo), [
+        TipoEventoViagem.embarque,
+        TipoEventoViagem.ausencia,
+      ]);
+      expect(e.every((x) => x.volta), isTrue);
+      expect(e.first.toJson()['volta'], isTrue);
+    });
+
+    test('quem faltou na ida não é buscado; quem não estava na unidade '
+        'não é deixado em casa', () {
+      final semJoaoNaIda = translado.paradasComAndamento(
+        concluidas: const {},
+        ausentes: const {'s2'},
+      );
+      expect(semJoaoNaIda.first.passageiros.map((p) => p.id), ['s1']);
+      expect(semJoaoNaIda.last.concluida, isTrue); // casa do João dispensada
+
+      final semRitaNaVolta = translado.paradasComAndamento(
+        concluidas: const {'retorno:u1'},
+        ausentes: {idAusenteNaVolta('s1')},
+      );
+      expect(semRitaNaVolta[1].concluida, isTrue); // casa da Rita dispensada
+      expect(semRitaNaVolta[2].concluida, isFalse);
+    });
+
+    test('a rota da central marca a volta e quem não estava na unidade', () {
+      final rota = RotaDoTablet.fromJson({
+        'rotaId': 'r1',
+        'data': '2026-10-16',
+        'status': 'EmAndamento',
+        'paradas': [
+          {
+            'id': 'retorno:u1',
+            'ordem': 3,
+            'tipo': 'Coleta',
+            'trecho': 'Volta',
+            'passageiros': [
+              {
+                'sessaoId': 's1',
+                'nome': 'Rita Simulada',
+                'situacao': 'Ausente',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(rota.translado.paradas.single.volta, isTrue);
+      expect(rota.andamento.ausentes, {idAusenteNaVolta('s1')});
+    });
+  });
+
   group('andamento', () {
     test('o do tablet e o da central se somam (só da mesma rota)', () {
       const tablet = AndamentoViagem(

@@ -156,6 +156,7 @@ class ParadaNavegacao {
     this.observacoes,
     this.passageiros = const [],
     this.concluida = false,
+    this.volta = false,
   });
 
   final String id;
@@ -187,6 +188,11 @@ class ParadaNavegacao {
 
   final bool concluida;
 
+  /// Parada da volta: buscar na unidade (coleta) ou deixar em casa (destino).
+  /// Fora do município a van espera e traz de volta quem levou; em Maricá, é
+  /// a volta de quem a central puxou para a rota.
+  final bool volta;
+
   ParadaNavegacao copyWith({
     bool? concluida,
     List<PassageiroTranslado>? passageiros,
@@ -203,8 +209,13 @@ class ParadaNavegacao {
         observacoes: observacoes,
         passageiros: passageiros ?? this.passageiros,
         concluida: concluida ?? this.concluida,
+        volta: volta,
       );
 }
+
+/// Id de quem não estava na unidade quando o carro saiu (volta): fica fora
+/// da entrega em casa, sem mexer no que aconteceu na ida.
+String idAusenteNaVolta(String pacienteId) => '$pacienteId:volta';
 
 /// O translado inteiro = uma rota com paradas, lançado em uma só sessão do SDK.
 class TransladoNavegacao {
@@ -231,17 +242,38 @@ class TransladoNavegacao {
   /// pessoa (paciente ou [PassageiroTranslado.idAcompanhante]) que faltaram
   /// na coleta. Paciente ausente sai do destino junto com os acompanhantes.
   /// Destino sem ninguém para desembarcar fica **dispensado** (conta como
-  /// concluído e sai da rota).
+  /// concluído e sai da rota). Na volta, quem faltou na ida não é buscado na
+  /// unidade, e quem não estava lá ([idAusenteNaVolta]) não é deixado em casa.
   List<ParadaNavegacao> paradasComAndamento({
     required Set<String> concluidas,
     required Set<String> ausentes,
   }) => [
         for (final p in paradas)
-          if (p.tipo == TipoParada.destino)
+          if (p.volta)
+            _voltaSemAusentes(p, concluidas, ausentes)
+          else if (p.tipo == TipoParada.destino)
             _destinoSemAusentes(p, concluidas, ausentes)
           else
             p.copyWith(concluida: concluidas.contains(p.id)),
       ];
+
+  static ParadaNavegacao _voltaSemAusentes(
+    ParadaNavegacao parada,
+    Set<String> concluidas,
+    Set<String> ausentes,
+  ) {
+    final vao = [
+      for (final p in parada.passageiros)
+        if (!ausentes.contains(p.id) &&
+            (parada.tipo == TipoParada.coleta ||
+                !ausentes.contains(idAusenteNaVolta(p.id))))
+          p,
+    ];
+    return parada.copyWith(
+      passageiros: vao,
+      concluida: concluidas.contains(parada.id) || vao.isEmpty,
+    );
+  }
 
   static ParadaNavegacao _destinoSemAusentes(
     ParadaNavegacao parada,

@@ -131,6 +131,11 @@ final rotaDoDiaProvider = FutureProvider<List<Parada>>((ref) async {
         endereco: p.endereco,
         horarioPrevisto: p.horarioPrevisto,
         status: p.concluida ? StatusParada.concluida : StatusParada.pendente,
+        etiqueta: !p.volta
+            ? null
+            : p.tipo == TipoParada.destino
+            ? 'Volta · deixar em casa'
+            : 'Volta · buscar na unidade',
       ),
   ];
 });
