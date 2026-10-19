@@ -46,7 +46,7 @@ class EventoViagemPendente {
     this.latitude,
     this.longitude,
     this.precisaoM,
-    this.volta = false,
+    this.resgate = false,
   });
 
   factory EventoViagemPendente.fromJson(Map<String, dynamic> j) =>
@@ -63,7 +63,8 @@ class EventoViagemPendente {
         latitude: (j['latitude'] as num?)?.toDouble(),
         longitude: (j['longitude'] as num?)?.toDouble(),
         precisaoM: (j['precisaoM'] as num?)?.toDouble(),
-        volta: j['volta'] as bool? ?? false,
+        // `volta` é o nome antigo (fila gravada antes da troca para resgate).
+        resgate: j['resgate'] as bool? ?? j['volta'] as bool? ?? false,
       );
 
   final String idLocal;
@@ -85,8 +86,8 @@ class EventoViagemPendente {
   final double? longitude;
   final double? precisaoM;
 
-  /// Marcação da volta (embarque na unidade, chegada em casa).
-  final bool volta;
+  /// Marcação do resgate (embarque na unidade, chegada em casa).
+  final bool resgate;
 
   Map<String, dynamic> toJson() => {
     'idLocal': idLocal,
@@ -101,7 +102,7 @@ class EventoViagemPendente {
     'latitude': latitude,
     'longitude': longitude,
     'precisaoM': precisaoM,
-    'volta': volta,
+    'resgate': resgate,
   };
 }
 
@@ -207,7 +208,7 @@ List<EventoViagemPendente> eventosDaParada({
       latitude: latitude,
       longitude: longitude,
       precisaoM: precisaoM,
-      volta: parada.volta,
+      resgate: parada.resgate,
     );
   }
 

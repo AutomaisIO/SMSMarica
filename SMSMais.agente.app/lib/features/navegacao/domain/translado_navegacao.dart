@@ -156,7 +156,8 @@ class ParadaNavegacao {
     this.observacoes,
     this.passageiros = const [],
     this.concluida = false,
-    this.volta = false,
+    this.resgate = false,
+    this.lote,
   });
 
   final String id;
@@ -188,10 +189,14 @@ class ParadaNavegacao {
 
   final bool concluida;
 
-  /// Parada da volta: buscar na unidade (coleta) ou deixar em casa (destino).
-  /// Fora do município a van espera e traz de volta quem levou; em Maricá, é
-  /// a volta de quem a central puxou para a rota.
-  final bool volta;
+  /// Parada do resgate: buscar na unidade (coleta) ou deixar em casa
+  /// (destino). Só existe para quem o motorista ou a central marcaram para
+  /// este carro buscar — levado por ele ou não.
+  final bool resgate;
+
+  /// No resgate, a marcação a que a parada pertence: a busca e as entregas em
+  /// casa da mesma marcação têm o mesmo lote.
+  final int? lote;
 
   ParadaNavegacao copyWith({
     bool? concluida,
@@ -209,13 +214,16 @@ class ParadaNavegacao {
         observacoes: observacoes,
         passageiros: passageiros ?? this.passageiros,
         concluida: concluida ?? this.concluida,
-        volta: volta,
+        resgate: resgate,
+        lote: lote,
       );
 }
 
-/// Id de quem não estava na unidade quando o carro saiu (volta): fica fora
-/// da entrega em casa, sem mexer no que aconteceu na ida.
-String idAusenteNaVolta(String pacienteId) => '$pacienteId:volta';
+/// Id de quem não estava no local do resgate ([idPessoa] = paciente ou
+/// [PassageiroTranslado.idAcompanhante]): fica fora da entrega em casa
+/// daquele [lote], sem mexer no que aconteceu na ida.
+String idAusenteNoResgate(String idPessoa, int? lote) =>
+    '$idPessoa:resgate:${lote ?? 0}';
 
 /// O translado inteiro = uma rota com paradas, lançado em uma só sessão do SDK.
 class TransladoNavegacao {
@@ -242,33 +250,38 @@ class TransladoNavegacao {
   /// pessoa (paciente ou [PassageiroTranslado.idAcompanhante]) que faltaram
   /// na coleta. Paciente ausente sai do destino junto com os acompanhantes.
   /// Destino sem ninguém para desembarcar fica **dispensado** (conta como
-  /// concluído e sai da rota). Na volta, quem faltou na ida não é buscado na
-  /// unidade, e quem não estava lá ([idAusenteNaVolta]) não é deixado em casa.
+  /// concluído e sai da rota). No resgate, quem não estava no local
+  /// ([idAusenteNoResgate]) não é deixado em casa.
   List<ParadaNavegacao> paradasComAndamento({
     required Set<String> concluidas,
     required Set<String> ausentes,
   }) => [
         for (final p in paradas)
-          if (p.volta)
-            _voltaSemAusentes(p, concluidas, ausentes)
+          if (p.resgate)
+            _resgateSemAusentes(p, concluidas, ausentes)
           else if (p.tipo == TipoParada.destino)
             _destinoSemAusentes(p, concluidas, ausentes)
           else
             p.copyWith(concluida: concluidas.contains(p.id)),
       ];
 
-  static ParadaNavegacao _voltaSemAusentes(
+  static ParadaNavegacao _resgateSemAusentes(
     ParadaNavegacao parada,
     Set<String> concluidas,
     Set<String> ausentes,
   ) {
-    final vao = [
-      for (final p in parada.passageiros)
-        if (!ausentes.contains(p.id) &&
-            (parada.tipo == TipoParada.coleta ||
-                !ausentes.contains(idAusenteNaVolta(p.id))))
-          p,
-    ];
+    // Quem faltou na busca deste lote, sem o sufixo: id de pessoa.
+    final sufixo = idAusenteNoResgate('', parada.lote);
+    final faltou = {
+      for (final a in ausentes)
+        if (a.endsWith(sufixo)) a.substring(0, a.length - sufixo.length),
+    };
+    final vao = parada.tipo == TipoParada.coleta
+        ? parada.passageiros
+        : [
+            for (final p in parada.passageiros)
+              if (!faltou.contains(p.id)) p.semAusentes(faltou),
+          ];
     return parada.copyWith(
       passageiros: vao,
       concluida: concluidas.contains(parada.id) || vao.isEmpty,
