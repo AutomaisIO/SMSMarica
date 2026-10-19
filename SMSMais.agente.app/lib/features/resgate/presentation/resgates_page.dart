@@ -119,6 +119,12 @@ class _ResgatesPageState extends ConsumerState<ResgatesPage> {
     }, feito: 'Marcado. A busca e a entrega em casa entram na navegação.');
   }
 
+  /// Os pacientes escolhidos (ainda na lista).
+  List<ResgateDisponivel> _escolhidosNa(ResgatesDaRota? dados) => [
+    for (final d in dados?.disponiveis ?? const <ResgateDisponivel>[])
+      if (_escolhidos.contains(d.sessaoId)) d,
+  ];
+
   static String _mensagem(Object e) => e is RecusaDaCentral
       ? e.mensagem
       : 'Sem conexão com a central. A lista de resgate precisa de rede: '
@@ -168,6 +174,19 @@ class _ResgatesPageState extends ConsumerState<ResgatesPage> {
       return const Center(child: CircularProgressIndicator());
     }
     final itens = dados?.disponiveis ?? const <ResgateDisponivel>[];
+    final escolhidos = _escolhidosNa(dados);
+    final carro = dados?.carro;
+    // Quem não é escolhido só fica disponível se couber junto com os já
+    // escolhidos (cadeira, maca, isolamento e acompanhantes).
+    String? motivo(ResgateDisponivel p) {
+      if (_escolhidos.contains(p.sessaoId)) return null;
+      if (p.cabe == false) return p.motivoNaoCabe ?? 'Não cabe agora.';
+      if (carro == null || carro.levando([...escolhidos, p]) != null) {
+        return null;
+      }
+      return carro.motivoNaoCabe(p, escolhidos);
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -207,6 +226,7 @@ class _ResgatesPageState extends ConsumerState<ResgatesPage> {
           _CartaoDisponivel(
             paciente: p,
             escolhido: _escolhidos.contains(p.sessaoId),
+            naoCabe: motivo(p),
             ocupado: _enviando,
             aoEscolher: (sim) => setState(() {
               if (sim) {
@@ -227,10 +247,15 @@ class _ResgatesPageState extends ConsumerState<ResgatesPage> {
   }
 
   Widget _painel(ResgatesDaRota? dados) {
-    final livres = dados?.lugaresLivres;
-    final cadeirante = dados?.lugaresCadeiranteLivres ?? 0;
+    // Os lugares livres caem a cada paciente escolhido (ele e os
+    // acompanhantes).
+    final escolhidos = _escolhidosNa(dados);
+    final sobra = dados?.carro?.levando(escolhidos);
+    final livres = sobra?.livres ?? dados?.lugaresLivres;
+    final cadeirante = sobra?.cadeirante ?? dados?.lugaresCadeiranteLivres ?? 0;
+    final pessoas = escolhidos.fold(0, (n, p) => n + 1 + p.acompanhantes);
     final marcados = dados?.marcados ?? const <ResgateMarcado>[];
-    final n = _escolhidos.length;
+    final n = escolhidos.length;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -248,6 +273,12 @@ class _ResgatesPageState extends ConsumerState<ResgatesPage> {
             Text(
               cadeirante == 1 ? '1 de cadeirante' : '$cadeirante de cadeirante',
               style: const TextStyle(fontSize: 13),
+            ),
+          if (pessoas > 0)
+            Text(
+              'Escolhidos: ${pessoas == 1 ? '1 pessoa' : '$pessoas pessoas'}'
+              ' (com os acompanhantes)',
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
             ),
           const SizedBox(height: 16),
           const Text(
@@ -327,10 +358,14 @@ class _CartaoDisponivel extends StatelessWidget {
     required this.ocupado,
     required this.aoEscolher,
     required this.aoAvisarNoLocal,
+    this.naoCabe,
   });
 
   final ResgateDisponivel paciente;
   final bool escolhido;
+
+  /// Por que não dá para escolher agora (nulo = cabe).
+  final String? naoCabe;
   final bool ocupado;
   final ValueChanged<bool> aoEscolher;
   final VoidCallback aoAvisarNoLocal;
@@ -338,7 +373,8 @@ class _CartaoDisponivel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = paciente;
-    final naoCabe = p.cabe == false;
+    final motivo = this.naoCabe;
+    final naoCabe = motivo != null;
     final (fundo, texto) = switch (p.disponibilidade) {
       DisponibilidadeResgate.noLocal => (
         Colors.green.shade50,
@@ -375,45 +411,63 @@ class _CartaoDisponivel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Paciente · unidade, e o tempo aguardando em destaque.
-                    Row(
+                    // Paciente · unidade · tempo aguardando, em sequência;
+                    // quebra para a linha de baixo quando não cabe.
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
-                        Flexible(
-                          child: Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: p.pacienteNome,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 17,
-                                  ),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: p.pacienteNome,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 17,
                                 ),
-                                const TextSpan(text: '  ·  '),
-                                TextSpan(
-                                  text: p.unidadeNome,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                  ),
+                              ),
+                              const TextSpan(text: '  ·  '),
+                              TextSpan(
+                                text: p.unidadeNome,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: fundo,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            p.textoDisponibilidade,
+                            style: TextStyle(
+                              color: texto,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
                             ),
                           ),
                         ),
-                        if (p.cadeirante) ...[
-                          const SizedBox(width: 6),
+                        if (p.cadeirante)
                           const Icon(Icons.accessible, size: 20),
-                        ],
-                        if (p.acompanhantes > 0) ...[
-                          const SizedBox(width: 6),
-                          const Icon(Icons.people, size: 18),
-                          Text(' +${p.acompanhantes}'),
-                        ],
-                        if (p.isolamento) ...[
-                          const SizedBox(width: 6),
-                          const Icon(Icons.shield, size: 18),
-                        ],
+                        if (p.acompanhantes > 0)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.people, size: 18),
+                              Text(' +${p.acompanhantes}'),
+                            ],
+                          ),
+                        if (p.isolamento) const Icon(Icons.shield, size: 18),
                       ],
                     ),
                     if (linha.isNotEmpty) ...[
@@ -448,11 +502,11 @@ class _CartaoDisponivel extends StatelessWidget {
                           ),
                         ),
                       ),
-                    if (naoCabe && p.motivoNaoCabe != null)
+                    if (motivo != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          p.motivoNaoCabe!,
+                          motivo,
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.red.shade800,
@@ -463,30 +517,19 @@ class _CartaoDisponivel extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: fundo,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  p.textoDisponibilidade,
-                  style: TextStyle(
-                    color: texto,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
               if (p.disponibilidade != DisponibilidadeResgate.noLocal) ...[
                 const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: ocupado ? null : aoAvisarNoLocal,
-                  child: const Text('Está aqui no local'),
+                // Largura fixa: o tema dá aos botões largura infinita.
+                SizedBox(
+                  width: 170,
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: ocupado ? null : aoAvisarNoLocal,
+                    child: const Text(
+                      'Está aqui no local',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
               ],
             ],

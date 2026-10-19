@@ -42,6 +42,7 @@ class ResgateDisponivel {
     this.foraDoMunicipio = false,
     this.acompanhantes = 0,
     this.cadeirante = false,
+    this.maca = false,
     this.isolamento = false,
     this.disponivelAs,
     this.disponivelEmMinutos,
@@ -65,6 +66,7 @@ class ResgateDisponivel {
         foraDoMunicipio: j['foraDoMunicipio'] as bool? ?? false,
         acompanhantes: (j['acompanhantes'] as num?)?.toInt() ?? 0,
         cadeirante: j['mobilidade'] == 'CadeiranteVeiculoAdaptado',
+        maca: j['mobilidade'] == 'Maca',
         isolamento: j['isolamento'] as bool? ?? false,
         disponibilidade: DisponibilidadeResgate.doServidor(
           j['disponibilidade'] as String?,
@@ -89,6 +91,7 @@ class ResgateDisponivel {
   final bool foraDoMunicipio;
   final int acompanhantes;
   final bool cadeirante;
+  final bool maca;
   final bool isolamento;
   final DisponibilidadeResgate disponibilidade;
 
@@ -165,6 +168,7 @@ class ResgatesDaRota {
     this.marcados = const [],
     this.lugaresLivres,
     this.lugaresCadeiranteLivres,
+    this.carro,
   });
 
   factory ResgatesDaRota.fromJson(Map<String, dynamic> j) => ResgatesDaRota(
@@ -178,12 +182,142 @@ class ResgatesDaRota {
     ],
     lugaresLivres: (j['lugaresLivres'] as num?)?.toInt(),
     lugaresCadeiranteLivres: (j['lugaresCadeiranteLivres'] as num?)?.toInt(),
+    carro: j['carro'] is Map<String, dynamic>
+        ? CarroAgora.fromJson(j['carro'] as Map<String, dynamic>)
+        : null,
   );
 
   final List<ResgateDisponivel> disponiveis;
   final List<ResgateMarcado> marcados;
   final int? lugaresLivres;
   final int? lugaresCadeiranteLivres;
+
+  /// O carro agora, para refazer a conta a cada paciente escolhido.
+  final CarroAgora? carro;
+}
+
+/// Lugares livres do carro por tipo e quem já está nele. A conta é a mesma
+/// da central (`AcomodacaoNoVeiculo`): cadeirante só em assento de
+/// cadeirante; maca só em ambulância, uma por vez; isolamento não divide o
+/// carro; cada acompanhante leva um lugar. A central confere de novo ao
+/// marcar.
+class CarroAgora {
+  const CarroAgora({
+    this.passageiro = 0,
+    this.acompanhante = 0,
+    this.cadeirante = 0,
+    this.ambulancia = false,
+    this.pacientesABordo = 0,
+    this.isolamentoABordo = false,
+    this.macaABordo = false,
+  });
+
+  factory CarroAgora.fromJson(Map<String, dynamic> j) => CarroAgora(
+    passageiro: (j['passageiro'] as num?)?.toInt() ?? 0,
+    acompanhante: (j['acompanhante'] as num?)?.toInt() ?? 0,
+    cadeirante: (j['cadeirante'] as num?)?.toInt() ?? 0,
+    ambulancia: j['ambulancia'] as bool? ?? false,
+    pacientesABordo: (j['pacientesABordo'] as num?)?.toInt() ?? 0,
+    isolamentoABordo: j['isolamentoABordo'] as bool? ?? false,
+    macaABordo: j['macaABordo'] as bool? ?? false,
+  );
+
+  final int passageiro;
+  final int acompanhante;
+  final int cadeirante;
+  final bool ambulancia;
+  final int pacientesABordo;
+  final bool isolamentoABordo;
+  final bool macaABordo;
+
+  int get livres => passageiro + acompanhante + cadeirante;
+
+  /// O que sobra depois de levar [quem] (o paciente e os acompanhantes de
+  /// cada um); nulo quando não cabem todos juntos.
+  CarroAgora? levando(List<ResgateDisponivel> quem) {
+    if (pacientesABordo + quem.length > 1 &&
+        (isolamentoABordo || quem.any((q) => q.isolamento))) {
+      return null;
+    }
+    final macas = (macaABordo ? 1 : 0) + quem.where((q) => q.maca).length;
+    if (macas > (ambulancia ? 1 : 0)) return null;
+
+    var cad = cadeirante;
+    var pas = passageiro;
+    var aco = acompanhante;
+    // Primeiro quem tem lugar certo (cadeira, maca); o banco comum fica para
+    // os outros. Acompanhante: o de acompanhante e, sem ele, o de passageiro.
+    for (final _ in quem.where((q) => q.cadeirante)) {
+      if (cad == 0) return null;
+      cad--;
+    }
+    for (final _ in quem.where((q) => q.maca)) {
+      if (cad > 0) {
+        cad--;
+      } else if (pas > 0) {
+        pas--;
+      } else {
+        return null;
+      }
+    }
+    for (final _ in quem.where((q) => !q.cadeirante && !q.maca)) {
+      if (pas > 0) {
+        pas--;
+      } else if (aco > 0) {
+        aco--;
+      } else {
+        return null;
+      }
+    }
+    for (var i = 0; i < quem.fold(0, (n, q) => n + q.acompanhantes); i++) {
+      if (aco > 0) {
+        aco--;
+      } else if (pas > 0) {
+        pas--;
+      } else {
+        return null;
+      }
+    }
+    return CarroAgora(
+      passageiro: pas,
+      acompanhante: aco,
+      cadeirante: cad,
+      ambulancia: ambulancia,
+      pacientesABordo: pacientesABordo + quem.length,
+      isolamentoABordo: isolamentoABordo || quem.any((q) => q.isolamento),
+      macaABordo: macaABordo || quem.any((q) => q.maca),
+    );
+  }
+
+  /// Por que [p] não cabe junto com quem já foi escolhido ([escolhidos]).
+  String motivoNaoCabe(
+    ResgateDisponivel p,
+    List<ResgateDisponivel> escolhidos,
+  ) {
+    final sobra = levando(escolhidos) ?? this;
+    if (sobra.isolamentoABordo) {
+      return 'Há um paciente em isolamento no carro (ou escolhido): ninguém '
+          'mais embarca com ele.';
+    }
+    if (p.isolamento && sobra.pacientesABordo > 0) {
+      return 'Paciente em isolamento só viaja sozinho (com os acompanhantes '
+          'dele).';
+    }
+    if (p.maca) {
+      return ambulancia
+          ? 'A ambulância já leva um paciente de maca.'
+          : 'Paciente de maca só vai de ambulância.';
+    }
+    if (p.cadeirante && sobra.cadeirante == 0) {
+      return 'Não sobra assento de cadeirante neste carro.';
+    }
+    final pessoas = 1 + p.acompanhantes;
+    final livres = sobra.livres;
+    return livres == 0
+        ? 'O carro fica cheio com quem já foi escolhido.'
+        : 'Não cabe: ${pessoas == 1 ? '1 pessoa' : '$pessoas pessoas'} para '
+              '${livres == 1 ? '1 lugar livre' : '$livres lugares livres'}.';
+  }
 }
 
 /// "25 min", "1 h 05".

@@ -135,15 +135,23 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
                 child: paradas.isEmpty
                     ? ListView(
                         padding: const EdgeInsets.all(32),
-                        children: const [
-                          Icon(Icons.event_busy, size: 48, color: Colors.grey),
-                          SizedBox(height: 12),
+                        children: [
+                          const Icon(
+                            Icons.event_busy,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 12),
                           Text(
-                            'Nenhum translado hoje para este veículo. '
-                            'Puxe a tela para baixo para atualizar ou fale '
-                            'com a central.',
+                            rotaAberta
+                                ? 'A rota de hoje ainda não tem paradas. '
+                                      'Marque quem este carro vai buscar em '
+                                      '“Pacientes disponíveis para resgate”.'
+                                : 'Nenhum translado hoje para este veículo. '
+                                      'Puxe a tela para baixo para atualizar '
+                                      'ou fale com a central.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16),
+                            style: const TextStyle(fontSize: 16),
                           ),
                         ],
                       )

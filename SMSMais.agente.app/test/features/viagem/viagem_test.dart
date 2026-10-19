@@ -282,6 +282,71 @@ void main() {
     });
   });
 
+  group('lugares ao escolher', () {
+    ResgateDisponivel paciente(
+      String id, {
+      bool cadeirante = false,
+      bool maca = false,
+      bool isolamento = false,
+      int acompanhantes = 0,
+    }) => ResgateDisponivel(
+      sessaoId: id,
+      pacienteNome: id,
+      unidadeNome: 'Clínica',
+      disponibilidade: DisponibilidadeResgate.noLocal,
+      cadeirante: cadeirante,
+      maca: maca,
+      isolamento: isolamento,
+      acompanhantes: acompanhantes,
+    );
+    // Van fictícia: 4 bancos de passageiro, 1 de acompanhante, 1 de cadeirante.
+    const van = CarroAgora(passageiro: 4, acompanhante: 1, cadeirante: 1);
+
+    test('cada paciente escolhido leva o lugar dele e o dos acompanhantes', () {
+      final ana = paciente('ana', cadeirante: true, acompanhantes: 2);
+      final sobra = van.levando([ana])!;
+      expect(van.livres, 6);
+      expect(sobra.livres, 3); // Ana na cadeira + 2 acompanhantes
+      expect(sobra.cadeirante, 0);
+    });
+
+    test('cadeirante só com assento de cadeirante sobrando', () {
+      final ana = paciente('ana', cadeirante: true);
+      final beto = paciente('beto', cadeirante: true);
+      expect(van.levando([ana]), isNotNull);
+      expect(van.levando([ana, beto]), isNull);
+      expect(
+        van.motivoNaoCabe(beto, [ana]),
+        'Não sobra assento de cadeirante neste carro.',
+      );
+    });
+
+    test('isolamento não divide o carro e maca só em ambulância', () {
+      final iso = paciente('iso', isolamento: true, acompanhantes: 1);
+      final outro = paciente('outro');
+      expect(van.levando([iso]), isNotNull);
+      expect(van.levando([iso, outro]), isNull);
+      expect(van.levando([paciente('maca', maca: true)]), isNull);
+      const ambulancia = CarroAgora(passageiro: 2, ambulancia: true);
+      expect(ambulancia.levando([paciente('maca', maca: true)]), isNotNull);
+    });
+
+    test('mais gente do que lugar não cabe', () {
+      final grupo = [
+        paciente('a', acompanhantes: 1),
+        paciente('b', acompanhantes: 1),
+        paciente('c'),
+      ];
+      expect(van.levando(grupo)!.livres, 1); // 5 pessoas em 6 lugares
+      final d = paciente('d', acompanhantes: 1);
+      expect(van.levando([...grupo, d]), isNull);
+      expect(
+        van.motivoNaoCabe(d, grupo),
+        'Não cabe: 2 pessoas para 1 lugar livre.',
+      );
+    });
+  });
+
   group('lista de resgate', () {
     test('lê a lista da central e diz a disponibilidade como o painel', () {
       final r = ResgatesDaRota.fromJson({
