@@ -185,6 +185,7 @@ public static class ReguaReforcoConfirmacao
         var etapaDoMeio = estado.Etapa is EtapaVerificacaoCadastral.AguardandoCpf
             or EtapaVerificacaoCadastral.AguardandoNascimento
             or EtapaVerificacaoCadastral.AguardandoNome
+            or EtapaVerificacaoCadastral.AguardandoConfirmacaoNegacao
             or EtapaVerificacaoCadastral.AguardandoVinculo
             or EtapaVerificacaoCadastral.AguardandoNovaTentativa;
         var parado = (estado.AtualizadoEm ?? estado.CriadoEm) <= agoraUtc.AddHours(-HorasDialogoParado);
