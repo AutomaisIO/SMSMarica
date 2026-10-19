@@ -16,6 +16,7 @@ import 'package:agente/shared/auth/sessao_controller.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
 import 'package:agente/shared/plataforma/canal_dispositivo.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
@@ -68,6 +69,10 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   /// Não cancela a espera — o motorista pode estar lendo a janela.
   Timer? _termosTimer;
   bool _termosDemorando = false;
+
+  /// Calculando a rota há muito tempo sem posição: avisa que falta o GPS.
+  Timer? _gpsTimer;
+  static const _prazoGps = Duration(seconds: 20);
   static const _prazoTermos = Duration(seconds: 20);
 
   /// Tempo que o painel do passageiro fica visível antes de se auto-ocultar.
@@ -87,6 +92,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   void dispose() {
     _autoOcultarTimer?.cancel();
     _termosTimer?.cancel();
+    _gpsTimer?.cancel();
     _arrivalSub?.cancel();
     unawaited(_encerrarSessao());
     super.dispose();
@@ -266,7 +272,17 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
       // 4) Lança a rota única (todas as paradas como waypoints) e guia.
       setState(() => _status = 'Calculando a rota…');
+      await _posicaoDeTesteSemGps();
+      _gpsTimer?.cancel();
+      _gpsTimer = Timer(_prazoGps, () {
+        final semGps = ref.read(gpsAoVivoProvider) == null;
+        if (vigente() && !_sessaoPronta && semGps) {
+          setState(() => _status = 'Aguardando o sinal de GPS para calcular a '
+              'rota. Em lugar fechado ele demora: vá para um lugar aberto.');
+        }
+      });
       await _definirRotaEGuide();
+      _gpsTimer?.cancel();
 
       if (!vigente()) return;
       setState(() => _sessaoPronta = true);
@@ -291,6 +307,24 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
           'O Google recusou a chave do mapa para este app. Avise o suporte '
               '(pacote ou assinatura sem autorização no Google Cloud).',
       };
+
+  /// Só nos builds de teste: sem sinal de GPS (tablet parado, dentro de casa)
+  /// o Google espera a posição para sempre e a rota não sai. Põe o carro
+  /// perto da primeira parada, para dar para testar e usar o "Simular".
+  Future<void> _posicaoDeTesteSemGps() async {
+    if (kReleaseMode || ref.read(gpsAoVivoProvider) != null) return;
+    final primeira =
+        _paradas.where((p) => !p.concluida && p.temPonto).firstOrNull;
+    if (primeira == null) return;
+    try {
+      await GoogleMapsNavigator.simulator.setUserLocation(
+        LatLng(
+          latitude: primeira.latitude! + 0.01,
+          longitude: primeira.longitude!,
+        ),
+      );
+    } on Object catch (_) {}
+  }
 
   Future<void> _definirRotaEGuide() async {
     final pendentes = _paradas.where((p) => !p.concluida).toList();

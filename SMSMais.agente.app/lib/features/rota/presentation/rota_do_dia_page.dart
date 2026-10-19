@@ -194,6 +194,16 @@ class _ParadaCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (parada.etiqueta != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                parada.etiqueta!,
+                style: const TextStyle(
+                  color: MaricaTheme.vermelho,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             Text(parada.endereco),
             if (hora != null) ...[
