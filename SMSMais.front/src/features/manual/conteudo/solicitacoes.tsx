@@ -25,8 +25,11 @@ export const artigoSolicitacoes: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/solicitacoes',
   publico: 'Recepção das unidades e quem acompanha os agendamentos',
-  atualizadoEm: '2026-10-16',
+  atualizadoEm: '2026-10-19',
   palavrasChave: [
+    'MAPA',
+    'Holter',
+    'métodos gráficos',
     'diagnóstico inicial',
     'CID',
     'CID-10',
@@ -75,7 +78,7 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'para-que-serve',
       titulo: 'Para que serve',
-      busca: 'lista única exames de imagem consultas laboratório cirurgia regulado SISREG uma tela só',
+      busca: 'lista única exames de imagem consultas laboratório cirurgia regulado SISREG uma tela só métodos gráficos MAPA Holter ECG worklist aparelho',
       conteudo: (
         <>
           <P>
@@ -89,10 +92,13 @@ export const artigoSolicitacoes: Artigo = {
             <BotaoRef>Nova solicitação</BotaoRef>, que cria um pedido de exame de imagem à mão — e só
             aparece para quem tem essa permissão específica.
           </P>
-          <Callout tipo="regra" titulo="O exame de imagem tem mais coisas que o resto">
-            Só o exame de imagem vai para o aparelho (worklist), volta do PACS e ganha laudo. Por
-            isso a linha e o detalhe dele têm botões que a consulta não tem. O resto da tela — busca,
-            situação, chegada, cancelamento, mensagens ao paciente — é igual para todos.
+          <Callout tipo="regra" titulo="O exame tem mais coisas que o resto">
+            Só o que vira <strong>exame</strong> vai para o aparelho (worklist), volta do PACS e ganha
+            laudo. Vira exame todo exame de imagem e, na unidade que tem aparelho para eles, os métodos
+            gráficos configurados no escopo dela — MAPA, Holter e ECG no CDT. Por isso a linha e o
+            detalhe do exame têm botões que a consulta não tem, e a chegada pede CPF, contato e sala. O
+            resto da tela — busca, situação, chegada, cancelamento, mensagens ao paciente — é igual
+            para todos.
           </Callout>
         </>
       ),

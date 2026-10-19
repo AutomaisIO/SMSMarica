@@ -358,7 +358,7 @@ public sealed class ImportacaoSisregService(
         }
         else
         {
-            passos.Add($"Categoria {categoria} (SIGTAP {sig}) — importa como solicitação, sem satélite de execução.");
+            passos.Add($"Categoria {categoria} (SIGTAP {sig}) — importa como solicitação.");
         }
 
         // 3. Paciente. PRIMEIRO tenta a NOSSA base por CNS — o CADSUS/SISREG tem limite de
@@ -554,11 +554,22 @@ public sealed class ImportacaoSisregService(
                     : $"Exame adicionado ao escopo de {exec.Nome} — envio à worklist DESLIGADO: a unidade não tem aparelho da modalidade.");
         }
 
+        // 4c. Não é imagem, mas a unidade executa este procedimento com aparelho que consulta a
+        //     worklist (MAPA, Holter e ECG do CDT — gráfico funcional no SIGTAP): ganha exame também.
+        //     A régua é o escopo já configurado; nada é criado (ver ISateliteImagemSisreg).
+        if (categoria != CategoriaSolicitacao.Imagem
+            && await sateliteImagem.TipoComWorklistAsync(nomeProcedimento, unidadeExecId, ct) is { } tipoComWorklist)
+        {
+            tipoExameId = tipoComWorklist;
+            passos.Add($"\"{nomeProcedimento}\" está no escopo de {exec.Nome} com worklist ligada — ganha exame.");
+        }
+
         var (unidadeSolicId, solicCriada) = await ResolverOuCriarUnidadeAsync(m.CnesUnidadeSolicitante, m.NomeUnidadeSolicitante, ct);
         if (solicCriada) passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante}{CnesSufixo(m.CnesUnidadeSolicitante)}.");
         else if (unidadeSolicId is not null) passos.Add("Unidade solicitante já cadastrada.");
 
-        // 5. Espinha de regulação (sempre) + satélite de execução SÓ para imagem. Ver ADR-0021.
+        // 5. Espinha de regulação (sempre) + satélite de execução para imagem e para o que a unidade
+        //    executa com worklist (4c). Ver ADR-0021.
         var agora = DateTime.UtcNow;
         var solic = new Solicitacao
         {
@@ -606,7 +617,7 @@ public sealed class ImportacaoSisregService(
         // AccessionNumber/StudyUID são conceitos DICOM — só existem no satélite de imagem.
         Guid idPublico = solic.Id;
         string? accession = null;
-        if (categoria == CategoriaSolicitacao.Imagem)
+        if (categoria == CategoriaSolicitacao.Imagem || tipoExameId is not null)
         {
             accession = await geradorIds.ProximoAccessionAsync(ct);
             var exame = new ExameImagem

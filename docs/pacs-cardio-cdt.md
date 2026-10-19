@@ -2,10 +2,14 @@
 
 > **Para o técnico da Cardios / da unidade.** Parâmetros para o **CardioNet Client DICOM** do CDT
 > puxar a **lista de trabalho (worklist)** da plataforma SMSMais: os exames de **Holter 24 horas** e
-> **MAPA** que o SISREG agenda para o CDT aparecem na tela "Criar novo exame → fonte DICOM →
+> **eletrocardiograma** que o SISREG agenda para o CDT aparecem na tela "Criar novo exame → fonte DICOM →
 > Procurar...", já com nome, data de nascimento, sexo e nº do pedido.
 > AE de worklist **`WORK-CARDIO-CDT`** (label `CARDIO-CDT`) criado e validado no servidor em
 > **2026-10-16** — `/aets`, `/webapps`, `mwlitems` 204 e isolamento 523 = 523.
+>
+> **Desde 19/10/2026 a MAPA não vem mais por aqui:** tem aparelho e worklist próprios
+> (`MAPAS-CDT` / `WORK-MAPAS-CDT`, modalidade `OT`) — ver [`pacs-mapas-cdt.md`](./pacs-mapas-cdt.md).
+> A MAPA que já estava nesta lista em 19/10 (uma, de 16/10) continua nela.
 
 ---
 
@@ -56,7 +60,7 @@ Depois de preencher, **"Testar Conexão"** tem que dar sucesso (é um C-ECHO).
 
 | Campo | Valor recomendado | Por quê |
 |---|---|---|
-| **Modalidade** | **`ECG`** (ou em branco) | todo exame desta worklist sai com Modality `ECG` — Holter **e** MAPA. Qualquer outro valor (`HD`, `OT`, `HOLTER`…) devolve a lista **vazia** |
+| **Modalidade** | **`ECG`** (ou em branco) | todo exame desta worklist sai com Modality `ECG` — Holter **e** ECG. Qualquer outro valor (`HD`, `OT`, `HOLTER`…) devolve a lista **vazia** |
 | **Nome da estação** | **`CARDIO-CDT`** (ou em branco) | é o Scheduled Station AE Title dos nossos itens |
 | **Período** | **`7`** dias | ver §5 — o período segura a lista enxuta |
 | ID / Nome / Accession | em branco | são para busca pontual |
@@ -84,9 +88,9 @@ CardioNet Client DICOM → Criar novo exame → fonte "DICOM" → Configuraçõe
 
 ## 5. Pontos de atenção
 
-- **Holter × MAPA.** O CardioNet pede a descrição do exame (`0032,1060`), que vai com o nome do
-  procedimento; mas quem escolhe "Holter" ou "MAPA" no programa é o operador, ao criar o exame. Se o
-  mesmo paciente tiver os dois agendados, aparecem duas linhas com nº de pedido (Accession) diferente.
+- **Holter × MAPA.** A MAPA saiu desta lista em 19/10/2026 (vai para o `WORK-MAPAS-CDT`). O CardioNet
+  pede a descrição do exame (`0032,1060`), que vai com o nome do procedimento; quem escolhe o tipo de
+  exame no programa é o operador, ao criar o exame.
 - **Médico solicitante e "clínica".** Ligam-se no cadastro do equipamento `CARDIO-CDT` (Exames de
   Imagem → Equipamentos → "O que vai na worklist deste aparelho"): médico na `0008,0090`, que o
   CardioNet pede; unidade com origem **executante**. Como o CardioNet não pede campo de instituição,
@@ -110,7 +114,7 @@ inicia a conexão — o servidor não precisa alcançar o computador do CDT.
 ## 7. Teste
 
 1. **Testar Conexão** na tela de configuração → sucesso.
-2. **Procurar...** → aparecem os Holter/MAPA autorizados na recepção do CDT para os últimos 7 dias.
+2. **Procurar...** → aparecem os Holter/ECG autorizados na recepção do CDT para os últimos 7 dias.
    Lista vazia com conexão OK costuma ser: (a) nenhum exame autorizado no período, ou (b) filtro de
    Modalidade diferente de `ECG`. Confirmar com a equipe Automais, que vê no servidor o que o
    CardioNet pediu de fato.

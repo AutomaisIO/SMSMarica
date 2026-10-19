@@ -29,6 +29,16 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Importacao;
 /// (<see cref="IResolvedorTipoExameSisreg"/>, nasce com worklist desligado), par tipo×unidade no
 /// escopo e status <c>Solicitada</c> sem próxima tentativa — nada vai ao PACS até a recepção
 /// autorizar.</para>
+///
+/// <para><b>O que não é imagem também ganha exame quando a unidade o executa com worklist</b>
+/// (<see cref="TipoComWorklistAsync"/>). MAPA, Holter e ECG são gráfico funcional no SIGTAP (0211),
+/// e no CDT saem de aparelhos que consultam a worklist (CardioNet). Medido em 19/10/2026: a carga
+/// de 08/09 gravou parte deles como Imagem e a varredura diária grava como gráfico funcional — só
+/// os primeiros tinham exame, e de 31/10 em diante nenhuma MAPA ou Holter chegaria ao aparelho
+/// (151 MAPAs e 318 Holters agendados sem exame). A régua é o escopo configurado por gente, não o
+/// SIGTAP: só ganha exame o procedimento cujo tipo JÁ existe e está no escopo da unidade executante
+/// com o envio ligado. Nada aqui cria tipo ou par de escopo para o que não é imagem — senão cada
+/// audiometria e espirometria viraria pendência em "Exames a configurar".</para>
 /// </summary>
 public interface ISateliteImagemSisreg
 {
@@ -48,6 +58,13 @@ public interface ISateliteImagemSisreg
     /// <c>Cursor</c> devolvido até <c>Restantes</c> zerar. ESCRITA.
     /// </summary>
     Task<ReparoSatelitesResultado> RepararAsync(int limite, Guid? depoisDe, CancellationToken ct);
+
+    /// <summary>
+    /// Tipo de exame de um procedimento que NÃO é imagem, quando a unidade executante o tem no
+    /// escopo com a worklist ligada — é o que o faz ganhar exame. Null = segue sem exame, como
+    /// qualquer consulta. Só consulta: não cria tipo nem par de escopo.
+    /// </summary>
+    Task<Guid?> TipoComWorklistAsync(string? procedimentoTexto, Guid unidadeExecutanteId, CancellationToken ct);
 }
 
 public enum ResultadoSatelite
@@ -73,13 +90,16 @@ public sealed class SateliteImagemSisreg(
     public async Task<ResultadoSatelite> GarantirAsync(
         Solicitacao solicitacao, Func<string>? proximoAccession, CancellationToken ct)
     {
-        if (solicitacao.Categoria != CategoriaSolicitacao.Imagem
-            || solicitacao.Status == StatusSolicitacao.Cancelada
-            || solicitacao.ExcluidoEm is not null)
+        if (solicitacao.Status == StatusSolicitacao.Cancelada || solicitacao.ExcluidoEm is not null)
+            return ResultadoSatelite.NadaAFazer;
+
+        var soComWorklist = solicitacao.Categoria != CategoriaSolicitacao.Imagem;
+        if (soComWorklist && await TipoComWorklistAsync(
+                solicitacao.ProcedimentoTexto, solicitacao.UnidadeExecutanteId, ct) is null)
             return ResultadoSatelite.NadaAFazer;
 
         var (resultado, principal) = await GarantirPrincipalAsync(solicitacao, proximoAccession, ct);
-        var extras = await GarantirExtrasAsync(solicitacao, principal, ct);
+        var extras = await GarantirExtrasAsync(solicitacao, principal, soComWorklist, ct);
         return resultado == ResultadoSatelite.Criado || extras == ResultadoSatelite.Criado
             ? ResultadoSatelite.Criado
             : resultado == ResultadoSatelite.TipoCompletado ? resultado : extras;
@@ -142,9 +162,12 @@ public sealed class SateliteImagemSisreg(
     /// (mesma data, hora, unidade e chegada em todos os 2.986 pedidos medidos), mas, se uma chegar
     /// com o pedido já autorizado, o exame dela entra na fila da worklist na hora: a recepção já
     /// liberou o pedido inteiro e não há mais ninguém para clicar.</para>
+    ///
+    /// <para>Pedido que não é imagem (<paramref name="soComWorklist"/>): o extra só ganha exame se o
+    /// procedimento dele também estiver no escopo com worklist — nunca cria tipo para ele.</para>
     /// </summary>
     private async Task<ResultadoSatelite> GarantirExtrasAsync(
-        Solicitacao solicitacao, ExameImagem? principal, CancellationToken ct)
+        Solicitacao solicitacao, ExameImagem? principal, bool soComWorklist, CancellationToken ct)
     {
         // Sem principal vivo não há accession base nem pedido em execução.
         if (principal is null || principal.ExcluidoEm is not null) return ResultadoSatelite.NadaAFazer;
@@ -165,6 +188,9 @@ public sealed class SateliteImagemSisreg(
         {
             var exame = existentes.FirstOrDefault(e => e.SolicitacaoProcedimentoId == item.Id);
             if (exame is not null && (exame.TipoExameId is not null || exame.ExcluidoEm is not null))
+                continue;
+            if (soComWorklist && await TipoComWorklistAsync(
+                    item.ProcedimentoTexto, solicitacao.UnidadeExecutanteId, ct) is null)
                 continue;
 
             var tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
@@ -239,9 +265,16 @@ public sealed class SateliteImagemSisreg(
         var hojeBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date;
         var desdeUtc = DateTime.SpecifyKind(hojeBrasilia.AddHours(3), DateTimeKind.Utc);
 
+        // O que não é imagem entra só com o procedimento no escopo da executante e worklist ligada
+        // (mesma régua de TipoComWorklistAsync). O texto gravado já é o nome normalizado do SISREG.
         IQueryable<Solicitacao> Pendentes() => db.Solicitacoes.Where(s =>
             s.ExcluidoEm == null
-            && s.Categoria == CategoriaSolicitacao.Imagem
+            && (s.Categoria == CategoriaSolicitacao.Imagem
+                || db.TiposExameUnidade.Any(a =>
+                    a.UnidadeId == s.UnidadeExecutanteId
+                    && a.Ativo && a.EnviarParaWorklist && a.ExcluidoEm == null
+                    && a.TipoExame!.ExcluidoEm == null
+                    && a.TipoExame.Nome == s.ProcedimentoTexto))
             && s.Status != StatusSolicitacao.Cancelada
             && s.DataAgendada >= desdeUtc
             && (!db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)
@@ -301,6 +334,20 @@ public sealed class SateliteImagemSisreg(
             .Where(s => cursor == null || s.Id.CompareTo(cursor.Value) > 0)
             .CountAsync(ct);
         return new ReparoSatelitesResultado(criados, tipos, cursor, restantes);
+    }
+
+    public async Task<Guid?> TipoComWorklistAsync(
+        string? procedimentoTexto, Guid unidadeExecutanteId, CancellationToken ct)
+    {
+        var nome = ResolvedorTipoExameSisreg.NormalizarNome(procedimentoTexto ?? string.Empty);
+        if (nome.Length == 0) return null;
+        return await db.TiposExameUnidade.AsNoTracking()
+            .Where(a => a.UnidadeId == unidadeExecutanteId
+                        && a.Ativo && a.EnviarParaWorklist && a.ExcluidoEm == null
+                        && a.TipoExame!.ExcluidoEm == null
+                        && a.TipoExame.Nome == nome)
+            .Select(a => (Guid?)a.TipoExameId)
+            .FirstOrDefaultAsync(ct);
     }
 
     private static string SoDigitos(string? s) =>
