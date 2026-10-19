@@ -1,4 +1,5 @@
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
+import 'package:agente/features/viagem/domain/viagem.dart';
 
 /// Uma rota de hoje do veículo do tablet, como o servidor manda em
 /// `GET /rastreamento/dispositivos/rotas-do-dia` — já convertida para a
@@ -12,25 +13,30 @@ class RotaDoTablet {
     required this.motoristaId,
     required this.motoristaNome,
     required this.translado,
+    required this.andamento,
   });
 
   factory RotaDoTablet.fromJson(Map<String, dynamic> j, {String veiculo = ''}) {
     final data = DateTime.parse(j['data'] as String);
-    final paradas = [
+    final rotaId = j['rotaId'] as String;
+    final status = j['status'] as String? ?? 'Planejada';
+    final paradasJson = [
       for (final p in j['paradas'] as List<dynamic>? ?? const [])
-        _parada(p as Map<String, dynamic>, data),
+        p as Map<String, dynamic>,
     ];
+    final paradas = [for (final p in paradasJson) _parada(p, data)];
     return RotaDoTablet(
-      rotaId: j['rotaId'] as String,
+      rotaId: rotaId,
       data: data,
-      status: j['status'] as String? ?? 'Planejada',
+      status: status,
       motoristaId: j['motoristaId'] as String? ?? '',
       motoristaNome: j['motoristaNome'] as String? ?? '',
       translado: TransladoNavegacao(
-        id: j['rotaId'] as String,
+        id: rotaId,
         veiculo: veiculo,
         paradas: paradas,
       ),
+      andamento: _andamento(rotaId, status, paradasJson, paradas),
     );
   }
 
@@ -42,6 +48,10 @@ class RotaDoTablet {
   final String motoristaId;
   final String motoristaNome;
   final TransladoNavegacao translado;
+
+  /// O que a central já recebeu desta viagem (paradas resolvidas e quem
+  /// faltou), para o tablet retomar depois de reiniciar.
+  final AndamentoViagem andamento;
 
   bool get emAndamento => status == 'EmAndamento';
   bool get concluida => status == 'Concluida';
@@ -82,19 +92,60 @@ class RotaDoTablet {
         tempoMedioMinutos: (p['tempoMedioMinutos'] as num?)?.toInt(),
       ),
       acompanhantes: [
-        for (final a in p['acompanhantes'] as List<dynamic>? ?? const [])
-          _acompanhante(a as Map<String, dynamic>),
+        for (final (i, a)
+            in (p['acompanhantes'] as List<dynamic>? ?? const []).indexed)
+          _acompanhante(a as Map<String, dynamic>, ordem: i + 1),
       ],
     );
   }
 
-  static Acompanhante _acompanhante(Map<String, dynamic> a) {
+  static Acompanhante _acompanhante(
+    Map<String, dynamic> a, {
+    required int ordem,
+  }) {
     final parentesco = rotuloParentesco(a['parentesco'] as String?);
     final nome = a['nome'] as String? ?? 'Acompanhante';
     return Acompanhante(
       nome: parentesco == null ? nome : '$nome ($parentesco)',
       confirmacao: confirmacao(a['confirmacao'] as String?),
       assento: assento(a['assento'] as Map<String, dynamic>?),
+      id: a['id'] as String?,
+      ordem: ordem,
+    );
+  }
+
+  /// Paradas que o tablet já resolveu e quem faltou, pelo que a central
+  /// recebeu (`concluida` da parada, `situacao` de cada pessoa).
+  static AndamentoViagem _andamento(
+    String rotaId,
+    String status,
+    List<Map<String, dynamic>> json,
+    List<ParadaNavegacao> paradas,
+  ) {
+    final ausentes = <String>{};
+    for (final (i, p) in json.indexed) {
+      final quem = p['passageiros'] as List<dynamic>? ?? const [];
+      for (final (k, x) in quem.indexed) {
+        final passageiro = paradas[i].passageiros[k];
+        final m = x as Map<String, dynamic>;
+        if (m['situacao'] == 'Ausente') ausentes.add(passageiro.id);
+        final acomp = m['acompanhantes'] as List<dynamic>? ?? const [];
+        for (final (n, a) in acomp.indexed) {
+          if ((a as Map<String, dynamic>)['situacao'] == 'Ausente') {
+            ausentes.add(passageiro.idAcompanhante(n));
+          }
+        }
+      }
+    }
+    return AndamentoViagem(
+      rotaId: rotaId,
+      concluidas: {
+        for (final p in json)
+          if (p['concluida'] == true) p['id'] as String,
+      },
+      ausentes: ausentes,
+      iniciada: status != 'Planejada',
+      encerrada: status == 'Concluida',
     );
   }
 
