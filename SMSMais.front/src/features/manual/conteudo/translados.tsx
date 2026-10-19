@@ -322,7 +322,9 @@ export const artigoTranslados: Artigo = {
             Vale quem está no carro <strong>naquela hora</strong>. Quem foi na ida libera o lugar ao descer
             na unidade, e quem foi marcado ocupa o lugar até chegar em casa. Cada acompanhante leva um
             lugar, e a condição do paciente conta: cadeirante, maca ou isolamento. A lista mostra os lugares
-            livres agora e, em vermelho, por que um paciente não cabe.
+            livres agora e, em vermelho, por que um paciente não cabe. Ao escolher, os lugares livres caem
+            pelo paciente e pelos acompanhantes, e quem não cabe junto com os escolhidos fica sem poder ser
+            marcado, por exemplo um segundo cadeirante quando só há um assento de cadeirante.
           </Callout>
           <P>
             Quando o motorista não encontra o paciente no local, o paciente <strong>volta para a lista</strong>,

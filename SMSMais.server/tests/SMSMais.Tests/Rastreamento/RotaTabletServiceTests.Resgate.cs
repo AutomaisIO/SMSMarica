@@ -136,6 +136,7 @@ public partial class RotaTabletServiceTests
         Assert.Contains("1 lugar livre", cheio.Message);
         var lista = await resgates.ListarDoTabletAsync(b.Tablet, rotaB);
         Assert.Equal(1, lista.LugaresLivres);
+        Assert.Equal(new CarroAgoraDto(0, 1, 0, false, 3, false, false), lista.Carro); // sobrou o de acompanhante
         Assert.False(lista.Disponiveis.Single(x => x.SessaoId == ana).Cabe);
         Assert.True(lista.Disponiveis.Single(x => x.SessaoId == beatriz).Cabe);
 

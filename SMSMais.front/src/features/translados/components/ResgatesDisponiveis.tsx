@@ -9,7 +9,12 @@ import {
   useMarcarResgates,
   useResgates,
 } from '@/features/translados/api/queries';
-import type { CanalAvisoResgate, DisponibilidadeResgate, ResgateDisponivel } from '@/features/translados/types';
+import type {
+  CanalAvisoResgate,
+  CarroAgora,
+  DisponibilidadeResgate,
+  ResgateDisponivel,
+} from '@/features/translados/types';
 
 function hhmm(t: string | null): string | null {
   return t ? t.slice(0, 5) : null;
@@ -56,6 +61,70 @@ export function textoDisponibilidade(p: {
   }
 }
 
+/**
+ * O que sobra do carro levando `quem` (cada paciente e os acompanhantes dele); `null` quando não cabem
+ * juntos. A mesma regra da central (AcomodacaoNoVeiculo), que confere de novo ao marcar: cadeirante só
+ * em assento de cadeirante; maca só em ambulância, uma por vez; isolamento não divide o carro.
+ */
+export function levando(carro: CarroAgora, quem: ResgateDisponivel[]): CarroAgora | null {
+  const cadeira = (q: ResgateDisponivel) => q.mobilidade === 'CadeiranteVeiculoAdaptado';
+  const maca = (q: ResgateDisponivel) => q.mobilidade === 'Maca';
+  if (carro.pacientesABordo + quem.length > 1 && (carro.isolamentoABordo || quem.some((q) => q.isolamento))) {
+    return null;
+  }
+  if ((carro.macaABordo ? 1 : 0) + quem.filter(maca).length > (carro.ambulancia ? 1 : 0)) return null;
+  let { cadeirante: cad, passageiro: pas, acompanhante: aco } = carro;
+  // `n` lugares, primeiro do tipo `a` e, sem ele, do `b`; falso quando não há.
+  function tirar(n: number, a: 'cad' | 'pas' | 'aco', b: 'cad' | 'pas' | 'aco' | null): boolean {
+    const vagas = { cad, pas, aco };
+    const doA = Math.min(n, vagas[a]);
+    vagas[a] -= doA;
+    const resto = n - doA;
+    if (resto > 0) {
+      if (!b || resto > vagas[b]) return false;
+      vagas[b] -= resto;
+    }
+    ({ cad, pas, aco } = vagas);
+    return true;
+  }
+  // Primeiro quem tem lugar certo (cadeira, maca); o banco comum fica para os outros.
+  if (!tirar(quem.filter(cadeira).length, 'cad', null)) return null;
+  if (!tirar(quem.filter(maca).length, 'cad', 'pas')) return null;
+  if (!tirar(quem.filter((q) => !cadeira(q) && !maca(q)).length, 'pas', 'aco')) return null;
+  if (!tirar(quem.reduce((n, q) => n + q.acompanhantes, 0), 'aco', 'pas')) return null;
+  return {
+    ...carro,
+    cadeirante: cad,
+    passageiro: pas,
+    acompanhante: aco,
+    pacientesABordo: carro.pacientesABordo + quem.length,
+    isolamentoABordo: carro.isolamentoABordo || quem.some((q) => q.isolamento),
+    macaABordo: carro.macaABordo || quem.some(maca),
+  };
+}
+
+function livresDe(c: CarroAgora): number {
+  return c.passageiro + c.acompanhante + c.cadeirante;
+}
+
+/** Por que `p` não cabe junto com os escolhidos. */
+function motivoJunto(carro: CarroAgora, p: ResgateDisponivel, escolhidos: ResgateDisponivel[]): string {
+  const sobra = levando(carro, escolhidos) ?? carro;
+  if (sobra.isolamentoABordo) return 'Há um paciente em isolamento no carro (ou escolhido): ninguém mais embarca com ele.';
+  if (p.isolamento && sobra.pacientesABordo > 0) return 'Paciente em isolamento só viaja sozinho (com os acompanhantes dele).';
+  if (p.mobilidade === 'Maca') {
+    return carro.ambulancia ? 'A ambulância já leva um paciente de maca.' : 'Paciente de maca só vai de ambulância.';
+  }
+  if (p.mobilidade === 'CadeiranteVeiculoAdaptado' && sobra.cadeirante === 0) {
+    return 'Não sobra assento de cadeirante neste carro.';
+  }
+  const pessoas = 1 + p.acompanhantes;
+  const livres = livresDe(sobra);
+  return livres === 0
+    ? 'O carro fica cheio com quem já foi escolhido.'
+    : `Não cabe: ${pessoas === 1 ? '1 pessoa' : `${pessoas} pessoas`} para ${livres === 1 ? '1 lugar livre' : `${livres} lugares livres`}.`;
+}
+
 function distancia(m: number | null): string | null {
   if (m == null) return null;
   return m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
@@ -96,6 +165,20 @@ export function ResgatesDisponiveis({ rotaId }: { rotaId: string }) {
   const disponiveis = dados?.disponiveis ?? [];
   const marcados = dados?.marcados ?? [];
   const validos = escolhidos.filter((id) => disponiveis.some((d) => d.sessaoId === id));
+  // Os lugares livres caem a cada paciente escolhido (ele e os acompanhantes), e quem não cabe junto com
+  // os escolhidos fica sem poder ser marcado.
+  const escolhidosLista = disponiveis.filter((d) => validos.includes(d.sessaoId));
+  const sobra = dados?.carro ? levando(dados.carro, escolhidosLista) : null;
+  const livresAgora = sobra ? livresDe(sobra) : (dados?.lugaresLivres ?? null);
+  const cadeiranteAgora = sobra ? sobra.cadeirante : (dados?.lugaresCadeiranteLivres ?? 0);
+  const pessoasEscolhidas = escolhidosLista.reduce((n, p) => n + 1 + p.acompanhantes, 0);
+  function motivoNaoPode(p: ResgateDisponivel): string | null {
+    if (validos.includes(p.sessaoId)) return null;
+    if (p.cabe === false) return p.motivoNaoCabe ?? 'Não cabe agora.';
+    const carro = dados?.carro;
+    if (!carro || levando(carro, [...escolhidosLista, p])) return null;
+    return motivoJunto(carro, p, escolhidosLista);
+  }
 
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -104,10 +187,13 @@ export function ResgatesDisponiveis({ rotaId }: { rotaId: string }) {
           <Hand className="h-4 w-4 text-gray-500" />
           <h2 className="text-sm font-semibold text-gray-900">Pacientes disponíveis para resgate</h2>
         </div>
-        {dados?.lugaresLivres != null ? (
+        {livresAgora != null ? (
           <span className="text-xs text-gray-600">
-            Lugares livres agora neste carro: <strong>{dados.lugaresLivres}</strong>
-            {dados.lugaresCadeiranteLivres ? ` (${dados.lugaresCadeiranteLivres} de cadeirante)` : ''}
+            Lugares livres agora neste carro: <strong>{livresAgora}</strong>
+            {cadeiranteAgora ? ` (${cadeiranteAgora} de cadeirante)` : ''}
+            {pessoasEscolhidas > 0
+              ? ` · escolhidos: ${pessoasEscolhidas === 1 ? '1 pessoa' : `${pessoasEscolhidas} pessoas`}`
+              : ''}
           </span>
         ) : null}
       </div>
@@ -162,7 +248,8 @@ export function ResgatesDisponiveis({ rotaId }: { rotaId: string }) {
         <ul className="divide-y divide-gray-100 rounded-md border border-gray-100">
           {disponiveis.map((p) => {
             const d = textoDisponibilidade(p);
-            const naoCabe = p.cabe === false;
+            const motivo = motivoNaoPode(p);
+            const naoCabe = motivo !== null;
             return (
               <li key={p.sessaoId} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
                 {podeMarcar ? (
@@ -206,7 +293,7 @@ export function ResgatesDisponiveis({ rotaId }: { rotaId: string }) {
                   {p.naoEstavaNoLocalEm ? (
                     <div className="text-xs text-amber-700">Não estava no local às {horaDe(p.naoEstavaNoLocalEm)}.</div>
                   ) : null}
-                  {naoCabe && p.motivoNaoCabe ? <div className="text-xs text-red-700">{p.motivoNaoCabe}</div> : null}
+                  {motivo ? <div className="text-xs text-red-700">{motivo}</div> : null}
                 </div>
                 <span className={`rounded-full border px-2 py-0.5 text-xs ${d.cor}`}>{d.texto}</span>
                 {podeMarcar && p.disponibilidade !== 'NoLocal' ? (

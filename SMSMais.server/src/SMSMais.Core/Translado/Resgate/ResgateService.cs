@@ -498,7 +498,15 @@ public sealed class ResgateService(
         return new ResgatesDto(
             disponiveis, daRota,
             lotacao?.Livres.Count,
-            lotacao?.Livres.Count(a => a.Tipo == TipoAssento.Cadeirante));
+            lotacao?.Livres.Count(a => a.Tipo == TipoAssento.Cadeirante),
+            lotacao is null ? null : new CarroAgoraDto(
+                lotacao.Livres.Count(a => a.Tipo == TipoAssento.Passageiro),
+                lotacao.Livres.Count(a => a.Tipo == TipoAssento.Acompanhante),
+                lotacao.Livres.Count(a => a.Tipo == TipoAssento.Cadeirante),
+                lotacao.Veiculo.Tipo == TipoVeiculo.Ambulancia,
+                lotacao.ABordo.Count,
+                lotacao.ABordo.Any(q => q.Isolamento),
+                lotacao.ABordo.Any(q => q.Mobilidade == MobilidadeTransporte.Maca)));
     }
 
     /// <summary>Quem já foi levado à unidade hoje e ainda não foi resgatado (marcado ou não).</summary>

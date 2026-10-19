@@ -60,12 +60,27 @@ public sealed record ResgateMarcadoDto(
     TimeOnly? DisponivelAs,
     int? DisponivelEmMinutos);
 
-/// <summary>A lista de resgate. Para um carro, também os lugares livres agora e quem ele já marcou.</summary>
+/// <summary>A lista de resgate. Para um carro, também os lugares livres agora, quem ele já marcou e o
+/// <paramref name="Carro"/> (o tablet e o painel refazem a conta a cada paciente escolhido).</summary>
 public sealed record ResgatesDto(
     IReadOnlyList<ResgateDisponivelDto> Disponiveis,
     IReadOnlyList<ResgateMarcadoDto> Marcados,
     int? LugaresLivres,
-    int? LugaresCadeiranteLivres);
+    int? LugaresCadeiranteLivres,
+    CarroAgoraDto? Carro = null);
+
+/// <summary>O carro agora, para conferir na tela, enquanto o motorista escolhe, quem ainda cabe junto —
+/// a mesma regra da central (AcomodacaoNoVeiculo): cadeirante só em assento de cadeirante; maca só em
+/// ambulância, uma por vez; isolamento não divide o carro; cada acompanhante leva um lugar. A central
+/// confere de novo ao marcar.</summary>
+public sealed record CarroAgoraDto(
+    int Passageiro,
+    int Acompanhante,
+    int Cadeirante,
+    bool Ambulancia,
+    int PacientesABordo,
+    bool IsolamentoABordo,
+    bool MacaABordo);
 
 /// <summary>O tablet marca, de uma vez, quem vai resgatar.</summary>
 public sealed record MarcarResgateRequest(Guid RotaId, IReadOnlyList<Guid> SessaoIds, Guid? MotoristaId = null);

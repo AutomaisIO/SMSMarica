@@ -236,9 +236,21 @@ export type ResgateMarcado = {
   disponivelEmMinutos: number | null;
 };
 
+/** O carro agora, para refazer a conta a cada paciente escolhido (a mesma regra da central). */
+export type CarroAgora = {
+  passageiro: number;
+  acompanhante: number;
+  cadeirante: number;
+  ambulancia: boolean;
+  pacientesABordo: number;
+  isolamentoABordo: boolean;
+  macaABordo: boolean;
+};
+
 export type Resgates = {
   disponiveis: ResgateDisponivel[];
   marcados: ResgateMarcado[];
   lugaresLivres: number | null;
   lugaresCadeiranteLivres: number | null;
+  carro: CarroAgora | null;
 };
