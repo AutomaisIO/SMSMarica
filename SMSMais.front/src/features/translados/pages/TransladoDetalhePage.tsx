@@ -25,7 +25,7 @@ import {
 import { ListaSessoesElegiveis } from '@/features/translados/components/ListaSessoesElegiveis';
 import { MapaDeAssentosAlocavel } from '@/features/translados/components/MapaDeAssentosAlocavel';
 import { ModalEscolherSessao } from '@/features/translados/components/ModalEscolherSessao';
-import { PuxarAguardando } from '@/features/translados/components/PuxarAguardando';
+import { ResgatesDisponiveis } from '@/features/translados/components/ResgatesDisponiveis';
 import { ViagemDoTablet } from '@/features/translados/components/ViagemDoTablet';
 import type { AlocacaoDto, SessaoElegivel, StatusRota } from '@/features/translados/types';
 import { useVeiculoPorId } from '@/features/veiculos/api/queries';
@@ -78,6 +78,9 @@ export function TransladoDetalhePage() {
 
   const r = detalhe.data;
   const podeEditar = r?.status === 'Planejada';
+  // O mapa de assentos é o da ida; os resgates reaproveitam assentos e aparecem na lista de resgate.
+  const daIda = (r?.alocacoes ?? []).filter((a) => a.parada !== 'Retorno');
+  const semLugar = (r?.alocacoes ?? []).filter((a) => a.tipo === 'Paciente' && a.acompanhantesSemLugar > 0);
 
   async function aoClicarAssentoVazio(info: {
     fileiraOrdem: number;
@@ -273,7 +276,7 @@ export function TransladoDetalhePage() {
             </div>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">
-                Mapa de assentos · {r.alocacoes.length}/{veiculo.data.fileiras.reduce((acc, f) => acc + f.assentos.filter((a) => a.tipo !== 'Motorista' && !a.bloqueado).length, 0)} ocupados
+                Mapa de assentos da ida · {daIda.length}/{veiculo.data.fileiras.reduce((acc, f) => acc + f.assentos.filter((a) => a.tipo !== 'Motorista' && !a.bloqueado).length, 0)} ocupados
               </h2>
               {sessaoSelecionada ? (
                 <button
@@ -285,9 +288,19 @@ export function TransladoDetalhePage() {
                 </button>
               ) : null}
             </div>
+            {semLugar.length > 0 ? (
+              <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {semLugar.map((a) => (
+                  <div key={a.id}>
+                    {a.pacienteNome}: {a.acompanhantesSemLugar === 1 ? '1 acompanhante sem lugar' : `${a.acompanhantesSemLugar} acompanhantes sem lugar`} no carro
+                    {a.parada === 'Retorno' ? ' (resgate)' : ''}. Libere um lugar ou troque o paciente de rota.
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <MapaDeAssentosAlocavel
               veiculo={veiculo.data}
-              alocacoes={r.alocacoes}
+              alocacoes={daIda}
               sessaoSelecionada={sessaoSelecionada}
               somenteLeitura={!podeEditar}
               aoClicarAssentoVazio={aoClicarAssentoVazio}
@@ -319,7 +332,7 @@ export function TransladoDetalhePage() {
         <ViagemDoTablet rotaId={r.id} status={r.status} alocacoes={r.alocacoes} />
       ) : null}
 
-      {r.status === 'Planejada' || r.status === 'EmAndamento' ? <PuxarAguardando rotaId={r.id} /> : null}
+      {r.status === 'Planejada' || r.status === 'EmAndamento' ? <ResgatesDisponiveis rotaId={r.id} /> : null}
 
       <ModalEscolherSessao
         aberto={Boolean(modalAssento)}
@@ -338,7 +351,7 @@ export function TransladoDetalhePage() {
         titulo="Desalocar paciente"
         mensagem={
           alocacaoParaRemover
-            ? `Remover ${alocacaoParaRemover.pacienteNome} do assento F${alocacaoParaRemover.fileiraOrdem}·${alocacaoParaRemover.numeroAssento}? A sessão volta para a fila de elegíveis.`
+            ? `Tirar ${alocacaoParaRemover.pacienteNome} desta rota (assento F${alocacaoParaRemover.fileiraOrdem}·${alocacaoParaRemover.numeroAssento})? Os acompanhantes saem junto, e a sessão volta para a fila de elegíveis.`
             : ''
         }
         destrutivo

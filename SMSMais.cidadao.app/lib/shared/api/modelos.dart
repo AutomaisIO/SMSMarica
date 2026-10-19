@@ -122,6 +122,61 @@ class ConsentimentoStatus {
 
 /// Uma viagem do Transporte de Pacientes (sessão do atendimento).
 /// Viagem feita nos últimos 30 dias, para avaliar (`ViagemParaAvaliar` do `api.ts`).
+/// O resgate de hoje: buscar na unidade depois do atendimento e levar para casa (`ResgateDoPaciente`
+/// do PWA).
+class ResgateDoPaciente {
+  const ResgateDoPaciente({
+    required this.sessaoId,
+    required this.unidade,
+    required this.disponibilidade,
+    this.disponivelAs,
+    this.noLocalDesde,
+    this.veiculoPlaca,
+    this.veiculoModelo,
+    this.embarcou = false,
+    this.perguntaPendente = false,
+    this.proximaPerguntaAs,
+  });
+
+  factory ResgateDoPaciente.deJson(Json j) => ResgateDoPaciente(
+        sessaoId: j['sessaoId'] as String,
+        unidade: _s(j['unidade']) ?? '',
+        disponibilidade: _s(j['disponibilidade']) ?? 'SemPrevisao',
+        disponivelAs: _s(j['disponivelAs']),
+        noLocalDesde: _s(j['noLocalDesde']),
+        veiculoPlaca: _s(j['veiculoPlaca']),
+        veiculoModelo: _s(j['veiculoModelo']),
+        embarcou: _b(j['embarcou']),
+        perguntaPendente: _b(j['perguntaPendente']),
+        proximaPerguntaAs: _s(j['proximaPerguntaAs']),
+      );
+
+  final String sessaoId;
+  final String unidade;
+
+  /// NoLocal, PelaPrevisao, EmAtendimento ou SemPrevisao.
+  final String disponibilidade;
+
+  /// "HH:mm:ss": quando fica pronto pela previsão.
+  final String? disponivelAs;
+
+  /// Desde quando avisaram que está no local esperando (ISO, UTC).
+  final String? noLocalDesde;
+
+  /// O carro que vai buscar (nulo = nenhum carro marcou ainda).
+  final String? veiculoPlaca;
+  final String? veiculoModelo;
+
+  /// Já embarcou: está a caminho de casa.
+  final bool embarcou;
+
+  /// A previsão estourou: hora de responder "você já está disponível para retorno?".
+  final bool perguntaPendente;
+
+  /// Depois de "ainda não terminei": quando a pergunta volta (ISO, UTC).
+  final String? proximaPerguntaAs;
+}
+
 class ViagemParaAvaliar {
   const ViagemParaAvaliar({
     required this.sessaoId,

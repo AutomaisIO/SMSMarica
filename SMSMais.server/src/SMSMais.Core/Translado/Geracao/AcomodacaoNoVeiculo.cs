@@ -31,12 +31,15 @@ internal static class AcomodacaoNoVeiculo
         t is TipoVeiculo.Van or TipoVeiculo.MicroOnibus or TipoVeiculo.Onibus or TipoVeiculo.Ambulancia;
 
     /// <summary>Distribui os assentos <paramref name="livres"/> do veículo entre <paramref name="quem"/>;
-    /// nulo quando alguém não cabe.</summary>
+    /// nulo quando alguém não cabe. <paramref name="aBordo"/>: quem já está no carro (no resgate), que
+    /// conta para o isolamento e para a maca, mas já tem o próprio lugar.</summary>
     public static Dictionary<Guid, Acomodacao>? Acomodar(
-        Veiculo v, IReadOnlyList<Assento> livres, IReadOnlyList<NecessidadeViagem> quem)
+        Veiculo v, IReadOnlyList<Assento> livres, IReadOnlyList<NecessidadeViagem> quem,
+        IReadOnlyCollection<NecessidadeViagem>? aBordo = null)
     {
-        if (quem.Count > 1 && quem.Any(q => q.Isolamento)) return null;
-        var macas = quem.Count(q => q.Mobilidade == MobilidadeTransporte.Maca);
+        IReadOnlyList<NecessidadeViagem> todos = aBordo is { Count: > 0 } ? [.. aBordo, .. quem] : quem;
+        if (todos.Count > 1 && todos.Any(q => q.Isolamento)) return null;
+        var macas = todos.Count(q => q.Mobilidade == MobilidadeTransporte.Maca);
         if (macas > (v.Tipo == TipoVeiculo.Ambulancia ? 1 : 0)) return null;
 
         var usadas = new HashSet<Guid>();
@@ -116,6 +119,31 @@ internal static class AcomodacaoNoVeiculo
             $"Sem veículo livre com lugar para o paciente e {(q.Acompanhantes == 1 ? "o acompanhante" : "os 2 acompanhantes")}",
         _ => "Sem veículo/motorista disponível",
     };
+
+    /// <summary>Por que <paramref name="quem"/> não cabe agora no carro (o que o motorista e a central
+    /// leem ao tentar marcar).</summary>
+    public static string MotivoNaoCabe(
+        Veiculo v, IReadOnlyList<Assento> livres, IReadOnlyList<NecessidadeViagem> quem,
+        IReadOnlyCollection<NecessidadeViagem> aBordo)
+    {
+        if (aBordo.Any(q => q.Isolamento))
+            return "Há um paciente em isolamento no carro: ninguém mais pode embarcar com ele.";
+        if (quem.Any(q => q.Isolamento) && (aBordo.Count > 0 || quem.Count > 1))
+            return "Paciente em isolamento só viaja sozinho (com os acompanhantes dele).";
+        if (quem.Any(q => q.Mobilidade == MobilidadeTransporte.Maca))
+            return v.Tipo == TipoVeiculo.Ambulancia
+                ? "A ambulância já leva um paciente de maca."
+                : "Paciente de maca só vai de ambulância.";
+        var cadeira = quem.Count(q => q.Mobilidade == MobilidadeTransporte.CadeiranteVeiculoAdaptado);
+        if (cadeira > livres.Count(a => a.Tipo == TipoAssento.Cadeirante))
+            return "Não há assento de cadeirante livre neste carro agora.";
+        var pessoas = quem.Sum(q => 1 + q.Acompanhantes);
+        return livres.Count == 0
+            ? "O carro está cheio agora."
+            : $"Não cabe agora: {Pessoas(pessoas)} para {(livres.Count == 1 ? "1 lugar livre" : $"{livres.Count} lugares livres")}.";
+    }
+
+    private static string Pessoas(int n) => n == 1 ? "1 pessoa" : $"{n} pessoas";
 
     /// <summary>Quantos acompanhantes vão: os escolhidos para a viagem; sem lista, um quando o paciente
     /// confirmou que vai acompanhado; nenhum quando disse que não. Nunca acima do limite do atendimento.</summary>

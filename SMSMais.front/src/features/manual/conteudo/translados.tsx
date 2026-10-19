@@ -13,11 +13,13 @@ import type { Artigo } from '@/features/manual/tipos';
  * Conferido no código: `features/translados` (TransladosPage — "Gerar automático"/"Novo translado";
  * GerarTransladoPage — Data, "Usar IA", Pré-visualizar/Gerar e salvar, não alocados e
  * RevisaoEnderecos; TransladoDetalhePage — Editar/Iniciar/Cancelar/Concluir, mapa de assentos,
- * sessões elegíveis e ViagemDoTablet), `features/tratamentos` (TratamentoDetalhePage `?sessao=`,
+ * sessões elegíveis, ViagemDoTablet e ResgatesDisponiveis), `features/tratamentos` (TratamentoDetalhePage `?sessao=`,
  * PainelConfirmacao) e o backend (`GeradorDeTransladoService` — troca só a rota gerada ainda
  * planejada e replaneja quem estava nela; `RotaTabletService`; `ViagemService` — desembarque =
  * realizada + faturamento, ausência = não realizada, correção do painel vale mais;
- * `FaturamentoService` — cancelado sai dos totais; `GeoController` — permissão de Unidades).
+ * `FaturamentoService` — cancelado sai dos totais; `GeoController` — permissão de Unidades;
+ * `ResgateService` + `LotacaoDaRota` — lista de resgate, aviso "no local", marcação só se couber agora;
+ * `TransladoService.CriarAlocacaoAsync` — acompanhantes ganham lugar, condição do paciente).
  */
 export const artigoTranslados: Artigo = {
   slug: 'translados',
@@ -28,7 +30,7 @@ export const artigoTranslados: Artigo = {
   icone: Route,
   rota: '/app/translados',
   publico: 'Quem organiza e acompanha o transporte de pacientes (central)',
-  atualizadoEm: '2026-10-16',
+  atualizadoEm: '2026-10-19',
   palavrasChave: [
     'translado',
     'rota',
@@ -68,11 +70,21 @@ export const artigoTranslados: Artigo = {
     'isolamento',
     'veículo exclusivo',
     'veículo alto',
+    'resgate',
+    'pacientes disponíveis para resgate',
+    'disponível em',
+    'aguardando no local',
+    'avisar que está no local',
+    'marcar para resgate',
+    'desmarcar',
+    'lugares livres',
+    'já está disponível para retorno',
+    'ainda não terminei',
+    'aguardando há',
+    'tempo aguardando',
+    'lotação',
     'volta',
     'retorno',
-    'espera',
-    'puxar',
-    'aguardando retorno',
     'fora do município',
   ],
   secoes: () => [
@@ -188,14 +200,24 @@ export const artigoTranslados: Artigo = {
     {
       id: 'montar',
       titulo: 'Montar ou ajustar uma rota à mão',
-      busca: 'novo translado data veículo motorista mapa de assentos sessões elegíveis alocar desalocar editar iniciar cancelar',
+      busca: 'novo translado data veículo motorista mapa de assentos sessões elegíveis alocar desalocar editar iniciar cancelar acompanhante sem lugar não cabe lotação cadeirante',
       conteudo: (
         <>
           <P>
             <BotaoRef>Novo translado</BotaoRef> cria uma rota vazia (data, veículo, motorista). No
             detalhe, enquanto a rota está <SeloRef cor="info">Planejada</SeloRef>, clique numa sessão
             elegível e depois num assento livre — ou no assento primeiro. Clicar num assento ocupado
-            oferece desalocar.
+            oferece desalocar: o paciente sai da rota com os acompanhantes.
+          </P>
+          <Callout tipo="atencao" titulo="Nunca mais gente do que cabe">
+            O paciente vai no assento que você escolheu, e cada acompanhante da viagem ganha outro lugar
+            livre sozinho. Sem lugar para todos, o sistema não aloca e diz quantos lugares sobram.
+            Cadeirante na própria cadeira só vai no assento de cadeirante, e maca só de ambulância. Isolamento
+            não divide o carro. Trocar os acompanhantes de quem já está na rota segue a mesma regra.
+          </Callout>
+          <P>
+            Se o paciente confirmar mais um acompanhante pelo WhatsApp com o carro cheio, a rota mostra
+            em vermelho “acompanhante sem lugar no carro”. Libere um lugar ou troque o paciente de rota.
           </P>
           <Lista>
             <Item>
@@ -203,7 +225,7 @@ export const artigoTranslados: Artigo = {
             </Item>
             <Item>
               <BotaoRef>Iniciar</BotaoRef> e <BotaoRef>Concluir</BotaoRef> existem aqui, mas o normal é
-              o tablet fazer isso sozinho (abaixo).
+              o tablet fazer isso (abaixo). Concluir devolve à lista de resgate quem a rota ainda não buscou.
             </Item>
             <Item>
               <BotaoRef variante="danger">Cancelar</BotaoRef> desfaz a rota: as viagens voltam a ser
@@ -216,15 +238,19 @@ export const artigoTranslados: Artigo = {
     {
       id: 'tablet',
       titulo: 'A rota no tablet e a viagem que ele registra',
-      busca: 'tablet motorista rosto iniciar navegação embarcou ausente desceu concluída sem rede fila em andamento',
+      busca: 'tablet motorista rosto iniciar navegação embarcou ausente desembarcou desceu encerrar a rota concluída sem rede fila em andamento',
       conteudo: (
         <>
           <P>
             O motorista entra no tablet pelo rosto e abre a navegação; nessa hora a rota passa a{' '}
-            <SeloRef cor="alerta">Em andamento</SeloRef>. Em cada parada ele marca quem{' '}
-            <strong>embarcou</strong> e quem <strong>não estava</strong> (paciente e cada
-            acompanhante); no destino, quem <strong>desceu</strong>. Resolvida a última parada, a rota
-            fica <SeloRef cor="sucesso">Concluída</SeloRef>.
+            <SeloRef cor="alerta">Em andamento</SeloRef>. No embarque ele marca, de cada pessoa
+            (paciente e cada acompanhante), <strong>Embarcou</strong> ou <strong>Ausente</strong>. No
+            desembarque só existe <strong>Desembarcou</strong>, e só para quem embarcou.
+          </P>
+          <P>
+            Ao desembarcar na unidade, o tablet abre a lista de resgate (acima), e o carro não segue
+            sozinho para lugar nenhum. Sem paradas pendentes, o motorista resgata mais alguém ou toca em{' '}
+            <BotaoRef>Encerrar a rota</BotaoRef>, e a rota fica <SeloRef cor="sucesso">Concluída</SeloRef>.
           </P>
           <P>
             No detalhe do translado, <strong>Viagem registrada pelo tablet</strong> mostra tudo na
@@ -239,44 +265,69 @@ export const artigoTranslados: Artigo = {
       ),
     },
     {
-      id: 'volta',
-      titulo: 'A volta: depende do destino',
-      busca: 'volta retorno espera fora do município maricá puxar aguardando a volta pronto tempo médio buscar na unidade entregar em casa',
+      id: 'resgate',
+      titulo: 'O resgate: buscar na unidade e deixar em casa',
+      busca: 'resgate retorno volta pacientes disponíveis para resgate disponível em minutos aguardando no local avisar paciente central motorista marcar desmarcar outro carro lugares livres fora do município previsão tempo médio buscar na unidade entregar em casa você já está disponível para retorno ainda não terminei procedimento pergunta 10 minutos',
       conteudo: (
         <>
+          <P>
+            O <strong>resgate</strong> é buscar o paciente na unidade depois do atendimento e deixá-lo em
+            casa. Ninguém entra nele sozinho, nem fora do município: alguém escolhe quem cada carro vai
+            buscar.
+          </P>
+          <Sub>Pacientes disponíveis para resgate</Sub>
+          <P>
+            Quem desce na unidade entra logo na lista <strong>Pacientes disponíveis para resgate</strong>,
+            como “Disponível em XX min”: a hora que a central marcou na viagem ou, sem ela, a chegada
+            mais o tempo médio do procedimento. A lista é <strong>a mesma para todos</strong>: os tablets
+            de todos os carros e o detalhe de qualquer translado planejado ou em andamento.
+          </P>
           <ListaDefinicoes
             itens={[
-              {
-                termo: 'Fora do município',
-                descricao: (
-                  <>
-                    A van <strong>espera</strong>. No tablet, depois do destino, vem “Volta — unidade”, com
-                    a hora prevista (chegada + tempo médio do tratamento), e depois a entrega na casa de
-                    cada um. Quem faltou na ida não entra na volta.
-                  </>
-                ),
-              },
-              {
-                termo: 'Em Maricá',
-                descricao: (
-                  <>
-                    A van <strong>não espera</strong>: a rota acaba no destino. Quem desceu aparece em{' '}
-                    <strong>Aguardando a volta</strong>, no detalhe de qualquer translado planejado ou em
-                    andamento, com a hora em que deve estar pronto. <BotaoRef variante="outline">Puxar para esta rota</BotaoRef>{' '}
-                    põe a volta na rota: o tablet passa a mostrar a busca na unidade e a entrega em casa.
-                  </>
-                ),
-              },
+              { termo: 'Aguardando no local', descricao: 'Avisaram que ele já terminou e está esperando: vem primeiro.' },
+              { termo: 'Disponível pela previsão', descricao: 'Ninguém avisou, mas o tempo do procedimento já passou.' },
+              { termo: 'Disponível em XX min', descricao: 'Ainda em atendimento, pela previsão.' },
+              { termo: 'Sem previsão', descricao: 'Sem hora marcada nem tempo médio: só o aviso diz quando.' },
             ]}
           />
-          <Callout tipo="dica" titulo="Van cheia">
-            O lugar segue a condição do paciente e os acompanhantes, como na geração. Sem lugar na rota,
-            o sistema avisa: puxe para outra, ou crie um translado só para a volta (Novo translado, mesmo
-            veículo) e puxe para ele.
+          <Sub>Quem avisa que o paciente está no local</Sub>
+          <Lista>
+            <Item>
+              o próprio <strong>paciente</strong>, pelo app. Quando a previsão estoura, o app pergunta “Você já está
+              disponível para retorno?”. <strong>“Sim, já estou disponível”</strong> põe o paciente no topo da
+              lista. <strong>“Não, ainda não terminei o procedimento”</strong> faz a pergunta voltar em 10
+              minutos, até ele dizer que sim; enquanto isso, a lista mostra “Disponível em XX min” até a
+              próxima pergunta. Quem terminou antes do previsto avisa sozinho, a qualquer hora (“Já
+              terminei, estou disponível para retorno”);
+            </Item>
+            <Item>
+              a <strong>central</strong>, aqui: <BotaoRef variante="outline">Avisar que está no local</BotaoRef>{' '}
+              (por exemplo, depois de uma ligação da clínica);
+            </Item>
+            <Item>um <strong>motorista</strong> que chegou ao local e viu o paciente esperando.</Item>
+          </Lista>
+          <Sub>Marcar quem o carro vai buscar</Sub>
+          <P>
+            Cada linha mostra o paciente, a unidade e há quanto tempo ele espera (“Aguardando há 25
+            min”); quem espera há mais tempo vem primeiro. Qualquer carro resgata qualquer paciente da
+            lista, mesmo que não o tenha levado. O motorista
+            marca no tablet, e a central marca aqui: escolha os pacientes e clique em{' '}
+            <BotaoRef>Marcar para resgate nesta rota</BotaoRef>. Quem marcar primeiro fica com o
+            paciente, e ele sai da lista dos outros. O tablet passa a mostrar “Resgate — unidade” e, depois
+            das buscas, a entrega na casa de cada um. Em <strong>Marcados para esta rota</strong>,{' '}
+            <BotaoRef variante="outline">Desmarcar</BotaoRef> devolve o paciente à lista, se ele ainda não
+            embarcou.
+          </P>
+          <Callout tipo="atencao" titulo="Só se couber no carro agora">
+            Vale quem está no carro <strong>naquela hora</strong>. Quem foi na ida libera o lugar ao descer
+            na unidade, e quem foi marcado ocupa o lugar até chegar em casa. Cada acompanhante leva um
+            lugar, e a condição do paciente conta: cadeirante, maca ou isolamento. A lista mostra os lugares
+            livres agora e, em vermelho, por que um paciente não cabe.
           </Callout>
           <P>
-            Quem não estava na unidade quando o carro saiu fica <strong>aguardando a volta</strong> e
-            aparece na lista para ser puxado — mesmo fora do município.
+            Quando o motorista não encontra o paciente no local, o paciente <strong>volta para a lista</strong>,
+            com o aviso “Não estava no local às HH:MM”, e o aviso de que estava esperando cai. Se a rota
+            for concluída sem buscar alguém marcado, esse paciente também volta para a lista.
           </P>
         </>
       ),
@@ -304,9 +355,9 @@ export const artigoTranslados: Artigo = {
             ]}
           />
           <P>
-            Acompanhante embarcando ou faltando fica registrado, mas não muda a viagem do paciente. A volta
-            não muda a contagem: o translado já foi contado na ida; ela só completa a saída da unidade e a
-            chegada em casa.
+            Acompanhante embarcando ou faltando fica registrado, mas não muda a viagem do paciente. O
+            resgate não muda a contagem: o translado já foi contado na ida; ele só completa a saída da
+            unidade e a chegada em casa, com o motorista e o carro que buscaram.
           </P>
         </>
       ),
@@ -342,16 +393,15 @@ export const artigoTranslados: Artigo = {
     {
       id: 'quem-pode',
       titulo: 'Quem pode o quê',
-      busca: 'permissão perfil translados consulta inclusão edição unidades marcar no mapa atendimentos corrigir',
+      busca: 'permissão perfil translados consulta inclusão edição unidades marcar no mapa atendimentos corrigir resgate',
       conteudo: (
         <ListaDefinicoes
           itens={[
             { termo: 'Translados — Consulta', descricao: 'Ver as rotas e a viagem registrada pelo tablet.' },
             { termo: 'Translados — Inclusão', descricao: 'Gerar automático e gravar as rotas, ou criar uma à mão.' },
-            { termo: 'Translados — Edição', descricao: 'Alocar e desalocar, iniciar, concluir.' },
+            { termo: 'Translados — Edição', descricao: 'Alocar e desalocar, iniciar, concluir; marcar e desmarcar o resgate, avisar que o paciente está no local.' },
             { termo: 'Unidades — Edição', descricao: 'Marcar no mapa os endereços que o Google não achou.' },
             { termo: 'Atendimentos — Edição', descricao: 'Corrigir a viagem (o botão Corrigir).' },
-            { termo: 'Rastreamento — Consulta / Edição', descricao: 'Ver quem aguarda a volta / puxar para uma rota.' },
           ]}
         />
       ),

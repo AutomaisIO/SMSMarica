@@ -153,6 +153,18 @@ class ApiCidadao {
 
   Future<void> removerAcompanhante(String id) => _dio.delete<void>('/auth/paciente/me/acompanhantes/$id');
 
+  /// O resgate de hoje; nulo quando não há (ainda não foi à unidade, ou já voltou). Sem cache.
+  Future<ResgateDoPaciente?> resgate() async {
+    final r = await _dio.get<Json>('/auth/paciente/resgate');
+    final dados = r.data;
+    return r.statusCode == 204 || dados == null ? null : ResgateDoPaciente.deJson(dados);
+  }
+
+  /// Resposta à pergunta (ou o "Já terminei" antes dela): sim = "já estou disponível"; não = "ainda
+  /// não terminei" (a pergunta volta em 10 min).
+  Future<void> responderResgate(String sessaoId, {required bool disponivel}) =>
+      _dio.post<void>('/auth/paciente/resgate/$sessaoId/resposta', data: {'disponivel': disponivel});
+
   /// Viagens recentes para avaliar (sem cache: a nota muda na hora).
   Future<List<ViagemParaAvaliar>> viagensParaAvaliar() async =>
       _lista(ViagemParaAvaliar.deJson)(await _get('/auth/paciente/viagens-para-avaliar'));

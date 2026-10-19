@@ -20,6 +20,21 @@ class DemoAdapter implements HttpClientAdapter {
     {'sessaoId': 'sv2', 'data': _diaRelativo(-9), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': 5, 'comentario': null},
   ];
 
+  /// Resgate de hoje (demonstração): na clínica, com a previsão estourada — a pergunta aparece.
+  final Map<String, dynamic> _resgate = {
+    'sessaoId': 'sr1',
+    'unidade': 'Hospital Demonstração',
+    'disponibilidade': 'PelaPrevisao',
+    'disponivelAs': '11:30:00',
+    'noLocalDesde': null,
+    'avisadoPor': null,
+    'veiculoPlaca': null,
+    'veiculoModelo': null,
+    'embarcou': false,
+    'perguntaPendente': true,
+    'proximaPerguntaAs': null,
+  };
+
   static String _diaRelativo(int dias) {
     final h = DateTime.now();
     return DateTime(h.year, h.month, h.day + dias).toIso8601String().substring(0, 10);
@@ -320,6 +335,20 @@ class DemoAdapter implements HttpClientAdapter {
         return (200, {'cpf': (corpo! as Map)['cpf'], 'nome': 'ANA PAULA EXEMPLO', 'dataNascimento': '1990-01-01', 'jaCadastrado': false});
       case ('GET', '/auth/paciente/viagens-para-avaliar'):
         return (200, _viagensParaAvaliar);
+      case ('GET', '/auth/paciente/resgate'):
+        return (200, _resgate);
+      case ('POST', '/auth/paciente/resgate/sr1/resposta'):
+        final sim = (corpo! as Map)['disponivel'] == true;
+        _resgate['perguntaPendente'] = false;
+        if (sim) {
+          _resgate['disponibilidade'] = 'NoLocal';
+          _resgate['noLocalDesde'] = DateTime.now().toUtc().toIso8601String();
+          _resgate['avisadoPor'] = 'Paciente';
+        } else {
+          _resgate['disponibilidade'] = 'EmAtendimento';
+          _resgate['proximaPerguntaAs'] = DateTime.now().toUtc().add(const Duration(minutes: 10)).toIso8601String();
+        }
+        return (204, null);
       case ('POST', '/auth/paciente/me/acompanhantes'):
         _acompanhantes.add({
           'id': 'a${_acompanhantes.length + 1}',

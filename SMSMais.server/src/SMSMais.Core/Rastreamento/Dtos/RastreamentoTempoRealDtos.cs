@@ -25,27 +25,3 @@ public sealed record FrotaVeiculoDto(
     double? Rumo = null,
     string Origem = "motorista",
     TipoOcorrenciaVeiculo? OcorrenciaAberta = null);
-
-/// <summary>
-/// Paciente que terminou o atendimento fora de Maricá e aguarda o carro para a volta.
-/// <see cref="DistanciaMetros"/> é a distância (haversine) do destino até a última
-/// posição GPS do motorista informado (null quando sem motorista/posição).
-/// </summary>
-public sealed record PacienteAguardandoDto(
-    Guid SessaoId,
-    Guid TratamentoId,
-    Guid PacienteId,
-    string PacienteNome,
-    Guid UnidadeAtendimentoId,
-    string UnidadeAtendimentoNome,
-    double? Latitude,
-    double? Longitude,
-    int? DistanciaMetros,
-    bool AcompanhanteEsperado,
-    DateOnly DataPrevista,
-    /// <summary>Unidade fora do município (a van esperava; este ficou para trás).</summary>
-    bool ForaDoMunicipio = false,
-    /// <summary>Quando deve estar pronto para voltar: o marcado na sessão, ou chegada + tempo médio.</summary>
-    TimeOnly? ProntoPrevisto = null);
-
-public sealed record PuxarPacienteRequest(Guid RotaId, Guid SessaoId);

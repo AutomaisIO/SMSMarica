@@ -30,9 +30,10 @@ public sealed record RotaTabletDto(
 /// <summary>Coleta (uma por paciente, na casa dele) ou destino (uma por unidade de atendimento).
 /// <paramref name="Latitude"/>/<paramref name="Longitude"/> nulos = endereço sem ponto no mapa.
 /// <paramref name="Concluida"/>: o tablet já resolveu a parada (todos marcados na coleta; no destino,
-/// todos desembarcados ou ausentes). <paramref name="Trecho"/>: "Ida" (casa → unidade) ou "Volta"
-/// (unidade → casa): fora do município a van espera e traz de volta quem levou; em Maricá, a volta é de
-/// quem a central puxou para a rota.</summary>
+/// todos desembarcados ou ausentes). <paramref name="Trecho"/>: "Ida" (casa → unidade) ou "Resgate"
+/// (unidade → casa): quem o motorista ou a central marcaram para este carro buscar, levado por ele ou não.
+/// <paramref name="Lote"/>: no resgate, a marcação a que a parada pertence (a busca e as entregas em casa
+/// da mesma marcação têm o mesmo lote).</summary>
 public sealed record ParadaTabletDto(
     string Id,
     int Ordem,
@@ -45,7 +46,8 @@ public sealed record ParadaTabletDto(
     string? Observacoes,
     IReadOnlyList<PassageiroTabletDto> Passageiros,
     bool Concluida = false,
-    string Trecho = RotaTabletService.Ida);
+    string Trecho = RotaTabletService.Ida,
+    int? Lote = null);
 
 /// <summary>Paciente da parada, com os acompanhantes dele. <paramref name="Confirmacao"/>:
 /// Confirmado, Aguardando ou Cancelado. <paramref name="Situacao"/>: a última marcação do tablet
@@ -104,7 +106,7 @@ public sealed class RotaTabletService(
     public const string Cancelado = "Cancelado";
 
     public const string Ida = "Ida";
-    public const string Volta = "Volta";
+    public const string Resgate = "Resgate";
 
     public const string Embarcou = "Embarcou";
     public const string Ausente = "Ausente";
@@ -145,7 +147,7 @@ public sealed class RotaTabletService(
                     t.NecessitaAjuda, t.AjudaDescricao),
                 tt == null ? null : tt.Nome, tt == null ? null : tt.TempoMedioMinutos,
                 u.Id, u.Nome, u.Endereco, u.Gps == null ? null : (double?)u.Gps.Latitude,
-                u.Gps == null ? null : (double?)u.Gps.Longitude, u.Observacoes, u.Externa)).ToListAsync(ct);
+                u.Gps == null ? null : (double?)u.Gps.Longitude, u.Observacoes)).ToListAsync(ct);
 
         var sessaoIds = alocacoes.Select(a => a.SessaoId).Distinct().ToList();
         var acompanhantes = (await (
@@ -177,11 +179,15 @@ public sealed class RotaTabletService(
                 return (end.Texto, end.Referencia, doPlano.GetValueOrDefault(p.SessaoId) ?? end.Ponto);
             }
 
-            PassageiroTabletDto Montar(SessaoNaRota s, bool volta) => Passageiro(
+            // No resgate só vale o que o tablet marcou depois da marcação do resgate: quem não estava no
+            // local e foi marcado de novo começa sem marca.
+            PassageiroTabletDto Montar(SessaoNaRota s, bool resgate) => Passageiro(
                 s.Paciente, s.AssentosAcompanhante,
                 acompanhantes[s.Paciente.SessaoId].Select(a => ((Guid?)a.Id, a.Nome, a.Parentesco, (string?)a.Telefone)).ToList(),
                 resumos.GetValueOrDefault(s.Paciente.PacienteId),
-                ordem => marcacoes.TryGetValue((rota.Id, s.Paciente.SessaoId, ordem, volta), out var t) ? NomeDaSituacao(t) : null);
+                ordem => marcacoes.TryGetValue((rota.Id, s.Paciente.SessaoId, ordem, resgate), out var m)
+                    && (!resgate || m.RecebidoEm >= s.Paciente.CriadoEm)
+                    ? NomeDaSituacao(m.Tipo) : null);
 
             // Ida: uma coleta por sessão (paciente), na ordem da rota; sem ordem, pelo horário de busca.
             var paradas = new List<ParadaTabletDto>();
@@ -189,7 +195,7 @@ public sealed class RotaTabletService(
             foreach (var s in Agrupar(daRota.Where(a => a.Parada != TipoParada.Retorno)))
             {
                 var p = s.Paciente;
-                var passageiro = Montar(s, volta: false);
+                var passageiro = Montar(s, resgate: false);
                 var casa = await Casa(p);
                 paradas.Add(new ParadaTabletDto(
                     $"coleta:{p.SessaoId}", paradas.Count + 1, TipoParada.Coleta, passageiro.Nome, casa.Texto,
@@ -217,47 +223,34 @@ public sealed class RotaTabletService(
                     Concluida: quem.All(x => x.Situacao is Ausente or Desembarcou)));
             }
 
-            // Volta (decisão de 16/10: depende do destino). Fora do município a van espera e traz de volta
-            // quem levou — menos quem faltou na ida. Em Maricá ela não espera: a volta é de quem a central
-            // puxou para esta rota (alocação de retorno).
-            // Espera = a van ficou na unidade (externa); sem espera = veio buscar quem foi puxado.
-            var voltas = new List<(LinhaAlocacao Unidade, List<SessaoNaRota> Quem, bool Espera)>();
-            foreach (var (u, quem, passageiros) in porUnidade.Where(x => x.Unidade.UnidadeExterna))
+            // Resgate (decisões de 19/10): quem esta rota marcou para buscar na unidade — levado por ela ou
+            // não; ninguém entra sozinho, nem fora do município. Uma busca por unidade em cada marcação (lote)
+            // e, depois de todas as buscas, as entregas em casa: com alguém a bordo, o carro ainda busca quem
+            // marcou antes de deixar cada um.
+            var entregas = new List<(SessaoNaRota Quem, PassageiroTabletDto Passageiro, int Lote)>();
+            foreach (var lote in Agrupar(daRota.Where(a => a.Parada == TipoParada.Retorno))
+                         .GroupBy(x => (Lote: x.Paciente.OrdemParada ?? 0, x.Paciente.UnidadeId))
+                         .OrderBy(g => g.Key.Lote))
             {
-                var vao = quem.Where((s, i) => passageiros[i].Situacao != Ausente
-                    && s.Paciente.Status is not (StatusSessao.Cancelada or StatusSessao.NaoRealizada)).ToList();
-                if (vao.Count > 0) voltas.Add((u, vao, true));
-            }
-            foreach (var s in Agrupar(daRota.Where(a => a.Parada == TipoParada.Retorno)))
-            {
-                var i = voltas.FindIndex(v => v.Unidade.UnidadeId == s.Paciente.UnidadeId);
-                if (i < 0) voltas.Add((s.Paciente, [s], false));
-                else voltas[i].Quem.Add(s);
-            }
-
-            foreach (var (u, quem, espera) in voltas)
-            {
-                var embarcam = quem.Select(s => Montar(s, volta: true)).ToList();
-                var tempo = quem.Max(s => s.Paciente.TempoMedioMinutos);
-                var aviso = espera
-                    ? tempo is { } m ? $"A van espera o atendimento acabar (cerca de {Duracao(m)})." : "A van espera o atendimento acabar."
-                    : "Buscar quem terminou o atendimento.";
+                var quem = lote.ToList();
+                var u = quem[0].Paciente;
+                var embarcam = quem.Select(x => Montar(x, resgate: true)).ToList();
                 paradas.Add(new ParadaTabletDto(
-                    $"retorno:{u.UnidadeId}", paradas.Count + 1, TipoParada.Coleta, $"Volta — {u.UnidadeNome}",
-                    Formatar(u.UnidadeEndereco), u.UnidadeLat, u.UnidadeLng,
-                    quem.Select(s => RetornoPrevisto(s.Paciente)).Max(), Juntar(aviso, u.UnidadeObservacoes), embarcam,
-                    Concluida: embarcam.All(x => x.Situacao is not null), Trecho: Volta));
+                    $"resgate:{u.UnidadeId}:{lote.Key.Lote}", paradas.Count + 1, TipoParada.Coleta,
+                    $"Resgate — {u.UnidadeNome}", Formatar(u.UnidadeEndereco), u.UnidadeLat, u.UnidadeLng,
+                    quem.Select(x => RetornoPrevisto(x.Paciente)).Max(), u.UnidadeObservacoes, embarcam,
+                    Concluida: embarcam.All(x => x.Situacao is not null), Trecho: Resgate, Lote: lote.Key.Lote));
 
-                // Entrega em casa na ordem inversa da coleta: o último buscado mora mais perto da unidade.
-                for (var k = quem.Count - 1; k >= 0; k--)
-                {
-                    var casa = await Casa(quem[k].Paciente);
-                    var passageiro = embarcam[k];
-                    paradas.Add(new ParadaTabletDto(
-                        $"casa:{quem[k].Paciente.SessaoId}", paradas.Count + 1, TipoParada.Destino, passageiro.Nome,
-                        casa.Texto, casa.Ponto?.Latitude, casa.Ponto?.Longitude, null, casa.Referencia, [passageiro],
-                        Concluida: passageiro.Situacao is Ausente or Desembarcou, Trecho: Volta));
-                }
+                // Entrega na ordem inversa da busca: o último buscado mora mais perto da unidade.
+                for (var k = quem.Count - 1; k >= 0; k--) entregas.Add((quem[k], embarcam[k], lote.Key.Lote));
+            }
+            foreach (var (quem, passageiro, lote) in entregas)
+            {
+                var casa = await Casa(quem.Paciente);
+                paradas.Add(new ParadaTabletDto(
+                    $"casa:{quem.Paciente.SessaoId}:{lote}", paradas.Count + 1, TipoParada.Destino, passageiro.Nome,
+                    casa.Texto, casa.Ponto?.Latitude, casa.Ponto?.Longitude, null, casa.Referencia, [passageiro],
+                    Concluida: passageiro.Situacao is Desembarcou, Trecho: Resgate, Lote: lote));
             }
 
             resultado.Add(new RotaTabletDto(
@@ -325,11 +318,6 @@ public sealed class RotaTabletService(
 
     private static TimeOnly? RetornoPrevisto(LinhaAlocacao p) =>
         RetornoPrevisto(p.HoraPrevistaRetorno, p.HoraChegadaUnidade, p.TempoMedioMinutos);
-
-    private static string Duracao(int minutos) =>
-        minutos < 60 ? $"{minutos} min" : minutos % 60 == 0 ? $"{minutos / 60} h" : $"{minutos / 60} h {minutos % 60:00}";
-
-    private static string Juntar(string a, string? b) => string.IsNullOrWhiteSpace(b) ? a : $"{a} · {b.Trim()}";
 
     private static string NomeDaSituacao(TipoEventoViagem t) => t switch
     {
@@ -431,6 +419,5 @@ public sealed class RotaTabletService(
         Endereco? UnidadeEndereco,
         double? UnidadeLat,
         double? UnidadeLng,
-        string? UnidadeObservacoes,
-        bool UnidadeExterna);
+        string? UnidadeObservacoes);
 }

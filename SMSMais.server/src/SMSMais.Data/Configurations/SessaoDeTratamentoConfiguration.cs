@@ -37,6 +37,10 @@ internal sealed class SessaoDeTratamentoConfiguration : IEntityTypeConfiguration
         builder.Property(s => s.VeiculoVoltaId).HasColumnName("veiculo_volta_id");
         builder.Property(s => s.HoraSaidaUnidade).HasColumnName("hora_saida_unidade");
         builder.Property(s => s.HoraChegadaResidencia).HasColumnName("hora_chegada_residencia");
+        builder.Property(s => s.ProntoParaResgateEm).HasColumnName("pronto_resgate_em");
+        builder.Property(s => s.ProntoParaResgateCanal).HasColumnName("pronto_resgate_canal").HasConversion<int>();
+        builder.Property(s => s.AindaEmAtendimentoEm).HasColumnName("ainda_em_atendimento_em");
+        builder.Property(s => s.PerguntaResgateEnviadaEm).HasColumnName("pergunta_resgate_enviada_em");
 
         builder.Property(s => s.MotivoNaoRealizacao).HasColumnName("motivo_nao_realizacao").HasMaxLength(500);
         builder.Property(s => s.Observacoes).HasColumnName("observacoes");

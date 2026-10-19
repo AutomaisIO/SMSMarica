@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Rastreamento.Dispositivos;
 using SMSMais.Core.Rastreamento.Ocorrencias;
+using SMSMais.Core.Translado.Resgate;
 using SMSMais.Core.Translado.Viagem;
 using SMSMais.Data.Entities.Enums;
 
@@ -19,7 +20,8 @@ public sealed class DispositivosVeiculoController(
     IDispositivoVeiculoService service,
     IOcorrenciaVeiculoService ocorrencias,
     IRotaTabletService rotasTablet,
-    IViagemService viagem) : ControllerBase
+    IViagemService viagem,
+    IResgateService resgates) : ControllerBase
 {
     public const string PoliticaDeLimite = "tablet-veiculo";
     private const string CabecalhoToken = "X-Dispositivo-Token";
@@ -124,5 +126,54 @@ public sealed class DispositivosVeiculoController(
         if (d is null) return Unauthorized();
         var registrado = await viagem.RegistrarDoTabletAsync(d, request, ct);
         return StatusCode(StatusCodes.Status201Created, registrado);
+    }
+
+    /// <summary>
+    /// "Pacientes disponíveis para resgate": a mesma lista para todos os tablets, com os lugares livres
+    /// agora no carro desta rota, se cada um cabe e quem esta rota já marcou.
+    /// </summary>
+    [HttpGet("rastreamento/dispositivos/resgates")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> Resgates([FromQuery] Guid rotaId, CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        return d is null ? Unauthorized() : Ok(await resgates.ListarDoTabletAsync(d, rotaId, ct));
+    }
+
+    /// <summary>O motorista marca quem vai resgatar. 409 quando não cabe no carro agora ou outro carro
+    /// marcou antes.</summary>
+    [HttpPost("rastreamento/dispositivos/resgates")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> MarcarResgate([FromBody] MarcarResgateRequest request, CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        if (d is null) return Unauthorized();
+        await resgates.MarcarDoTabletAsync(d, request, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("rastreamento/dispositivos/resgates/{sessaoId:guid}")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> DesmarcarResgate(Guid sessaoId, [FromQuery] Guid rotaId, CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        if (d is null) return Unauthorized();
+        await resgates.DesmarcarDoTabletAsync(d, rotaId, sessaoId, ct);
+        return NoContent();
+    }
+
+    /// <summary>O motorista que chegou ao local viu o paciente esperando: vale para todos os carros.</summary>
+    [HttpPost("rastreamento/dispositivos/resgates/{sessaoId:guid}/no-local")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> ResgateNoLocal(Guid sessaoId, CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        if (d is null) return Unauthorized();
+        await resgates.AvisarNoLocalAsync(sessaoId, CanalAvisoResgate.Motorista, ct);
+        return NoContent();
     }
 }

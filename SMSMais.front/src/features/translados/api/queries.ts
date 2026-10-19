@@ -10,8 +10,10 @@ import {
   listarRotas,
   listarSessoesElegiveis,
   listarViagem,
-  listarAguardandoRetorno,
-  puxarParaRota,
+  listarResgates,
+  marcarResgates,
+  desmarcarResgate,
+  avisarNoLocal,
   listarEnderecosParaRevisar,
   fixarPontoDoEndereco,
   obterRotaPorId,
@@ -178,25 +180,46 @@ export function useFixarPontoDoEndereco() {
   });
 }
 
-const chaveAguardando = ['rastreamento', 'aguardando'] as const;
+const chaveResgates = (rotaId: string) => ['resgates', rotaId] as const;
 
-/** Fila de quem aguarda a volta; atualiza a cada minuto. */
-export function useAguardandoRetorno(ativo: boolean) {
+/** Lista de resgate da rota; atualiza a cada 30 s (os tablets marcam ao mesmo tempo). */
+export function useResgates(rotaId: string, ativo: boolean) {
   return useQuery({
-    queryKey: chaveAguardando,
-    queryFn: listarAguardandoRetorno,
+    queryKey: chaveResgates(rotaId),
+    queryFn: () => listarResgates(rotaId),
     enabled: ativo,
-    refetchInterval: ativo ? 60_000 : false,
+    refetchInterval: ativo ? 30_000 : false,
   });
 }
 
-export function usePuxarParaRota() {
+function useAtualizarResgates() {
   const client = useQueryClient();
+  return (rotaId: string) => {
+    client.invalidateQueries({ queryKey: ['resgates'] });
+    client.invalidateQueries({ queryKey: transladosKeys.detalhe(rotaId) });
+  };
+}
+
+export function useMarcarResgates() {
+  const atualizar = useAtualizarResgates();
   return useMutation({
-    mutationFn: (v: { rotaId: string; sessaoId: string }) => puxarParaRota(v.rotaId, v.sessaoId),
-    onSuccess: (_, v) => {
-      client.invalidateQueries({ queryKey: chaveAguardando });
-      client.invalidateQueries({ queryKey: transladosKeys.detalhe(v.rotaId) });
-    },
+    mutationFn: (v: { rotaId: string; sessaoIds: string[] }) => marcarResgates(v.rotaId, v.sessaoIds),
+    onSettled: (_, __, v) => atualizar(v.rotaId),
+  });
+}
+
+export function useDesmarcarResgate() {
+  const atualizar = useAtualizarResgates();
+  return useMutation({
+    mutationFn: (v: { rotaId: string; sessaoId: string }) => desmarcarResgate(v.rotaId, v.sessaoId),
+    onSettled: (_, __, v) => atualizar(v.rotaId),
+  });
+}
+
+export function useAvisarNoLocal() {
+  const atualizar = useAtualizarResgates();
+  return useMutation({
+    mutationFn: (v: { rotaId: string; sessaoId: string }) => avisarNoLocal(v.sessaoId),
+    onSettled: (_, __, v) => atualizar(v.rotaId),
   });
 }

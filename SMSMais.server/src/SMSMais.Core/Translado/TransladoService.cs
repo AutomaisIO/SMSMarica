@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Translado.Dtos;
+using SMSMais.Core.Translado.Geracao;
+using SMSMais.Core.Translado.Lotacao;
 using SMSMais.Core.Tratamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -145,6 +147,8 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
 
         r.Status = StatusRota.Concluida;
         r.ConcluidaEm = DateTime.UtcNow;
+        // Como no tablet: quem a rota ia resgatar e não buscou volta para a lista de resgate.
+        await Resgate.ResgateService.LiberarAsync(_db, id, null, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -159,6 +163,8 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
         }
 
         r.Status = StatusRota.Cancelada;
+        // Quem esta rota ia resgatar e ainda não buscou volta para a lista de resgate.
+        await Resgate.ResgateService.LiberarAsync(_db, id, null, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -244,6 +250,7 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
 
         var sessao = await _db.Sessoes
             .Include(s => s.Tratamento)
+            .Include(s => s.Acompanhantes)
             .FirstOrDefaultAsync(s => s.Id == request.SessaoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SessaoDeTratamento), request.SessaoId);
 
@@ -301,11 +308,30 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
                 "Assento de motorista não aceita alocação de paciente.");
         }
 
-        var assentoOcupado = await _db.Alocacoes.AsNoTracking()
-            .AnyAsync(a => a.RotaDiariaId == rotaId && a.AssentoId == assento.Id, cancellationToken);
-        if (assentoOcupado)
+        // O paciente vai no assento escolhido e cada acompanhante leva outro lugar: a central nunca põe
+        // no carro mais gente do que ele leva (decisão de 19/10).
+        var lotacao = await LotacaoDaRota.DaIdaAsync(_db, rota, cancellationToken);
+        if (lotacao.Livres.All(a => a.Id != assento.Id))
         {
             throw new ConflitoException("assento.ocupado", "Assento já está alocado nesta rota.");
+        }
+
+        var t = sessao.Tratamento;
+        GarantirCondicao(t, assento, lotacao);
+        var acompanhantes = AcomodacaoNoVeiculo.AcompanhantesDaViagem(
+            sessao.AcompanhanteEsperado, sessao.Acompanhantes.Count, t.QuantidadeAcompanhantes);
+        var restantes = lotacao.Livres.Where(a => a.Id != assento.Id).ToList();
+        var assentosAcompanhantes = restantes.Where(a => a.Tipo == TipoAssento.Acompanhante)
+            .Concat(restantes.Where(a => a.Tipo == TipoAssento.Passageiro))
+            .Take(acompanhantes)
+            .ToList();
+        if (assentosAcompanhantes.Count < acompanhantes)
+        {
+            throw new ConflitoException("rota.sem_lugar_acompanhante", acompanhantes == 1
+                ? "Não cabe: o paciente vai com 1 acompanhante e não sobra outro lugar livre neste carro."
+                : $"Não cabe: o paciente vai com {acompanhantes} acompanhantes e só "
+                    + (restantes.Count == 1 ? "sobra 1 lugar livre" : $"sobram {restantes.Count} lugares livres")
+                    + " neste carro.");
         }
 
         // Remarcar sessão atrasada para o dia da rota — sai da fila de pendências.
@@ -326,8 +352,39 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
         };
 
         _db.Alocacoes.Add(alocacao);
+        _db.Alocacoes.AddRange(assentosAcompanhantes.Select(a => new Alocacao
+        {
+            Id = Guid.CreateVersion7(),
+            RotaDiariaId = rotaId,
+            SessaoId = sessao.Id,
+            AssentoId = a.Id,
+            Tipo = TipoAlocacao.Acompanhante,
+            CriadoEm = alocacao.CriadoEm,
+        }));
         await _db.SaveChangesAsync(cancellationToken);
         return alocacao.Id;
+    }
+
+    /// <summary>A condição do paciente na alocação feita à mão (a mesma regra da geração).</summary>
+    private static void GarantirCondicao(Tratamento t, Assento assento, OcupacaoDoCarro lotacao)
+    {
+        if (t.Mobilidade == MobilidadeTransporte.CadeiranteVeiculoAdaptado && assento.Tipo != TipoAssento.Cadeirante)
+        {
+            throw new ConflitoException("assento.cadeirante",
+                "Paciente cadeirante na própria cadeira vai no assento de cadeirante.");
+        }
+        if (t.Mobilidade == MobilidadeTransporte.Maca
+            && (lotacao.Veiculo.Tipo != TipoVeiculo.Ambulancia || lotacao.ABordo.Any(q => q.Mobilidade == MobilidadeTransporte.Maca)))
+        {
+            throw new ConflitoException("veiculo.maca", lotacao.Veiculo.Tipo == TipoVeiculo.Ambulancia
+                ? "A ambulância já leva um paciente de maca."
+                : "Paciente de maca só vai de ambulância.");
+        }
+        if (lotacao.ABordo.Any(q => q.Isolamento) || (t.Isolamento && lotacao.ABordo.Count > 0))
+        {
+            throw new ConflitoException("rota.isolamento",
+                "Paciente em isolamento viaja sozinho (só com os acompanhantes dele): não divide o carro.");
+        }
     }
 
     public async Task RemoverAlocacaoAsync(
@@ -348,7 +405,11 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
             .FirstOrDefaultAsync(a => a.Id == alocacaoId && a.RotaDiariaId == rotaId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Alocacao), alocacaoId);
 
-        _db.Alocacoes.Remove(alocacao);
+        // Sai o paciente com os acompanhantes: tirar só o lugar de um acompanhante deixaria gente sem assento.
+        var daSessao = await _db.Alocacoes
+            .Where(a => a.RotaDiariaId == rotaId && a.SessaoId == alocacao.SessaoId && a.Parada == alocacao.Parada)
+            .ToListAsync(cancellationToken);
+        _db.Alocacoes.RemoveRange(daSessao);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -378,9 +439,28 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
                 assento.Numero,
                 a.Tipo,
                 s.Status,
-                s.ConfirmadaPorUsuarioId != null);
+                s.ConfirmadaPorUsuarioId != null,
+                a.Parada);
 
         var dtos = await query.ToListAsync(cancellationToken);
+
+        // Acompanhante sem lugar (o paciente confirmou mais um pelo WhatsApp e o carro estava cheio):
+        // aparece no paciente, para a central resolver.
+        var sessaoIds = dtos.Select(d => d.SessaoId).Distinct().ToList();
+        var esperados = await (
+            from s in _db.Sessoes.AsNoTracking()
+            where sessaoIds.Contains(s.Id)
+            join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
+            select new { s.Id, s.AcompanhanteEsperado, Escolhidos = s.Acompanhantes.Count, t.QuantidadeAcompanhantes })
+            .ToDictionaryAsync(x => x.Id, x => AcomodacaoNoVeiculo.AcompanhantesDaViagem(
+                x.AcompanhanteEsperado, x.Escolhidos, x.QuantidadeAcompanhantes), cancellationToken);
+        dtos = [.. dtos.Select(d =>
+        {
+            if (d.Tipo != TipoAlocacao.Paciente) return d;
+            var comLugar = dtos.Count(x => x.SessaoId == d.SessaoId && x.Parada == d.Parada && x.Tipo == TipoAlocacao.Acompanhante);
+            var faltam = esperados.GetValueOrDefault(d.SessaoId) - comLugar;
+            return faltam > 0 ? d with { AcompanhantesSemLugar = faltam } : d;
+        })];
         var nomes = await _pacienteResolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), cancellationToken);
         return [.. dtos.Select(d => nomes.TryGetValue(d.PacienteId, out var r)
             ? d with { PacienteNome = r.Nome } : d)];

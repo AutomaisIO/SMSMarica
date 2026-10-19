@@ -28,7 +28,11 @@ internal sealed class AlocacaoConfiguration : IEntityTypeConfiguration<Alocacao>
         builder.HasOne(a => a.Sessao).WithMany().HasForeignKey(a => a.SessaoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(a => a.Assento).WithMany().HasForeignKey(a => a.AssentoId).OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(a => new { a.RotaDiariaId, a.AssentoId }).IsUnique();
+        // Na ida cada assento é de uma pessoa só. No resgate o assento volta a ser usado depois que quem foi
+        // nele desceu (ResgateService confere quem está a bordo na hora): o índice vale só fora do resgate.
+        builder.HasIndex(a => new { a.RotaDiariaId, a.AssentoId })
+            .IsUnique()
+            .HasFilter("tipo_parada <> 3");
         builder.HasIndex(a => new { a.RotaDiariaId, a.OrdemParada });
     }
 }

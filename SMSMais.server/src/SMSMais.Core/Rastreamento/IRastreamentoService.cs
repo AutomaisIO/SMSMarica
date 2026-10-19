@@ -25,8 +25,7 @@ public interface IRastreamentoService
     // Mapa da frota ao vivo — snapshot do dia (rota + veículo + motorista + última posição)
     Task<IReadOnlyList<FrotaVeiculoDto>> ListarFrotaAsync(DateOnly? data, CancellationToken cancellationToken = default);
 
-    // FT5 — pacientes aguardando retorno (fora de Maricá) + "puxar"
-    Task<IReadOnlyList<PacienteAguardandoDto>> ListarAguardandoAsync(Guid? motoristaId, CancellationToken cancellationToken = default);
+    // Resgate: a lista e a marcação ficam em Translado.Resgate.IResgateService. Isto é o aviso antigo
+    // de "terminou o atendimento" (FT5), que agora vale como aviso da central de que está no local.
     Task MarcarAguardandoRetornoAsync(Guid sessaoId, CancellationToken cancellationToken = default);
-    Task<Guid> PuxarAsync(PuxarPacienteRequest request, CancellationToken cancellationToken = default);
 }

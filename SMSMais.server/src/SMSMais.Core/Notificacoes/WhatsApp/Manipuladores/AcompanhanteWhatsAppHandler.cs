@@ -38,6 +38,14 @@ public sealed class AcompanhanteWhatsAppHandler(SmsMaisDbContext db) : IManipula
         sessao.AcompanhanteConfirmadoEm = DateTime.UtcNow;
         sessao.AcompanhanteCanal = CanalConfirmacao.WhatsApp;
         sessao.AtualizadoEm = DateTime.UtcNow;
+
+        // Já está numa rota: o acompanhante ganha um lugar no carro, se houver. Sem lugar, a resposta do
+        // paciente vale do mesmo jeito e a rota mostra "acompanhante sem lugar" para a central resolver.
+        var limite = await db.Tratamentos.Where(t => t.Id == sessao.TratamentoId)
+            .Select(t => t.QuantidadeAcompanhantes).FirstAsync(ct);
+        var escolhidos = await db.SessoesAcompanhantes.CountAsync(x => x.SessaoId == sessao.Id, ct);
+        await Translado.Lotacao.LugaresDosAcompanhantes.AjustarAsync(db, sessao,
+            Translado.Geracao.AcomodacaoNoVeiculo.AcompanhantesDaViagem(resposta.Value, escolhidos, limite), ct);
     }
 
     private static bool? InterpretarSimNao(string? texto)

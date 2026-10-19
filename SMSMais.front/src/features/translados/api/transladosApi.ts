@@ -5,11 +5,11 @@ import type {
   CriarAlocacaoPayload,
   EnderecoParaRevisar,
   EventoViagem,
-  PacienteAguardando,
   FiltrosListarRotas,
   GerarTransladoPayload,
   ResultadoGeracao,
   RotaDiaria,
+  Resgates,
   RotaDiariaListItem,
   SessaoElegivel,
 } from '@/features/translados/types';
@@ -88,13 +88,24 @@ export async function fixarPontoDoEndereco(id: string, latitude: number, longitu
   await http.post('/geo/fixar', { id, latitude, longitude });
 }
 
-/** Quem aguarda a volta (fila de "puxar"). */
-export async function listarAguardandoRetorno(): Promise<PacienteAguardando[]> {
-  const { data } = await http.get<PacienteAguardando[]>('/rastreamento/aguardando');
+/** "Pacientes disponíveis para resgate" (a mesma lista dos tablets), com os lugares livres agora no
+ * carro da rota e quem ela já marcou. */
+export async function listarResgates(rotaId: string): Promise<Resgates> {
+  const { data } = await http.get<Resgates>('/resgates', { params: { rotaId } });
   return data;
 }
 
-/** Põe a volta do paciente na rota: busca na unidade e entrega em casa. */
-export async function puxarParaRota(rotaId: string, sessaoId: string): Promise<void> {
-  await http.post('/rastreamento/puxar', { rotaId, sessaoId });
+/** Marca quem a rota vai resgatar (só passa se couber no carro agora). */
+export async function marcarResgates(rotaId: string, sessaoIds: string[]): Promise<void> {
+  await http.post(`/rotas/${rotaId}/resgates`, { sessaoIds });
+}
+
+/** Tira do resgate da rota (antes de embarcar): o paciente volta para a lista. */
+export async function desmarcarResgate(rotaId: string, sessaoId: string): Promise<void> {
+  await http.delete(`/rotas/${rotaId}/resgates/${sessaoId}`);
+}
+
+/** A central avisa que o paciente já está no local esperando. */
+export async function avisarNoLocal(sessaoId: string): Promise<void> {
+  await http.post(`/resgates/${sessaoId}/no-local`);
 }
