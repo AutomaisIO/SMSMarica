@@ -9,6 +9,8 @@ import 'package:agente/features/navegacao/presentation/widgets/painel_passageiro
 import 'package:agente/features/ocorrencia/domain/ocorrencia.dart'
     show novoIdLocal;
 import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
+import 'package:agente/features/resgate/presentation/resgates_page.dart';
+import 'package:agente/features/rota/data/rota_repository.dart';
 import 'package:agente/features/viagem/application/viagem_controller.dart';
 import 'package:agente/features/viagem/data/viagem_repository.dart';
 import 'package:agente/features/viagem/domain/viagem.dart';
@@ -19,6 +21,7 @@ import 'package:agente/shared/plataforma/canal_dispositivo.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 
 /// Tela de navegação assistida do translado, com o Google Navigation SDK.
@@ -29,6 +32,11 @@ import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 /// manobras do SDK no topo. A rota é **uma só sessão** com as paradas como
 /// waypoints; a cada chegada o app comuta para a confirmação (assentos) e
 /// **continua a mesma sessão** para o próximo waypoint (1 rota = 1 cobrança).
+///
+/// Ao desembarcar na unidade, abre a lista **Pacientes disponíveis para
+/// resgate** e o carro não segue sozinho para lugar nenhum: as paradas do
+/// resgate só entram quando o motorista (ou a central) marca alguém. Sem
+/// paradas pendentes, ele resgata mais alguém ou **encerra a rota**.
 class NavegacaoPage extends ConsumerStatefulWidget {
   const NavegacaoPage({super.key});
 
@@ -74,6 +82,10 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   Timer? _gpsTimer;
   static const _prazoGps = Duration(seconds: 20);
   static const _prazoTermos = Duration(seconds: 20);
+
+  /// Já está no local da próxima busca (o resgate na mesma unidade em que
+  /// desembarcou): abre a conferência direto, sem rota até o mesmo ponto.
+  static const _raioNoLocal = 150.0;
 
   /// Tempo que o painel do passageiro fica visível antes de se auto-ocultar.
   static const _tempoAutoOcultar = Duration(seconds: 9);
@@ -371,7 +383,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     if (parada == null) return;
     if (parada.concluida) {
       // Parada já resolvida (ex.: destino dispensado): segue sem parar.
-      unawaited(_seguirProxima());
+      unawaited(_seguirEConferirSeJaNoLocal());
       return;
     }
     _mostrarPainel();
@@ -397,25 +409,27 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
     if (!mounted) return;
 
+    var aqui = false;
     if (marcas != null) {
       setState(() {
         _concluidas.add(parada.id);
-        // Quem faltou na coleta não é esperado no destino. Na volta, quem
-        // não estava na unidade não é deixado em casa (a ida fica como foi).
-        if (parada.tipo == TipoParada.coleta && parada.volta) {
-          _ausentes.addAll([
-            for (final p in parada.passageiros)
-              if (marcas[p.id] == false) idAusenteNaVolta(p.id),
-          ]);
-        } else if (parada.tipo == TipoParada.coleta) {
+        // Quem faltou na coleta não é esperado no destino. No resgate, quem
+        // não estava no local não é deixado em casa (a ida fica como foi).
+        if (parada.tipo == TipoParada.coleta) {
           _ausentes.addAll([
             for (final m in marcas.entries)
-              if (!m.value) m.key,
+              if (!m.value)
+                parada.resgate ? idAusenteNoResgate(m.key, parada.lote) : m.key,
           ]);
         }
       });
       await _registrarParada(parada, marcas);
-      await _seguirProxima();
+      // Desembarcou na unidade: a lista de resgate abre (decisão de 19/10).
+      final mudou =
+          parada.tipo == TipoParada.destino &&
+          !parada.resgate &&
+          await _abrirResgates(aoDesembarcar: true);
+      aqui = await _seguirProxima(refazer: mudou);
     } else {
       // Retoma a guidance na mesma parada.
       try {
@@ -423,6 +437,117 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       } on Object catch (_) {}
     }
     if (mounted) setState(() => _confirmando = false);
+    final proxima = _proxima;
+    if (aqui && proxima != null && mounted) {
+      unawaited(_confirmarParada(proxima));
+    }
+  }
+
+  /// A lista de resgate. Verdadeiro quando a marcação mudou: a rota foi
+  /// recarregada e a navegação precisa ser refeita.
+  Future<bool> _abrirResgates({bool aoDesembarcar = false}) async {
+    final a = _andamento;
+    if (a == null || !mounted) return false;
+    final mudou = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ResgatesPage(rotaId: a.rotaId, aoDesembarcar: aoDesembarcar),
+      ),
+    );
+    if (mudou != true || !mounted) return false;
+    await _recarregarRota();
+    return true;
+  }
+
+  /// Busca a rota de novo na central (paradas do resgate que entraram ou
+  /// saíram), mantendo o que o tablet já marcou.
+  Future<void> _recarregarRota() async {
+    try {
+      ref.invalidate(rotasDoDiaProvider);
+      final rota = await ref
+          .read(navegacaoRepositoryProvider)
+          .obterRotaAtual();
+      if (!mounted) return;
+      final andamento = (_andamento ?? AndamentoViagem(rotaId: rota.rotaId))
+          .unir(rota.andamento);
+      setState(() {
+        _translado = rota.translado;
+        _concluidas
+          ..clear()
+          ..addAll(andamento.concluidas);
+        _ausentes
+          ..clear()
+          ..addAll(andamento.ausentes);
+      });
+      await _salvarAndamento(andamento);
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não deu para atualizar a rota: $e')),
+        );
+      }
+    }
+  }
+
+  /// Fim do dia do carro: a central conclui a rota e devolve à lista de
+  /// resgate quem ela marcou e não buscou.
+  Future<void> _encerrarRota() async {
+    final a = _andamento;
+    if (a == null || a.encerrada) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Encerrar a rota?'),
+        content: const Text(
+          'Depois disso este carro não marca mais resgate nesta rota.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(false),
+            child: const Text('Continuar na rota'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(c).pop(true),
+            child: const Text('Encerrar a rota'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _salvarAndamento(a.copyWith(encerrada: true));
+    if (mounted) {
+      setState(() {});
+      ref.read(deslocamentoProvider.notifier).parar();
+    }
+    await ref
+        .read(viagemProvider.notifier)
+        .registrar([_evento(a.rotaId, TipoEventoViagem.conclusao)]);
+  }
+
+  /// O carro está a menos de [_raioNoLocal] da parada: pelo GPS do tablet
+  /// ou, sem sinal (teste parado), pela posição que o Google mostra.
+  Future<bool> _jaNoLocal(ParadaNavegacao p) async {
+    if (!p.temPonto) return false;
+    var lat = ref.read(gpsAoVivoProvider)?.latitude;
+    var lng = ref.read(gpsAoVivoProvider)?.longitude;
+    if (lat == null || lng == null) {
+      try {
+        final aqui = await _viewController?.getMyLocation();
+        lat = aqui?.latitude;
+        lng = aqui?.longitude;
+      } on Object catch (_) {}
+    }
+    if (lat == null || lng == null) return false;
+    return Geolocator.distanceBetween(lat, lng, p.latitude!, p.longitude!) <
+        _raioNoLocal;
+  }
+
+  Future<void> _seguirEConferirSeJaNoLocal() async {
+    final aqui = await _seguirProxima();
+    final proxima = _proxima;
+    if (aqui && proxima != null && mounted) {
+      unawaited(_confirmarParada(proxima));
+    }
   }
 
   /// O motorista foi conferido pelo rosto antes de abrir a navegação (Rota do
@@ -436,8 +561,9 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
         .registrar([_evento(a.rotaId, TipoEventoViagem.inicio)]);
   }
 
-  /// Leva à central quem embarcou, faltou ou desceu na parada e, se era a
-  /// última, que a rota acabou. Sem rede, fica na fila do tablet.
+  /// Leva à central quem embarcou, faltou ou desceu na parada. A rota só
+  /// acaba quando o motorista encerra (pode haver resgate depois). Sem rede,
+  /// fica na fila do tablet.
   Future<void> _registrarParada(
     ParadaNavegacao parada,
     Map<String, bool> marcas,
@@ -456,18 +582,10 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       longitude: fix?.longitude,
       precisaoM: fix != null && fix.accuracy > 0 ? fix.accuracy : null,
     );
-    final acabou = !a.encerrada && _proxima == null;
     await _salvarAndamento(
-      a.copyWith(
-        concluidas: {..._concluidas},
-        ausentes: {..._ausentes},
-        encerrada: a.encerrada || acabou,
-      ),
+      a.copyWith(concluidas: {..._concluidas}, ausentes: {..._ausentes}),
     );
-    await ref.read(viagemProvider.notifier).registrar([
-      ...eventos,
-      if (acabou) _evento(a.rotaId, TipoEventoViagem.conclusao),
-    ]);
+    await ref.read(viagemProvider.notifier).registrar(eventos);
   }
 
   EventoViagemPendente _evento(String rotaId, TipoEventoViagem tipo) {
@@ -493,19 +611,36 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   /// cobrança): tira do SDK a parada atual e as dispensadas no caminho
   /// (destino de quem faltou). Se o SDK não tiver a parada esperada, refaz a
   /// rota só com as pendentes — antes, um `waypoint == null` aqui deixava a
-  /// navegação parada sem rota. Com a simulação ligada, o carro segue sozinho.
-  Future<void> _seguirProxima() async {
+  /// navegação parada sem rota. [refazer]: a rota mudou (resgate marcado ou
+  /// desmarcado) e os destinos do SDK são outros. Com a simulação ligada, o
+  /// carro segue sozinho. Verdadeiro quando o carro já está no local da
+  /// próxima busca: quem chamou abre a conferência, sem rota até o mesmo
+  /// ponto.
+  Future<bool> _seguirProxima({bool refazer = false}) async {
     final proxima = _proxima;
     if (proxima == null) {
-      // Fim do translado: encerra guidance e limpa destinos (mesma sessão) e
-      // congela distância e tempo do translado na tela de Deslocamento.
+      // Sem parada pendente: para a guidance e limpa os destinos (mesma
+      // sessão). A rota segue aberta até o motorista encerrar.
       _simulando = false;
-      if (mounted) ref.read(deslocamentoProvider.notifier).parar();
       try {
         await GoogleMapsNavigator.stopGuidance();
         await GoogleMapsNavigator.clearDestinations();
       } on Object catch (_) {}
-      return;
+      return false;
+    }
+    if (proxima.resgate &&
+        proxima.tipo == TipoParada.coleta &&
+        await _jaNoLocal(proxima)) {
+      try {
+        await GoogleMapsNavigator.stopGuidance();
+      } on Object catch (_) {}
+      if (refazer) await _definirRotaSemGuia();
+      return true;
+    }
+    if (refazer) {
+      await _definirRotaEGuide();
+      if (_simulando && mounted) await _simularTrajeto();
+      return false;
     }
     try {
       var atual = (await GoogleMapsNavigator.continueToNextDestination())
@@ -525,6 +660,15 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       await _definirRotaEGuide();
     }
     if (_simulando && mounted) await _simularTrajeto();
+    return false;
+  }
+
+  /// Destinos novos no SDK sem começar a guiar (o carro já está na busca).
+  Future<void> _definirRotaSemGuia() async {
+    await _definirRotaEGuide();
+    try {
+      await GoogleMapsNavigator.stopGuidance();
+    } on Object catch (_) {}
   }
 
   Future<void> _onViewCreated(GoogleNavigationViewController controller) async {
@@ -643,6 +787,20 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
                     const BotaoReport(),
                     const SizedBox(height: 16),
                     _FabRedondo(
+                      icone: Icons.pan_tool_alt,
+                      rotulo: 'Resgate',
+                      onTap: () async {
+                        if (await _abrirResgates()) {
+                          final aqui = await _seguirProxima(refazer: true);
+                          final p = _proxima;
+                          if (aqui && p != null && mounted) {
+                            unawaited(_confirmarParada(p));
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _FabRedondo(
                       icone: _modoNoite ? Icons.light_mode : Icons.dark_mode,
                       onTap: _alternarNoite,
                     ),
@@ -670,7 +828,18 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
               right: 8,
               bottom: 8,
               child: SafeArea(
-                child: _TransladoConcluido(
+                child: _SemParadas(
+                  encerrada: _andamento?.encerrada ?? false,
+                  onResgates: () async {
+                    if (await _abrirResgates()) {
+                      final aqui = await _seguirProxima(refazer: true);
+                      final p = _proxima;
+                      if (aqui && p != null && mounted) {
+                        unawaited(_confirmarParada(p));
+                      }
+                    }
+                  },
+                  onEncerrar: _encerrarRota,
                   onVoltar: () => Navigator.of(context).maybePop(),
                 ),
               ),
@@ -880,8 +1049,19 @@ class _FabPassageiro extends StatelessWidget {
   }
 }
 
-class _TransladoConcluido extends StatelessWidget {
-  const _TransladoConcluido({required this.onVoltar});
+/// Sem parada pendente: resgatar mais alguém ou encerrar a rota. Encerrada,
+/// só volta para a Rota do dia.
+class _SemParadas extends StatelessWidget {
+  const _SemParadas({
+    required this.encerrada,
+    required this.onResgates,
+    required this.onEncerrar,
+    required this.onVoltar,
+  });
+
+  final bool encerrada;
+  final VoidCallback onResgates;
+  final VoidCallback onEncerrar;
   final VoidCallback onVoltar;
 
   @override
@@ -897,14 +1077,53 @@ class _TransladoConcluido extends StatelessWidget {
           children: [
             const Icon(Icons.check_circle, color: Colors.green, size: 40),
             const SizedBox(height: 8),
-            const Text(
-              'Translado concluído',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            Text(
+              encerrada ? 'Rota encerrada' : 'Nenhuma parada pendente',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
+            if (!encerrada) ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Resgate mais alguém ou encerre a rota.',
+                style: TextStyle(color: Colors.black54),
+              ),
+            ],
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: onVoltar,
-              child: const Text('Voltar à rota'),
+            // Tablet em paisagem: os botões lado a lado.
+            SizedBox(
+              width: 640,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                      onPressed: onVoltar,
+                      child: const Text('Voltar à rota'),
+                    ),
+                  ),
+                  if (!encerrada) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        onPressed: onResgates,
+                        child: const Text('Pacientes disponíveis para resgate'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: onEncerrar,
+                        child: const Text('Encerrar a rota'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ),

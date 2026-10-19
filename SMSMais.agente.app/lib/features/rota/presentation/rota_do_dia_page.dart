@@ -4,6 +4,7 @@ import 'package:agente/app/theme.dart';
 import 'package:agente/features/auth/facial/presentation/reconhecimento_facial_page.dart';
 import 'package:agente/features/auth/presentation/confirmar_motorista.dart';
 import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
+import 'package:agente/features/resgate/presentation/resgates_page.dart';
 import 'package:agente/features/rota/data/rota_repository.dart';
 import 'package:agente/features/rota/domain/parada.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
@@ -28,6 +29,16 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
     }
   }
 
+  /// A lista de resgate é de todos os carros: dá para marcar daqui também.
+  Future<void> _resgates() async {
+    final rota = await ref.read(rotaAtualProvider.future);
+    if (rota == null || !mounted) return;
+    final mudou = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => ResgatesPage(rotaId: rota.rotaId)),
+    );
+    if (mudou ?? false) ref.invalidate(rotasDoDiaProvider);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +53,8 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
   Widget build(BuildContext context) {
     final sessao = ref.watch(sessaoProvider);
     final rotaAsync = ref.watch(rotaDoDiaProvider);
+    final rotaAberta =
+        ref.watch(rotaAtualProvider).valueOrNull?.concluida == false;
 
     return Scaffold(
       appBar: AppBar(
@@ -73,16 +86,38 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
           ),
         ],
       ),
+      // Com rota aberta, o resgate fica à mão mesmo sem parada (rota só para
+      // resgatar); a navegação, só com paradas.
       bottomNavigationBar: rotaAsync.maybeWhen(
-        data: (paradas) => paradas.isEmpty
+        data: (paradas) => paradas.isEmpty && !rotaAberta
             ? null
             : SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: ElevatedButton.icon(
-                    onPressed: _navegar,
-                    icon: const Icon(Icons.navigation),
-                    label: const Text('Iniciar navegação do translado'),
+                  // Tablet em paisagem: os dois lado a lado.
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                          ),
+                          onPressed: _resgates,
+                          icon: const Icon(Icons.pan_tool_alt),
+                          label: const Text(
+                            'Pacientes disponíveis para resgate',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: paradas.isEmpty ? null : _navegar,
+                          icon: const Icon(Icons.navigation),
+                          label: const Text('Iniciar navegação do translado'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

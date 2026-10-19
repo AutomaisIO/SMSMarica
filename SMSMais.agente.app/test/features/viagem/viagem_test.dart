@@ -5,6 +5,7 @@ import 'package:agente/features/dispositivo/application/dispositivo_controller.d
 import 'package:agente/features/dispositivo/data/dispositivo_repository.dart';
 import 'package:agente/features/dispositivo/domain/veiculo_vinculado.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
+import 'package:agente/features/resgate/domain/resgate.dart';
 import 'package:agente/features/rota/domain/rota_do_tablet.dart';
 import 'package:agente/features/viagem/application/viagem_controller.dart';
 import 'package:agente/features/viagem/data/fila_viagem.dart';
@@ -178,13 +179,13 @@ void main() {
     });
   });
 
-  group('volta', () {
+  group('resgate', () {
     const joao = PassageiroTranslado(
       id: 's2',
       nome: 'João Simulado',
       confirmacao: StatusConfirmacao.confirmado,
     );
-    ParadaNavegacao volta(
+    ParadaNavegacao resgate(
       String id,
       TipoParada tipo,
       List<PassageiroTranslado> quem,
@@ -198,69 +199,136 @@ void main() {
       longitude: -42.8,
       horarioPrevisto: null,
       passageiros: quem,
-      volta: true,
+      resgate: true,
+      lote: 5,
     );
     final translado = TransladoNavegacao(
       id: 'r1',
       veiculo: 'SIM1R23',
       paradas: [
-        volta('retorno:u1', TipoParada.coleta, const [_rita, joao]),
-        volta('casa:s1', TipoParada.destino, const [_rita]),
-        volta('casa:s2', TipoParada.destino, const [joao]),
+        resgate('resgate:u1:5', TipoParada.coleta, const [_rita, joao]),
+        resgate('casa:s1:5', TipoParada.destino, const [_rita]),
+        resgate('casa:s2:5', TipoParada.destino, const [joao]),
       ],
     );
 
-    test('marcações da volta vão marcadas como volta', () {
+    test('marcações do resgate vão marcadas como resgate', () {
       final e = _eventos(translado.paradas.first, {'s1': true, 's2': false});
       expect(e.map((x) => x.tipo), [
         TipoEventoViagem.embarque,
         TipoEventoViagem.ausencia,
       ]);
-      expect(e.every((x) => x.volta), isTrue);
-      expect(e.first.toJson()['volta'], isTrue);
+      expect(e.every((x) => x.resgate), isTrue);
+      expect(e.first.toJson()['resgate'], isTrue);
     });
 
-    test('quem faltou na ida não é buscado; quem não estava na unidade '
-        'não é deixado em casa', () {
-      final semJoaoNaIda = translado.paradasComAndamento(
+    test('a fila gravada antes da troca (volta) segue valendo', () {
+      final antigo = _eventos(translado.paradas.first, {'s1': true}).first
+          .toJson()
+        ..remove('resgate')
+        ..['volta'] = true;
+      expect(EventoViagemPendente.fromJson(antigo).resgate, isTrue);
+    });
+
+    test('quem não estava no local não é deixado em casa; o acompanhante '
+        'que faltou não desce com o paciente', () {
+      final semRita = translado.paradasComAndamento(
+        concluidas: const {'resgate:u1:5'},
+        ausentes: {idAusenteNoResgate('s1', 5)},
+      );
+      expect(semRita[1].concluida, isTrue); // casa da Rita dispensada
+      expect(semRita[2].concluida, isFalse);
+
+      final semNeto = translado.paradasComAndamento(
+        concluidas: const {'resgate:u1:5'},
+        ausentes: {idAusenteNoResgate('s1:acompanhante:2', 5)},
+      );
+      expect(
+        semNeto[1].passageiros.single.acompanhantes.map((a) => a.nome),
+        ['Filha'],
+      );
+
+      // A marca de outro lote (resgate desmarcado e marcado de novo) não vale.
+      final deOutroLote = translado.paradasComAndamento(
         concluidas: const {},
-        ausentes: const {'s2'},
+        ausentes: {idAusenteNoResgate('s1', 2)},
       );
-      expect(semJoaoNaIda.first.passageiros.map((p) => p.id), ['s1']);
-      expect(semJoaoNaIda.last.concluida, isTrue); // casa do João dispensada
-
-      final semRitaNaVolta = translado.paradasComAndamento(
-        concluidas: const {'retorno:u1'},
-        ausentes: {idAusenteNaVolta('s1')},
-      );
-      expect(semRitaNaVolta[1].concluida, isTrue); // casa da Rita dispensada
-      expect(semRitaNaVolta[2].concluida, isFalse);
+      expect(deOutroLote[1].concluida, isFalse);
     });
 
-    test('a rota da central marca a volta e quem não estava na unidade', () {
+    test('a rota da central marca o resgate e o lote', () {
       final rota = RotaDoTablet.fromJson({
         'rotaId': 'r1',
-        'data': '2026-10-16',
+        'data': '2026-10-19',
         'status': 'EmAndamento',
         'paradas': [
           {
-            'id': 'retorno:u1',
+            'id': 'resgate:u1:5',
             'ordem': 3,
             'tipo': 'Coleta',
-            'trecho': 'Volta',
+            'trecho': 'Resgate',
+            'lote': 5,
             'passageiros': [
-              {
-                'sessaoId': 's1',
-                'nome': 'Rita Simulada',
-                'situacao': 'Ausente',
-              },
+              {'sessaoId': 's1', 'nome': 'Rita Simulada'},
             ],
           },
         ],
       });
 
-      expect(rota.translado.paradas.single.volta, isTrue);
-      expect(rota.andamento.ausentes, {idAusenteNaVolta('s1')});
+      final p = rota.translado.paradas.single;
+      expect(p.resgate, isTrue);
+      expect(p.lote, 5);
+      expect(rota.andamento.ausentes, isEmpty);
+    });
+  });
+
+  group('lista de resgate', () {
+    test('lê a lista da central e diz a disponibilidade como o painel', () {
+      final r = ResgatesDaRota.fromJson({
+        'lugaresLivres': 2,
+        'lugaresCadeiranteLivres': 1,
+        'disponiveis': [
+          {
+            'sessaoId': 's1',
+            'pacienteNome': 'Rita Simulada',
+            'unidadeNome': 'CLÍNICA SIMULADA',
+            'acompanhantes': 2,
+            'mobilidade': 'CadeiranteVeiculoAdaptado',
+            'disponibilidade': 'EmAtendimento',
+            'disponivelAs': '10:40:00',
+            'disponivelEmMinutos': 12,
+            'cabe': false,
+            'motivoNaoCabe': 'Não cabe agora: 3 pessoas para 2 lugares livres.',
+          },
+          {
+            'sessaoId': 's2',
+            'pacienteNome': 'João Simulado',
+            'unidadeNome': 'CLÍNICA SIMULADA',
+            'disponibilidade': 'NoLocal',
+            'aguardandoMinutos': 65,
+            'avisadoPor': 'Paciente',
+          },
+        ],
+        'marcados': [
+          {
+            'sessaoId': 's3',
+            'pacienteNome': 'Ana Simulada',
+            'unidadeNome': 'x',
+          },
+        ],
+      });
+
+      expect(r.lugaresLivres, 2);
+      expect(r.marcados.single.sessaoId, 's3');
+      final rita = r.disponiveis.first;
+      expect(rita.cadeirante, isTrue);
+      expect(rita.cabe, isFalse);
+      expect(rita.textoDisponibilidade, 'Disponível em 12 min (às 10:40)');
+      expect(r.disponiveis.last.quemAvisou, 'avisado pelo paciente');
+      expect(
+        r.disponiveis.last.textoDisponibilidade,
+        'Aguardando há 1 h 05',
+      );
     });
   });
 

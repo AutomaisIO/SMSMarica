@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 
 /// Confirmação ao chegar na parada: **uma conferência por pessoa**.
 ///
-/// Paciente com acompanhante são duas pessoas e duas marcações (embarcou /
-/// ausente), cada uma com o assento do planejamento. "Embarque concluído" só
-/// libera quando todos da parada foram conferidos. Na chegada o app comuta
-/// para cá; ao concluir, segue para o próximo waypoint sem recriar a sessão
-/// de navegação.
+/// Paciente com acompanhante são duas pessoas e duas marcações, cada uma com
+/// o assento do planejamento. No embarque, "Embarcou" ou "Ausente"; no
+/// desembarque só "Desembarcou" — quem faltou no embarque não embarcou e nem
+/// aparece aqui. "Embarque/Desembarque concluído" só libera quando todos da
+/// parada foram conferidos. Na chegada o app comuta para cá; ao concluir,
+/// segue para o próximo waypoint sem recriar a sessão de navegação.
 ///
 /// Fecha com as marcas por id de pessoa (paciente ou
 /// [PassageiroTranslado.idAcompanhante]): `true` = embarcou/desembarcou,
@@ -240,13 +241,15 @@ class _ConfirmacaoParadaSheetState extends State<ConfirmacaoParadaSheet> {
             ],
           ),
         ),
-        const SizedBox(width: 8),
-        _BotaoMarca(
-          rotulo: 'Ausente',
-          cor: Colors.red,
-          marcado: marca == _Marca.ausente,
-          onTap: () => setState(() => _marcas[pessoa.id] = _Marca.ausente),
-        ),
+        if (_isColeta) ...[
+          const SizedBox(width: 8),
+          _BotaoMarca(
+            rotulo: 'Ausente',
+            cor: Colors.red,
+            marcado: marca == _Marca.ausente,
+            onTap: () => setState(() => _marcas[pessoa.id] = _Marca.ausente),
+          ),
+        ],
         const SizedBox(width: 8),
         _BotaoMarca(
           rotulo: _isColeta ? 'Embarcou' : 'Desembarcou',

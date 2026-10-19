@@ -20,6 +20,6 @@ class Parada {
   final DateTime? horarioPrevisto;
   final StatusParada status;
 
-  /// O que o motorista precisa ver de cara (ex.: "Volta · deixar em casa").
+  /// O que o motorista precisa ver de cara (ex.: "Resgate · deixar em casa").
   final String? etiqueta;
 }

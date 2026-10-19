@@ -37,7 +37,7 @@ final _parada = ParadaNavegacao(
   ],
 );
 
-Future<void> _abrir(WidgetTester tester) async {
+Future<void> _abrir(WidgetTester tester, {ParadaNavegacao? parada}) async {
   // Tablet da frota em paisagem (853×509 pontos úteis).
   tester.view.physicalSize = const Size(853, 509);
   tester.view.devicePixelRatio = 1;
@@ -45,7 +45,7 @@ Future<void> _abrir(WidgetTester tester) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: MaricaTheme.light(),
-      home: Scaffold(body: ConfirmacaoParadaSheet(parada: _parada)),
+      home: Scaffold(body: ConfirmacaoParadaSheet(parada: parada ?? _parada)),
     ),
   );
 }
@@ -75,6 +75,29 @@ void main() {
     expect(find.text('Acompanhante'), findsOneWidget);
     expect(find.text('Embarcou'), findsNWidgets(3));
     expect(find.text('0 de 3 conferidos'), findsOneWidget);
+  });
+
+  testWidgets('no desembarque só existe Desembarcou', (tester) async {
+    final destino = ParadaNavegacao(
+      id: 'destino:u1',
+      ordem: 2,
+      tipo: TipoParada.destino,
+      rotulo: 'Clínica',
+      endereco: 'Rua Simulada, 100',
+      latitude: -22.89,
+      longitude: -43.12,
+      horarioPrevisto: null,
+      passageiros: _parada.passageiros,
+    );
+    await _abrir(tester, parada: destino);
+
+    expect(find.text('Desembarcou'), findsNWidgets(3));
+    // Quem faltou no embarque não embarcou: não há "Ausente" para marcar.
+    expect(find.text('Ausente'), findsNothing);
+    for (var i = 0; i < 3; i++) {
+      await _marcar(tester, 'Desembarcou', i);
+    }
+    expect(find.text('3 de 3 conferidos'), findsOneWidget);
   });
 
   testWidgets('só conclui com todas as pessoas conferidas', (tester) async {
