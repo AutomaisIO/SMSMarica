@@ -20,7 +20,7 @@ export const artigoAvisosConexao: Artigo = {
   grupo: 'sistema',
   icone: WifiOff,
   publico: 'Todo mundo que usa o painel',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-19',
   palavrasChave: [
     'erro',
     'aviso',
@@ -38,6 +38,8 @@ export const artigoAvisosConexao: Artigo = {
     'caiu',
     'lento',
     'faixa amarela',
+    'faixa vermelha',
+    'whatsapp parado',
     'tentar agora',
     'código de referência',
     'ERRO-',
@@ -50,7 +52,7 @@ export const artigoAvisosConexao: Artigo = {
     {
       id: 'tres-avisos',
       titulo: 'Os três avisos',
-      busca: 'aviso erro faixa amarela vermelho canto código ERRO ação gravada conexão',
+      busca: 'aviso erro faixa amarela vermelho canto código ERRO ação gravada conexão faixa vermelha whatsapp parado conta parada pagamento',
       conteudo: (
         <>
           <P>
@@ -76,6 +78,12 @@ export const artigoAvisosConexao: Artigo = {
               },
             ]}
           />
+          <P>
+            Há ainda uma <strong>faixa vermelha “WhatsApp PARADO”</strong>, que só aparece para quem cuida da
+            plataforma: a conta do WhatsApp na Meta parou (pagamento, bloqueio) e nenhuma mensagem sai até alguém
+            resolver. O que acontece com as mensagens nesse meio-tempo está em Envio de mensagens → “Quando a CONTA do
+            WhatsApp para”.
+          </P>
         </>
       ),
     },

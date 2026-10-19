@@ -115,6 +115,15 @@ public sealed class ComunicacaoPacienteService(
         => erro is not null
            && ErrosMetaPermanentes.Any(c => erro.Contains($"({c})") || erro.Contains($"code {c}"));
 
+    /// <summary>
+    /// O envio não saiu porque a CONTA do WhatsApp está parada — o freio segurou, ou a Meta recusou
+    /// por motivo de conta (pagamento, bloqueio, token). Nunca é motivo para desistir da mensagem.
+    /// </summary>
+    internal static bool EhContaParada(string? erro)
+        => erro is not null
+           && (erro.StartsWith(WhatsApp.WhatsAppCliente.CodigoContaParada, StringComparison.Ordinal)
+               || WhatsApp.Conta.ErroContaWhatsApp.Classificar(erro) is not null);
+
     public async Task EnfileirarAsync(
         Solicitacao solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default)
     {
@@ -1908,6 +1917,15 @@ public sealed class ComunicacaoPacienteService(
     private void ReagendarOuFalhar(ComunicacaoPaciente n, string? erro)
     {
         n.MotivoFalha = Truncar(erro);
+        if (EhContaParada(erro))
+        {
+            // A CONTA do WhatsApp parou (pagamento, bloqueio…): não é falha desta mensagem. Não gasta
+            // tentativa e volta à fila; o worker nem a busca enquanto a conta não voltar. Em 19/10/2026,
+            // sem isto, 59 comunicações viraram Falha definitiva por 131042 em duas horas.
+            n.Tentativas = Math.Max(0, n.Tentativas - 1);
+            n.ProximaTentativaEm = DateTime.UtcNow.AddMinutes(10);
+            return;
+        }
         if (n.Tentativas >= Math.Max(1, options.Value.MaxTentativas))
         {
             n.Status = StatusComunicacao.Falha;

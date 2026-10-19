@@ -994,6 +994,21 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(20);
         });
 
+        // Conta do WhatsApp parada (pagamento, bloqueio, token): detector + freio + faixa vermelha
+        // no painel + consulta periódica do health_status pelo Zap (19/10/2026). Singleton: o estado
+        // é um só para a instância inteira.
+        services.Configure<Notificacoes.WhatsApp.Conta.ContaWhatsAppOptions>(
+            configuration.GetSection(Notificacoes.WhatsApp.Conta.ContaWhatsAppOptions.SecaoConfig));
+        services.AddSingleton<Notificacoes.WhatsApp.Conta.ISituacaoContaWhatsApp,
+            Notificacoes.WhatsApp.Conta.SituacaoContaWhatsApp>();
+        services.AddScoped<Notificacoes.WhatsApp.Conta.IFaixaContaWhatsAppService,
+            Notificacoes.WhatsApp.Conta.FaixaContaWhatsAppService>();
+        services.AddHttpClient<Notificacoes.WhatsApp.Conta.SaudeContaWhatsAppCliente>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
+        services.AddHostedService<Notificacoes.WhatsApp.Conta.SaudeContaWhatsAppWorker>();
+
         // Mídia que o paciente manda (foto/PDF): o webhook anota, o worker baixa pelo Zap e guarda
         // como pendente; a equipe aceita no cadastro ou descarta. Trava de 10 pendentes por número.
         services.AddHttpClient<Conversas.Midias.IZapMidiaCliente, Conversas.Midias.ZapMidiaCliente>(client =>

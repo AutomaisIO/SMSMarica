@@ -20,7 +20,8 @@ namespace SMSMais.Core.Notificacoes.Comunicacao;
 public sealed class EnviadorComunicacaoService(
     IServiceScopeFactory scopeFactory,
     IOptions<ComunicacaoPacienteOptions> options,
-    ILogger<EnviadorComunicacaoService> logger)
+    ILogger<EnviadorComunicacaoService> logger,
+    WhatsApp.Conta.ISituacaoContaWhatsApp? situacaoConta = null)
     : BackgroundService
 {
     private readonly ComunicacaoPacienteOptions _options = options.Value;
@@ -96,6 +97,12 @@ public sealed class EnviadorComunicacaoService(
 
     private async Task ExecutarUmaPassagemAsync(CancellationToken ct)
     {
+        // Conta do WhatsApp parada (pagamento, bloqueio…): a fila espera inteira, sem gastar
+        // tentativa. Na hora da sonda sai UMA — se ela passar, a conta volta e a próxima passagem
+        // já vem cheia.
+        var contaParada = situacaoConta?.Parada is not null;
+        if (contaParada && !situacaoConta!.SondaDisponivel) return;
+
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var servico = scope.ServiceProvider.GetRequiredService<IComunicacaoPacienteService>();
@@ -133,7 +140,7 @@ public sealed class EnviadorComunicacaoService(
                             || !sobreAgendamento.Contains(n.Finalidade)
                             || n.IgnorarJanelaHorario))
             .OrderBy(n => n.ProximaTentativaEm)
-            .Take(max)
+            .Take(contaParada ? 1 : max)
             .Select(n => n.Id)
             .ToListAsync(ct);
 

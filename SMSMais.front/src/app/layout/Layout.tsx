@@ -19,6 +19,7 @@ import { ChatWidget } from '@/features/conversas/components/ChatWidget';
 import { AlertaOcorrencias } from '@/features/ocorrencias/components/AlertaOcorrencias';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { ModalTicketRespondido } from '@/features/tickets/components/ModalTicketRespondido';
+import { FaixaContaWhatsApp } from '@/shared/ui/FaixaContaWhatsApp';
 
 export function Layout() {
   const [colapsado, setColapsado] = useState(false);
@@ -120,6 +121,8 @@ export function Layout() {
       />
 
       <div className={colapsado ? 'lg:pl-20' : 'lg:pl-72'}>
+        {/* Conta do WhatsApp parada (pagamento/bloqueio) — só para quem resolve; o servidor decide. */}
+        <FaixaContaWhatsApp />
         <Header onToggleMobileSidebar={() => setMobileAberto(true)} />
         <main className="px-4 py-8 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">

@@ -245,7 +245,7 @@ export const artigoEnvioMensagens: Artigo = {
   grupo: 'atendimento',
   icone: Send,
   publico: 'Gestão e equipe técnica — quem configura o automático e quem investiga por que uma mensagem não chegou',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-19',
   palavrasChave: [
     'envio',
     'mensagem',
@@ -287,6 +287,12 @@ export const artigoEnvioMensagens: Artigo = {
     'sem celular',
     'dispensada',
     '131026',
+    'conta parada',
+    'whatsapp parado',
+    'pagamento',
+    '131042',
+    'conta bloqueada',
+    'faixa vermelha',
   ],
   secoes: () => [
     {
@@ -610,6 +616,45 @@ export const artigoEnvioMensagens: Artigo = {
           </P>
           <Sub>Os estados</Sub>
           <MapaDeEstados />
+        </div>
+      ),
+    },
+    {
+      id: 'conta-parada',
+      titulo: 'Quando a CONTA do WhatsApp para',
+      busca:
+        'conta parada whatsapp parado pagamento faturamento 131042 bloqueio conta bloqueada 131031 368 política limite qualidade 131048 token vencido 190 número não registrado 133010 sonda freio segurado CONTA_WHATSAPP_PARADA saúde health_status faixa vermelha',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Às vezes o problema não é de um número, é da <strong>conta inteira</strong> na Meta: falta de pagamento
+            (131042), conta bloqueada (131031 ou 368), limite por qualidade (131048), token vencido (190) ou número que
+            deixou de estar registrado (133010). Nesses casos <strong>nenhuma</strong> mensagem sai — para paciente
+            nenhum — até alguém resolver na Meta.
+          </P>
+          <Lista>
+            <Item>
+              <strong>A fila espera, sem gastar tentativa.</strong> A linha continua <SeloRef>Na fila</SeloRef>, com o
+              motivo começando por <code>CONTA_WHATSAPP_PARADA</code>, e não vira Falha. Quando a conta volta, tudo sai
+              sozinho, sem ninguém reenviar.
+            </Item>
+            <Item>
+              <strong>Uma sonda a cada 10 minutos.</strong> Com a conta parada, só uma mensagem por vez vai à Meta para
+              ver se ela voltou. Além disso, a cada 5 minutos o sistema pergunta à própria Meta como está a conta.
+            </Item>
+            <Item>
+              <strong>Mensagem do atendente também é segurada.</strong> No Conversas, o envio é recusado na hora com o
+              mesmo motivo — não adianta tentar de novo até a conta voltar.
+            </Item>
+            <Item>
+              <strong>Quem cuida da plataforma vê uma faixa vermelha</strong> no topo do painel, com o motivo e desde
+              quando. Ela some sozinha quando a conta volta.
+            </Item>
+          </Lista>
+          <Callout tipo="atencao" titulo="Por que o aviso não vem pelo WhatsApp">
+            O aviso de erro da plataforma no celular sai pelo próprio WhatsApp — com a conta parada, ele não chega.
+            Por isso a conta parada é avisada na faixa do painel.
+          </Callout>
         </div>
       ),
     },
