@@ -1,4 +1,5 @@
 import 'package:agente/features/dispositivo/domain/veiculo_vinculado.dart';
+import 'package:agente/features/ocorrencia/domain/ocorrencia.dart';
 import 'package:agente/shared/api/dio_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,23 @@ class TokenDispositivoStore {
 /// Erro de token revogado/inválido (HTTP 401) — o tablet foi desvinculado.
 class TokenDispositivoInvalido implements Exception {
   const TokenDispositivoInvalido();
+}
+
+/// A central respondeu com falha passageira (5xx, 408, 429): vale tentar de
+/// novo daqui a pouco.
+class CentralComFalha implements Exception {
+  const CentralComFalha(this.status);
+
+  final int status;
+}
+
+/// A central respondeu e não aceitou o REPORT (4xx que não é 401) — por
+/// exemplo 404 de um servidor que ainda não recebe REPORT. Repetir na hora
+/// não adianta, e este aviso não pode travar os outros da fila.
+class OcorrenciaRecusada implements Exception {
+  const OcorrenciaRecusada(this.status);
+
+  final int status;
 }
 
 /// Código de ativação inválido, expirado ou já usado (HTTP 404).
@@ -88,6 +106,30 @@ class DispositivoRepository {
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) throw const TokenDispositivoInvalido();
       rethrow;
+    }
+  }
+
+  /// REPORT do motorista (`POST /rastreamento/dispositivos/ocorrencias`).
+  /// Devolve quando o servidor recebeu (UTC). Idempotente pelo `idLocal`.
+  Future<DateTime> enviarOcorrencia(
+    String token,
+    OcorrenciaPendente ocorrencia,
+  ) async {
+    try {
+      final resp = await _dio.post<Map<String, dynamic>>(
+        '/rastreamento/dispositivos/ocorrencias',
+        data: ocorrencia.toJson(),
+        options: Options(headers: <String, String>{_header: token}),
+      );
+      return DateTime.parse(resp.data!['recebidaEm'] as String);
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      if (status == null) rethrow; // Sem resposta: rede/VPN fora.
+      if (status == 401) throw const TokenDispositivoInvalido();
+      if (status >= 500 || status == 408 || status == 429) {
+        throw CentralComFalha(status);
+      }
+      throw OcorrenciaRecusada(status);
     }
   }
 }

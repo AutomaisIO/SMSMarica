@@ -1,7 +1,6 @@
-import 'dart:convert';
-import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:agente/shared/armazenamento/chave_banco.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -52,7 +51,7 @@ class ArmazenamentoFacial {
   Future<Database> _abrir() async {
     final dir = await getApplicationDocumentsDirectory();
     final caminho = p.join(dir.path, _arquivoBanco);
-    final senha = await _obterOuCriarChave();
+    final senha = await obterOuCriarChaveBanco(_secure, _chaveBanco);
     return openDatabase(
       caminho,
       password: senha,
@@ -71,18 +70,6 @@ class ArmazenamentoFacial {
         ''');
       },
     );
-  }
-
-  Future<String> _obterOuCriarChave() async {
-    final existente = await _secure.read(key: _chaveBanco);
-    if (existente != null) return existente;
-    final rng = Random.secure();
-    final bytes = Uint8List.fromList(
-      List<int>.generate(32, (_) => rng.nextInt(256)),
-    );
-    final chave = base64UrlEncode(bytes);
-    await _secure.write(key: _chaveBanco, value: chave);
-    return chave;
   }
 
   Future<void> salvar(MotoristaFacial m) async {

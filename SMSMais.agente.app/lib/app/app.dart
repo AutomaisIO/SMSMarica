@@ -1,8 +1,10 @@
 import 'package:agente/app/router.dart';
 import 'package:agente/app/theme.dart';
 import 'package:agente/features/dispositivo/application/envio_posicoes_service.dart';
+import 'package:agente/features/ocorrencia/application/ocorrencias_controller.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AgenteApp extends ConsumerWidget {
@@ -16,14 +18,21 @@ class AgenteApp extends ConsumerWidget {
     // tablet é do veículo, não depende do login do motorista. O antigo
     // ServicoGps (POST /rastreamento/pontos com motoristaId mock, sem auth)
     // foi desligado: só gerava 401. Ver docs/modulos/tfd/deslocamento-tablet.md.
+    // A fila do REPORT também: aviso guardado sem rede sai sozinho depois.
     ref
       ..watch(gpsAoVivoProvider.notifier)
-      ..watch(envioPosicoesProvider);
+      ..watch(envioPosicoesProvider)
+      ..watch(ocorrenciasProvider.notifier);
 
+    // Sempre pt-BR, mesmo com o tablet em inglês (o nativo também fixa pt-BR
+    // para a narração do Navigation SDK — ver MainActivity).
     return MaterialApp.router(
       title: 'SMS Maricá — Agente',
       theme: MaricaTheme.light(),
       debugShowCheckedModeBanner: false,
+      locale: const Locale('pt', 'BR'),
+      supportedLocales: const [Locale('pt', 'BR')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: router,
     );
   }
