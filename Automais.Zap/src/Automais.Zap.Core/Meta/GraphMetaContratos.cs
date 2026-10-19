@@ -211,6 +211,16 @@ public sealed record PontoAnalytics(DateTimeOffset Inicio, long Enviadas, long E
 /// </summary>
 public sealed record CategoriaCobranca(string Categoria, long Mensagens, decimal Custo);
 
+/// <summary>Um elo da cadeia do <c>health_status</c> (número, WABA, empresa ou App) e o que o trava.</summary>
+public sealed record EntidadeSaudeMeta(
+    string Entidade, string? Id, string PodeEnviar, string? Codigo, string? Descricao, string? Solucao);
+
+/// <summary>
+/// <c>health_status</c> do número: AVAILABLE, LIMITED ou BLOCKED para a cadeia inteira. É o que diz
+/// "conta sem pagamento" antes de a primeira mensagem ser recusada com 131042.
+/// </summary>
+public sealed record SaudeNumeroMeta(string PhoneNumberId, string PodeEnviar, IReadOnlyList<EntidadeSaudeMeta> Entidades);
+
 public interface IGraphMetaClient
 {
     // --- App (usam token de app: {app-id}|{app-secret}) ---
@@ -221,6 +231,7 @@ public interface IGraphMetaClient
     Task<ResultadoMeta<WabaMeta>> ObterWabaAsync(string wabaId, CancellationToken ct = default);
     Task<ResultadoMeta<IReadOnlyList<NumeroMeta>>> ListarNumerosAsync(string wabaId, CancellationToken ct = default);
     Task<ResultadoMeta<NumeroDetalheMeta>> ObterNumeroAsync(string phoneNumberId, CancellationToken ct = default);
+    Task<ResultadoMeta<SaudeNumeroMeta>> ObterSaudeAsync(string phoneNumberId, CancellationToken ct = default);
     Task<ResultadoMeta<IReadOnlyList<AppInscrito>>> ListarAppsInscritosAsync(string wabaId, CancellationToken ct = default);
     Task<ResultadoMeta<bool>> InscreverAppNoWabaAsync(string wabaId, CancellationToken ct = default);
     Task<ResultadoMeta<bool>> DesinscreverAppDoWabaAsync(string wabaId, CancellationToken ct = default);

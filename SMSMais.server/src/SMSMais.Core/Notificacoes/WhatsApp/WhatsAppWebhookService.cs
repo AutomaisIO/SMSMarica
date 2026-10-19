@@ -42,7 +42,8 @@ public sealed class WhatsAppWebhookService(
     IContatoComprometidoService contatosComprometidos,
     ILogger<WhatsAppWebhookService> logger,
     SinalMidiasWhatsApp? sinalMidias = null,
-    Transcricao.SinalTranscricaoAudio? sinalTranscricao = null) : IWhatsAppWebhookService
+    Transcricao.SinalTranscricaoAudio? sinalTranscricao = null,
+    Conta.ISituacaoContaWhatsApp? situacaoConta = null) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
     {
@@ -397,11 +398,20 @@ public sealed class WhatsAppWebhookService(
 
         var ocorridoEm = ExtrairTimestamp(st);
         string? erro = null;
+        Conta.ErroDeContaWhatsApp? erroConta = null;
         if (novo == StatusMensagemWhatsApp.Falha)
         {
             erro = ExtrairErroStatus(st);
             msg.Status = StatusMensagemWhatsApp.Falha;
             msg.ErroMeta = erro is { Length: > 500 } ? erro[..500] : erro;
+            erroConta = Conta.ErroContaWhatsApp.Classificar(erro);
+            if (erroConta is not null)
+                situacaoConta?.Parar(erroConta, Conta.OrigemSituacaoConta.Webhook, erro);
+        }
+        else if (novo is StatusMensagemWhatsApp.Entregue or StatusMensagemWhatsApp.Lida)
+        {
+            // Entregou: a conta está de pé, qualquer que tenha sido o motivo da parada.
+            situacaoConta?.Liberar(Conta.OrigemSituacaoConta.Webhook);
         }
         else if (msg.Status is StatusMensagemWhatsApp.Enviada or StatusMensagemWhatsApp.Entregue
                  && novo > msg.Status)
@@ -427,6 +437,14 @@ public sealed class WhatsAppWebhookService(
                     notificacao.LidoEm ??= ocorridoEm;
                     if (notificacao.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue)
                         notificacao.Status = StatusComunicacao.Lida;
+                    break;
+                case StatusMensagemWhatsApp.Falha when erroConta is not null:
+                    // Recusa da CONTA (pagamento, bloqueio…), não deste número: volta à fila sem gastar
+                    // a tentativa; o freio segura o reenvio até a conta voltar.
+                    notificacao.MotivoFalha = erro;
+                    notificacao.Status = StatusComunicacao.Pendente;
+                    notificacao.Tentativas = Math.Max(0, notificacao.Tentativas - 1);
+                    notificacao.ProximaTentativaEm = DateTime.UtcNow.AddMinutes(10);
                     break;
                 case StatusMensagemWhatsApp.Falha:
                     notificacao.MotivoFalha = erro ?? "Falha de entrega reportada pelo WhatsApp.";
