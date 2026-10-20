@@ -126,7 +126,16 @@ public sealed record SolicitacaoDto(
     IReadOnlyList<SolicitacaoProcedimentoDto>? Procedimentos = null,
     // Accessions dos OUTROS exames do mesmo pedido (ADR-0074) — o selo "vinculado a" do detalhe.
     // Vazio no pedido de um procedimento só.
-    IReadOnlyList<string>? AccessionsVinculados = null);
+    IReadOnlyList<string>? AccessionsVinculados = null,
+    // ---- Regra do aparelho (ADR-0075); só exame de imagem ----
+    // Quando o exame ficou visível ao paciente. Null = ainda não (retido, ou não realizado).
+    DateTime? LiberadoPacienteEm = null,
+    // Realizado e retido até o laudo assinado: o "Enviar exame" vira "Liberar antes do laudo".
+    bool RetidoAteLaudo = false,
+    // O aparelho cuja regra vale para o exame (com vários candidatos, os nomes de todos).
+    string? AparelhoRegraNome = null,
+    LiberacaoExamePaciente? LiberacaoPaciente = null,
+    bool UsaAnamnese = true);
 
 /// <summary>Um procedimento do pedido (ticket #149). Data e executante são do item: no SISREG cada
 /// linha tem os seus. CPF do executante não sai — a tela só precisa do nome. Em pedido de imagem,
@@ -209,7 +218,12 @@ public sealed record SolicitacaoListItemDto(
     string? SiscanProtocolo = null,
     // Accessions dos OUTROS exames do mesmo pedido (ADR-0074): o pedido com joelho D e E aparece em
     // duas linhas, e cada uma mostra o selo "vinculado a" a outra. Null no pedido de um exame só.
-    IReadOnlyList<string>? AccessionsVinculados = null);
+    IReadOnlyList<string>? AccessionsVinculados = null,
+    // Regra do aparelho (ADR-0075): realizado e retido até o laudo assinado — a lista mostra um
+    // cadeado ao lado dos checks de comunicação.
+    bool RetidoAteLaudo = false,
+    // O aparelho usa anamnese (ADR-0075). False = a lista não oferece o botão.
+    bool UsaAnamnese = true);
 
 /// <summary>Página da listagem de solicitações (paginação offset + total para os controles).</summary>
 public sealed record PaginaSolicitacoesDto(

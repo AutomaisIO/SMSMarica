@@ -11,13 +11,16 @@ import type { Artigo } from '@/features/manual/tipos';
  * SelosWorklist), `unidades/components/EquipamentosDaUnidadeSecao` e no backend
  * (`EquipamentosService`, validadores, `ResolvedorEstacaoWorklist` — AE Title e escolha da sala —,
  * `ConstrutorMwlItem` — limite de descrição e código do procedimento, ADR-0074 —,
- * `EquipamentosController` para as permissões).
+ * `EquipamentosController` para as permissões). Laudo, liberação ao paciente e anamnese (ADR-0075):
+ * `RegraDoExame`/`RegrasDoExameService`, `SolicitacoesService.MarcarComoRealizadaAsync`,
+ * `LaudoAssinaturaService` (a aprovação libera), `CidadaoClinicoService` (o que o app mostra) e
+ * `SelosRegraDoExame`.
  */
 export const artigoEquipamentos: Artigo = {
   slug: 'equipamentos',
   titulo: 'Equipamentos de imagem',
   resumo:
-    'O cadastro de cada aparelho de imagem da unidade: o AE Title por onde a worklist chega, o que ele aguenta receber e, quando ele pede, o código do procedimento, o médico solicitante e a unidade.',
+    'O cadastro de cada aparelho de imagem da unidade: o AE Title por onde a worklist chega, o que ele aguenta receber, os campos a mais que ele pede e o que acontece com o exame depois que chega — onde é laudado, quando o paciente recebe e se usa anamnese.',
   grupo: 'assistencial',
   icone: ScanLine,
   rota: '/app/equipamentos',
@@ -65,6 +68,26 @@ export const artigoEquipamentos: Artigo = {
     '0032,1033',
     'envia médico',
     'envia unidade',
+    'laudo',
+    'laudado na plataforma',
+    'laudado fora',
+    'laudo fora',
+    'laudo vem junto',
+    'laudo junto',
+    'liberar exame',
+    'liberação ao paciente',
+    'retido',
+    'retido até o laudo',
+    'só com o laudo assinado',
+    'assim que chegar',
+    'paciente recebe',
+    'exame liberado',
+    'laudo pronto',
+    'app do cidadão',
+    'anamnese',
+    'usa anamnese',
+    'sem anamnese',
+    'densitometria',
   ],
   secoes: () => [
     {
@@ -171,6 +194,101 @@ export const artigoEquipamentos: Artigo = {
       ),
     },
     {
+      id: 'depois-que-o-exame-chega',
+      titulo: 'Depois que o exame chega: laudo, paciente e anamnese',
+      busca:
+        'laudo laudado na plataforma laudado fora laudo vem junto com o exame MAPA Holter ultrassom mamografia densitometria raio-x quando o paciente recebe só com o laudo assinado assim que chegar retido exame liberado laudo pronto app do cidadão uma mensagem só usa anamnese sem anamnese selos laudo aqui laudo fora laudo junto paciente recebe com o laudo paciente recebe ao chegar aparelho novo modalidade',
+      conteudo: (
+        <>
+          <P>
+            Cada aparelho diz três coisas sobre os exames feitos nele. É do aparelho, e não do tipo de
+            exame, porque quem decide se a imagem pode ir ao paciente antes do laudo é quem lauda: o
+            mesmo procedimento pode ser laudado aqui num aparelho e fora em outro.
+          </P>
+          <Sub>Laudo</Sub>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Laudado na plataforma',
+                descricao:
+                  'O médico lauda e assina aqui. O exame entra na fila de laudo e conta como “aguardando laudo” nos relatórios.',
+              },
+              {
+                termo: 'Laudo vem junto com o exame',
+                descricao:
+                  'O exame já chega com o laudo pronto, assinado fora, no mesmo PDF da imagem — é o caso de MAPA e Holter. Não há laudo nem assinatura nossa, e o exame não entra na fila de laudo.',
+              },
+              {
+                termo: 'Laudado fora da plataforma',
+                descricao:
+                  'O laudo é feito em outro sistema e não passa por aqui — é o caso do ultrassom. O exame não entra na fila de laudo, e o PACS não oferece “Criar laudo” para ele.',
+              },
+            ]}
+          />
+          <Sub>Quando o paciente recebe o exame</Sub>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Só com o laudo assinado',
+                descricao:
+                  'A imagem fica retida: não aparece no app do cidadão e o aviso “Exame liberado” não sai. Quando o laudo é aprovado, imagem e laudo chegam juntos, numa mensagem só (“Laudo pronto”). É para quando a médica revê a imagem depois do exame e ela ainda pode mudar — mamografia, densitometria, raio-X.',
+              },
+              {
+                termo: 'Assim que chegar',
+                descricao:
+                  'A imagem aparece no app e sai o aviso “Exame liberado” assim que o estudo chega ao PACS — como no ultrassom, laudado na hora, e no MAPA e no Holter, que já chegam com o laudo.',
+              },
+            ]}
+          />
+          <P>
+            “Só com o laudo assinado” só existe para o aparelho laudado na plataforma: com o laudo feito
+            fora, não haveria laudo nosso para soltar a imagem, e o exame ficaria retido para sempre. Por
+            isso, ao escolher outro laudo, a liberação passa sozinha para “Assim que chegar”.
+          </P>
+          <Sub>Anamnese</Sub>
+          <P>
+            Desmarque <strong>Usa anamnese</strong> no aparelho cujos exames não têm questionário (MAPA,
+            Holter): o botão de anamnese some da lista de Exames e consultas e do PACS, e o laudo não a
+            cobra.
+          </P>
+          <Sub>Como fica cada aparelho</Sub>
+          <Lista>
+            <Item>
+              <strong>Ultrassom</strong> — laudado fora da plataforma, paciente recebe assim que chegar.
+            </Item>
+            <Item>
+              <strong>MAPA e Holter</strong> — laudo vem junto com o exame, paciente recebe assim que
+              chegar, sem anamnese.
+            </Item>
+            <Item>
+              <strong>Mamografia, densitometria e raio-X</strong> — laudado na plataforma, paciente
+              recebe só com o laudo assinado.
+            </Item>
+          </Lista>
+          <P>
+            Aparelho novo já vem com a regra da modalidade: ultrassom, laudado fora e liberando ao chegar;
+            os demais, laudados aqui e retidos até o laudo. Mude se o aparelho funcionar de outro jeito.
+          </P>
+          <P>
+            Na lista, a coluna <strong>Depois do exame</strong> mostra a regra de cada aparelho em selos:{' '}
+            <em>laudo aqui</em>, <em>laudo fora</em> ou <em>laudo junto</em>; <em>paciente recebe com o
+            laudo</em> ou <em>paciente recebe ao chegar</em>; e <em>sem anamnese</em>, quando for o caso.
+          </P>
+          <Callout tipo="atencao" titulo="Mudar a regra vale daqui para a frente">
+            O exame que já foi liberado ao paciente continua liberado, e o que está retido continua
+            retido até o laudo ser aprovado — ou até alguém liberar antes, no detalhe do pedido em
+            Exames e consultas (<em>Liberar antes do laudo</em>, com registro de quem liberou).
+          </Callout>
+          <Callout tipo="regra" titulo="Quando não se sabe em qual aparelho o exame foi feito">
+            Vale o aparelho escolhido para o exame; senão, o aparelho fixo do escopo da unidade; senão, os
+            aparelhos da unidade naquela modalidade. Se forem vários e todos tiverem a mesma regra — os
+            dois ultrassons de uma unidade —, vale ela. Se discordarem, o exame fica retido até o laudo:
+            soltar uma imagem antes da hora não tem volta.
+          </Callout>
+        </>
+      ),
+    },
+    {
       id: 'codigo-procedimento',
       titulo: 'Código do procedimento na worklist',
       busca:
@@ -233,8 +351,9 @@ export const artigoEquipamentos: Artigo = {
       conteudo: (
         <P>
           Tudo aqui é governado pelo módulo <strong>Equipamentos</strong> do perfil: ver a lista é{' '}
-          <strong>Consulta</strong>; cadastrar, <strong>Inclusão</strong>; mudar AE Title, limite e
-          o que vai na worklist, <strong>Edição</strong>; excluir, <strong>Exclusão</strong>.
+          <strong>Consulta</strong>; cadastrar, <strong>Inclusão</strong>; mudar AE Title, limite, o
+          que vai na worklist e a regra de laudo, liberação e anamnese, <strong>Edição</strong>;
+          excluir, <strong>Exclusão</strong>.
         </P>
       ),
     },
@@ -242,7 +361,7 @@ export const artigoEquipamentos: Artigo = {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
       busca:
-        'aparelho não recebe worklist protocolo não escolhido código não chega limite voltou 64 médico não aparece unidade clínica não aparece tag',
+        'aparelho não recebe worklist protocolo não escolhido código não chega limite voltou 64 médico não aparece unidade clínica não aparece tag paciente não vê exame no app mamografia retida só com o laudo não consigo escolher criar laudo não aparece ultrassom',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -260,6 +379,21 @@ export const artigoEquipamentos: Artigo = {
               termo: 'Liguei o médico (ou a unidade) e não aparece no aparelho.',
               descricao:
                 'Primeiro, o exame tem de ter sido enviado depois de salvar — para os que já estavam na lista, use Reenviar worklist. Se ainda assim não aparece, o aparelho lê outro campo: peça ao técnico a tag certa e troque no cadastro. Há aparelhos que simplesmente não pedem o campo (a “clínica” de alguns consoles é um cadastro local deles).',
+            },
+            {
+              termo: 'O paciente fez a mamografia e não vê o exame no app.',
+              descricao:
+                'É a regra do aparelho: só com o laudo assinado. A imagem e o laudo chegam juntos quando o laudo for aprovado. Se precisar entregar antes, use “Liberar antes do laudo” no detalhe do pedido, em Exames e consultas.',
+            },
+            {
+              termo: 'Não consigo escolher “Só com o laudo assinado”.',
+              descricao:
+                'O laudo do aparelho está como feito fora ou vindo junto com o exame. Sem laudo nosso, o exame ficaria retido para sempre — por isso a opção só existe com “Laudado na plataforma”.',
+            },
+            {
+              termo: 'O PACS não mostra “Criar laudo” para o ultrassom.',
+              descricao:
+                'O aparelho está como “Laudado fora da plataforma”. Se esse aparelho passar a ser laudado aqui, mude o laudo no cadastro dele.',
             },
             {
               termo: 'Editei o equipamento e o limite da descrição mudou sozinho?',

@@ -95,7 +95,7 @@ export const artigoPacs: Artigo = {
   icone: ScanLine,
   rota: '/app/pacs',
   publico: 'Quem lauda, quem confere a chegada das imagens e quem associa exame ao pedido',
-  atualizadoEm: '2026-10-07',
+  atualizadoEm: '2026-10-20',
   palavrasChave: [
     'PACS',
     'visualizador',
@@ -317,7 +317,7 @@ export const artigoPacs: Artigo = {
               {
                 termo: 'Anamnese',
                 descricao:
-                  'Abre a anamnese do pedido só para leitura. Quem lauda lê o que a paciente respondeu; quem preenche é a recepção, pela lista de Exames e consultas.',
+                  'Abre a anamnese do pedido só para leitura. Quem lauda lê o que a paciente respondeu; quem preenche é a recepção, pela lista de Exames e consultas. Não aparece no exame de aparelho que não usa anamnese (MAPA, Holter).',
               },
               {
                 termo: <IconeLinha icone={Link2} cor="text-indigo-600" />,
@@ -338,7 +338,7 @@ export const artigoPacs: Artigo = {
               {
                 termo: <IconeLinha icone={FilePlus} cor="text-green-700" />,
                 descricao:
-                  'Criar o laudo deste exame. Fica apagado enquanto o pedido não tiver anamnese — a regra pode ser afrouxada em Configuração de Laudo.',
+                  'Criar o laudo deste exame. Fica apagado enquanto o pedido não tiver anamnese — a regra pode ser afrouxada em Configuração de Laudo, e o aparelho que não usa anamnese não a espera. Não aparece no exame de aparelho laudado fora da plataforma (ultrassom) ou cujo laudo vem junto com o exame (MAPA, Holter): esses não são laudados aqui (cadastro do equipamento).',
               },
               {
                 termo: <IconeLinha icone={Edit2} cor="text-amber-600" />,
@@ -621,7 +621,7 @@ export const artigoPacs: Artigo = {
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'dúvidas CID não aparece medida errada laudar apagado anotação sumiu',
+      busca: 'dúvidas CID não aparece medida errada laudar apagado anotação sumiu criar laudo não aparece ultrassom laudado fora',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -633,7 +633,7 @@ export const artigoPacs: Artigo = {
             {
               termo: 'Por que o ícone de criar laudo está apagado?',
               descricao:
-                'O pedido ainda não tem anamnese. Peça para a recepção preencher; ou, se a regra local permitir, ajuste em Configuração de Laudo.',
+                'O pedido ainda não tem anamnese. Peça para a recepção preencher; ou, se a regra local permitir, ajuste em Configuração de Laudo. Se o ícone nem aparece, o aparelho do exame não é laudado aqui (ultrassom, MAPA, Holter) — ver Equipamentos.',
             },
             {
               termo: 'Minhas medidas sumiram ao reabrir.',

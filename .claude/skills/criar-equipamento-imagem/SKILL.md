@@ -139,6 +139,13 @@ Exames de Imagem → Equipamentos. `identificador_dicom` = o AE Title do **apare
   tag DICOM editável. Tudo desligado por padrão. **Antes de ligar, descubra o que o aparelho pede:**
   capture o C-FIND dele (receita em "Diagnóstico: a descrição não aparece") — o CardioNet, por
   exemplo, pede `0008,0090` e nenhum campo de instituição.
+- **"Depois que o exame chega"** (ADR-0075): onde o laudo nasce, quando o paciente recebe e se usa
+  anamnese. **Perguntar ao operador quem lauda esse aparelho** — a resposta decide se o paciente vê a
+  imagem antes do laudo. Sem os campos, o servidor (e a tela) aplicam o padrão da modalidade:
+  ultrassom = laudado fora + libera ao chegar; o resto = laudado aqui + só com o laudo assinado. MAPA
+  e Holter (CardioNet): **laudo vem junto + assim que chegar + sem anamnese** — o padrão de OT/ECG
+  NÃO serve para eles (reteria o exame à espera de um laudo que nunca é feito aqui). Aparelho
+  configurado errado retém em silêncio: o paciente só não recebe.
 - **`ativo`**: **perguntar ao operador**, não decidir sozinho. Cadastrar **INATIVO** é o default
   seguro quando o aparelho ainda não chegou — um equipamento ativo a mais na mesma modalidade
   torna a dedução ambígua e **todo envio daquela unidade passa a exigir escolha da recepção**

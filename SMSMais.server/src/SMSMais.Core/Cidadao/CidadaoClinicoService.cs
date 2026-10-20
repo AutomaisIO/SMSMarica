@@ -32,7 +32,7 @@ public sealed class CidadaoClinicoService(
     ILogger<CidadaoClinicoService> logger) : ICidadaoClinicoService
 {
     public async Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(
-        Guid pacienteId, CancellationToken cancellationToken = default)
+        Guid pacienteId, bool visaoDaEquipe = false, CancellationToken cancellationToken = default)
     {
         var exames = await db.ExamesImagem.AsNoTracking()
             .Where(s => s.Solicitacao!.PacienteId == pacienteId && s.ExcluidoEm == null
@@ -46,6 +46,7 @@ public sealed class CidadaoClinicoService(
                 s.DataEstudo,
                 s.RealizadoEm,
                 s.CriadoEm,
+                s.LiberadoPacienteEm,
                 Nome = s.TipoExame != null ? s.TipoExame.Nome : "Exame de imagem",
             })
             .ToListAsync(cancellationToken);
@@ -94,7 +95,8 @@ public sealed class CidadaoClinicoService(
             ? await assinatura.QuaisAssinadosAsync([.. laudosPorStudy.Values.Select(l => l.LaudoId)], cancellationToken)
             : new HashSet<Guid>();
 
-        return exames.Select(e =>
+        var lista = new List<ExameResumoDto>(exames.Count);
+        foreach (var e in exames)
         {
             docsPorExame.TryGetValue(e.Id, out var ds);
             LaudoPorStudyDto? laudo = null;
@@ -103,7 +105,11 @@ public sealed class CidadaoClinicoService(
                 laudosPorStudy.TryGetValue(studyEfetivo, out laudo);
             var laudoAssinado = laudo is not null && assinados.Contains(laudo.LaudoId);
 
-            return new ExameResumoDto(
+            // Retido até o laudo (ADR-0075): o paciente não vê o exame. O laudo assinado também
+            // libera — é a mesma regra da aprovação, e cobre o exame cuja liberação não ficou gravada.
+            if (!visaoDaEquipe && e.LiberadoPacienteEm is null && !laudoAssinado) continue;
+
+            lista.Add(new ExameResumoDto(
                 e.Id,
                 // Data do exame = DICOM (StudyDate/StudyTime) como fonte da verdade; cai para a
                 // hora de detecção (RealizadoEm) e, por fim, CriadoEm.
@@ -116,8 +122,9 @@ public sealed class CidadaoClinicoService(
                     ? []
                     : [.. ds.Select(d => new AnexoResumoDto(d.Id, d.Nome, d.TamanhoBytes, d.Paginas))],
                 LaudoId: laudoAssinado ? laudo!.LaudoId : null,
-                LaudoAssinado: laudoAssinado);
-        }).ToList();
+                LaudoAssinado: laudoAssinado));
+        }
+        return lista;
     }
 
     public async Task<AnexoConteudo?> ObterAnexoAsync(
@@ -134,12 +141,18 @@ public sealed class CidadaoClinicoService(
     }
 
     public async Task<byte[]?> ObterImagensPdfAsync(
-        Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+        Guid pacienteId, Guid solicitacaoExameId, bool visaoDaEquipe = false, CancellationToken cancellationToken = default)
     {
         var pertence = await db.ExamesImagem.AsNoTracking()
             .AnyAsync(e => e.Id == solicitacaoExameId && e.Solicitacao!.PacienteId == pacienteId && e.ExcluidoEm == null,
                 cancellationToken);
         if (!pertence) return null;
+        if (visaoDaEquipe) return await imagensPdf.GerarOuObterAsync(solicitacaoExameId, cancellationToken);
+
+        // Para o paciente, só o exame liberado (ADR-0075) — a mesma régua da lista, para o link
+        // direto não abrir o que a lista esconde.
+        var liberados = await ListarExamesAsync(pacienteId, visaoDaEquipe: false, cancellationToken);
+        if (liberados.All(e => e.Id != solicitacaoExameId)) return null;
 
         // Abrir o exame no app = VISUALIZOU o "Exame liberado" (✓✓ azul). Best-effort/idempotente.
         await MarcarVisualizadoAsync(solicitacaoExameId, FinalidadeComunicacao.ExameLiberado, cancellationToken);

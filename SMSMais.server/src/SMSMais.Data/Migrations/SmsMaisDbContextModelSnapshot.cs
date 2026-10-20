@@ -2157,6 +2157,14 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("identificador_dicom");
 
+                    b.Property<int>("Laudo")
+                        .HasColumnType("integer")
+                        .HasColumnName("origem_laudo");
+
+                    b.Property<int>("LiberacaoPaciente")
+                        .HasColumnType("integer")
+                        .HasColumnName("liberacao_paciente");
+
                     b.Property<string>("MedicoSolicitanteTag")
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)")
@@ -2187,6 +2195,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(8)")
                         .HasColumnName("unidade_tag");
 
+                    b.Property<bool>("UsaAnamnese")
+                        .HasColumnType("boolean")
+                        .HasColumnName("usa_anamnese");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ExcluidoEm")
@@ -2201,6 +2213,8 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("equipamento", "smsmarica", t =>
                         {
                             t.HasCheckConstraint("ck_equipamento_descricao_max", "descricao_max_caracteres BETWEEN 4 AND 64");
+
+                            t.HasCheckConstraint("ck_equipamento_liberacao_com_laudo", "liberacao_paciente <> 1 OR origem_laudo = 1");
                         });
                 });
 
@@ -3323,6 +3337,14 @@ namespace SMSMais.Data.Migrations
                     b.Property<DateTime?>("IniciadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("iniciado_em");
+
+                    b.Property<DateTime?>("LiberadoPacienteEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("liberado_paciente_em");
+
+                    b.Property<Guid?>("LiberadoPacientePor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("liberado_paciente_por");
 
                     b.Property<int>("Ordem")
                         .ValueGeneratedOnAdd()

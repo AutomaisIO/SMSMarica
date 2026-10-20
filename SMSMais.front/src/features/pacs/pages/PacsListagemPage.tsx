@@ -467,11 +467,19 @@ export function PacsListagemPage() {
         const laudoFinalizado = e.laudo?.status === 'Finalizado';
         // Só o laudo ASSINADO trava a (re)associação; finalizado-sem-assinatura é livre.
         const laudoAssinado = e.laudo?.assinado === true;
+        // Regra do aparelho (ADR-0075): quem não usa anamnese não a espera, e quem não lauda aqui
+        // (ultrassom, MAPA, Holter) não oferece "Laudar".
         const faltaAnamnese =
-          !!e.associacao && !e.associacao.temAnamnese && !permitirLaudarSemAnamnese;
+          !!e.associacao &&
+          e.associacao.usaAnamnese !== false &&
+          !e.associacao.temAnamnese &&
+          !permitirLaudarSemAnamnese;
+        const laudaAqui = e.associacao?.laudoNaPlataforma !== false;
         return (
           <div className="flex items-center justify-end gap-2">
-            <BotaoAnamnese accessionNumber={e.accessionNumber} somenteLeitura />
+            {e.associacao?.usaAnamnese !== false ? (
+              <BotaoAnamnese accessionNumber={e.accessionNumber} somenteLeitura />
+            ) : null}
             {!e.associacao && !laudoAssinado && podeAssociar ? (
               <button
                 type="button"
@@ -506,7 +514,7 @@ export function PacsListagemPage() {
                 <Edit2 className="h-4 w-4" />
               </button>
             ) : null}
-            {!e.laudo && podeCriarLaudo && (e.associacao || permitirLaudarSemAssociacao) ? (
+            {!e.laudo && podeCriarLaudo && laudaAqui && (e.associacao || permitirLaudarSemAssociacao) ? (
               <button
                 type="button"
                 onClick={() => criarLaudoPara(e)}

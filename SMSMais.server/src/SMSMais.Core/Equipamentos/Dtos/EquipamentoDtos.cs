@@ -23,7 +23,11 @@ public sealed record EquipamentoDto(
     string? CodigoProcedimentoTag = null,
     string? MedicoSolicitanteTag = null,
     string? UnidadeTag = null,
-    OrigemUnidadeWorklist UnidadeOrigem = OrigemUnidadeWorklist.Executante);
+    OrigemUnidadeWorklist UnidadeOrigem = OrigemUnidadeWorklist.Executante,
+    // O que acontece com o exame depois que chega (ADR-0075).
+    OrigemLaudo Laudo = OrigemLaudo.Plataforma,
+    LiberacaoExamePaciente LiberacaoPaciente = LiberacaoExamePaciente.ComLaudoAssinado,
+    bool UsaAnamnese = true);
 
 public sealed record EquipamentoListItemDto(
     Guid Id,
@@ -42,7 +46,11 @@ public sealed record EquipamentoListItemDto(
     string? CodigoProcedimentoTag = null,
     string? MedicoSolicitanteTag = null,
     string? UnidadeTag = null,
-    OrigemUnidadeWorklist UnidadeOrigem = OrigemUnidadeWorklist.Executante);
+    OrigemUnidadeWorklist UnidadeOrigem = OrigemUnidadeWorklist.Executante,
+    // O que acontece com o exame depois que chega (ADR-0075).
+    OrigemLaudo Laudo = OrigemLaudo.Plataforma,
+    LiberacaoExamePaciente LiberacaoPaciente = LiberacaoExamePaciente.ComLaudoAssinado,
+    bool UsaAnamnese = true);
 
 public sealed record CadastrarEquipamentoRequest(
     string Nome,
@@ -67,7 +75,14 @@ public sealed record CadastrarEquipamentoRequest(
     /// para a executante, (0032,1033) para a solicitante.</summary>
     bool EnviarUnidade = false,
     OrigemUnidadeWorklist UnidadeOrigem = OrigemUnidadeWorklist.Executante,
-    string? UnidadeTag = null);
+    string? UnidadeTag = null,
+    /// <summary>Onde nasce o laudo (ADR-0075). Omitido = o padrão da modalidade (ultrassom: fora;
+    /// o resto: na plataforma) — um ultrassom criado por script não pode nascer retendo exame.</summary>
+    OrigemLaudo? Laudo = null,
+    /// <summary>Quando o paciente recebe o exame. Omitido = o padrão da modalidade; com o laudo
+    /// informado como fora ou junto, "assim que chegar" (só com o laudo exige o laudo aqui).</summary>
+    LiberacaoExamePaciente? LiberacaoPaciente = null,
+    bool UsaAnamnese = true);
 
 /// <summary>
 /// Atualização do equipamento. Os campos da worklist são <b>opcionais e "omitido = mantém"</b>: até
@@ -94,4 +109,9 @@ public sealed record AtualizarEquipamentoRequest(
     /// <summary>Null = mantém. Ligado com tag vazia = o padrão da origem.</summary>
     bool? EnviarUnidade = null,
     OrigemUnidadeWorklist? UnidadeOrigem = null,
-    string? UnidadeTag = null);
+    string? UnidadeTag = null,
+    /// <summary>Null = mantém (ADR-0075). A combinação final é conferida contra o que está gravado:
+    /// "só com o laudo assinado" exige o laudo na plataforma.</summary>
+    OrigemLaudo? Laudo = null,
+    LiberacaoExamePaciente? LiberacaoPaciente = null,
+    bool? UsaAnamnese = null);

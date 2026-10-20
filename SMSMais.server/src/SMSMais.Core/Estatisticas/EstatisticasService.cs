@@ -27,8 +27,12 @@ public sealed class EstatisticasService(
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
     IIdentidadeService identidade,
     Notificacoes.Mensageria.IMensageriaConfiguracaoService mensageria,
-    ILogger<EstatisticasService> logger) : IEstatisticasService
+    ILogger<EstatisticasService> logger,
+    // Opcional: só precisa do banco, e os testes que montam o serviço à mão seguem compilando.
+    Equipamentos.IRegrasDoExameService? regrasDoExame = null) : IEstatisticasService
 {
+    private Equipamentos.IRegrasDoExameService RegrasDoExame => regrasDoExame ??= new Equipamentos.RegrasDoExameService(db);
+
     private const int MaxDiasPeriodo = 400;
 
     // Discriminadores (ver ADR/entidades): direcao 1=Saida 2=Entrada; template preenchido = HSM;
@@ -148,7 +152,13 @@ public sealed class EstatisticasService(
         long realizados = exames.Count(e => e.Realizado);
         long laudados = exames.Count(e => laudoPorExame.ContainsKey(e.Id));
         long cancelados = exames.Count(e => e.Status == StatusSolicitacaoExame.Cancelada);
-        long aguardandoLaudo = Math.Max(0, realizados - laudados);
+        // A fila de laudo é só de aparelho que lauda pela plataforma (ADR-0075). O ultrassom, laudado
+        // fora, nunca vai ter laudo aqui: contá-lo fazia da fila ficção — os 1.359 exames de US
+        // realizados até 20/10/2026 apareciam todos como "aguardando laudo".
+        var regras = await RegrasDoExame.ResolverAsync([.. exames.Where(e => e.Realizado).Select(e => e.Id)], ct);
+        bool LaudaAqui(Guid exameId) => !regras.TryGetValue(exameId, out var r) || r.LaudoNaPlataforma;
+        long realizadosComLaudoAqui = exames.Count(e => e.Realizado && LaudaAqui(e.Id));
+        long aguardandoLaudo = exames.Count(e => e.Realizado && LaudaAqui(e.Id) && !laudoPorExame.ContainsKey(e.Id));
         int medicosLaudando = laudoPorExame.Values
             .Select(l => l.MedicoId)
             .Distinct().Count();
@@ -195,7 +205,8 @@ public sealed class EstatisticasService(
             MedicosLaudando: medicosLaudando,
             DiasNoPeriodo: dias,
             MediaExamesDia: dias > 0 ? Math.Round((double)total / dias, 1) : 0,
-            PercentualLaudados: realizados > 0 ? Math.Round(100.0 * laudados / realizados, 1) : 0,
+            PercentualLaudados: realizadosComLaudoAqui > 0
+                ? Math.Round(100.0 * Math.Min(laudados, realizadosComLaudoAqui) / realizadosComLaudoAqui, 1) : 0,
             PercentualAssinados: laudados > 0 ? Math.Round(100.0 * assinados / laudados, 1) : 0,
             TempoMedioChegadaExecucaoHoras: Media(chegExec),
             TempoMedioExecucaoLaudoHoras: Media(execLaudo),

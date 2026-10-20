@@ -159,6 +159,16 @@ export type Solicitacao = {
   procedimentos?: SolicitacaoProcedimento[] | null;
   /** Accessions dos OUTROS exames do mesmo pedido (ADR-0074) — o selo "vinculado a". */
   accessionsVinculados?: string[] | null;
+
+  // ---- Regra do aparelho (ADR-0075); só exame de imagem ----
+  /** Quando o exame ficou visível ao paciente. null = ainda não (retido, ou não realizado). */
+  liberadoPacienteEm?: string | null;
+  /** Realizado e retido até o laudo assinado: "Enviar exame" vira "Liberar antes do laudo". */
+  retidoAteLaudo?: boolean;
+  /** O aparelho cuja regra vale para o exame (com vários candidatos, os nomes de todos). */
+  aparelhoRegraNome?: string | null;
+  liberacaoPaciente?: 'ComLaudoAssinado' | 'AoChegar' | null;
+  usaAnamnese?: boolean;
 };
 
 /** Um procedimento do pedido. Data e executante são do item — no SISREG cada linha tem os seus. */
@@ -226,6 +236,10 @@ export type SolicitacaoListItem = {
   /** Accessions dos OUTROS exames do mesmo pedido (ADR-0074): o pedido com joelho D e E aparece em
    *  duas linhas, cada uma com o selo "vinculado a" a outra. Null no pedido de um exame só. */
   accessionsVinculados?: string[] | null;
+  /** Realizado e retido até o laudo assinado pela regra do aparelho (ADR-0075) — cadeado na lista. */
+  retidoAteLaudo?: boolean;
+  /** O aparelho usa anamnese (ADR-0075). false = a lista não oferece o botão. */
+  usaAnamnese?: boolean;
 };
 
 /** Resumo da comunicação para os checks na lista. */

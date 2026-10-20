@@ -338,6 +338,7 @@ public static class DependencyInjection
         // Equipamento SOBREVIVEU a remocao da agenda local (05/09/2026): ele e recurso de imagem
         // usado por PACS/worklist, nao residuo daquele modulo.
         services.AddScoped<Equipamentos.IEquipamentosService, Equipamentos.EquipamentosService>();
+        services.AddScoped<Equipamentos.IRegrasDoExameService, Equipamentos.RegrasDoExameService>();
         services.AddScoped<EscopoExames.IEscopoExamesService, EscopoExames.EscopoExamesService>();
         services.AddScoped<IBackfillEscopoExameUnidade, BackfillEscopoExameUnidade>();
 

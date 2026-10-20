@@ -15,15 +15,20 @@ import {
   CODIGO_ESQUEMA_PADRAO,
   DESCRICAO_MAX_MINIMO,
   DESCRICAO_MAX_PADRAO,
+  LIBERACOES_PACIENTE,
   MODALIDADES,
+  ORIGENS_LAUDO,
   ORIGENS_UNIDADE,
   TAG_CODIGO_PADRAO,
   TAG_MEDICO_PADRAO,
   TAG_UNIDADE_PADRAO,
   normalizarTag,
+  regraPadraoDaModalidade,
   tagCodigoEhPadrao,
   type EquipamentoListItem,
+  type LiberacaoExamePaciente,
   type ModalidadeDicom,
+  type OrigemLaudo,
   type OrigemUnidadeWorklist,
 } from '@/features/equipamentos/types';
 
@@ -48,10 +53,18 @@ type FormEquip = {
   enviarUnidade: boolean;
   unidadeOrigem: OrigemUnidadeWorklist;
   unidadeTag: string;
+  /** Depois que o exame chega (ADR-0075): onde nasce o laudo, quando o paciente recebe, anamnese. */
+  laudo: OrigemLaudo;
+  liberacaoPaciente: LiberacaoExamePaciente;
+  usaAnamnese: boolean;
+  /** No aparelho novo, a regra acompanha a modalidade até alguém mexer nela. */
+  regraTocada: boolean;
 };
 
 function formVazio(unidadeIdFixa?: string): FormEquip {
   return {
+    ...regraPadraoDaModalidade('US'),
+    regraTocada: false,
     id: null,
     nome: '',
     unidadeId: unidadeIdFixa ?? '',
@@ -126,6 +139,10 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
         enviarUnidade: equipamento.unidadeTag !== null,
         unidadeOrigem: equipamento.unidadeOrigem ?? 'Executante',
         unidadeTag: equipamento.unidadeTag ?? TAG_UNIDADE_PADRAO[equipamento.unidadeOrigem ?? 'Executante'],
+        laudo: equipamento.laudo ?? 'Plataforma',
+        liberacaoPaciente: equipamento.liberacaoPaciente ?? 'ComLaudoAssinado',
+        usaAnamnese: equipamento.usaAnamnese ?? true,
+        regraTocada: true,
       });
     } else {
       setForm(formVazio(unidadeIdFixa));
@@ -169,6 +186,9 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
       enviarUnidade: form.enviarUnidade,
       unidadeOrigem: form.unidadeOrigem,
       unidadeTag: form.enviarUnidade ? form.unidadeTag.trim() || null : null,
+      laudo: form.laudo,
+      liberacaoPaciente: form.liberacaoPaciente,
+      usaAnamnese: form.usaAnamnese,
     };
     const opcoes = {
       onSuccess: () => aoFechar(),
@@ -218,7 +238,16 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
             <Select
               id="eq-modalidade"
               value={form.modalidadeDicom}
-              onChange={(e) => setForm((f) => ({ ...f, modalidadeDicom: e.target.value as ModalidadeDicom }))}
+              onChange={(e) => {
+                const modalidade = e.target.value as ModalidadeDicom;
+                // Aparelho novo: a regra de laudo e liberação acompanha a modalidade (ultrassom é
+                // laudado fora e libera ao chegar) até alguém escolher outra.
+                setForm((f) => ({
+                  ...f,
+                  modalidadeDicom: modalidade,
+                  ...(f.id || f.regraTocada ? {} : regraPadraoDaModalidade(modalidade)),
+                }));
+              }}
             >
               {MODALIDADES.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -449,6 +478,89 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
               </div>
             ) : null}
           </div>
+        </fieldset>
+
+        <fieldset className="space-y-4 rounded-md border border-gray-200 p-3">
+          <legend className="px-1 text-sm font-medium text-gray-800">Depois que o exame chega</legend>
+          <p className="text-xs text-gray-500">
+            Vale para todos os exames feitos neste aparelho. Mudar aqui vale daqui para a frente: o exame que já
+            foi liberado ao paciente continua liberado, e o retido continua retido até o laudo (ou até alguém
+            liberar no detalhe da solicitação).
+          </p>
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium text-gray-600">Laudo</span>
+            {ORIGENS_LAUDO.map((o) => (
+              <label key={o.id} className="flex items-start gap-2 text-sm text-gray-700">
+                <input
+                  type="radio"
+                  name="eq-laudo"
+                  className="mt-0.5"
+                  checked={form.laudo === o.id}
+                  onChange={() =>
+                    // Sem laudo nosso, "só com o laudo" prenderia o exame para sempre: troca junto.
+                    setForm((f) => ({
+                      ...f,
+                      laudo: o.id,
+                      liberacaoPaciente: o.id === 'Plataforma' ? f.liberacaoPaciente : 'AoChegar',
+                      regraTocada: true,
+                    }))
+                  }
+                />
+                <span>
+                  {o.rotulo}
+                  <span className="block text-xs text-gray-500">{o.dica}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium text-gray-600">Quando o paciente recebe o exame</span>
+            {LIBERACOES_PACIENTE.map((l) => {
+              const bloqueada = l.id === 'ComLaudoAssinado' && form.laudo !== 'Plataforma';
+              return (
+                <label
+                  key={l.id}
+                  className={`flex items-start gap-2 text-sm ${bloqueada ? 'text-gray-400' : 'text-gray-700'}`}
+                  title={
+                    bloqueada
+                      ? 'Só existe para exame laudado na plataforma: sem laudo nosso, o exame ficaria retido para sempre.'
+                      : undefined
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="eq-liberacao"
+                    className="mt-0.5"
+                    checked={form.liberacaoPaciente === l.id}
+                    disabled={bloqueada}
+                    onChange={() => setForm((f) => ({ ...f, liberacaoPaciente: l.id, regraTocada: true }))}
+                  />
+                  <span>
+                    {l.rotulo}
+                    <span className="block text-xs text-gray-500">{l.dica}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={form.usaAnamnese}
+              onChange={(e) => setForm((f) => ({ ...f, usaAnamnese: e.target.checked, regraTocada: true }))}
+            />
+            <span>
+              Usa anamnese
+              <span className="block text-xs text-gray-500">
+                Desligado, o botão de anamnese some dos exames deste aparelho e o laudo não a cobra (MAPA e Holter
+                não têm questionário).
+              </span>
+            </span>
+          </label>
         </fieldset>
 
         {form.id ? (

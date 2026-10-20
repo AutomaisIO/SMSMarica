@@ -61,7 +61,7 @@ public class RegulacaoElegibilidadeServiceTests(PostgresFixture fixture)
                 nascimento: nascimento ?? new DateOnly(1986, 5, 10), sexo: sexo));
 
         var clinico = Substitute.For<ICidadaoClinicoService>();
-        clinico.ListarExamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        clinico.ListarExamesAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new List<ExameResumoDto>());
 
         var identidade = Substitute.For<IIdentidadeService>();

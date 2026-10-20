@@ -43,5 +43,14 @@ public sealed class CadastrarEquipamentoValidator : AbstractValidator<CadastrarE
             .Must(e => RegrasCamposWorklist.Repetida(e.CodigoProcedimentoTag, e.EnviarMedicoSolicitante, e.MedicoSolicitanteTag, e.EnviarUnidade, e.UnidadeOrigem, e.UnidadeTag) is null)
             .WithMessage(e => RegrasCamposWorklist.Repetida(e.CodigoProcedimentoTag, e.EnviarMedicoSolicitante, e.MedicoSolicitanteTag, e.EnviarUnidade, e.UnidadeOrigem, e.UnidadeTag))
             .WithName("CamposWorklist");
+
+        // Laudo e liberação ao paciente (ADR-0075). Omitidos, o serviço aplica o padrão da modalidade.
+        RuleFor(e => e.Laudo).IsInEnum().When(e => e.Laudo.HasValue);
+        RuleFor(e => e.LiberacaoPaciente).IsInEnum().When(e => e.LiberacaoPaciente.HasValue);
+        RuleFor(e => e)
+            .Must(e => EquipamentosMapper.CombinacaoLiberacaoValida(e.Laudo!.Value, e.LiberacaoPaciente!.Value))
+            .WithMessage(EquipamentosMapper.MensagemCombinacaoLiberacao)
+            .WithName("LiberacaoPaciente")
+            .When(e => e.Laudo.HasValue && e.LiberacaoPaciente.HasValue);
     }
 }

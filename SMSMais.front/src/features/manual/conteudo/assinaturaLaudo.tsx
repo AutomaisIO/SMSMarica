@@ -22,7 +22,7 @@ export const artigoAssinaturaLaudo: Artigo = {
   icone: FileText,
   rota: '/app/laudos',
   publico: 'Médicos que laudam e o administrador que cadastra os médicos',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-20',
   palavrasChave: [
     'assinar',
     'assinatura',
@@ -76,7 +76,9 @@ export const artigoAssinaturaLaudo: Artigo = {
             O laudo vira oficial quando o médico <strong>assina</strong> (ou carimba, se não tem
             certificado) e depois <strong>confere e aprova</strong> o documento pronto. Só nesse
             momento o paciente é avisado e o PDF oficial passa a ser o que todo mundo baixa: o
-            painel, o aplicativo do cidadão e o QR Code.
+            painel, o aplicativo do cidadão e o QR Code. No aparelho que só libera o exame com o laudo
+            (mamografia, densitometria, raio-X), é também nesse momento que a imagem chega ao paciente —
+            junto com o laudo, numa mensagem só.
           </P>
           <Callout tipo="regra" titulo="Quem assina é o autor">
             Só o médico que escreveu o laudo pode assiná-lo. Para corrigir um laudo já liberado,

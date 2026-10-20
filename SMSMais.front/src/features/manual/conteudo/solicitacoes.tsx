@@ -17,6 +17,8 @@ import type { Artigo } from '@/features/manual/tipos';
  * interno (ADR-0074): `SolicitacoesService.LinhasDoPedido`, `SateliteImagemSisreg`, `SeloVinculado`.
  * "Tem exame" ≠ "é imagem" (adendo de 20/10/2026 ao ADR-0021): `CategoriaSigtap.CriaSatelite` no
  * backend e `temExame()` em `features/solicitacoes/types.ts`.
+ * Exame retido até o laudo (ADR-0075): `RetidoAteLaudo` no DTO, cadeado na lista e
+ * `CardEnvioManual` ("Liberar antes do laudo") no detalhe; `ComunicacaoPacienteService.EnviarManualAsync`.
  */
 export const artigoSolicitacoes: Artigo = {
   slug: 'solicitacoes',
@@ -79,6 +81,16 @@ export const artigoSolicitacoes: Artigo = {
     'ECG',
     'tem exame',
     'modalidade DICOM',
+    'retido',
+    'retido até o laudo',
+    'cadeado',
+    'liberar antes do laudo',
+    'enviar exame',
+    'enviar laudo',
+    'exame liberado',
+    'laudo pronto',
+    'paciente não vê o exame',
+    'app do cidadão',
   ],
   secoes: () => [
     {
@@ -170,7 +182,7 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'como-ler',
       titulo: 'Como ler uma linha',
-      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada vinculado a selo',
+      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada vinculado a selo cadeado retido até o laudo',
       conteudo: (
         <>
           <Sub>As colunas</Sub>
@@ -192,11 +204,13 @@ export const artigoSolicitacoes: Artigo = {
               “de fora”: <em>Aguardando</em> (sem resposta), <em>Confirmado</em> (respondeu que vem),
               <em> Atrasado</em> (passou uma hora do horário), <em>Falta</em> (passou das 18h do dia),
               <em> Autorizado</em> (chegada registrada) ou <em>Cancelado</em> (avisou que não vem). Ao
-              lado, os checks das mensagens de WhatsApp.
+              lado, os checks das mensagens de WhatsApp — e um <strong>cadeado</strong> âmbar quando o
+              exame realizado está <em>retido até o laudo</em> (ver a seção seguinte).
             </Item>
             <Item>
               <strong>Ações</strong> — anamnese, declaração, imagens e laudo. Só existem no pedido
-              com exame; na consulta a coluna fica vazia.
+              com exame; na consulta a coluna fica vazia. A anamnese não aparece no exame de aparelho
+              que não a usa (MAPA, Holter).
             </Item>
           </Lista>
           <Sub>As cores da linha</Sub>
@@ -244,6 +258,49 @@ export const artigoSolicitacoes: Artigo = {
             No Holter e no MAPA o cabeçalho continua com o selo <strong>Gráfico/funcional</strong>{' '}
             — o selo diz o que o pedido é; o ciclo do exame embaixo diz que ele vai ao aparelho.
           </P>
+        </>
+      ),
+    },
+    {
+      id: 'resultado-ao-paciente',
+      titulo: 'Quando o paciente recebe o exame',
+      busca:
+        'paciente recebe exame app do cidadão whatsapp exame liberado laudo pronto retido até o laudo cadeado liberar antes do laudo enviar exame enviar laudo regra do aparelho só com o laudo assinado assim que chegar uma mensagem só',
+      conteudo: (
+        <>
+          <P>
+            Quem decide quando o exame chega ao paciente — no app do cidadão e no aviso de WhatsApp — é
+            o <strong>aparelho</strong> em que ele foi feito (ver <em>Equipamentos → Depois que o exame
+            chega</em>). No ultrassom, a imagem vai assim que chega. Na mamografia, na densitometria e no
+            raio-X, laudados aqui, ela fica <strong>retida até o laudo</strong>: a médica revê a imagem
+            depois do exame, e ela ainda pode mudar.
+          </P>
+          <Lista>
+            <Item>
+              Na lista, o exame retido mostra um <strong>cadeado</strong> âmbar ao lado dos checks.
+            </Item>
+            <Item>
+              No detalhe, o card <strong>Enviar ao paciente</strong> avisa que o exame está retido e por
+              qual aparelho.
+            </Item>
+            <Item>
+              Quando o laudo é aprovado, imagem e laudo chegam juntos, numa mensagem só (o aviso “Laudo
+              pronto”) — não é preciso fazer nada. O aviso “Exame liberado” não sai separado.
+            </Item>
+          </Lista>
+          <Sub>Liberar antes do laudo</Sub>
+          <P>
+            No exame retido, o botão <BotaoRef>Enviar exame</BotaoRef> vira{' '}
+            <BotaoRef>Liberar antes do laudo</BotaoRef>. Ele pede confirmação, porque não se desfaz: o
+            paciente passa a ver a imagem no app e recebe o “Exame liberado” na hora, antes da revisão da
+            médica. Fica registrado quem liberou. Se o telefone do paciente não está verificado, o mesmo
+            modal pede que você assuma o risco do número. O resultado — liberado ou o motivo da falha —
+            aparece no próprio modal.
+          </P>
+          <Callout tipo="atencao" titulo="Reenviar não é liberar">
+            O “Reenviar” do histórico de mensagens não solta exame retido: ele explica e aponta para o{' '}
+            <em>Liberar antes do laudo</em>. Assim ninguém libera uma imagem sem saber que estava liberando.
+          </Callout>
         </>
       ),
     },
@@ -390,7 +447,7 @@ export const artigoSolicitacoes: Artigo = {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
       busca:
-        'onde está a tela de consultas favoritos sem número do pedido declaração de comparecimento consulta holter MAPA eletrocardiograma antigo sem exame',
+        'onde está a tela de consultas favoritos sem número do pedido declaração de comparecimento consulta holter MAPA eletrocardiograma antigo sem exame paciente não vê o exame no app mamografia retido cadeado',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -417,6 +474,11 @@ export const artigoSolicitacoes: Artigo = {
               termo: 'Um Holter ou MAPA antigo aparece sem nº do pedido.',
               descricao:
                 'Os agendados para antes desta mudança (outubro de 2026) podem ainda estar sem exame e aparecem como um gráfico/funcional comum. Os de agora em diante já chegam com exame.',
+            },
+            {
+              termo: 'O paciente fez o exame e diz que não aparece no app.',
+              descricao:
+                'Veja se a linha tem o cadeado: o exame está retido até o laudo, pela regra do aparelho. Ele aparece, junto com o laudo, quando o laudo for aprovado. Se precisar entregar antes, abra o pedido e use “Liberar antes do laudo”.',
             },
           ]}
         />

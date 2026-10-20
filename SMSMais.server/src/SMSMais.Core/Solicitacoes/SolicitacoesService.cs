@@ -39,9 +39,13 @@ public sealed class SolicitacoesService(
     Erros.IRegistroErroService registroErros,
     Auditoria.IAuditoriaService auditoria,
     Common.Cid.ICidCatalogoService cidCatalogo,
-    ILogger<SolicitacoesService> logger)
+    ILogger<SolicitacoesService> logger,
+    // Opcional: só precisa do banco, e os testes que montam o serviço à mão seguem compilando.
+    Equipamentos.IRegrasDoExameService? regrasDoExame = null)
     : ISolicitacoesService
 {
+    private readonly Equipamentos.IRegrasDoExameService _regrasDoExame =
+        regrasDoExame ?? new Equipamentos.RegrasDoExameService(db);
     private readonly SmsMaisDbContext _db = db;
     private readonly IGeradorIdentificadores _geradorIds = geradorIds;
     private readonly IDcm4cheeMwlClient _mwlClient = mwlClient;
@@ -119,6 +123,26 @@ public sealed class SolicitacoesService(
             .ToListAsync(ct);
         if (itens.Count > 0)
             enriquecido = enriquecido with { Procedimentos = [.. itens.Select(SolicitacoesMapper.ParaDto)] };
+
+        // Regra do aparelho (ADR-0075): liberação ao paciente e anamnese. Só exame de imagem — o id
+        // público do exame é o da linha.
+        if (await _db.ExamesImagem.AsNoTracking()
+                .Where(e => e.Id == dto.Id && e.ExcluidoEm == null)
+                .Select(e => new { e.Status, e.LiberadoPacienteEm })
+                .FirstOrDefaultAsync(ct) is { } doExame)
+        {
+            var regra = await _regrasDoExame.ResolverAsync(dto.Id, ct);
+            var realizado = doExame.Status is StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada;
+            enriquecido = enriquecido with
+            {
+                LiberadoPacienteEm = doExame.LiberadoPacienteEm,
+                RetidoAteLaudo = realizado && doExame.LiberadoPacienteEm is null
+                    && !await ExameTemLaudoAssinadoAsync(dto.Id, ct),
+                AparelhoRegraNome = regra.EquipamentoNome,
+                LiberacaoPaciente = regra.Liberacao,
+                UsaAnamnese = regra.UsaAnamnese,
+            };
+        }
 
         // Em pedido de imagem, cada procedimento tem o seu exame (ADR-0074): o detalhe mostra o
         // accession e a situação de cada um, e o selo "vinculado a" com os outros exames.
@@ -480,16 +504,22 @@ public sealed class SolicitacoesService(
             .ToListAsync(ct)).ToHashSet();
         var comAnamnese = ids.Where(id => principaisComAnamnese.Contains(exameDaAnamnese[id])).ToHashSet();
         // O protocolo do SISCAN vem no mesmo enriquecimento: é o mesmo conjunto de ids, e a fila
-        // precisa mostrar quais já foram enviadas sem abrir uma a uma.
-        var protocolos = await _db.ExamesImagem.AsNoTracking()
-            .Where(e => ids.Contains(e.Id) && e.SiscanProtocolo != null)
-            .Select(e => new { e.Id, e.SiscanProtocolo })
-            .ToDictionaryAsync(e => e.Id, e => e.SiscanProtocolo, ct);
+        // precisa mostrar quais já foram enviadas sem abrir uma a uma. A liberação ao paciente
+        // (ADR-0075) também: é por ela que a linha mostra o cadeado de "retido até o laudo".
+        var dadosExame = await _db.ExamesImagem.AsNoTracking()
+            .Where(e => ids.Contains(e.Id))
+            .Select(e => new { e.Id, e.SiscanProtocolo, e.LiberadoPacienteEm })
+            .ToDictionaryAsync(e => e.Id, ct);
+        var regras = await _regrasDoExame.ResolverAsync(ids, ct);
 
         return [.. dtos.Select(d => d with
         {
             TemAnamnese = comAnamnese.Contains(d.Id),
-            SiscanProtocolo = protocolos.GetValueOrDefault(d.Id),
+            SiscanProtocolo = dadosExame.GetValueOrDefault(d.Id)?.SiscanProtocolo,
+            RetidoAteLaudo = dadosExame.TryGetValue(d.Id, out var x)
+                && d.Status is StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada
+                && x.LiberadoPacienteEm is null && !d.LaudoAssinado,
+            UsaAnamnese = !regras.TryGetValue(d.Id, out var regra) || regra.UsaAnamnese,
         })];
     }
 
@@ -1260,10 +1290,19 @@ public sealed class SolicitacoesService(
         reg.Status = StatusSolicitacao.Realizada;
         reg.AtualizadoEm = agora;
 
-        // Exame chegou → enfileira o aviso "Exame liberado" (idempotente; o worker só envia quando
-        // a chave EnviarExameLiberado estiver ligada — template aguardando a Meta).
-        await _comunicacoes.Value.EnfileirarAsync(
-            reg, FinalidadeComunicacao.ExameLiberado, cancellationToken);
+        // Liberação ao paciente (ADR-0075): quem decide é o aparelho. "Assim que chegar" libera agora e
+        // avisa ("Exame liberado"); "só com o laudo assinado" retém — imagem e laudo saem juntos quando
+        // o laudo for aprovado, numa mensagem só ("Laudo pronto"). Decisão nova a cada realização: o
+        // estudo que chega depois de uma correção de identidade não herda a liberação do anterior.
+        var regra = await _regrasDoExame.ResolverAsync(s.Id, cancellationToken);
+        s.LiberadoPacienteEm = regra.LiberaAoChegar ? agora : null;
+        s.LiberadoPacientePor = null;
+
+        // Exame liberado → enfileira o aviso (idempotente; o worker só envia com a chave
+        // EnviarExameLiberado ligada).
+        if (regra.LiberaAoChegar)
+            await _comunicacoes.Value.EnfileirarAsync(
+                reg, FinalidadeComunicacao.ExameLiberado, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
 
