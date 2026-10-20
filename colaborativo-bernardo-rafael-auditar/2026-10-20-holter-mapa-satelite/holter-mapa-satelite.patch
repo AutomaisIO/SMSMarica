@@ -1,0 +1,841 @@
+diff --git a/SMSMais.front/src/features/solicitacoes/components/ModalSolicitacao.tsx b/SMSMais.front/src/features/solicitacoes/components/ModalSolicitacao.tsx
+index c59622f4..dc566b42 100644
+--- a/SMSMais.front/src/features/solicitacoes/components/ModalSolicitacao.tsx
++++ b/SMSMais.front/src/features/solicitacoes/components/ModalSolicitacao.tsx
+@@ -8,6 +8,7 @@ import { Modal } from '@/shared/ui/Modal';
+ import { formatarInstante, formatarInstanteData } from '@/shared/lib/datas';
+ import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+ import { ROTULO_CATEGORIA } from '@/features/solicitacoes/components/CategoriaBadge';
++import { temExame } from '@/features/solicitacoes/types';
+ 
+ /**
+  * Detalhe da solicitação (exame de imagem, consulta…; SISREG/nossa), em modal — espelha o
+@@ -25,9 +26,9 @@ export function ModalSolicitacao({
+   aoFechar: () => void;
+ }) {
+   const { data: s, isLoading } = useSolicitacaoPorId(solicitacaoId);
+-  // O que foi pedido: o tipo de exame na imagem; a especialidade ou o procedimento nas demais.
++  // O que foi pedido: o tipo de exame quando há exame; a especialidade ou o procedimento nas demais.
+   const procedimento = s
+-    ? s.categoria === 'Imagem'
++    ? temExame(s)
+       ? s.tipoExameNome || s.procedimentoTexto
+       : s.especialidadeTexto || s.procedimentoTexto
+     : null;
+@@ -78,7 +79,7 @@ export function ModalSolicitacao({
+ 
+           <Bloco titulo={s.categoria === 'Imagem' ? 'Exame' : ROTULO_CATEGORIA[s.categoria]}>
+             <Item rotulo="Procedimento" valor={procedimento} />
+-            {s.categoria === 'Imagem' ? <Item rotulo="Modalidade" valor={s.modalidadeDicom} /> : null}
++            {temExame(s) ? <Item rotulo="Modalidade" valor={s.modalidadeDicom} /> : null}
+             <Item rotulo="Unidade executante" valor={s.unidadeNome} />
+             <Item rotulo="Unidade solicitante" valor={s.unidadeSolicitanteNome} />
+             <Item rotulo="Solicitante" valor={s.solicitanteNome} />
+diff --git a/SMSMais.front/src/features/solicitacoes/components/SituacaoSolicitacao.tsx b/SMSMais.front/src/features/solicitacoes/components/SituacaoSolicitacao.tsx
+index 78e44a48..20243e9c 100644
+--- a/SMSMais.front/src/features/solicitacoes/components/SituacaoSolicitacao.tsx
++++ b/SMSMais.front/src/features/solicitacoes/components/SituacaoSolicitacao.tsx
+@@ -1,8 +1,8 @@
+ import { cn } from '@/shared/lib/cn';
+-import type {
+-  CategoriaSolicitacao,
+-  StatusConfirmacaoPaciente,
+-  StatusSolicitacao,
++import {
++  temExame,
++  type StatusConfirmacaoPaciente,
++  type StatusSolicitacao,
+ } from '@/features/solicitacoes/types';
+ 
+ type Situacao = { rotulo: string; classe: string };
+@@ -35,7 +35,7 @@ function dezoitoHorasBrasiliaDoDia(exameMs: number): number {
+  */
+ export function derivarSituacao(
+   s: {
+-    categoria: CategoriaSolicitacao;
++    accessionNumber: string;
+     status: StatusSolicitacao;
+     statusConfirmacao: StatusConfirmacaoPaciente;
+     autorizadoEm: string | null;
+@@ -44,9 +44,9 @@ export function derivarSituacao(
+   },
+   agoraMs: number = Date.now(),
+ ): Situacao | null {
+-  // Sem exame de imagem, "Agendada" é o estado de chegada do SISREG (o equivalente ao
+-  // "Solicitada" do exame), não um passo no aparelho: a situação de fora continua valendo.
+-  const agendadaSemExame = s.status === 'Agendada' && s.categoria !== 'Imagem';
++  // Sem exame, "Agendada" é o estado de chegada do SISREG (o equivalente ao "Solicitada" do
++  // exame), não um passo no aparelho: a situação de fora continua valendo.
++  const agendadaSemExame = s.status === 'Agendada' && !temExame(s);
+   if (OPERACIONAL.has(s.status) && !agendadaSemExame) return null;
+ 
+   if (s.statusConfirmacao === 'Cancelada')
+diff --git a/SMSMais.front/src/features/solicitacoes/pages/SolicitacaoDetalhePage.tsx b/SMSMais.front/src/features/solicitacoes/pages/SolicitacaoDetalhePage.tsx
+index 0a4744c8..7077a2d4 100644
+--- a/SMSMais.front/src/features/solicitacoes/pages/SolicitacaoDetalhePage.tsx
++++ b/SMSMais.front/src/features/solicitacoes/pages/SolicitacaoDetalhePage.tsx
+@@ -67,6 +67,7 @@ import { BotaoLinkDownload } from '@/features/solicitacoes/components/BotaoLinkD
+ import { BotaoLinkAcesso } from '@/features/solicitacoes/components/BotaoLinkAcesso';
+ import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+ import type { Solicitacao, StatusSolicitacao } from '@/features/solicitacoes/types';
++import { temExame } from '@/features/solicitacoes/types';
+ 
+ const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
+ 
+@@ -81,9 +82,9 @@ export function SolicitacaoDetalhePage() {
+   const podeEditar = usePermissao('Solicitacoes', 'Edicao');
+   const podeExcluir = usePermissao('Solicitacoes', 'Exclusao');
+   // Estações elegíveis (unidade executante + modalidade) — para gatear os botões de destino. Só o
+-  // exame de imagem tem estação.
++  // pedido com exame tem estação.
+   const equipamentos = useEquipamentosDoExame(
+-    detalhe.data?.categoria === 'Imagem' ? (id ?? null) : null,
++    detalhe.data && temExame(detalhe.data) ? (id ?? null) : null,
+     podeEditar,
+   );
+ 
+@@ -113,9 +114,10 @@ export function SolicitacaoDetalhePage() {
+   }
+ 
+   const s = detalhe.data;
+-  // Só o exame de imagem tem worklist, PACS, equipamento, laudo e edição; consulta e demais
+-  // vêm do SISREG e ficam com o que é da recepção (chegada, cancelamento, comunicação).
+-  const ehImagem = s.categoria === 'Imagem';
++  // Só o pedido com exame (imagem, Holter, MAPA…) tem worklist, PACS, equipamento, laudo e edição;
++  // consulta e demais vêm do SISREG e ficam com o que é da recepção (chegada, cancelamento,
++  // comunicação). O nome `ehImagem` ficou do tempo em que só a imagem tinha exame.
++  const ehImagem = temExame(s);
+   const cancelado = s.status === 'Cancelada';
+   const podeCancelar =
+     podeEditar &&
+@@ -221,9 +223,10 @@ export function SolicitacaoDetalhePage() {
+           </button>
+           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold text-gray-900">
+             <ClipboardCheck className="h-6 w-6 text-primary-600" />
+-            {/* Sem exame de imagem não há nº do pedido (accession): o do SISREG é o pedido. */}
++            {/* Sem exame não há nº do pedido (accession): o do SISREG é o pedido. */}
+             <CodigoCopiavel codigo={s.accessionNumber || (s.codigoSolicitacao ?? '')} />
+-            {ehImagem ? null : <CategoriaBadge categoria={s.categoria} />}
++            {/* Pela categoria, não pelo exame: o Holter tem exame e segue Gráfico/funcional. */}
++            {s.categoria === 'Imagem' ? null : <CategoriaBadge categoria={s.categoria} />}
+             <StatusBadgeSolicitacao status={s.status} />
+             <ConfirmacaoBadge status={s.statusConfirmacao} />
+             <VagaBadge tipoVaga={s.tipoVaga} mostrarPrimeiraVez />
+@@ -887,7 +890,7 @@ function CardAutorizacao({ s }: { s: Solicitacao }) {
+   const [equipamentoId, setEquipamentoId] = useState('');
+   const [erro, setErro] = useState<string | null>(null);
+ 
+-  const ehImagem = s.categoria === 'Imagem';
++  const ehImagem = temExame(s);
+   const preRecebido = ehImagem
+     ? s.status === 'Solicitada' || s.status === 'Enviada'
+     : s.status === 'Solicitada' || s.status === 'Agendada';
+diff --git a/SMSMais.front/src/features/solicitacoes/pages/SolicitacoesPage.tsx b/SMSMais.front/src/features/solicitacoes/pages/SolicitacoesPage.tsx
+index 7ef12eb3..8116d648 100644
+--- a/SMSMais.front/src/features/solicitacoes/pages/SolicitacoesPage.tsx
++++ b/SMSMais.front/src/features/solicitacoes/pages/SolicitacoesPage.tsx
+@@ -55,6 +55,7 @@ import type {
+   SolicitacaoListItem,
+   StatusSolicitacao,
+ } from '@/features/solicitacoes/types';
++import { temExame } from '@/features/solicitacoes/types';
+ 
+ const CHAVE_TOGGLE_HOJE = 'solicitacoes:filtro-hoje';
+ 
+@@ -123,12 +124,12 @@ function DirecaoIcone({ direcao }: { direcao: SolicitacaoListItem['direcao'] })
+ }
+ 
+ /**
+- * O que foi pedido, para a coluna Procedimento: o tipo de exame no exame de imagem (ou o
++ * O que foi pedido, para a coluna Procedimento: o tipo de exame quando há exame (ou o
+  * procedimento do SISREG quando ainda não foi mapeado); nos demais, a especialidade da consulta
+  * ou o procedimento.
+  */
+ function procedimentoDaLinha(s: SolicitacaoListItem): string {
+-  return s.categoria === 'Imagem'
++  return temExame(s)
+     ? s.tipoExameNome || s.procedimentoTexto || ''
+     : s.especialidadeTexto || s.procedimentoTexto || '';
+ }
+@@ -411,7 +412,7 @@ export function SolicitacoesPage() {
+         <div className="min-w-0" title={procedimentoDaLinha(s) || undefined}>
+           <TextoLimitado texto={procedimentoDaLinha(s)} max={40} className="block truncate text-gray-900" />
+           <div className="flex items-center gap-1.5 truncate text-xs text-gray-500">
+-            {s.categoria === 'Imagem' ? (
++            {temExame(s) ? (
+               <span className="uppercase">{s.modalidadeDicom}</span>
+             ) : (
+               <span className="shrink-0">
+@@ -420,7 +421,7 @@ export function SolicitacoesPage() {
+             )}
+             {s.unidadeNome ? (
+               <span className="min-w-0 truncate">
+-                {s.categoria === 'Imagem' ? '— ' : ''}
++                {temExame(s) ? '— ' : ''}
+                 {s.unidadeNome}
+               </span>
+             ) : null}
+@@ -464,8 +465,8 @@ export function SolicitacoesPage() {
+       // No máximo 4 ícones (anamnese + declaração + exame completo + laudo).
+       className: 'w-36 whitespace-nowrap text-right',
+       render: (s) => {
+-        // Anamnese, declaração, imagens, laudo e exclusão são do exame de imagem.
+-        if (s.categoria !== 'Imagem') return null;
++        // Anamnese, declaração, imagens, laudo e exclusão são do exame (imagem, Holter, MAPA…).
++        if (!temExame(s)) return null;
+         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
+         return (
+           <div className="flex items-center justify-end gap-2">
+@@ -753,14 +754,14 @@ export function SolicitacoesPage() {
+         layoutFixo
+         redimensionavel
+         idTabela="solicitacoes"
+-        // Exame de imagem sem CPF NÃO abre: o paciente entrou pela importação do SISREG ancorado
++        // Pedido com exame sem CPF NÃO abre: o paciente entrou pela importação do SISREG ancorado
+         // só no CNS, e o CPF é cobrado aqui, com a pessoa no balcão. Sem ele não há como
+         // autorizar nem mandar para a worklist (o PatientID do DICOM é o CPF). Consulta e demais
+         // não vão ao PACS — abrem direto.
+         aoClicarLinha={
+           podeVer
+             ? (s) =>
+-                s.pacienteCpf || s.categoria !== 'Imagem'
++                s.pacienteCpf || !temExame(s)
+                   ? navigate(`/app/solicitacoes/${s.id}`)
+                   : setCpfPendente({
+                       id: s.id,
+@@ -775,9 +776,9 @@ export function SolicitacoesPage() {
+         classeLinha={(s) =>
+           s.statusConfirmacao === 'Cancelada'
+             ? 'opacity-55 bg-gray-50 hover:bg-gray-100'
+-            : // Exame de imagem sem CPF: laranja. É acionável — a recepção resolve em 10 segundos —
++            : // Pedido com exame sem CPF: laranja. É acionável — a recepção resolve em 10 segundos —
+               // e por isso se distingue do vermelho de urgência, que é gravidade clínica.
+-              !s.pacienteCpf && s.categoria === 'Imagem'
++              !s.pacienteCpf && temExame(s)
+               ? 'bg-orange-50 hover:bg-orange-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-orange-500'
+               : s.prioridade === 'Urgente'
+               ? 'bg-red-50 hover:bg-red-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-red-600'
+diff --git a/SMSMais.front/src/features/solicitacoes/types.ts b/SMSMais.front/src/features/solicitacoes/types.ts
+index 0046ad8a..1bb8aaaf 100644
+--- a/SMSMais.front/src/features/solicitacoes/types.ts
++++ b/SMSMais.front/src/features/solicitacoes/types.ts
+@@ -26,7 +26,10 @@ export type DirecaoSolicitacao = 'Recebida' | 'Enviada';
+ /** Natureza da vaga no SISREG (coluna 8 "Vaga (flag)" do TXT): 1ª vez ou retorno. */
+ export type TipoVaga = 'PrimeiraVez' | 'Retorno';
+ 
+-/** Tipo da solicitação, derivado do SIGTAP na importação (ADR-0021). Só `Imagem` tem exame. */
++/**
++ * Tipo da solicitação, derivado do SIGTAP na importação (ADR-0021). Diz o que o exame É — se ele
++ * tem exame (worklist, PACS, laudo) quem diz é `temExame`.
++ */
+ export type CategoriaSolicitacao =
+   | 'Consulta'
+   | 'Imagem'
+@@ -36,10 +39,19 @@ export type CategoriaSolicitacao =
+   | 'Cirurgia'
+   | 'Outro';
+ 
++/**
++ * Se a linha tem exame (satélite de execução: accession, Study, worklist, equipamento, laudo). Não é
++ * o mesmo que `categoria === 'Imagem'`: Holter e MAPA são Gráfico/funcional e têm exame — vão à
++ * worklist da cardiologia e o laudo volta em PDF pelo PACS (adendo de 20/10/2026 ao ADR-0021).
++ */
++export function temExame(s: { accessionNumber?: string | null }): boolean {
++  return Boolean(s.accessionNumber);
++}
++
+ /**
+  * Uma solicitação regulada — exame de imagem, consulta, laboratório… `id` é o id PÚBLICO: o do
+- * exame de imagem quando há, senão o da solicitação. Os campos de execução (accession, study,
+- * worklist, equipamento, tipo de exame) só têm valor no exame de imagem.
++ * exame quando há, senão o da solicitação. Os campos de execução (accession, study, worklist,
++ * equipamento, tipo de exame) só têm valor quando há exame (`temExame`).
+  */
+ export type Solicitacao = {
+   id: string;
+diff --git a/SMSMais.server/src/SMSMais.Api/Controllers/SisregImportacaoController.cs b/SMSMais.server/src/SMSMais.Api/Controllers/SisregImportacaoController.cs
+index 52a31371..fbb2c7ec 100644
+--- a/SMSMais.server/src/SMSMais.Api/Controllers/SisregImportacaoController.cs
++++ b/SMSMais.server/src/SMSMais.Api/Controllers/SisregImportacaoController.cs
+@@ -137,6 +137,9 @@ public sealed class SisregImportacaoController(
+     /// do histórico de 08/09 gravou pedidos sem ele, e pedido sem exame não aparece na tela de
+     /// Solicitações de Exame. Lote por cursor: repetir passando o <c>cursor</c> devolvido até
+     /// <c>restantes</c> zerar. ESCRITA.
++    /// Também cria o exame de Holter/MAPA (fora da imagem, tipo com modalidade DICOM); com
++    /// <c>incluirAnteriores=true</c>, inclusive os já passados — o backfill do acervo retroativo. Na
++    /// imagem o corte "de hoje em diante" vale sempre.
+     /// </summary>
+     [HttpPost("reparar-exames-sem-satelite")]
+     [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+@@ -145,8 +148,9 @@ public sealed class SisregImportacaoController(
+         [FromServices] SMSMais.Core.Integracoes.SisregWeb.Importacao.ISateliteImagemSisreg satelite,
+         CancellationToken cancellationToken,
+         [FromQuery] int limite = 500,
+-        [FromQuery] Guid? cursor = null)
+-        => await satelite.RepararAsync(limite, cursor, cancellationToken);
++        [FromQuery] Guid? cursor = null,
++        [FromQuery] bool incluirAnteriores = false)
++        => await satelite.RepararAsync(limite, cursor, incluirAnteriores, cancellationToken);
+ 
+     /// <summary>
+     /// Backfill das fichas que só têm CNS: consulta o CADSUS (porta configurada) e carimba o CPF —
+diff --git a/SMSMais.server/src/SMSMais.Core/Downloads/DownloadTokenService.cs b/SMSMais.server/src/SMSMais.Core/Downloads/DownloadTokenService.cs
+index 998afc22..90400f38 100644
+--- a/SMSMais.server/src/SMSMais.Core/Downloads/DownloadTokenService.cs
++++ b/SMSMais.server/src/SMSMais.Core/Downloads/DownloadTokenService.cs
+@@ -61,10 +61,11 @@ public sealed class DownloadTokenService(
+     public async Task<DownloadLinkDto> GerarExameCompletoAsync(
+         Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+     {
+-        // Valida que a solicitação existe (lança NaoEncontrado se não) e tem exame de imagem — o
+-        // link baixa capa + imagens do PACS, que consulta não tem.
++        // Valida que a solicitação existe (lança NaoEncontrado se não) e tem exame (satélite) — o
++        // link baixa capa + o que está no PACS, que consulta não tem. Holter/MAPA são
++        // Gráfico/funcional e têm exame: o laudo em PDF volta pelo PACS (adendo ADR-0021).
+         var solicitacao = await solicitacoes.ObterPorIdAsync(solicitacaoExameId, cancellationToken);
+-        if (solicitacao.Categoria != CategoriaSolicitacao.Imagem)
++        if (string.IsNullOrEmpty(solicitacao.AccessionNumber))
+             throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
+ 
+         var cfg = await configuracaoLaudo.ObterAsync(cancellationToken);
+diff --git a/SMSMais.server/src/SMSMais.Core/Estatisticas/EstatisticasService.cs b/SMSMais.server/src/SMSMais.Core/Estatisticas/EstatisticasService.cs
+index 7f7df91c..15996478 100644
+--- a/SMSMais.server/src/SMSMais.Core/Estatisticas/EstatisticasService.cs
++++ b/SMSMais.server/src/SMSMais.Core/Estatisticas/EstatisticasService.cs
+@@ -406,7 +406,8 @@ public sealed class EstatisticasService(
+             .Where(e => e.ExcluidoEm == null
+                 && e.Solicitacao != null
+                 && e.Solicitacao.ExcluidoEm == null
+-                && e.Solicitacao.Categoria == CategoriaSolicitacao.Imagem
++                // Sem filtro de categoria: todo exame (satélite) conta — inclusive Holter/MAPA, que são
++                // Gráfico/funcional com exame (adendo ADR-0021). O filtro de modalidade separa.
+                 && (e.RealizadoEm ?? e.Solicitacao.DataAgendada ?? e.CriadoEm) >= deUtc
+                 && (e.RealizadoEm ?? e.Solicitacao.DataAgendada ?? e.CriadoEm) < ateUtc);
+ 
+diff --git a/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ImportacaoSisregService.cs b/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ImportacaoSisregService.cs
+index 3d78934f..8da92705 100644
+--- a/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ImportacaoSisregService.cs
++++ b/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ImportacaoSisregService.cs
+@@ -338,24 +338,29 @@ public sealed class ImportacaoSisregService(
+             ? CategoriaSigtap.Resolver(sig)
+             : CategoriaSigtap.ResolverPorNome(nomeProcedimento);
+         var codigoProcedimento = SoDigitos(m.CodigoProcedimentoSisreg);
+-        Guid? tipoExameId = null;
++        // NÃO catalogamos mais o código como se fosse SIGTAP oficial. Isso existia para tirar o
++        // operador do beco sem saída de "não dá para criar o tipo sem procedimento catalogado" —
++        // beco que sumiu, porque o tipo agora nasce sozinho. E o efeito colateral era grave: o
++        // código exportado pelo SISREG entrava no catálogo OFICIAL com o nome do SISREG, e foi
++        // assim que o 0205020062 virou "ULTRASSONOGRAFIA DA REGIÃO INGUINAL" — nome que passou a
++        // representar 15 procedimentos diferentes.
++        // Fora da imagem, o satélite só vem de um tipo que já existe com modalidade (Holter, MAPA) —
++        // ver CategoriaSigtap.CriaSatelite; aí o tipo nunca é criado.
++        var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
++            categoria, nomeProcedimento, codigoProcedimento, sig, ct);
+         if (categoria == CategoriaSolicitacao.Imagem)
+         {
+-            // NÃO catalogamos mais o código como se fosse SIGTAP oficial. Isso existia para tirar o
+-            // operador do beco sem saída de "não dá para criar o tipo sem procedimento catalogado" —
+-            // beco que sumiu, porque o tipo agora nasce sozinho. E o efeito colateral era grave: o
+-            // código exportado pelo SISREG entrava no catálogo OFICIAL com o nome do SISREG, e foi
+-            // assim que o 0205020062 virou "ULTRASSONOGRAFIA DA REGIÃO INGUINAL" — nome que passou a
+-            // representar 15 procedimentos diferentes.
+-            tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
+-                nomeProcedimento, codigoProcedimento, sig, ct);
+-
+             passos.Add(tipoExameId is null
+                 ? "Exame de imagem SEM nome de procedimento no SISREG — importa sem tipo."
+                 : $"Exame de imagem \"{nomeProcedimento}\""
+                   + (codigoProcedimento.Length > 0 ? $" (SISREG {codigoProcedimento})" : string.Empty)
+                   + " → tipo de exame resolvido pelo nome do SISREG.");
+         }
++        else if (criaSatelite)
++        {
++            passos.Add($"Categoria {categoria} (SIGTAP {sig}) — o tipo \"{nomeProcedimento}\" tem modalidade "
++                + "DICOM: ganha exame (accession, Study e worklist).");
++        }
+         else
+         {
+             passos.Add($"Categoria {categoria} (SIGTAP {sig}) — importa como solicitação, sem satélite de execução.");
+@@ -558,7 +563,8 @@ public sealed class ImportacaoSisregService(
+         if (solicCriada) passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante}{CnesSufixo(m.CnesUnidadeSolicitante)}.");
+         else if (unidadeSolicId is not null) passos.Add("Unidade solicitante já cadastrada.");
+ 
+-        // 5. Espinha de regulação (sempre) + satélite de execução SÓ para imagem. Ver ADR-0021.
++        // 5. Espinha de regulação (sempre) + satélite de execução quando CategoriaSigtap.CriaSatelite
++        //    (imagem, ou tipo com modalidade DICOM). Ver ADR-0021 e o adendo de 20/10/2026.
+         var agora = DateTime.UtcNow;
+         var solic = new Solicitacao
+         {
+@@ -603,10 +609,10 @@ public sealed class ImportacaoSisregService(
+         };
+         db.Solicitacoes.Add(solic);
+ 
+-        // AccessionNumber/StudyUID são conceitos DICOM — só existem no satélite de imagem.
++        // AccessionNumber/StudyUID são conceitos DICOM — só existem no satélite de execução.
+         Guid idPublico = solic.Id;
+         string? accession = null;
+-        if (categoria == CategoriaSolicitacao.Imagem)
++        if (criaSatelite)
+         {
+             accession = await geradorIds.ProximoAccessionAsync(ct);
+             var exame = new ExameImagem
+diff --git a/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ResolvedorTipoExameSisreg.cs b/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ResolvedorTipoExameSisreg.cs
+index e6af1c7c..3a27db3e 100644
+--- a/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ResolvedorTipoExameSisreg.cs
++++ b/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/ResolvedorTipoExameSisreg.cs
+@@ -1,5 +1,6 @@
+ using Microsoft.EntityFrameworkCore;
+ using Microsoft.Extensions.Logging;
++using SMSMais.Core.Solicitacoes;
+ using SMSMais.Data;
+ using SMSMais.Data.Entities;
+ using SMSMais.Data.Entities.Enums;
+@@ -43,12 +44,43 @@ public interface IResolvedorTipoExameSisreg
+     /// </param>
+     Task<Guid?> ResolverOuCriarAsync(
+         string? nomeSisreg, string? codigoSisreg, string? codigoSigtap, CancellationToken ct);
++
++    /// <summary>
++    /// Se o pedido ganha satélite de execução e com qual tipo — a regra de
++    /// <see cref="CategoriaSigtap.CriaSatelite"/>. Imagem: resolve OU CRIA o tipo, como
++    /// sempre. Fora da imagem: só um tipo que JÁ EXISTE e já tem modalidade DICOM (Holter, MAPA)
++    /// conta — e NUNCA cria tipo, senão cada audiometria ou EEG importado viraria um tipo de exame
++    /// automático "aguardando configuração DICOM".
++    /// </summary>
++    /// <returns><c>CriaSatelite</c> e o tipo (null = imagem sem nome no SISREG, mapeamento pendente).</returns>
++    Task<(bool CriaSatelite, Guid? TipoExameId)> ResolverParaExecucaoAsync(
++        CategoriaSolicitacao categoria, string? nomeSisreg, string? codigoSisreg, string? codigoSigtap,
++        CancellationToken ct);
+ }
+ 
+ public sealed class ResolvedorTipoExameSisreg(
+     SmsMaisDbContext db,
+     ILogger<ResolvedorTipoExameSisreg> logger) : IResolvedorTipoExameSisreg
+ {
++    public async Task<(bool CriaSatelite, Guid? TipoExameId)> ResolverParaExecucaoAsync(
++        CategoriaSolicitacao categoria, string? nomeSisreg, string? codigoSisreg, string? codigoSigtap,
++        CancellationToken ct)
++    {
++        if (categoria == CategoriaSolicitacao.Imagem)
++            return (true, await ResolverOuCriarAsync(nomeSisreg, codigoSisreg, codigoSigtap, ct));
++
++        var nome = NormalizarNome(nomeSisreg ?? string.Empty);
++        if (nome.Length == 0) return (false, null);
++
++        var tipo = await db.TiposExame
++            .Where(t => t.Nome == nome && t.ExcluidoEm == null)
++            .Select(t => new { t.Id, t.ModalidadeDicom })
++            .FirstOrDefaultAsync(ct);
++        return tipo is not null && CategoriaSigtap.CriaSatelite(categoria, tipo.ModalidadeDicom)
++            ? (true, tipo.Id)
++            : (false, null);
++    }
++
+     public async Task<Guid?> ResolverOuCriarAsync(
+         string? nomeSisreg, string? codigoSisreg, string? codigoSigtap, CancellationToken ct)
+     {
+diff --git a/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/SateliteImagemSisreg.cs b/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/SateliteImagemSisreg.cs
+index 20df4581..e74e0370 100644
+--- a/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/SateliteImagemSisreg.cs
++++ b/SMSMais.server/src/SMSMais.Core/Integracoes/SisregWeb/Importacao/SateliteImagemSisreg.cs
+@@ -25,6 +25,11 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Importacao;
+ /// (audiometria, EEG, cirurgias "CE-", OCI…) fora das duas telas; o Bernardo: "TODOS apareçam na
+ /// tela… SEMPRE".</para>
+ ///
++/// <para><b>Fora da imagem (20/10/2026):</b> Holter e MAPA são Gráfico/funcional, mas vão à worklist
++/// da cardiologia e o laudo volta em PDF pelo PACS, casado pelo accession/Study — então também têm
++/// satélite. O critério é o tipo de exame ter modalidade DICOM (<see cref="CategoriaSigtap.CriaSatelite"/>);
++/// fora da imagem o tipo nunca é criado aqui, só reaproveitado.</para>
++///
+ /// <para>Espelha o caminho de criação da importação: tipo pelo NOME do SISREG
+ /// (<see cref="IResolvedorTipoExameSisreg"/>, nasce com worklist desligado), par tipo×unidade no
+ /// escopo e status <c>Solicitada</c> sem próxima tentativa — nada vai ao PACS até a recepção
+@@ -47,7 +52,12 @@ public interface ISateliteImagemSisreg
+     /// ordem de id a partir de <paramref name="depoisDe"/> — quem chama repete passando o
+     /// <c>Cursor</c> devolvido até <c>Restantes</c> zerar. ESCRITA.
+     /// </summary>
+-    Task<ReparoSatelitesResultado> RepararAsync(int limite, Guid? depoisDe, CancellationToken ct);
++    /// <param name="incluirAnterioresForaDaImagem">
++    /// Também os agendados ANTES de hoje, mas só fora da imagem (Holter, MAPA — tipo com modalidade):
++    /// é o backfill do acervo retroativo. Na imagem o corte de data continua sempre.
++    /// </param>
++    Task<ReparoSatelitesResultado> RepararAsync(
++        int limite, Guid? depoisDe, bool incluirAnterioresForaDaImagem, CancellationToken ct);
+ }
+ 
+ public enum ResultadoSatelite
+@@ -73,8 +83,9 @@ public sealed class SateliteImagemSisreg(
+     public async Task<ResultadoSatelite> GarantirAsync(
+         Solicitacao solicitacao, Func<string>? proximoAccession, CancellationToken ct)
+     {
+-        if (solicitacao.Categoria != CategoriaSolicitacao.Imagem
+-            || solicitacao.Status == StatusSolicitacao.Cancelada
++        // A categoria não barra mais aqui: quem decide é CategoriaSigtap.CriaSatelite, via
++        // ResolverParaExecucaoAsync — imagem sempre; fora dela, só tipo com modalidade (Holter, MAPA).
++        if (solicitacao.Status == StatusSolicitacao.Cancelada
+             || solicitacao.ExcluidoEm is not null)
+             return ResultadoSatelite.NadaAFazer;
+ 
+@@ -98,8 +109,9 @@ public sealed class SateliteImagemSisreg(
+ 
+         var nome = ResolvedorTipoExameSisreg.NormalizarNome(solicitacao.ProcedimentoTexto ?? string.Empty);
+         var sig = SoDigitos(solicitacao.ProcedimentoSigtapCodigo);
+-        var tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
+-            nome, SoDigitos(solicitacao.ProcedimentoCodigoSisreg), sig, ct);
++        var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
++            solicitacao.Categoria, nome, SoDigitos(solicitacao.ProcedimentoCodigoSisreg), sig, ct);
++        if (exame is null && !criaSatelite) return (ResultadoSatelite.NadaAFazer, null);
+         if (tipoExameId is { } tipo)
+             await escopoExameUnidade.GarantirAsync(tipo, solicitacao.UnidadeExecutanteId, ct);
+ 
+@@ -167,9 +179,12 @@ public sealed class SateliteImagemSisreg(
+             if (exame is not null && (exame.TipoExameId is not null || exame.ExcluidoEm is not null))
+                 continue;
+ 
+-            var tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
++            var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
++                solicitacao.Categoria,
+                 ResolvedorTipoExameSisreg.NormalizarNome(item.ProcedimentoTexto ?? string.Empty),
+                 SoDigitos(item.ProcedimentoCodigoSisreg), SoDigitos(item.ProcedimentoSigtapCodigo), ct);
++            // Fora da imagem, procedimento extra sem tipo com modalidade não vira exame.
++            if (exame is null && !criaSatelite) continue;
+             if (tipoExameId is { } tipo)
+                 await escopoExameUnidade.GarantirAsync(tipo, solicitacao.UnidadeExecutanteId, ct);
+ 
+@@ -231,7 +246,8 @@ public sealed class SateliteImagemSisreg(
+         return modalidadeTipo is not null && modalidadeTipo == modalidadeEquip ? equipamentoId : null;
+     }
+ 
+-    public async Task<ReparoSatelitesResultado> RepararAsync(int limite, Guid? depoisDe, CancellationToken ct)
++    public async Task<ReparoSatelitesResultado> RepararAsync(
++        int limite, Guid? depoisDe, bool incluirAnterioresForaDaImagem, CancellationToken ct)
+     {
+         limite = Math.Clamp(limite, 1, 2000);
+ 
+@@ -239,13 +255,27 @@ public sealed class SateliteImagemSisreg(
+         var hojeBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date;
+         var desdeUtc = DateTime.SpecifyKind(hojeBrasilia.AddHours(3), DateTimeKind.Utc);
+ 
++        // Fora da imagem, só o procedimento cujo tipo já tem modalidade DICOM ganha satélite
++        // (CategoriaSigtap.CriaSatelite). ProcedimentoTexto e TipoExame.Nome usam a mesma
++        // normalização (NomeTipoExame.Normalizar), então a comparação é direta.
++        var tiposComModalidade = db.TiposExame
++            .Where(t => t.ExcluidoEm == null && t.ModalidadeDicom != ModalidadeDicom.Indefinida)
++            .Select(t => t.Nome);
++
+         IQueryable<Solicitacao> Pendentes() => db.Solicitacoes.Where(s =>
+             s.ExcluidoEm == null
+-            && s.Categoria == CategoriaSolicitacao.Imagem
+             && s.Status != StatusSolicitacao.Cancelada
+-            && s.DataAgendada >= desdeUtc
+-            && (!db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)
+-                || db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id && e.ExcluidoEm == null && e.TipoExameId == null)));
++            && (s.Categoria == CategoriaSolicitacao.Imagem
++                // Imagem: só de hoje em diante — a carga de 08/09 deixou ~512 mil antigas sem
++                // satélite, e não é o reparo que vai ressuscitá-las.
++                ? s.DataAgendada >= desdeUtc
++                  && (!db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)
++                      || db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id && e.ExcluidoEm == null && e.TipoExameId == null))
++                // Holter, MAPA…: o retroativo é pedido explícito (acervo de laudos em PDF a trazer).
++                : (incluirAnterioresForaDaImagem || s.DataAgendada >= desdeUtc)
++                  && s.ProcedimentoTexto != null
++                  && tiposComModalidade.Contains(s.ProcedimentoTexto)
++                  && !db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)));
+ 
+         // Cursor por id (não por data): o exame sem nome de procedimento fica sem tipo e continua
+         // "pendente" para sempre — ordenado por data, travaria o lote no mesmo começo a cada chamada.
+diff --git a/SMSMais.server/src/SMSMais.Core/Solicitacoes/CategoriaSigtap.cs b/SMSMais.server/src/SMSMais.Core/Solicitacoes/CategoriaSigtap.cs
+index e20ac926..88925f08 100644
+--- a/SMSMais.server/src/SMSMais.Core/Solicitacoes/CategoriaSigtap.cs
++++ b/SMSMais.server/src/SMSMais.Core/Solicitacoes/CategoriaSigtap.cs
+@@ -59,11 +59,20 @@ public static class CategoriaSigtap
+     }
+ 
+     /// <summary>
+-    /// Se a categoria cria satélite de execução. "Não vai ao PACS" não é categoria — é a ausência
+-    /// do satélite <c>ExameImagem</c> (ADR-0021).
++    /// Se o pedido ganha satélite de execução (<c>ExameImagem</c>: accession, Study, worklist).
++    /// "Não vai ao PACS" não é categoria — é a ausência do satélite (ADR-0021).
++    ///
++    /// <para><b>A categoria diz o que o exame É; a modalidade do tipo diz COMO ele é executado</b>
++    /// (adendo de 20/10/2026 ao ADR-0021). Imagem tem satélite sempre — a invariante de 05/10
++    /// continua. Fora da imagem, o pedido só ganha satélite quando o TIPO de exame já foi configurado
++    /// com uma modalidade DICOM: é o caso do Holter (ECG) e do MAPA (OT), que seguem
++    /// Gráfico/funcional, vão à worklist da cardiologia e recebem o laudo em PDF pelo PACS, casado
++    /// pelo accession/Study. Audiometria, EEG, espirometria… (tipo sem modalidade) seguem sem.</para>
+     /// </summary>
+-    public static bool CriaSateliteImagem(CategoriaSolicitacao categoria) =>
+-        categoria == CategoriaSolicitacao.Imagem;
++    /// <param name="modalidadeDoTipo">Modalidade do tipo de exame do pedido; null quando não há tipo.</param>
++    public static bool CriaSatelite(CategoriaSolicitacao categoria, ModalidadeDicom? modalidadeDoTipo) =>
++        categoria == CategoriaSolicitacao.Imagem
++        || modalidadeDoTipo is { } modalidade && modalidade != ModalidadeDicom.Indefinida;
+ 
+     private static string SoDigitos(string? s) =>
+         string.IsNullOrEmpty(s) ? string.Empty : new string([.. s.Where(char.IsDigit)]);
+diff --git a/SMSMais.server/src/SMSMais.Core/Solicitacoes/Declaracao/DeclaracaoComparecimentoService.cs b/SMSMais.server/src/SMSMais.Core/Solicitacoes/Declaracao/DeclaracaoComparecimentoService.cs
+index d2137cec..87290c2e 100644
+--- a/SMSMais.server/src/SMSMais.Core/Solicitacoes/Declaracao/DeclaracaoComparecimentoService.cs
++++ b/SMSMais.server/src/SMSMais.Core/Solicitacoes/Declaracao/DeclaracaoComparecimentoService.cs
+@@ -42,13 +42,13 @@ public sealed partial class DeclaracaoComparecimentoService(
+         // Lança NaoEncontradoException quando não existe.
+         var s = await solicitacoes.ObterPorIdAsync(solicitacaoId, cancellationToken);
+ 
+-        // O selo da declaração é ancorado no exame de imagem (FK exame_imagem): consulta e demais
+-        // ainda não emitem declaração por aqui.
+-        if (s.Categoria != CategoriaSolicitacao.Imagem)
++        // O selo da declaração é ancorado no exame (FK exame_imagem): pedido sem exame (consulta e
++        // demais) ainda não emite declaração por aqui. Holter/MAPA têm exame (adendo ADR-0021).
++        if (string.IsNullOrEmpty(s.AccessionNumber))
+         {
+             throw new ValidacaoException(
+                 "categoria",
+-                "A declaração de comparecimento por aqui só está disponível para exames de imagem.");
++                "A declaração de comparecimento por aqui só está disponível para pedidos com exame.");
+         }
+ 
+         if (s.Status is not (StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada))
+diff --git a/SMSMais.server/tests/SMSMais.Tests/Integracoes/CategoriaSigtapCriaSateliteTests.cs b/SMSMais.server/tests/SMSMais.Tests/Integracoes/CategoriaSigtapCriaSateliteTests.cs
+new file mode 100644
+index 00000000..7e5972a4
+--- /dev/null
++++ b/SMSMais.server/tests/SMSMais.Tests/Integracoes/CategoriaSigtapCriaSateliteTests.cs
+@@ -0,0 +1,34 @@
++using FluentAssertions;
++using SMSMais.Core.Solicitacoes;
++using SMSMais.Data.Entities.Enums;
++
++namespace SMSMais.Tests.Integracoes;
++
++/// <summary>
++/// Quem ganha satélite de execução (adendo de 20/10/2026 ao ADR-0021): a categoria diz o que o
++/// exame É; a modalidade do tipo diz COMO ele é executado. Imagem sempre; fora dela, só tipo com
++/// modalidade DICOM — Holter (ECG) e MAPA (OT) são Gráfico/funcional e vão à worklist.
++/// </summary>
++public class CategoriaSigtapCriaSateliteTests
++{
++    [Theory]
++    [InlineData(null)]
++    [InlineData(ModalidadeDicom.Indefinida)]
++    [InlineData(ModalidadeDicom.US)]
++    public void Imagem_sempre_tem_satelite(ModalidadeDicom? modalidade) =>
++        CategoriaSigtap.CriaSatelite(CategoriaSolicitacao.Imagem, modalidade).Should().BeTrue();
++
++    [Theory]
++    [InlineData(ModalidadeDicom.ECG)] // Holter
++    [InlineData(ModalidadeDicom.OT)]  // MAPA
++    public void Grafico_funcional_com_tipo_de_modalidade_tem_satelite(ModalidadeDicom modalidade) =>
++        CategoriaSigtap.CriaSatelite(CategoriaSolicitacao.GraficoFuncional, modalidade).Should().BeTrue();
++
++    [Theory]
++    [InlineData(CategoriaSolicitacao.GraficoFuncional, null)]                        // sem tipo
++    [InlineData(CategoriaSolicitacao.GraficoFuncional, ModalidadeDicom.Indefinida)] // audiometria, EEG…
++    [InlineData(CategoriaSolicitacao.Consulta, null)]
++    [InlineData(CategoriaSolicitacao.Laboratorio, ModalidadeDicom.Indefinida)]
++    public void Sem_modalidade_fora_da_imagem_nao_tem_satelite(CategoriaSolicitacao categoria, ModalidadeDicom? modalidade) =>
++        CategoriaSigtap.CriaSatelite(categoria, modalidade).Should().BeFalse();
++}
+diff --git a/SMSMais.server/tests/SMSMais.Tests/Solicitacoes/SateliteForaDaImagemTests.cs b/SMSMais.server/tests/SMSMais.Tests/Solicitacoes/SateliteForaDaImagemTests.cs
+new file mode 100644
+index 00000000..15ab0bc5
+--- /dev/null
++++ b/SMSMais.server/tests/SMSMais.Tests/Solicitacoes/SateliteForaDaImagemTests.cs
+@@ -0,0 +1,163 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.Logging.Abstractions;
++using SMSMais.Core.Integracoes.SisregWeb.Importacao;
++using SMSMais.Core.Solicitacoes.Identificadores;
++using SMSMais.Core.Worklist;
++using SMSMais.Data;
++using SMSMais.Data.Entities;
++using SMSMais.Data.Entities.Enums;
++using SMSMais.Tests.Infraestrutura;
++
++namespace SMSMais.Tests.Solicitacoes;
++
++/// <summary>
++/// Adendo de 20/10/2026 ao ADR-0021: Holter e MAPA seguem Gráfico/funcional, mas ganham exame
++/// (accession, Study, worklist) porque o TIPO deles tem modalidade DICOM — o laudo volta em PDF pelo
++/// PACS, casado pelo accession/Study. Fora da imagem o tipo nunca é criado; e o reparo retroativo
++/// é só para o que não é imagem (a carga de 08/09 deixou ~512 mil imagens antigas sem satélite).
++/// </summary>
++[Collection(nameof(PostgresCollection))]
++public class SateliteForaDaImagemTests(PostgresFixture fixture)
++{
++    [Fact]
++    public async Task Holter_grafico_funcional_ganha_exame_com_o_tipo_que_ja_existe()
++    {
++        await using var db = fixture.CriarDbContext();
++        var sufixo = Sufixo();
++        var tipo = await SemearTipoAsync(db, $"HOLTER 24 HORAS TESTE {sufixo}", ModalidadeDicom.ECG);
++        var solicitacao = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, tipo.Nome, DateTime.UtcNow.AddDays(3));
++
++        Assert.Equal(ResultadoSatelite.Criado, await CriarSatelite(db).GarantirAsync(solicitacao, null, default));
++        await db.SaveChangesAsync();
++
++        var exame = await db.ExamesImagem.AsNoTracking().SingleAsync(e => e.SolicitacaoId == solicitacao.Id);
++        Assert.Equal(tipo.Id, exame.TipoExameId);
++        Assert.StartsWith("2.25.", exame.StudyInstanceUID);
++        Assert.False(string.IsNullOrEmpty(exame.AccessionNumber));
++        // Nada vai ao PACS antes da recepção.
++        Assert.Null(exame.ProximaTentativaEm);
++        // A categoria não muda: Holter é gráfico/funcional — só ganhou o exame.
++        Assert.Equal(CategoriaSolicitacao.GraficoFuncional,
++            (await db.Solicitacoes.AsNoTracking().SingleAsync(s => s.Id == solicitacao.Id)).Categoria);
++    }
++
++    [Fact]
++    public async Task Grafico_funcional_sem_tipo_nao_ganha_exame_nem_cria_tipo()
++    {
++        await using var db = fixture.CriarDbContext();
++        var nome = $"AUDIOMETRIA TESTE {Sufixo()}";
++        var solicitacao = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, nome, DateTime.UtcNow.AddDays(3));
++
++        Assert.Equal(ResultadoSatelite.NadaAFazer, await CriarSatelite(db).GarantirAsync(solicitacao, null, default));
++        await db.SaveChangesAsync();
++
++        Assert.False(await db.ExamesImagem.AnyAsync(e => e.SolicitacaoId == solicitacao.Id));
++        // Fora da imagem o resolvedor nunca cria tipo — senão cada EEG importado viraria um.
++        Assert.False(await db.TiposExame.AnyAsync(t => t.Nome == nome));
++    }
++
++    [Fact]
++    public async Task Grafico_funcional_com_tipo_sem_modalidade_nao_ganha_exame()
++    {
++        await using var db = fixture.CriarDbContext();
++        var tipo = await SemearTipoAsync(db, $"ELETROENCEFALOGRAMA TESTE {Sufixo()}", ModalidadeDicom.Indefinida);
++        var solicitacao = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, tipo.Nome, DateTime.UtcNow.AddDays(3));
++
++        Assert.Equal(ResultadoSatelite.NadaAFazer, await CriarSatelite(db).GarantirAsync(solicitacao, null, default));
++        await db.SaveChangesAsync();
++
++        Assert.False(await db.ExamesImagem.AnyAsync(e => e.SolicitacaoId == solicitacao.Id));
++    }
++
++    [Fact]
++    public async Task Reparo_retroativo_pega_o_mapa_passado_e_deixa_a_imagem_passada()
++    {
++        await using var db = fixture.CriarDbContext();
++        var sufixo = Sufixo();
++        var tipoMapa = await SemearTipoAsync(db, $"MAPA TESTE {sufixo}", ModalidadeDicom.OT);
++        var passado = DateTime.UtcNow.AddDays(-60);
++        var mapaPassado = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, tipoMapa.Nome, passado);
++        var imagemPassada = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.Imagem, $"RADIOGRAFIA TESTE {sufixo}", passado);
++
++        // Sem o pedido explícito, o passado fica de fora — inclusive fora da imagem.
++        await RepararTudoAsync(incluirAnterioresForaDaImagem: false);
++        await using (var leitura = fixture.CriarDbContext())
++            Assert.False(await leitura.ExamesImagem.AnyAsync(e => e.SolicitacaoId == mapaPassado.Id));
++
++        await RepararTudoAsync(incluirAnterioresForaDaImagem: true);
++
++        await using var depois = fixture.CriarDbContext();
++        var exameMapa = await depois.ExamesImagem.AsNoTracking().SingleAsync(e => e.SolicitacaoId == mapaPassado.Id);
++        Assert.Equal(tipoMapa.Id, exameMapa.TipoExameId);
++        // Na imagem o corte "de hoje em diante" vale sempre.
++        Assert.False(await depois.ExamesImagem.AnyAsync(e => e.SolicitacaoId == imagemPassada.Id));
++    }
++
++    // ---- apoio ----
++
++    private async Task RepararTudoAsync(bool incluirAnterioresForaDaImagem)
++    {
++        Guid? cursor = null;
++        ReparoSatelitesResultado resultado;
++        do
++        {
++            await using var db = fixture.CriarDbContext();
++            resultado = await CriarSatelite(db).RepararAsync(2000, cursor, incluirAnterioresForaDaImagem, default);
++            cursor = resultado.Cursor;
++        }
++        while (resultado.Restantes > 0);
++    }
++
++    private static string Sufixo() => Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
++
++    /// <summary>Tipo como o resolvedor da importação o cria — o nome é a chave, em toda a base.</summary>
++    private static async Task<TipoExame> SemearTipoAsync(SmsMaisDbContext db, string nome, ModalidadeDicom modalidade)
++    {
++        var tipo = new TipoExame
++        {
++            Id = Guid.CreateVersion7(),
++            Nome = nome,
++            ModalidadeDicom = modalidade,
++            RequestedProcedureDescription = nome,
++            ScheduledProcedureStepDescription = nome,
++            CodigosProtocolo = [],
++            Ativo = true,
++            EnviarParaWorklist = false,
++            CriadoEm = DateTime.UtcNow,
++        };
++        db.TiposExame.Add(tipo);
++        await db.SaveChangesAsync();
++        return tipo;
++    }
++
++    /// <summary>Solicitação importada do SISREG ainda SEM exame (o caso do Holter de antes de 05/10).</summary>
++    private static async Task<Solicitacao> SemearSolicitacaoAsync(
++        SmsMaisDbContext db, CategoriaSolicitacao categoria, string procedimento, DateTime dataAgendada)
++    {
++        var unidade = new Unidade { Id = Guid.NewGuid(), Nome = $"UNIDADE TESTE {Sufixo()}", CriadoEm = DateTime.UtcNow };
++        var solicitacao = new Solicitacao
++        {
++            Id = Guid.CreateVersion7(),
++            PacienteId = Guid.NewGuid(),
++            Categoria = categoria,
++            ProcedimentoTexto = procedimento,
++            UnidadeExecutanteId = unidade.Id,
++            SolicitanteNome = "DR TESTE",
++            Status = StatusSolicitacao.Agendada,
++            Prioridade = PrioridadeSolicitacao.Eletiva,
++            DataAgendada = dataAgendada,
++            CriadoEm = DateTime.UtcNow,
++        };
++        db.Unidades.Add(unidade);
++        db.Solicitacoes.Add(solicitacao);
++        await db.SaveChangesAsync();
++        return solicitacao;
++    }
++
++    private static SateliteImagemSisreg CriarSatelite(SmsMaisDbContext db) => new(
++        db,
++        new GeradorIdentificadores(db),
++        new ResolvedorTipoExameSisreg(db, NullLogger<ResolvedorTipoExameSisreg>.Instance),
++        new EscopoExameUnidade(db),
++        new UsuarioAtualAccessorFake(Guid.NewGuid()));
++}
+diff --git a/docs/adr/0021-ecossistema-solicitacao-e-fulfillment.md b/docs/adr/0021-ecossistema-solicitacao-e-fulfillment.md
+index 764fb47f..8e6d2f92 100644
+--- a/docs/adr/0021-ecossistema-solicitacao-e-fulfillment.md
++++ b/docs/adr/0021-ecossistema-solicitacao-e-fulfillment.md
+@@ -221,3 +221,30 @@ o contract, restaurar do backup. Deploy do app novo só depois do verify verde.
+ - **Split incremental "strangler" (ligar, não mover)** — menor risco, mas deixa a fusão meio-a-meio
+   por fases. Com janela de downtime + backup, o split completo é seguro e entrega o end-state limpo
+   de uma vez. Preterido a favor do split completo.
++
++## Adendo — 20/10/2026: satélite pela modalidade do tipo, não só pela categoria
++
++**Contexto.** Holter 24 horas e MAPA (SIGTAP `0211`) são **Gráfico/funcional** — é o que eles são.
++Mas, desde 16/10/2026, vão à worklist da cardiologia do CDT (Holter → `WORK-CARDIO-CDT`, tipo ECG;
++MAPA → `WORK-MAPA-CDT`, tipo OT) e o laudo volta como **PDF pelo PACS**, casado pelo accession e
++pelo Study UID. Sem satélite não há accession nem Study, e o pedido não tem como ir à worklist nem
++receber o laudo. Medido em 20/10/2026: 1.119 Holter/MAPA Gráfico/funcional sem exame, e 275 que só
++têm exame porque a carga de 08/09 os gravou como Imagem (o reparo de 05/10, `bc5d594d`).
++
++**Decisão.** A categoria continua dizendo o que o exame **é**; o satélite passa a depender de
++**como ele é executado**: `CategoriaSigtap.CriaSatelite(categoria, modalidadeDoTipo)` — Imagem
++sempre (a invariante de 05/10 continua); fora dela, só quando o **tipo de exame já existe com
++modalidade DICOM** (`!= Indefinida`). É exatamente o eixo que a alternativa "PACS vs não-PACS" acima
++apontou: `ModalidadeDicom` já expressa isso, e equipamento novo DICOM-capaz não vira migração de
++categoria — vira configuração do tipo.
++
++- Fora da imagem o tipo **nunca é criado** pela importação (`ResolverParaExecucaoAsync`) — senão cada
++  audiometria/EEG importada viraria um tipo "aguardando configuração DICOM".
++- O reparo (`POST /sisreg/importacao/reparar-exames-sem-satelite`) ganha `incluirAnteriores`: só fora
++  da imagem, para o acervo retroativo. Na imagem o corte "de hoje em diante" continua.
++- Declaração de comparecimento, link do exame completo, estatísticas e a tela passam a olhar "tem
++  exame", não "é Imagem".
++
++**Consequência a vigiar.** O que tiver tipo com modalidade e não for imagem ganha exame — hoje,
++Holter (ECG), MAPA (OT) **e ELETROCARDIOGRAMA (ECG)**. Se o ECG não deve ir à worklist, o tipo dele
++volta para modalidade Indefinida.
