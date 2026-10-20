@@ -328,20 +328,29 @@ public sealed class WhatsAppWebhookService(
                 await db.SaveChangesAsync(ct);
                 return;
             }
-            catch (DbUpdateConcurrencyException ex) when (tentativa < MaxTentativasGravacao
-                && ex.Entries.All(e => e.Entity is Conversa c && c.Id == conversa.Id))
+            catch (DbUpdateConcurrencyException ex) when (tentativa < MaxTentativasGravacao)
             {
+                // Antes só a Conversa era reaplicada; o conflito nas entidades do diálogo
+                // (Solicitacao.StatusConfirmacao, AtendimentoConfirmacao, AgendamentoConfirmacaoEstado
+                // — todas com xmin) caía no catch genérico e o efeito era DESCARTADO: o cidadão
+                // recebia a resposta e o diálogo ficava uma etapa atrás. Agora relê e reaplica
+                // QUALQUER entrada em conflito (concorrência = outro webhook do mesmo número gravou
+                // no meio; last-writer-wins é aceitável e muito melhor que perder o estado). 20/10/2026.
                 logger.LogInformation(
-                    "Webhook WhatsApp: conversa {Conversa} mudou enquanto os manipuladores respondiam — relendo e reaplicando (tentativa {Tentativa}).",
-                    conversa.Id, tentativa);
-                var entrada = db.Entry(conversa);
-                var mudadas = entrada.Properties
-                    .Where(p => p.IsModified)
-                    .Select(p => (p.Metadata.Name, p.CurrentValue))
-                    .ToList();
-                await entrada.ReloadAsync(ct);
-                foreach (var (nome, valor) in mudadas)
-                    entrada.Property(nome).CurrentValue = valor;
+                    "Webhook WhatsApp: {Qtd} entidade(s) mudaram enquanto os manipuladores respondiam — relendo e reaplicando (tentativa {Tentativa}).",
+                    ex.Entries.Count, tentativa);
+                foreach (var entrada in ex.Entries)
+                {
+                    var mudadas = entrada.Properties
+                        .Where(p => p.IsModified)
+                        .Select(p => (p.Metadata.Name, p.CurrentValue))
+                        .ToList();
+                    await entrada.ReloadAsync(ct);
+                    // Linha apagada no meio (reload deixa a entrada Detached): não há o que reaplicar.
+                    if (entrada.State == EntityState.Detached) continue;
+                    foreach (var (nome, valor) in mudadas)
+                        entrada.Property(nome).CurrentValue = valor;
+                }
             }
             catch (DbUpdateException ex)
             {
