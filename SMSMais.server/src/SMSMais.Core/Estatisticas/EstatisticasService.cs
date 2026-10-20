@@ -406,7 +406,8 @@ public sealed class EstatisticasService(
             .Where(e => e.ExcluidoEm == null
                 && e.Solicitacao != null
                 && e.Solicitacao.ExcluidoEm == null
-                && e.Solicitacao.Categoria == CategoriaSolicitacao.Imagem
+                // Sem filtro de categoria: todo exame (satélite) conta — inclusive Holter/MAPA, que são
+                // Gráfico/funcional com exame (adendo ADR-0021). O filtro de modalidade separa.
                 && (e.RealizadoEm ?? e.Solicitacao.DataAgendada ?? e.CriadoEm) >= deUtc
                 && (e.RealizadoEm ?? e.Solicitacao.DataAgendada ?? e.CriadoEm) < ateUtc);
 

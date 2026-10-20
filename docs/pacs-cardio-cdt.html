@@ -27,7 +27,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <body>
 <main>
 <h1>Configuração da worklist para a Cardiologia do CDT (CardioNet DICOM)</h1>
-<p>&gt; <strong>Para o técnico da Cardios / da unidade.</strong> Parâmetros para o <strong>CardioNet Client DICOM</strong> do CDT &gt; puxar a <strong>lista de trabalho (worklist)</strong> da plataforma SMSMais: os exames de <strong>Holter 24 horas</strong> e &gt; <strong>MAPA</strong> que o SISREG agenda para o CDT aparecem na tela "Criar novo exame → fonte DICOM → &gt; Procurar...", já com nome, data de nascimento, sexo e nº do pedido. &gt; AE de worklist <strong><code>WORK-CARDIO-CDT</code></strong> (label <code>CARDIO-CDT</code>) criado e validado no servidor em &gt; <strong>2026-10-16</strong> — <code>/aets</code>, <code>/webapps</code>, <code>mwlitems</code> 204 e isolamento 523 = 523.</p>
+<p>&gt; <strong>Para o técnico da Cardios / da unidade.</strong> Parâmetros para o <strong>CardioNet Client DICOM</strong> do CDT &gt; puxar a <strong>lista de trabalho (worklist)</strong> da plataforma SMSMais: os exames de <strong>Holter 24 horas</strong> &gt; que o SISREG agenda para o CDT aparecem na tela "Criar novo exame → fonte DICOM → Procurar...", já &gt; com nome, data de nascimento, sexo e nº do pedido. O <strong>eletrocardiograma</strong> não vem (decisão de &gt; 20/10/2026): a máquina imprime o traçado na hora e entrega ao paciente, e o tipo ELETROCARDIOGRAMA &gt; fica sem modalidade de propósito. &gt; AE de worklist <strong><code>WORK-CARDIO-CDT</code></strong> (label <code>CARDIO-CDT</code>) criado e validado no servidor em &gt; <strong>2026-10-16</strong> — <code>/aets</code>, <code>/webapps</code>, <code>mwlitems</code> 204 e isolamento 523 = 523. &gt; &gt; <strong>Desde 19/10/2026 a MAPA não vem mais por aqui:</strong> tem aparelho e worklist próprios &gt; (<code>MAPAS-CDT</code> / <code>WORK-MAPAS-CDT</code>, modalidade <code>OT</code>) — ver <a href="./pacs-mapas-cdt.md"><code>pacs-mapas-cdt.md</code></a>. &gt; A MAPA que já estava nesta lista em 19/10 (uma, de 16/10) continua nela.</p>
 <hr>
 <h2>1. O que o CardioNet faz (e o que não faz)</h2>
 <p>Pela declaração de conformidade do próprio CardioNet Client DICOM (manual 01.2900.00079, Apêndice D):</p>
@@ -64,7 +64,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <p>Depois de preencher, <strong>"Testar Conexão"</strong> tem que dar sucesso (é um C-ECHO).</p>
 <h3>Parâmetros de busca</h3>
 <div class="tw"><table><thead><tr><th>Campo</th><th>Valor recomendado</th><th>Por quê</th></tr></thead><tbody>
-<tr><td><strong>Modalidade</strong></td><td><strong><code>ECG</code></strong> (ou em branco)</td><td>todo exame desta worklist sai com Modality <code>ECG</code> — Holter <strong>e</strong> MAPA. Qualquer outro valor (<code>HD</code>, <code>OT</code>, <code>HOLTER</code>…) devolve a lista <strong>vazia</strong></td></tr>
+<tr><td><strong>Modalidade</strong></td><td><strong><code>ECG</code></strong> (ou em branco)</td><td>todo exame desta worklist sai com Modality <code>ECG</code> — Holter <strong>e</strong> ECG. Qualquer outro valor (<code>HD</code>, <code>OT</code>, <code>HOLTER</code>…) devolve a lista <strong>vazia</strong></td></tr>
 <tr><td><strong>Nome da estação</strong></td><td><strong><code>CARDIO-CDT</code></strong> (ou em branco)</td><td>é o Scheduled Station AE Title dos nossos itens</td></tr>
 <tr><td><strong>Período</strong></td><td><strong><code>7</code></strong> dias</td><td>ver §5 — o período segura a lista enxuta</td></tr>
 <tr><td>ID / Nome / Accession</td><td>em branco</td><td>são para busca pontual</td></tr>
@@ -83,9 +83,9 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <hr>
 <h2>5. Pontos de atenção</h2>
 <ul>
-<li><strong>Holter × MAPA.</strong> O CardioNet pede a descrição do exame (<code>0032,1060</code>), que vai com o nome do</li>
+<li><strong>Holter × MAPA.</strong> A MAPA saiu desta lista em 19/10/2026 (vai para o <code>WORK-MAPAS-CDT</code>). O CardioNet</li>
 </ul>
-<p>  procedimento; mas quem escolhe "Holter" ou "MAPA" no programa é o operador, ao criar o exame. Se o   mesmo paciente tiver os dois agendados, aparecem duas linhas com nº de pedido (Accession) diferente.</p>
+<p>  pede a descrição do exame (<code>0032,1060</code>), que vai com o nome do procedimento; quem escolhe o tipo de   exame no programa é o operador, ao criar o exame.</p>
 <ul>
 <li><strong>Médico solicitante e "clínica".</strong> Ligam-se no cadastro do equipamento <code>CARDIO-CDT</code> (Exames de</li>
 </ul>
@@ -105,7 +105,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <h2>7. Teste</h2>
 <ol>
 <li><strong>Testar Conexão</strong> na tela de configuração → sucesso.</li>
-<li><strong>Procurar...</strong> → aparecem os Holter/MAPA autorizados na recepção do CDT para os últimos 7 dias.</li>
+<li><strong>Procurar...</strong> → aparecem os Holter/ECG autorizados na recepção do CDT para os últimos 7 dias.</li>
 </ol>
 <p>   Lista vazia com conexão OK costuma ser: (a) nenhum exame autorizado no período, ou (b) filtro de    Modalidade diferente de <code>ECG</code>. Confirmar com a equipe Automais, que vê no servidor o que o    CardioNet pediu de fato.</p>
 </main>

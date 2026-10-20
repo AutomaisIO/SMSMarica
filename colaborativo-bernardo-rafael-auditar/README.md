@@ -16,4 +16,4 @@ como registro, a critério do Bernardo).
 
 | Item | Situação |
 |---|---|
-| [`2026-10-20-holter-mapa-satelite`](./2026-10-20-holter-mapa-satelite/README.md) | Aguardando auditoria |
+| [`2026-10-20-holter-mapa-satelite`](./2026-10-20-holter-mapa-satelite/README.md) | Auditado e aplicado em 20/10/2026 (`feat/holter-mapa-satelite`) — ver "Decisões do Bernardo" no item |

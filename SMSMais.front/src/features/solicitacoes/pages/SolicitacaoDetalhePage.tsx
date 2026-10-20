@@ -67,6 +67,7 @@ import { BotaoLinkDownload } from '@/features/solicitacoes/components/BotaoLinkD
 import { BotaoLinkAcesso } from '@/features/solicitacoes/components/BotaoLinkAcesso';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type { Solicitacao, StatusSolicitacao } from '@/features/solicitacoes/types';
+import { temExame } from '@/features/solicitacoes/types';
 
 const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
 
@@ -81,9 +82,9 @@ export function SolicitacaoDetalhePage() {
   const podeEditar = usePermissao('Solicitacoes', 'Edicao');
   const podeExcluir = usePermissao('Solicitacoes', 'Exclusao');
   // Estações elegíveis (unidade executante + modalidade) — para gatear os botões de destino. Só o
-  // exame de imagem tem estação.
+  // pedido com exame tem estação.
   const equipamentos = useEquipamentosDoExame(
-    detalhe.data?.categoria === 'Imagem' ? (id ?? null) : null,
+    detalhe.data && temExame(detalhe.data) ? (id ?? null) : null,
     podeEditar,
   );
 
@@ -113,9 +114,10 @@ export function SolicitacaoDetalhePage() {
   }
 
   const s = detalhe.data;
-  // Só o exame de imagem tem worklist, PACS, equipamento, laudo e edição; consulta e demais
-  // vêm do SISREG e ficam com o que é da recepção (chegada, cancelamento, comunicação).
-  const ehImagem = s.categoria === 'Imagem';
+  // Só o pedido com exame (imagem, Holter, MAPA…) tem worklist, PACS, equipamento, laudo e edição;
+  // consulta e demais vêm do SISREG e ficam com o que é da recepção (chegada, cancelamento,
+  // comunicação). O nome `ehImagem` ficou do tempo em que só a imagem tinha exame.
+  const ehImagem = temExame(s);
   const cancelado = s.status === 'Cancelada';
   const podeCancelar =
     podeEditar &&
@@ -221,9 +223,10 @@ export function SolicitacaoDetalhePage() {
           </button>
           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold text-gray-900">
             <ClipboardCheck className="h-6 w-6 text-primary-600" />
-            {/* Sem exame de imagem não há nº do pedido (accession): o do SISREG é o pedido. */}
+            {/* Sem exame não há nº do pedido (accession): o do SISREG é o pedido. */}
             <CodigoCopiavel codigo={s.accessionNumber || (s.codigoSolicitacao ?? '')} />
-            {ehImagem ? null : <CategoriaBadge categoria={s.categoria} />}
+            {/* Pela categoria, não pelo exame: o Holter tem exame e segue Gráfico/funcional. */}
+            {s.categoria === 'Imagem' ? null : <CategoriaBadge categoria={s.categoria} />}
             <StatusBadgeSolicitacao status={s.status} />
             <ConfirmacaoBadge status={s.statusConfirmacao} />
             <VagaBadge tipoVaga={s.tipoVaga} mostrarPrimeiraVez />
@@ -887,7 +890,7 @@ function CardAutorizacao({ s }: { s: Solicitacao }) {
   const [equipamentoId, setEquipamentoId] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
-  const ehImagem = s.categoria === 'Imagem';
+  const ehImagem = temExame(s);
   const preRecebido = ehImagem
     ? s.status === 'Solicitada' || s.status === 'Enviada'
     : s.status === 'Solicitada' || s.status === 'Agendada';

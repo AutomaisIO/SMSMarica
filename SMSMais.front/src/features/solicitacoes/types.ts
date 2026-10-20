@@ -26,7 +26,10 @@ export type DirecaoSolicitacao = 'Recebida' | 'Enviada';
 /** Natureza da vaga no SISREG (coluna 8 "Vaga (flag)" do TXT): 1ª vez ou retorno. */
 export type TipoVaga = 'PrimeiraVez' | 'Retorno';
 
-/** Tipo da solicitação, derivado do SIGTAP na importação (ADR-0021). Só `Imagem` tem exame. */
+/**
+ * Tipo da solicitação, derivado do SIGTAP na importação (ADR-0021). Diz o que o exame É — se ele
+ * tem exame (worklist, PACS, laudo) quem diz é `temExame`.
+ */
 export type CategoriaSolicitacao =
   | 'Consulta'
   | 'Imagem'
@@ -37,9 +40,18 @@ export type CategoriaSolicitacao =
   | 'Outro';
 
 /**
+ * Se a linha tem exame (satélite de execução: accession, Study, worklist, equipamento, laudo). Não é
+ * o mesmo que `categoria === 'Imagem'`: Holter e MAPA são Gráfico/funcional e têm exame — vão à
+ * worklist da cardiologia e o laudo volta em PDF pelo PACS (adendo de 20/10/2026 ao ADR-0021).
+ */
+export function temExame(s: { accessionNumber?: string | null }): boolean {
+  return Boolean(s.accessionNumber);
+}
+
+/**
  * Uma solicitação regulada — exame de imagem, consulta, laboratório… `id` é o id PÚBLICO: o do
- * exame de imagem quando há, senão o da solicitação. Os campos de execução (accession, study,
- * worklist, equipamento, tipo de exame) só têm valor no exame de imagem.
+ * exame quando há, senão o da solicitação. Os campos de execução (accession, study, worklist,
+ * equipamento, tipo de exame) só têm valor quando há exame (`temExame`).
  */
 export type Solicitacao = {
   id: string;

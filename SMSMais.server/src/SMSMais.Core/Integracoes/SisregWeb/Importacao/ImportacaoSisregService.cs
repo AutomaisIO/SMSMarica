@@ -211,6 +211,13 @@ public sealed class ImportacaoSisregService(
 
         var sigtapComTipo = await SigtapComTipoAsync(ct);
 
+        // Fora da imagem, quem ganha exame é o tipo que já tem modalidade DICOM (Holter, MAPA) —
+        // mesmo critério de CategoriaSigtap.CriaSatelite, para a prévia não dizer "sem exame" deles.
+        var tiposComModalidade = (await db.TiposExame.AsNoTracking()
+            .Where(t => t.ExcluidoEm == null && t.ModalidadeDicom != ModalidadeDicom.Indefinida)
+            .Select(t => t.Nome)
+            .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
+
         // Executante já resolvida (tenant atual); o mesmo nome/CNES vale para todas as linhas.
         var execNome = executante.Nome ?? marcacoes.Select(m => m.NomeUnidadeExecutante).FirstOrDefault(n => n is not null);
         var execExiste = executante.Id is not null;
@@ -227,7 +234,10 @@ public sealed class ImportacaoSisregService(
             if (categoria == CategoriaSolicitacao.Imagem && !procMapeia)
                 alertas.Add("Exame de imagem sem tipo mapeado — importa como pendente (mapear depois).");
             else if (categoria != CategoriaSolicitacao.Imagem)
-                alertas.Add($"Categoria {categoria} — importa como solicitação (sem exame de imagem/PACS).");
+                alertas.Add(tiposComModalidade.Contains(
+                        ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty))
+                    ? $"Categoria {categoria} — o tipo tem modalidade DICOM: importa com exame (worklist/PACS)."
+                    : $"Categoria {categoria} — importa como solicitação (sem exame de imagem/PACS).");
             if (string.IsNullOrWhiteSpace(m.CnsPaciente)) alertas.Add("Sem CNS do paciente.");
             if (m.DataHoraAtendimento is null) alertas.Add("Sem data/hora de atendimento.");
 
@@ -338,23 +348,28 @@ public sealed class ImportacaoSisregService(
             ? CategoriaSigtap.Resolver(sig)
             : CategoriaSigtap.ResolverPorNome(nomeProcedimento);
         var codigoProcedimento = SoDigitos(m.CodigoProcedimentoSisreg);
-        Guid? tipoExameId = null;
+        // NÃO catalogamos mais o código como se fosse SIGTAP oficial. Isso existia para tirar o
+        // operador do beco sem saída de "não dá para criar o tipo sem procedimento catalogado" —
+        // beco que sumiu, porque o tipo agora nasce sozinho. E o efeito colateral era grave: o
+        // código exportado pelo SISREG entrava no catálogo OFICIAL com o nome do SISREG, e foi
+        // assim que o 0205020062 virou "ULTRASSONOGRAFIA DA REGIÃO INGUINAL" — nome que passou a
+        // representar 15 procedimentos diferentes.
+        // Fora da imagem, o satélite só vem de um tipo que já existe com modalidade (Holter, MAPA) —
+        // ver CategoriaSigtap.CriaSatelite; aí o tipo nunca é criado.
+        var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
+            categoria, nomeProcedimento, codigoProcedimento, sig, ct);
         if (categoria == CategoriaSolicitacao.Imagem)
         {
-            // NÃO catalogamos mais o código como se fosse SIGTAP oficial. Isso existia para tirar o
-            // operador do beco sem saída de "não dá para criar o tipo sem procedimento catalogado" —
-            // beco que sumiu, porque o tipo agora nasce sozinho. E o efeito colateral era grave: o
-            // código exportado pelo SISREG entrava no catálogo OFICIAL com o nome do SISREG, e foi
-            // assim que o 0205020062 virou "ULTRASSONOGRAFIA DA REGIÃO INGUINAL" — nome que passou a
-            // representar 15 procedimentos diferentes.
-            tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
-                nomeProcedimento, codigoProcedimento, sig, ct);
-
             passos.Add(tipoExameId is null
                 ? "Exame de imagem SEM nome de procedimento no SISREG — importa sem tipo."
                 : $"Exame de imagem \"{nomeProcedimento}\""
                   + (codigoProcedimento.Length > 0 ? $" (SISREG {codigoProcedimento})" : string.Empty)
                   + " → tipo de exame resolvido pelo nome do SISREG.");
+        }
+        else if (criaSatelite)
+        {
+            passos.Add($"Categoria {categoria} (SIGTAP {sig}) — o tipo \"{nomeProcedimento}\" tem modalidade "
+                + "DICOM: ganha exame (accession, Study e worklist).");
         }
         else
         {
@@ -558,7 +573,8 @@ public sealed class ImportacaoSisregService(
         if (solicCriada) passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante}{CnesSufixo(m.CnesUnidadeSolicitante)}.");
         else if (unidadeSolicId is not null) passos.Add("Unidade solicitante já cadastrada.");
 
-        // 5. Espinha de regulação (sempre) + satélite de execução SÓ para imagem. Ver ADR-0021.
+        // 5. Espinha de regulação (sempre) + satélite de execução quando CategoriaSigtap.CriaSatelite
+        //    (imagem, ou tipo com modalidade DICOM). Ver ADR-0021 e o adendo de 20/10/2026.
         var agora = DateTime.UtcNow;
         var solic = new Solicitacao
         {
@@ -603,10 +619,10 @@ public sealed class ImportacaoSisregService(
         };
         db.Solicitacoes.Add(solic);
 
-        // AccessionNumber/StudyUID são conceitos DICOM — só existem no satélite de imagem.
+        // AccessionNumber/StudyUID são conceitos DICOM — só existem no satélite de execução.
         Guid idPublico = solic.Id;
         string? accession = null;
-        if (categoria == CategoriaSolicitacao.Imagem)
+        if (criaSatelite)
         {
             accession = await geradorIds.ProximoAccessionAsync(ct);
             var exame = new ExameImagem

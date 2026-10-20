@@ -8,6 +8,7 @@ import { Modal } from '@/shared/ui/Modal';
 import { formatarInstante, formatarInstanteData } from '@/shared/lib/datas';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { ROTULO_CATEGORIA } from '@/features/solicitacoes/components/CategoriaBadge';
+import { temExame } from '@/features/solicitacoes/types';
 
 /**
  * Detalhe da solicitação (exame de imagem, consulta…; SISREG/nossa), em modal — espelha o
@@ -25,9 +26,9 @@ export function ModalSolicitacao({
   aoFechar: () => void;
 }) {
   const { data: s, isLoading } = useSolicitacaoPorId(solicitacaoId);
-  // O que foi pedido: o tipo de exame na imagem; a especialidade ou o procedimento nas demais.
+  // O que foi pedido: o tipo de exame quando há exame; a especialidade ou o procedimento nas demais.
   const procedimento = s
-    ? s.categoria === 'Imagem'
+    ? temExame(s)
       ? s.tipoExameNome || s.procedimentoTexto
       : s.especialidadeTexto || s.procedimentoTexto
     : null;
@@ -78,7 +79,7 @@ export function ModalSolicitacao({
 
           <Bloco titulo={s.categoria === 'Imagem' ? 'Exame' : ROTULO_CATEGORIA[s.categoria]}>
             <Item rotulo="Procedimento" valor={procedimento} />
-            {s.categoria === 'Imagem' ? <Item rotulo="Modalidade" valor={s.modalidadeDicom} /> : null}
+            {temExame(s) ? <Item rotulo="Modalidade" valor={s.modalidadeDicom} /> : null}
             <Item rotulo="Unidade executante" valor={s.unidadeNome} />
             <Item rotulo="Unidade solicitante" valor={s.unidadeSolicitanteNome} />
             <Item rotulo="Solicitante" valor={s.solicitanteNome} />
