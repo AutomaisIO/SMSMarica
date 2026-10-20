@@ -33,8 +33,10 @@ public class SisregProcedimentoProfissional
     /// (<c>SisregVarreduraAgenda.EnviarConfirmacao</c>): desligar lá corta tudo; ligado lá, cada
     /// procedimento ainda pode vetar o seu.
     ///
-    /// <para><b>Nasce DESLIGADO</b>, e procedimento fora do mapeamento também não envia. É opt-in
-    /// deliberado: mensagem ao paciente só sai depois que alguém decidiu que deve sair.</para>
+    /// <para><b>Nasce LIGADO</b> (padrão desde 20/10/2026, revertendo o opt-in de 03/08/2026): todo
+    /// procedimento/médico novo que a varredura descobre já avisa o paciente por padrão. A reversão
+    /// foi decisão do operador — o opt-in silencioso deixava agendamentos futuros sem aviso sem
+    /// ninguém perceber. Ainda é possível DESLIGAR um procedimento específico depois (opt-out).</para>
     ///
     /// <para><b>É por unidade, não nacional</b> (ao contrário do de-para SIGTAP): quem decide se
     /// um exame merece aviso é a unidade que o executa. Como o mesmo procedimento pode aparecer

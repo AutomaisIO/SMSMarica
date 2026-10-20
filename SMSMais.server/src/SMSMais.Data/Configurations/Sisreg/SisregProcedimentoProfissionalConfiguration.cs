@@ -17,7 +17,11 @@ internal sealed class SisregProcedimentoProfissionalConfiguration
         builder.Property(x => x.Codigo).HasColumnName("codigo").HasMaxLength(20).IsRequired();
         builder.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(300).IsRequired();
         builder.Property(x => x.Habilitado).HasColumnName("habilitado").IsRequired();
-        // Default FALSE por decisão do operador: nada avisa o paciente sem alguém ligar.
+        // "Nasce LIGADO" desde 20/10/2026 (reverte o opt-in de 03/08/2026): os pontos de criação da
+        // varredura/mapeamento setam EnviarConfirmacao = true EXPLICITAMENTE. O default do BANCO fica
+        // em false DE PROPÓSITO (é a sentinela do EF para bool): assim o true explícito do registro
+        // novo é gravado (true != sentinela) e o opt-out (gravar false para desligar um procedimento)
+        // continua funcionando. NÃO trocar para HasDefaultValue(true): quebraria o opt-out.
         builder.Property(x => x.EnviarConfirmacao).HasColumnName("enviar_confirmacao")
             .IsRequired().HasDefaultValue(false);
         builder.Property(x => x.Grupo).HasColumnName("grupo").IsRequired();

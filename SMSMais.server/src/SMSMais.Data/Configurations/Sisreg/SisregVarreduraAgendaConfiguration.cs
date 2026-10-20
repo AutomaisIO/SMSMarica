@@ -15,7 +15,11 @@ internal sealed class SisregVarreduraAgendaConfiguration : IEntityTypeConfigurat
 
         builder.Property(x => x.UnidadeId).HasColumnName("unidade_id");
         builder.Property(x => x.Ativo).HasColumnName("ativo").IsRequired().HasDefaultValue(false);
-        // Default FALSE por decisão do operador: nada avisa o paciente sem alguém ligar.
+        // "Nasce LIGADO" desde 20/10/2026 (reverte o opt-in de 03/08/2026): os pontos de criação da
+        // varredura setam EnviarConfirmacao = true EXPLICITAMENTE. O default do BANCO fica em false
+        // DE PROPÓSITO (sentinela do EF para bool): o true explícito da unidade nova é gravado e o
+        // opt-out (gravar false para desligar a unidade) continua funcionando. NÃO trocar para
+        // HasDefaultValue(true): quebraria o opt-out.
         builder.Property(x => x.EnviarConfirmacao).HasColumnName("enviar_confirmacao")
             .IsRequired().HasDefaultValue(false);
         // Default FALSE: muda o comportamento de um motor de produção, a unidade escolhe adotar.
