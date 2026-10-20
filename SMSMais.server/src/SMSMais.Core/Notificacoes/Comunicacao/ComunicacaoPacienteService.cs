@@ -520,7 +520,37 @@ public sealed class ComunicacaoPacienteService(
             ReagendarOuFalhar(n, ex.Message);
         }
 
-        await db.SaveChangesAsync(ct);
+        // Grava a tentativa com retry de concorrência — MESMO padrão (e trava anti-duplicação) do
+        // GravarDetalhesEnviadosAsync. Importa quando este caminho é o ENVIO IMEDIATO logo após a
+        // verificação cadastral, com o paciente na conversa: antes a corrida de xmin (outro webhook
+        // ou o worker mexendo na mesma comunicação/solicitação) estourava aqui, o estado não gravava
+        // e a confirmação só saía minutos depois pelo worker — dava a sensação de "ninguém responde".
+        // O envio (EnviarAsync, acima) está FORA do retry: reler e regravar NÃO reenvia a mensagem.
+        for (var tentativa = 1; ; tentativa++)
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex) when (tentativa < 3)
+            {
+                foreach (var entrada in ex.Entries)
+                {
+                    var mudadas = entrada.Properties
+                        .Where(p => p.IsModified)
+                        .Select(p => (p.Metadata.Name, p.CurrentValue))
+                        .ToList();
+                    await entrada.ReloadAsync(ct);
+                    if (entrada.State == EntityState.Detached) continue; // apagada por fora
+                    // A própria comunicação: se outro envio já a marcou como saída, NÃO sobrescreve
+                    // (evita duplicar/regredir o estado) — só reaplica se ainda está Pendente.
+                    if (ReferenceEquals(entrada.Entity, n) && n.Status != StatusComunicacao.Pendente) continue;
+                    foreach (var (nome, valor) in mudadas)
+                        entrada.Property(nome).CurrentValue = valor;
+                }
+            }
+        }
     }
 
     public async Task<bool> EnviarDetalhesNaConversaAsync(
