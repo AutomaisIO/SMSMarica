@@ -4,8 +4,8 @@
 > puxar a **lista de trabalho (worklist)** da plataforma SMSMais: os exames de **MAPA**
 > (monitorização ambulatorial da pressão arterial) que o SISREG agenda para o CDT aparecem na busca
 > DICOM do programa, já com nome, data de nascimento, sexo e nº do pedido.
-> AE de worklist **`WORK-MAPAS-CDT`** (label `MAPAS-CDT`) — ensaio validado no servidor em
-> **2026-10-19**; criação no servidor **pendente**.
+> AE de worklist **`WORK-MAPAS-CDT`** (label `MAPAS-CDT`) criado e validado no servidor em
+> **2026-10-19** — `/aets`, `/webapps`, `mwlitems` 204 e isolamento 543 = 543.
 
 A MAPA tinha saído, até 19/10/2026, pelo CardioNet da cardiologia (`WORK-CARDIO-CDT`, modalidade
 `ECG`), junto com o Holter. Desde então ela tem aparelho e worklist próprios — o CardioNet de
