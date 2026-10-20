@@ -183,6 +183,26 @@ Acrescentar o aparelho às tabelas de `docs/pacs.md` (§8 e §9.1).
   fechamento para esse caso, o filtro de **Período** no aparelho segura a lista (`docs/pacs-cardio-cdt.md`
   §5). Aparelho novo: ler a declaração de conformidade DICOM **antes** — se não houver C-STORE,
   o ciclo de vida é outro.
+- **Dois aparelhos da mesma modalidade na unidade, cada um com a sua worklist, NÃO se separam
+  sozinhos.** A worklist separada é do PACS; quem escolhe o aparelho é o painel, pela modalidade do
+  tipo. Em 19/10/2026 a MAPA do CDT virou `OT` (`MAPAS-CDT`), e o CDT já tinha a densitometria em
+  `OT` (`DO-CDT`) por dedução: sem fixar o **aparelho de destino** no escopo dos DOIS tipos, as 169
+  densitometrias pendentes passariam a pedir sala na recepção. Fixe primeiro o tipo que já existia,
+  depois cadastre o aparelho novo. A troca da modalidade do tipo vem antes de fixar o aparelho dele:
+  o seletor só mostra aparelhos da mesma modalidade.
+- **Método gráfico (MAPA, Holter) só tem exame se o TIPO tiver modalidade DICOM.** O SISREG manda
+  esses pedidos como gráfico funcional (SIGTAP 0211), não imagem, e sem exame nada vai à worklist.
+  Desde 20/10/2026 (adendo do ADR-0021) o pedido não-imagem ganha exame quando o tipo de exame dele
+  já existe com modalidade ≠ Indefinida (`CategoriaSigtap.CriaSatelite`) — em qualquer unidade; a
+  importação nunca cria tipo fora da imagem. Por isso **pôr modalidade num tipo de método gráfico
+  liga o exame dele**: o ELETROCARDIOGRAMA fica Indefinida de propósito (a máquina imprime e entrega
+  ao paciente). Antes disso, só os gravados como Imagem pela carga de 08/09 tinham exame — de 31/10
+  em diante nenhuma MAPA ou Holter chegaria ao CardioNet. Aparelho novo de método gráfico: modalidade
+  no tipo, depois o reparo (`POST /sisreg/importacao/reparar-exames-sem-satelite`) para os pedidos
+  **futuros**, e conferir que eles têm exame (`exame_imagem`), não só os de hoje.
+- **No modo automático, gravar no LDAP do PACS e no banco de produção é barrado.** Monte o script
+  (ensaio primeiro, que o modo deixa rodar) e passe ao operador um comando curto com `!`; no banco,
+  a gravação só passou depois de autorização explícita do Bernardo na conversa.
 - **Modalidade que o sistema não tem é mudança de código.** `ModalidadeDicom` é enum (int, sem
   CHECK — não precisa de migration), mas aparece em dois seletores do front (`equipamentos/types.ts`
   e `tipos-exame/types.ts`) e no rótulo das estatísticas. Foi o caso do `ECG` (Holter e MAPA)

@@ -22,7 +22,7 @@ export const artigoEquipamentos: Artigo = {
   icone: ScanLine,
   rota: '/app/equipamentos',
   publico: 'Quem administra os aparelhos de imagem e a integração com o PACS',
-  atualizadoEm: '2026-10-16',
+  atualizadoEm: '2026-10-20',
   palavrasChave: [
     'equipamento',
     'equipamentos',
@@ -38,6 +38,9 @@ export const artigoEquipamentos: Artigo = {
     'Holter',
     'MAPA',
     'CardioNet',
+    'OT',
+    'densitometria',
+    'aparelho de destino',
     'AE Title',
     'identificador DICOM',
     'worklist',
@@ -86,7 +89,7 @@ export const artigoEquipamentos: Artigo = {
     {
       id: 'os-campos',
       titulo: 'Os campos do cadastro',
-      busca: 'nome unidade modalidade AE title identificador DICOM limite descrição ativo Fuji 16 64 ECG cardiologia Holter MAPA',
+      busca: 'nome unidade modalidade AE title identificador DICOM limite descrição ativo Fuji 16 64 ECG cardiologia Holter MAPA OT densitometria aparelho de destino escopo',
       conteudo: (
         <>
           <Lista>
@@ -97,8 +100,12 @@ export const artigoEquipamentos: Artigo = {
             <Item>
               <strong>Unidade</strong> e <strong>Modalidade</strong> — juntas, dizem quais exames podem
               ir para este aparelho. Quando a unidade tem mais de um aparelho da mesma modalidade, a
-              recepção escolhe a sala ao autorizar. Holter e MAPA (cardiologia) usam a modalidade{' '}
-              <strong>ECG</strong> — o aparelho e o tipo de exame precisam estar os dois nela.
+              recepção escolhe a sala ao autorizar — a não ser que o exame tenha{' '}
+              <strong>aparelho de destino</strong> fixo na aba <em>Exames de imagem</em> da unidade. É o
+              caso do CDT, onde densitometria e MAPA são os dois <strong>OT</strong>: cada um tem o seu
+              aparelho fixo. O Holter (cardiologia) usa a modalidade <strong>ECG</strong>; o
+              eletrocardiograma comum não tem exame, porque a máquina imprime na hora. O aparelho e o
+              tipo de exame precisam estar na mesma modalidade.
             </Item>
             <Item>
               <strong>AE Title</strong> — o nome configurado no próprio aparelho. A worklist só chega

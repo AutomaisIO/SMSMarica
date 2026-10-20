@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -43,12 +44,43 @@ public interface IResolvedorTipoExameSisreg
     /// </param>
     Task<Guid?> ResolverOuCriarAsync(
         string? nomeSisreg, string? codigoSisreg, string? codigoSigtap, CancellationToken ct);
+
+    /// <summary>
+    /// Se o pedido ganha satélite de execução e com qual tipo — a regra de
+    /// <see cref="CategoriaSigtap.CriaSatelite"/>. Imagem: resolve OU CRIA o tipo, como
+    /// sempre. Fora da imagem: só um tipo que JÁ EXISTE e já tem modalidade DICOM (Holter, MAPA)
+    /// conta — e NUNCA cria tipo, senão cada audiometria ou EEG importado viraria um tipo de exame
+    /// automático "aguardando configuração DICOM".
+    /// </summary>
+    /// <returns><c>CriaSatelite</c> e o tipo (null = imagem sem nome no SISREG, mapeamento pendente).</returns>
+    Task<(bool CriaSatelite, Guid? TipoExameId)> ResolverParaExecucaoAsync(
+        CategoriaSolicitacao categoria, string? nomeSisreg, string? codigoSisreg, string? codigoSigtap,
+        CancellationToken ct);
 }
 
 public sealed class ResolvedorTipoExameSisreg(
     SmsMaisDbContext db,
     ILogger<ResolvedorTipoExameSisreg> logger) : IResolvedorTipoExameSisreg
 {
+    public async Task<(bool CriaSatelite, Guid? TipoExameId)> ResolverParaExecucaoAsync(
+        CategoriaSolicitacao categoria, string? nomeSisreg, string? codigoSisreg, string? codigoSigtap,
+        CancellationToken ct)
+    {
+        if (categoria == CategoriaSolicitacao.Imagem)
+            return (true, await ResolverOuCriarAsync(nomeSisreg, codigoSisreg, codigoSigtap, ct));
+
+        var nome = NormalizarNome(nomeSisreg ?? string.Empty);
+        if (nome.Length == 0) return (false, null);
+
+        var tipo = await db.TiposExame
+            .Where(t => t.Nome == nome && t.ExcluidoEm == null)
+            .Select(t => new { t.Id, t.ModalidadeDicom })
+            .FirstOrDefaultAsync(ct);
+        return tipo is not null && CategoriaSigtap.CriaSatelite(categoria, tipo.ModalidadeDicom)
+            ? (true, tipo.Id)
+            : (false, null);
+    }
+
     public async Task<Guid?> ResolverOuCriarAsync(
         string? nomeSisreg, string? codigoSisreg, string? codigoSigtap, CancellationToken ct)
     {

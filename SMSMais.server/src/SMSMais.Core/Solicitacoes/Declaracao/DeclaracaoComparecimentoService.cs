@@ -42,13 +42,13 @@ public sealed partial class DeclaracaoComparecimentoService(
         // Lança NaoEncontradoException quando não existe.
         var s = await solicitacoes.ObterPorIdAsync(solicitacaoId, cancellationToken);
 
-        // O selo da declaração é ancorado no exame de imagem (FK exame_imagem): consulta e demais
-        // ainda não emitem declaração por aqui.
-        if (s.Categoria != CategoriaSolicitacao.Imagem)
+        // O selo da declaração é ancorado no exame (FK exame_imagem): pedido sem exame (consulta e
+        // demais) ainda não emite declaração por aqui. Holter/MAPA têm exame (adendo ADR-0021).
+        if (string.IsNullOrEmpty(s.AccessionNumber))
         {
             throw new ValidacaoException(
                 "categoria",
-                "A declaração de comparecimento por aqui só está disponível para exames de imagem.");
+                "A declaração de comparecimento por aqui só está disponível para pedidos com exame.");
         }
 
         if (s.Status is not (StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada))

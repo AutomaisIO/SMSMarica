@@ -189,7 +189,8 @@ vive sendo esquecido. Criar um novo: skill **`criar-equipamento-imagem`**.
 | `WORK-US02-CDT` | `US02-CDT` | Ultrassom 02 | CDT |
 | `WORK-DO-CDT` | `DO-CDT` | Densitometria óssea | CDT |
 | `WORK-RX-CDT` | `RX-CDT` | Raio-X (Konica ImagePilot) | CDT |
-| `WORK-CARDIO-CDT` | `CARDIO-CDT` | Cardiologia — CardioNet Client DICOM (Holter/MAPA), só worklist | CDT |
+| `WORK-CARDIO-CDT` | `CARDIO-CDT` | Cardiologia — CardioNet Client DICOM (Holter/ECG), só worklist | CDT |
+| `WORK-MAPAS-CDT` | `MAPAS-CDT` | MAPA — CardioNet MAPAS DICOM, só worklist (19/10/2026) | CDT |
 | `WORKLIST` | **nenhum** | — enxerga TUDO; é o AE do backend | — |
 
 > **Prova de isolamento:** a soma dos itens dos AEs com label tem que bater **exatamente** com o
@@ -287,7 +288,8 @@ para 5.34.3 veio depois, por outros motivos).
 | `WORK-US02-CDT` | `US02-CDT` | ultrassom 02 do CDT |
 | `WORK-DO-CDT` | `DO-CDT` | densitometria óssea do CDT |
 | `WORK-RX-CDT` | `RX-CDT` | raio-X do CDT (2026-09-04) |
-| `WORK-CARDIO-CDT` | `CARDIO-CDT` | CardioNet DICOM da cardiologia do CDT (Holter/MAPA) |
+| `WORK-CARDIO-CDT` | `CARDIO-CDT` | CardioNet DICOM da cardiologia do CDT (Holter/ECG) |
+| `WORK-MAPAS-CDT` | `MAPAS-CDT` | CardioNet MAPAS DICOM do CDT (MAPA, 2026-10-19) |
 | **`WORKLIST`** | **nenhum** (enxerga tudo) | **o backend** — `Pacs:Dcm4chee:WorklistBaseUrl` |
 
 Medição de 04/09/2026 que confirma a partição: `WORKLIST` devolve **133** itens e a soma dos AEs
@@ -377,10 +379,11 @@ segunda aquisição do mesmo pedido, por exemplo — existe *Reenviar worklist* 
 do exame (`POST /solicitacoes/{id}/reenviar-worklist`).
 
 > **Aparelho que não manda nada ao PACS fura este ciclo.** O CardioNet Client DICOM da cardiologia
-> do CDT (`CARDIO-CDT`, Holter/MAPA) só consulta a worklist: nenhum estudo chega, a conciliação nunca
+> do CDT (`CARDIO-CDT`, Holter/ECG) e o MAPAS DICOM da MAPA (`MAPAS-CDT`) só consultam a worklist: nenhum estudo chega, a conciliação nunca
 > promove o exame a *Realizada* e o item **fica para sempre**. Enquanto não houver um fechamento para
 > esse caso (presença do SISREG, ou validade por data), quem segura a lista é o filtro de **Período**
-> no próprio CardioNet — ver [`pacs-cardio-cdt.md`](./pacs-cardio-cdt.md) §5.
+> no próprio CardioNet — ver [`pacs-cardio-cdt.md`](./pacs-cardio-cdt.md) §5 e
+> [`pacs-mapas-cdt.md`](./pacs-mapas-cdt.md) §5.
 
 > **Itens órfãos** (na worklist do dcm4chee sem exame correspondente aqui) **não**
 > são removidos automaticamente: o PACS pode um dia atender outro sistema, e o nosso
@@ -398,7 +401,13 @@ Parâmetros por equipamento (entregáveis ao técnico):
 | Ultrassom 02 | CDT | US | `US02-CDT` | `WORK-US02-CDT` | — |
 | Densitometria óssea | CDT | OT | `DO-CDT` | `WORK-DO-CDT` | — |
 | **Raio-X** | **CDT** | **DX** | **`RX-CDT`** | **`WORK-RX-CDT`** | [`pacs-rx-cdt.md`](./pacs-rx-cdt.md) |
-| Cardiologia — CardioNet DICOM (Holter, MAPA) | CDT | ECG | `CARDIO-CDT` | `WORK-CARDIO-CDT` | [`pacs-cardio-cdt.md`](./pacs-cardio-cdt.md) |
+| Cardiologia — CardioNet DICOM (Holter, ECG) | CDT | ECG | `CARDIO-CDT` | `WORK-CARDIO-CDT` | [`pacs-cardio-cdt.md`](./pacs-cardio-cdt.md) |
+| MAPA — CardioNet MAPAS DICOM | CDT | OT | `MAPAS-CDT` | `WORK-MAPAS-CDT` | [`pacs-mapas-cdt.md`](./pacs-mapas-cdt.md) |
+
+> **Dois OT no CDT.** Densitometria (`DO-CDT`) e MAPA (`MAPAS-CDT`) têm a mesma modalidade, então a
+> dedução por modalidade acharia dois candidatos. Por isso os dois tipos têm **aparelho fixo** no
+> escopo do CDT (Unidades → CDT → Exames de imagem → *Aparelho de destino*), desde 19/10/2026. Tipo OT
+> novo no CDT sem aparelho fixo para com `worklist.equipamento_ambiguo` e pede a sala na recepção.
 
 O AE Title do equipamento **não** precisa ser cadastrado no dcm4chee — o servidor
 aceita qualquer Calling AE (§10.4). O cadastro no painel serve à worklist.

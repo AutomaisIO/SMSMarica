@@ -9,7 +9,7 @@ export const MODALIDADES: { id: ModalidadeDicom; rotulo: string }[] = [
   { id: 'MR', rotulo: 'MR — Ressonância magnética' },
   { id: 'NM', rotulo: 'NM — Medicina nuclear' },
   { id: 'PT', rotulo: 'PT — PET' },
-  { id: 'ECG', rotulo: 'ECG — Cardiologia (Holter, MAPA, ECG)' },
+  { id: 'ECG', rotulo: 'ECG — Cardiologia (Holter)' },
   { id: 'OT', rotulo: 'OT — Outro' },
 ];
 

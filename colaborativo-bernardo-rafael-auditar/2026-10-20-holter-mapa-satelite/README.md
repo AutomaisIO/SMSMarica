@@ -21,6 +21,30 @@ no código, nem executado em produção.** As mudanças estão em
    roteiro de produção abaixo.
 6. Atualizar a tabela de itens em `../README.md` (ou remover esta pasta).
 
+## Auditoria (Bernardo, 20/10/2026)
+
+Aplicado na branch `feat/holter-mapa-satelite`. `dotnet build` 0 erros/0 avisos, `npm run build`
+limpo, testes na bancada (incluindo os dois novos). Acrescentado na aplicação: o artigo **Exames e
+consultas** do Manual, o alerta da prévia de importação (não diz mais "sem exame" para Holter/MAPA)
+e as decisões abaixo no adendo do ADR-0021.
+
+**Decisões do Bernardo:**
+
+1. **ELETROCARDIOGRAMA fica fora.** A máquina imprime direto e entrega ao paciente; não gera nada.
+   O tipo volta para modalidade "Não configurada" **antes** do deploy.
+2. **Os 631 retroativos: desconsiderar por ora.** Só viram `Realizada` quando o PDF for associado.
+   O passo 5 do roteiro (`incluirAnteriores=true`) **não roda** agora.
+3. **A regra fica a do Rafael (modalidade do tipo), não a da PR #47 (escopo da unidade com
+   worklist ligada).** Medido em produção em 20/10: Holter e MAPA só são executados no CDT, então as
+   duas dão o mesmo resultado; o ELETROCARDIOGRAMA já estava com modalidade Indefinida, e pela
+   regra da #47 ele ganharia exame no CDT (o escopo dele lá está com worklist ligada). A #47 é
+   fechada; a documentação dela (MAPA em aparelho próprio, `WORK-MAPAS-CDT`) vem para esta branch.
+
+**Conferido em produção (20/10, só leitura):** ELETROCARDIOGRAMA `Indefinida`; HOLTER 24 HORAS
+`ECG`; M.A.P.A `OT`; no CDT, HOLTER → (deduz CARDIO-CDT) e M.A.P.A → `MAPAS-CDT`, ambos com
+worklist ligada. Pedidos não cancelados: Holter Gráfico/funcional 392 passados + 309 de hoje em
+diante; MAPA 240 + 146; com exame (Imagem) Holter 189 e MAPA 81.
+
 ## O problema
 
 - Holter (`1703204`, tipo ECG → equipamento CARDIO-CDT / `WORK-CARDIO-CDT`) e MAPA (`9290002`, tipo
@@ -90,15 +114,23 @@ GROUP BY 1,2,3,4 ORDER BY 1,2,3,4;
 
 **2. Os 275 de Imagem voltam para Gráfico/funcional** (o exame e o Study ficam):
 
+> ⚠ **Corrigido na auditoria (20/10).** Sem o `EXISTS`, o UPDATE pegava **~9.800** linhas: além
+> dos 275 com exame, as 4.015 Holter e 5.499 MAPA antigas que a carga de 08/09 gravou como Imagem
+> **sem** exame (medido em produção em 20/10). Essas ficam como estão: hoje a tela as esconde
+> (imagem sem exame não aparece) e, viradas Gráfico/funcional, apareceriam de uma vez na lista e
+> entrariam no retroativo.
+
 ```sql
 BEGIN;
-UPDATE smsmarica.solicitacao
+UPDATE smsmarica.solicitacao s
    SET categoria = 4, atualizado_em = now()
- WHERE categoria = 2
-   AND procedimento_texto IN ('HOLTER 24 HORAS',
-                              'MONITORIZACAO AMBULATORIAL DE PRESSAO ARTERIAL (M.A.P.A)')
-   AND excluido_em IS NULL;
--- conferir a contagem (~275) antes de COMMIT; se não bater, ROLLBACK
+ WHERE s.categoria = 2
+   AND s.procedimento_texto IN ('HOLTER 24 HORAS',
+                                'MONITORIZACAO AMBULATORIAL DE PRESSAO ARTERIAL (M.A.P.A)')
+   AND s.excluido_em IS NULL
+   AND EXISTS (SELECT 1 FROM smsmarica.exame_imagem e WHERE e.solicitacao_id = s.id);
+-- conferir a contagem (~275: 270 não cancelados em 20/10 + cancelados) antes de COMMIT;
+-- se não bater, ROLLBACK
 COMMIT;
 ```
 

@@ -59,11 +59,20 @@ public static class CategoriaSigtap
     }
 
     /// <summary>
-    /// Se a categoria cria satélite de execução. "Não vai ao PACS" não é categoria — é a ausência
-    /// do satélite <c>ExameImagem</c> (ADR-0021).
+    /// Se o pedido ganha satélite de execução (<c>ExameImagem</c>: accession, Study, worklist).
+    /// "Não vai ao PACS" não é categoria — é a ausência do satélite (ADR-0021).
+    ///
+    /// <para><b>A categoria diz o que o exame É; a modalidade do tipo diz COMO ele é executado</b>
+    /// (adendo de 20/10/2026 ao ADR-0021). Imagem tem satélite sempre — a invariante de 05/10
+    /// continua. Fora da imagem, o pedido só ganha satélite quando o TIPO de exame já foi configurado
+    /// com uma modalidade DICOM: é o caso do Holter (ECG) e do MAPA (OT), que seguem
+    /// Gráfico/funcional, vão à worklist da cardiologia e recebem o laudo em PDF pelo PACS, casado
+    /// pelo accession/Study. Audiometria, EEG, espirometria… (tipo sem modalidade) seguem sem.</para>
     /// </summary>
-    public static bool CriaSateliteImagem(CategoriaSolicitacao categoria) =>
-        categoria == CategoriaSolicitacao.Imagem;
+    /// <param name="modalidadeDoTipo">Modalidade do tipo de exame do pedido; null quando não há tipo.</param>
+    public static bool CriaSatelite(CategoriaSolicitacao categoria, ModalidadeDicom? modalidadeDoTipo) =>
+        categoria == CategoriaSolicitacao.Imagem
+        || modalidadeDoTipo is { } modalidade && modalidade != ModalidadeDicom.Indefinida;
 
     private static string SoDigitos(string? s) =>
         string.IsNullOrEmpty(s) ? string.Empty : new string([.. s.Where(char.IsDigit)]);

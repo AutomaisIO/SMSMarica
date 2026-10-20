@@ -25,6 +25,11 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Importacao;
 /// (audiometria, EEG, cirurgias "CE-", OCI…) fora das duas telas; o Bernardo: "TODOS apareçam na
 /// tela… SEMPRE".</para>
 ///
+/// <para><b>Fora da imagem (20/10/2026):</b> Holter e MAPA são Gráfico/funcional, mas vão à worklist
+/// da cardiologia e o laudo volta em PDF pelo PACS, casado pelo accession/Study — então também têm
+/// satélite. O critério é o tipo de exame ter modalidade DICOM (<see cref="CategoriaSigtap.CriaSatelite"/>);
+/// fora da imagem o tipo nunca é criado aqui, só reaproveitado.</para>
+///
 /// <para>Espelha o caminho de criação da importação: tipo pelo NOME do SISREG
 /// (<see cref="IResolvedorTipoExameSisreg"/>, nasce com worklist desligado), par tipo×unidade no
 /// escopo e status <c>Solicitada</c> sem próxima tentativa — nada vai ao PACS até a recepção
@@ -47,7 +52,12 @@ public interface ISateliteImagemSisreg
     /// ordem de id a partir de <paramref name="depoisDe"/> — quem chama repete passando o
     /// <c>Cursor</c> devolvido até <c>Restantes</c> zerar. ESCRITA.
     /// </summary>
-    Task<ReparoSatelitesResultado> RepararAsync(int limite, Guid? depoisDe, CancellationToken ct);
+    /// <param name="incluirAnterioresForaDaImagem">
+    /// Também os agendados ANTES de hoje, mas só fora da imagem (Holter, MAPA — tipo com modalidade):
+    /// é o backfill do acervo retroativo. Na imagem o corte de data continua sempre.
+    /// </param>
+    Task<ReparoSatelitesResultado> RepararAsync(
+        int limite, Guid? depoisDe, bool incluirAnterioresForaDaImagem, CancellationToken ct);
 }
 
 public enum ResultadoSatelite
@@ -73,8 +83,9 @@ public sealed class SateliteImagemSisreg(
     public async Task<ResultadoSatelite> GarantirAsync(
         Solicitacao solicitacao, Func<string>? proximoAccession, CancellationToken ct)
     {
-        if (solicitacao.Categoria != CategoriaSolicitacao.Imagem
-            || solicitacao.Status == StatusSolicitacao.Cancelada
+        // A categoria não barra mais aqui: quem decide é CategoriaSigtap.CriaSatelite, via
+        // ResolverParaExecucaoAsync — imagem sempre; fora dela, só tipo com modalidade (Holter, MAPA).
+        if (solicitacao.Status == StatusSolicitacao.Cancelada
             || solicitacao.ExcluidoEm is not null)
             return ResultadoSatelite.NadaAFazer;
 
@@ -98,8 +109,9 @@ public sealed class SateliteImagemSisreg(
 
         var nome = ResolvedorTipoExameSisreg.NormalizarNome(solicitacao.ProcedimentoTexto ?? string.Empty);
         var sig = SoDigitos(solicitacao.ProcedimentoSigtapCodigo);
-        var tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
-            nome, SoDigitos(solicitacao.ProcedimentoCodigoSisreg), sig, ct);
+        var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
+            solicitacao.Categoria, nome, SoDigitos(solicitacao.ProcedimentoCodigoSisreg), sig, ct);
+        if (exame is null && !criaSatelite) return (ResultadoSatelite.NadaAFazer, null);
         if (tipoExameId is { } tipo)
             await escopoExameUnidade.GarantirAsync(tipo, solicitacao.UnidadeExecutanteId, ct);
 
@@ -167,9 +179,12 @@ public sealed class SateliteImagemSisreg(
             if (exame is not null && (exame.TipoExameId is not null || exame.ExcluidoEm is not null))
                 continue;
 
-            var tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
+            var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
+                solicitacao.Categoria,
                 ResolvedorTipoExameSisreg.NormalizarNome(item.ProcedimentoTexto ?? string.Empty),
                 SoDigitos(item.ProcedimentoCodigoSisreg), SoDigitos(item.ProcedimentoSigtapCodigo), ct);
+            // Fora da imagem, procedimento extra sem tipo com modalidade não vira exame.
+            if (exame is null && !criaSatelite) continue;
             if (tipoExameId is { } tipo)
                 await escopoExameUnidade.GarantirAsync(tipo, solicitacao.UnidadeExecutanteId, ct);
 
@@ -231,7 +246,8 @@ public sealed class SateliteImagemSisreg(
         return modalidadeTipo is not null && modalidadeTipo == modalidadeEquip ? equipamentoId : null;
     }
 
-    public async Task<ReparoSatelitesResultado> RepararAsync(int limite, Guid? depoisDe, CancellationToken ct)
+    public async Task<ReparoSatelitesResultado> RepararAsync(
+        int limite, Guid? depoisDe, bool incluirAnterioresForaDaImagem, CancellationToken ct)
     {
         limite = Math.Clamp(limite, 1, 2000);
 
@@ -239,13 +255,27 @@ public sealed class SateliteImagemSisreg(
         var hojeBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date;
         var desdeUtc = DateTime.SpecifyKind(hojeBrasilia.AddHours(3), DateTimeKind.Utc);
 
+        // Fora da imagem, só o procedimento cujo tipo já tem modalidade DICOM ganha satélite
+        // (CategoriaSigtap.CriaSatelite). ProcedimentoTexto e TipoExame.Nome usam a mesma
+        // normalização (NomeTipoExame.Normalizar), então a comparação é direta.
+        var tiposComModalidade = db.TiposExame
+            .Where(t => t.ExcluidoEm == null && t.ModalidadeDicom != ModalidadeDicom.Indefinida)
+            .Select(t => t.Nome);
+
         IQueryable<Solicitacao> Pendentes() => db.Solicitacoes.Where(s =>
             s.ExcluidoEm == null
-            && s.Categoria == CategoriaSolicitacao.Imagem
             && s.Status != StatusSolicitacao.Cancelada
-            && s.DataAgendada >= desdeUtc
-            && (!db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)
-                || db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id && e.ExcluidoEm == null && e.TipoExameId == null)));
+            && (s.Categoria == CategoriaSolicitacao.Imagem
+                // Imagem: só de hoje em diante — a carga de 08/09 deixou ~512 mil antigas sem
+                // satélite, e não é o reparo que vai ressuscitá-las.
+                ? s.DataAgendada >= desdeUtc
+                  && (!db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)
+                      || db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id && e.ExcluidoEm == null && e.TipoExameId == null))
+                // Holter, MAPA…: o retroativo é pedido explícito (acervo de laudos em PDF a trazer).
+                : (incluirAnterioresForaDaImagem || s.DataAgendada >= desdeUtc)
+                  && s.ProcedimentoTexto != null
+                  && tiposComModalidade.Contains(s.ProcedimentoTexto)
+                  && !db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)));
 
         // Cursor por id (não por data): o exame sem nome de procedimento fica sem tipo e continua
         // "pendente" para sempre — ordenado por data, travaria o lote no mesmo começo a cada chamada.

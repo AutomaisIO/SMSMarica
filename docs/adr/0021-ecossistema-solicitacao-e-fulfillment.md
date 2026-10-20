@@ -221,3 +221,43 @@ o contract, restaurar do backup. Deploy do app novo só depois do verify verde.
 - **Split incremental "strangler" (ligar, não mover)** — menor risco, mas deixa a fusão meio-a-meio
   por fases. Com janela de downtime + backup, o split completo é seguro e entrega o end-state limpo
   de uma vez. Preterido a favor do split completo.
+
+## Adendo — 20/10/2026: satélite pela modalidade do tipo, não só pela categoria
+
+**Contexto.** Holter 24 horas e MAPA (SIGTAP `0211`) são **Gráfico/funcional** — é o que eles são.
+Mas, desde 16/10/2026, vão à worklist da cardiologia do CDT (Holter → `WORK-CARDIO-CDT`, tipo ECG;
+MAPA → `WORK-MAPA-CDT`, tipo OT) e o laudo volta como **PDF pelo PACS**, casado pelo accession e
+pelo Study UID. Sem satélite não há accession nem Study, e o pedido não tem como ir à worklist nem
+receber o laudo. Medido em 20/10/2026: 1.119 Holter/MAPA Gráfico/funcional sem exame, e 275 que só
+têm exame porque a carga de 08/09 os gravou como Imagem (o reparo de 05/10, `bc5d594d`).
+
+**Decisão.** A categoria continua dizendo o que o exame **é**; o satélite passa a depender de
+**como ele é executado**: `CategoriaSigtap.CriaSatelite(categoria, modalidadeDoTipo)` — Imagem
+sempre (a invariante de 05/10 continua); fora dela, só quando o **tipo de exame já existe com
+modalidade DICOM** (`!= Indefinida`). É exatamente o eixo que a alternativa "PACS vs não-PACS" acima
+apontou: `ModalidadeDicom` já expressa isso, e equipamento novo DICOM-capaz não vira migração de
+categoria — vira configuração do tipo.
+
+- Fora da imagem o tipo **nunca é criado** pela importação (`ResolverParaExecucaoAsync`) — senão cada
+  audiometria/EEG importada viraria um tipo "aguardando configuração DICOM".
+- O reparo (`POST /sisreg/importacao/reparar-exames-sem-satelite`) ganha `incluirAnteriores`: só fora
+  da imagem, para o acervo retroativo. Na imagem o corte "de hoje em diante" continua.
+- Declaração de comparecimento, link do exame completo, estatísticas e a tela passam a olhar "tem
+  exame", não "é Imagem".
+
+**Consequência a vigiar.** O que tiver tipo com modalidade e não for imagem ganha exame. Em
+20/10/2026 eram Holter (ECG), MAPA (OT) **e ELETROCARDIOGRAMA (ECG)**. Decisão do Bernardo no mesmo
+dia: o eletrocardiograma **fica fora** — a máquina imprime o traçado na hora e entrega ao paciente,
+não há o que mandar nem receber —, e por isso o tipo ELETROCARDIOGRAMA fica com modalidade
+Indefinida (conferido em produção em 20/10/2026: já estava). Pôr modalidade num tipo fora da imagem
+passa a ser decisão de produto, não só de configuração: é o que liga o exame dele.
+
+**Por que a modalidade do tipo e não o escopo da unidade.** A PR #47 (19/10/2026, não mesclada)
+propôs o mesmo satélite com outra régua: o tipo no escopo da unidade executante com a worklist
+ligada (ADR-0056). Medido em 20/10: Holter e MAPA só são executados no CDT, então as duas réguas
+dão o mesmo resultado; mas o ELETROCARDIOGRAMA está no escopo do CDT com a worklist ligada, e pela
+régua do escopo ganharia exame. Ficou a da modalidade. Se um dia um método gráfico com modalidade
+for executado em mais de uma unidade, e só uma tiver o aparelho, esta escolha deve ser revista.
+
+**Retroativo (os Holter/MAPA já passados).** Fica para depois: só viram `Realizada` quando o PDF do
+laudo for associado. Até lá o reparo roda só de hoje em diante (sem `incluirAnteriores`).

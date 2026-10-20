@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuração da worklist da MAPA do CDT (CardioNet MAPAS DICOM)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>Configuração da worklist da MAPA do CDT (CardioNet MAPAS DICOM)</h1>
+<p>&gt; <strong>Para o técnico da Cardios / da unidade.</strong> Parâmetros para o <strong>MAPAS DICOM</strong> da CardioNet do CDT &gt; puxar a <strong>lista de trabalho (worklist)</strong> da plataforma SMSMais: os exames de <strong>MAPA</strong> &gt; (monitorização ambulatorial da pressão arterial) que o SISREG agenda para o CDT aparecem na busca &gt; DICOM do programa, já com nome, data de nascimento, sexo e nº do pedido. &gt; AE de worklist <strong><code>WORK-MAPAS-CDT</code></strong> (label <code>MAPAS-CDT</code>) criado e validado no servidor em &gt; <strong>2026-10-19</strong> — <code>/aets</code>, <code>/webapps</code>, <code>mwlitems</code> 204 e isolamento 543 = 543.</p>
+<p>A MAPA tinha saído, até 19/10/2026, pelo CardioNet da cardiologia (<code>WORK-CARDIO-CDT</code>, modalidade <code>ECG</code>), junto com o Holter. Desde então ela tem aparelho e worklist próprios — o CardioNet de Holter/ECG (<a href="./pacs-cardio-cdt.md"><code>pacs-cardio-cdt.md</code></a>) não recebe mais MAPA nova.</p>
+<hr>
+<h2>1. O que o MAPAS DICOM faz (e o que não faz)</h2>
+<p>O CardioNet Client DICOM, do mesmo fabricante, <strong>só consulta a worklist</strong> (Modality Worklist FIND, SCU) e faz <strong>C-ECHO</strong> — não envia imagem, laudo nem MPPS ao PACS, e traz no máximo <strong>1000 itens</strong> por consulta. <strong>Conferir na declaração de conformidade do MAPAS DICOM</strong> se é o mesmo; se ele também não envia nada ao PACS, vale o §5 ("o item não sai da lista sozinho").</p>
+<p>Os itens da nossa worklist saem <strong>sem acento</strong> (nome com acento chega sem acento, não corrompido).</p>
+<hr>
+<h2>2. Servidor</h2>
+<div class="tw"><table><thead><tr><th>Item</th><th>Valor</th></tr></thead><tbody>
+<tr><td>Endereço (IP)</td><td><strong><code>104.236.203.40</code></strong></td></tr>
+<tr><td>Hostname (DNS)</td><td><code>pacs.marica.automais.cloud</code></td></tr>
+<tr><td>Porta DICOM</td><td><strong><code>11112</code></strong> (sem TLS)</td></tr>
+</tbody></table></div>
+<p>&gt; Use o <strong>IP</strong> se a rede do CDT não resolver o DNS público.</p>
+<hr>
+<h2>3. Configuração DICOM do MAPAS</h2>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Valor</th><th>Observação</th></tr></thead><tbody>
+<tr><td><strong>AE do cliente</strong> (Calling AE / "Cliente AET")</td><td><strong><code>MAPAS-CDT</code></strong></td><td>maiúsculas, exatamente assim — não usar o padrão de fábrica nem o <code>CARDIO-CDT</code> do Holter</td></tr>
+<tr><td><strong>AE do servidor</strong> (Called AE / "Servidor AEC")</td><td><strong><code>WORK-MAPAS-CDT</code></strong></td><td>maiúsculas, exatamente assim</td></tr>
+<tr><td><strong>IP do servidor</strong></td><td><code>104.236.203.40</code></td><td></td></tr>
+<tr><td><strong>Porta do servidor</strong></td><td><code>11112</code></td><td>a mesma porta dos outros aparelhos — o que muda é o AE</td></tr>
+</tbody></table></div>
+<p>Depois de preencher, <strong>"Testar Conexão"</strong> tem que dar sucesso (é um C-ECHO).</p>
+<h3>Parâmetros de busca</h3>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Valor recomendado</th><th>Por quê</th></tr></thead><tbody>
+<tr><td><strong>Modalidade</strong></td><td><strong><code>OT</code></strong> (ou em branco)</td><td>todo exame desta worklist sai com Modality <code>OT</code>. Qualquer outro valor (<code>ECG</code>, <code>HD</code>, <code>MAPA</code>…) devolve a lista <strong>vazia</strong></td></tr>
+<tr><td><strong>Nome da estação</strong></td><td><strong><code>MAPAS-CDT</code></strong> (ou em branco)</td><td>é o Scheduled Station AE Title dos nossos itens</td></tr>
+<tr><td><strong>Período</strong></td><td><strong><code>7</code></strong> dias</td><td>ver §5 — o período segura a lista enxuta</td></tr>
+<tr><td>ID / Nome / Accession</td><td>em branco</td><td>são para busca pontual</td></tr>
+</tbody></table></div>
+<p>&gt; <strong>O <code>WORK-MAPAS-CDT</code> já entrega só a MAPA</strong>, mesmo sem filtro nenhum: o servidor recorta pelo &gt; Worklist Label (ver <a href="./pacs.md"><code>pacs.md</code></a> §8). Os filtros acima são defesa em profundidade.</p>
+<hr>
+<h2>4. Resumo (cola rápida)</h2>
+<pre><code>CardioNet MAPAS DICOM → Configuração DICOM
+
+  AE do cliente:   MAPAS-CDT
+  AE do servidor:  WORK-MAPAS-CDT
+  IP do servidor:  104.236.203.40
+  Porta:           11112
+
+  Busca:  Modalidade = OT   Nome da estação = MAPAS-CDT   Período = 7</code></pre>
+<hr>
+<h2>5. Pontos de atenção</h2>
+<ul>
+<li><strong>Só MAPA.</strong> Holter e ECG continuam no CardioNet da cardiologia (<code>CARDIO-CDT</code> / <code>WORK-CARDIO-CDT</code>).</li>
+</ul>
+<p>  Paciente com MAPA e Holter no mesmo dia aparece uma vez em cada programa, cada um com o seu nº de   pedido (Accession).</p>
+<ul>
+<li><strong>Densitometria também é <code>OT</code></strong> no CDT (aparelho <code>DO-CDT</code>), mas não aparece aqui: quem separa é o</li>
+</ul>
+<p>  AE (<code>WORK-MAPAS-CDT</code> × <code>WORK-DO-CDT</code>), não a modalidade.</p>
+<ul>
+<li><strong>O item não sai da lista sozinho.</strong> Nos aparelhos de imagem, o item some quando a imagem chega ao</li>
+</ul>
+<p>  PACS. Se o MAPAS não manda nada ao PACS, a MAPA feita continua na lista — por isso o filtro de   <strong>Período</strong>. (Pendência do nosso lado: fechar o item de quem não manda imagem — ver <code>pacs.md</code> §8,   "Ciclo de vida".)</p>
+<ul>
+<li><strong>Médico solicitante.</strong> Liga-se no cadastro do equipamento <code>MAPAS-CDT</code> (Exames de Imagem →</li>
+</ul>
+<p>  Equipamentos → "O que vai na worklist deste aparelho"), na tag que o programa pedir. Nasce   desligado — o CardioNet de Holter pede o <code>0008,0090</code>; conferir o que o MAPAS pede antes de ligar.</p>
+<ul>
+<li><strong>O exame só entra na lista depois que a recepção do CDT autoriza</strong> o pedido na plataforma.</li>
+</ul>
+<hr>
+<h2>6. Rede</h2>
+<p>Liberar no firewall do CDT a <strong>saída</strong> TCP para <code>104.236.203.40:11112</code>. O MAPAS é sempre quem inicia a conexão — o servidor não precisa alcançar o computador do CDT.</p>
+<hr>
+<h2>7. Teste</h2>
+<ol>
+<li><strong>Testar Conexão</strong> → sucesso.</li>
+<li><strong>Procurar</strong> → aparecem as MAPAs autorizadas na recepção do CDT nos últimos 7 dias. Lista vazia</li>
+</ol>
+<p>   com conexão OK costuma ser: (a) nenhuma MAPA autorizada no período, ou (b) filtro de Modalidade    diferente de <code>OT</code>. Confirmar com a equipe Automais, que vê no servidor o que o programa pediu de    fato.</p>
+</main>
+</body>
+</html>
