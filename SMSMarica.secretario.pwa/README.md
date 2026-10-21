@@ -67,7 +67,8 @@ SMSMarica.secretario.pwa/
 ## Dev local
 
 **Back** — não há credencial de banco: só o token do proxy SQL, por variável de
-ambiente (nunca em arquivo versionado). O proxy é loopback no droplet, então para
+ambiente (nunca em arquivo versionado). O proxy é loopback na VM de produção
+(SMSMAIS-01 desde 14/10/2026), então para
 rodar local abra um túnel até ele:
 
 ```bash

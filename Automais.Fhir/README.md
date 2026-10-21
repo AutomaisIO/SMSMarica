@@ -44,7 +44,7 @@ em `version_id` 226 e ~150 pacientes reescritos a cada 11 minutos.
 
 ## Banco
 
-Mesmo cluster Postgres do SMSMarica (DigitalOcean `defaultdb`), **schema `fhir` próprio**, DbContext próprio. Connection string isolada (`ConnectionStrings:FhirDb`) — mover o banco depois é só mudar a string.
+Mesmo banco do SMSMais: database `smsmais` no PostgreSQL 18 da VM PSQL-01 (EVEO), desde 14/10/2026; antes era o `defaultdb` da DigitalOcean. **Schema `fhir` próprio**, DbContext próprio. Connection string isolada (`ConnectionStrings:FhirDb`) — mover o banco depois é só mudar a string.
 
 ## Comandos
 
