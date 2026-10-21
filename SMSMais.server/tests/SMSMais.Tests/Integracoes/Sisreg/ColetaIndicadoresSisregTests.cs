@@ -540,6 +540,33 @@ public class ColetaIndicadoresSisregTests
         sessao.Pedidos[0].Campos!["data2"].Should().Be("15/01/2031");
     }
 
+    /// <summary>
+    /// 21/10/2026: a oficial de 01, 02 e 04/09 cortava em todas as noites e não tinha para onde ir. Agora o
+    /// corte da rede já marca a leitura por unidade (sem esperar o segundo), e o dia oficial é lido com o
+    /// mesmo filtro e a mesma prova da recente.
+    /// </summary>
+    [Fact]
+    public async Task Dia_oficial_que_corta_vai_por_executante_com_a_mesma_leitura()
+    {
+        const string corte = "o SISREG não respondeu a tempo (HttpRequestException)";
+        ColetaIndicadoresSisregService.ErroDaOficialPorExecutante(corte)
+            .Should().StartWith(ColetaIndicadoresSisregService.MarcaPorExecutante).And.Contain(corte);
+
+        var dia = new ItemColeta(Guid.NewGuid(), ColetorIndicadorSisreg.Faltas, new DateOnly(2031, 1, 15),
+            new DateOnly(2031, 1, 15), PlanoColetaIndicadores.EscopoDia);
+        var sessao = new SessaoRoteirizada(Faltas(paginas: null, linhas: 4), Faltas(paginas: null, linhas: 2));
+        var armazem = new ArmazemFalso();
+        var t = new TrabalhoFaltasPorExecutante(dia, ["1111111", "2222222"]);
+
+        t.Descricao.Should().StartWith("faltas 15/01/2031 por unidade executante");
+        var r = await AteOFimAsync(t, sessao, armazem);
+
+        r.Should().Be(ResultadoPasso.Concluida(6));
+        armazem.SubstituidasPorExecutante.Should().Equal(("1111111", 4), ("2222222", 2));
+        armazem.FaltasSubstituidas.Should().BeNull("a leitura por unidade nunca troca o dia inteiro");
+        new TrabalhoFaltasPorExecutante(DiaRecente(), ["1111111"]).Descricao.Should().StartWith("faltas recentes ");
+    }
+
     [Fact]
     public async Task Dia_por_executante_segue_quando_uma_unidade_corta_mas_nao_fecha_o_dia()
     {

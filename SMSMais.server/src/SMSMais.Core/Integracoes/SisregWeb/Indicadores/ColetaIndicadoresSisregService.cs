@@ -51,12 +51,19 @@ public interface IColetaIndicadoresSisregService
 
     /// <summary>
     /// Volta a pendente sem culpa (CAPTCHA, login recusado, coletor desligado no meio): a tentativa
-    /// contada na reserva é devolvida.
+    /// contada na reserva é devolvida. A marca de leitura por executante, se havia, fica.
     /// </summary>
     Task DevolverAsync(Guid id, string? motivo, CancellationToken ct);
 
     /// <summary>Semana de faltas que estourou o tempo: vira uma janela por dia.</summary>
     Task DividirEmDiasAsync(Guid id, string motivo, CancellationToken ct);
+
+    /// <summary>
+    /// Dia OFICIAL de faltas cuja lista da rede estourou o tempo: volta para a fila na hora, já marcado
+    /// para ser lido unidade executante por unidade (a tentativa fica contada). No teto de tentativas
+    /// vira falha, com a mesma marca. Devolve <c>true</c> nesse caso.
+    /// </summary>
+    Task<bool> ReabrirPorExecutanteAsync(Guid id, string erro, CancellationToken ct);
 
     /// <summary>
     /// CNES das unidades executantes dos agendamentos nossos do dia — por quem a lista de faltas é lida
@@ -95,10 +102,15 @@ public sealed class ColetaIndicadoresSisregService(
     public const string MarcaTempoEsgotado = "TEMPO ESGOTADO";
 
     /// <summary>
-    /// Erro do dia de faltas recentes cuja lista da rede estourou o tempo DUAS vezes seguidas: a próxima
-    /// leitura vai unidade executante por unidade (<see cref="TrabalhoFaltasPorExecutante"/>).
+    /// Erro do dia de faltas cuja lista da rede não passa (recentes: estourou o tempo DUAS vezes seguidas;
+    /// oficial: uma): a próxima leitura vai unidade executante por unidade
+    /// (<see cref="TrabalhoFaltasPorExecutante"/>). A marca fica gravada enquanto essa leitura está em
+    /// curso — reinício do servidor ou devolução sem culpa no meio não a mandam de volta para a rede.
     /// </summary>
     public const string MarcaPorExecutante = "PRÓXIMA POR EXECUTANTE";
+
+    private static bool PorExecutante(string? erro) =>
+        erro?.StartsWith(MarcaPorExecutante, StringComparison.Ordinal) == true;
 
     /// <summary>
     /// O erro a gravar quando a lista da REDE de um dia de faltas recentes estoura o tempo. Pura, para
@@ -110,6 +122,14 @@ public sealed class ColetaIndicadoresSisregService(
         erroAnterior?.StartsWith(MarcaTempoEsgotado, StringComparison.Ordinal) == true
             ? $"{MarcaPorExecutante}: {mensagem} — 2ª vez seguida; a próxima leitura vai unidade executante por unidade"
             : $"{MarcaTempoEsgotado}: {mensagem}";
+
+    /// <summary>
+    /// O erro a gravar quando a lista da REDE de um dia OFICIAL de faltas estoura o tempo. Diferente das
+    /// recentes, não espera o segundo corte: a oficial é tentada uma vez por noite, e esperar custaria um
+    /// dia inteiro — 01, 02 e 04/09/2026 cortaram em todas as noites de 10 a 15/10 e de novo em 21/10.
+    /// </summary>
+    public static string ErroDaOficialPorExecutante(string mensagem) =>
+        $"{MarcaPorExecutante}: {mensagem} — a lista da rede não passa; a leitura segue unidade executante por unidade";
 
     /// <summary>Erro do item que foi interrompido no meio em todas as tentativas.</summary>
     public const string ErroInterrompida =
@@ -352,7 +372,10 @@ public sealed class ColetaIndicadoresSisregService(
         item.Status = StatusColetaIndicador.EmAndamento;
         item.Tentativas++;
         item.IniciadoEm = DateTime.UtcNow;
-        item.Erro = null;
+        // A marca de leitura por executante fica: se o servidor reiniciar no meio dela, o item volta a
+        // pendente com a marca e recomeça por unidade. Antes ela sumia aqui, e o dia voltava para a lista
+        // da rede, que corta — 22/09/2026, reinício de 21/10 às 13:2x, dois cortes de 65 s a mais.
+        item.Erro = PorExecutante(erroAnterior) ? erroAnterior : null;
         await db.SaveChangesAsync(ct);
         return new ItemColeta(item.Id, item.Coletor, item.JanelaInicio, item.JanelaFim, item.Escopo, erroAnterior);
     }
@@ -373,11 +396,25 @@ public sealed class ColetaIndicadoresSisregService(
             .AnyAsync(c => c.Id == id && c.Tentativas >= _opcoes.MaximoTentativas, ct);
     }
 
-    public Task DevolverAsync(Guid id, string? motivo, CancellationToken ct) =>
-        db.SisregIndicadorColetas.Where(c => c.Id == id).ExecuteUpdateAsync(u => u
+    public Task DevolverAsync(Guid id, string? motivo, CancellationToken ct)
+    {
+        var semMarca = Cortar(motivo);
+        var comMarca = Cortar($"{MarcaPorExecutante}: {motivo ?? "devolvida no meio da leitura"}");
+        return db.SisregIndicadorColetas.Where(c => c.Id == id).ExecuteUpdateAsync(u => u
             .SetProperty(c => c.Status, StatusColetaIndicador.Pendente)
             .SetProperty(c => c.Tentativas, c => c.Tentativas > 0 ? c.Tentativas - 1 : 0)
-            .SetProperty(c => c.Erro, Cortar(motivo)), ct);
+            .SetProperty(c => c.Erro, c => c.Erro != null && c.Erro.StartsWith(MarcaPorExecutante) ? comMarca : semMarca), ct);
+    }
+
+    public async Task<bool> ReabrirPorExecutanteAsync(Guid id, string erro, CancellationToken ct)
+    {
+        var noTeto = await db.SisregIndicadorColetas
+            .AnyAsync(c => c.Id == id && c.Tentativas >= _opcoes.MaximoTentativas, ct);
+        await db.SisregIndicadorColetas.Where(c => c.Id == id).ExecuteUpdateAsync(u => u
+            .SetProperty(c => c.Status, noTeto ? StatusColetaIndicador.Falha : StatusColetaIndicador.Pendente)
+            .SetProperty(c => c.Erro, Cortar(erro)), ct);
+        return noTeto;
+    }
 
     public async Task DividirEmDiasAsync(Guid id, string motivo, CancellationToken ct)
     {

@@ -22,7 +22,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
   icone: Gauge,
   rota: '/app/regulacao/indicadores',
   publico: 'Quem acompanha e presta contas da regulação: gestão, coordenação e controle',
-  atualizadoEm: '2026-10-11',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'indicadores',
     'indicadores de regulação',
@@ -339,7 +339,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
       id: 'sisreg-atualizacao',
       titulo: 'Como os números oficiais do SISREG se atualizam',
       busca:
-        'coleta SISREG faltas absenteísmo oficial 30 dias faltas recentes hora em hora em aberto sem apontamento ficha do paciente PPI cotas canceladas motivos amostra estimativa conciliação devolvidas negadas unidade configuração ligar coletor',
+        'coleta SISREG faltas absenteísmo oficial 30 dias faltas recentes hora em hora em aberto sem apontamento ficha do paciente PPI cotas canceladas motivos amostra estimativa conciliação devolvidas negadas unidade configuração ligar coletor tempo esgotado não respondeu a tempo dia pesado unidade executante próxima por executante',
       conteudo: (
         <>
           <P>
@@ -430,13 +430,17 @@ export const artigoIndicadoresRegulacao: Artigo = {
               do paciente.
             </Item>
             <Item>
-              <strong>Dia pesado que estoura duas vezes seguidas</strong>: um dia só não se divide mais. Nas faltas
-              das últimas semanas, quando a lista da rede inteira de um dia estoura o tempo duas vezes seguidas
-              (o erro aparece como “TEMPO ESGOTADO” e depois “PRÓXIMA POR EXECUTANTE”), a leitura seguinte desse
-              dia vai <strong>unidade executante por unidade</strong>, que sai em segundos. Cada unidade troca só
-              as faltas dela; falta de agendamento que não temos fica como a última leitura da rede deixou, até a
-              leitura oficial. Se alguma unidade não fechar, o que foi lido fica gravado e o dia continua na
-              lista. A rodada seguinte volta a tentar a rede inteira.
+              <strong>Dia pesado</strong>: um dia só não se divide mais. Quando a lista da rede inteira de um dia
+              estoura o tempo, a leitura desse dia passa a ir <strong>unidade executante por unidade</strong>, que
+              sai em segundos. Nas faltas das últimas semanas isso acontece depois de dois cortes seguidos (o erro
+              aparece como “TEMPO ESGOTADO” e depois “PRÓXIMA POR EXECUTANTE”). Na leitura oficial, já no primeiro
+              corte, e o dia volta para a fila na hora: a oficial só é tentada uma vez por noite, e esperar o
+              segundo corte custaria um dia. Cada unidade troca só as faltas dela; falta de agendamento que não
+              temos fica como a última leitura da rede deixou. Por isso a oficial lida por unidade conta o dia como
+              lido para as unidades executantes dos nossos agendamentos, que são as mesmas da conta do indicador.
+              Se alguma unidade não fechar, o que foi lido fica gravado e o dia continua na lista; a rodada
+              seguinte volta a tentar a rede inteira. Se a leitura por unidade for interrompida no meio (reinício
+              do servidor, login recusado, CAPTCHA), ela recomeça por unidade, não pela rede.
             </Item>
             <Item>
               <strong>Dia com até 10 faltas</strong>: a lista de uma página só não traz o rodapé “Mostrando
