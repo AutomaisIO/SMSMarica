@@ -115,6 +115,29 @@ function secoesDoMotor(sistema: Sistema): SecaoArtigo[] {
       ),
     },
     {
+      id: 'anexos',
+      titulo: 'Anexos no envio',
+      busca: 'anexos tamanho máximo por arquivo mb limite comprimir compressão foto pdf 150 dpi 2 arquivos 4,5 mb salvar limite',
+      conteudo: (
+        <>
+          <P>
+            No bloco <strong>Anexos no envio ao {sistema}</strong> fica o tamanho máximo por arquivo, em MB, como o
+            Windows mostra. Clique em <BotaoRef variante="outline">Salvar limite</BotaoRef> para gravar. Sem nada
+            configurado vale o padrão de 4,5 MB: a tela do {sistema} declara 5 MB, mas nunca se mediu como o servidor
+            de lá conta.
+          </P>
+          <Lista>
+            <Item>O {sistema} aceita no máximo 2 arquivos por solicitação; com mais, eles vão juntos num PDF.</Item>
+            <Item>
+              Arquivo acima do limite é comprimido no envio: a foto é reduzida, e o PDF tem as imagens regravadas em
+              resolução menor, nunca abaixo de 150 dpi. Só se nem assim couber, o envio é recusado.
+            </Item>
+            <Item>O original continua guardado na plataforma.</Item>
+          </Lista>
+        </>
+      ),
+    },
+    {
       id: 'avisos-paciente',
       titulo: 'Avisos ao paciente: lembrete e cancelamento',
       busca:
@@ -178,7 +201,8 @@ function secoesDoMotor(sistema: Sistema): SecaoArtigo[] {
           Preencha usuário e senha. <BotaoRef variante="outline">Testar</BotaoRef> só autentica e confere se o
           módulo Ambulatório abre, sem gravar nada. <BotaoRef>Salvar</BotaoRef> testa primeiro e só então guarda a
           credencial, cifrada: credencial que não funciona faria o motor falhar de madrugada, sem ninguém por perto. A
-          senha não volta para a tela depois de salva.
+          senha não volta para a tela depois de salva. Trocar a credencial não mexe no horário da rodada diária nem
+          no limite de anexo.
         </P>
       ),
     },
@@ -250,6 +274,8 @@ const palavrasComuns = [
   'parcial',
   'interrompida',
   'cancelada',
+  'anexos',
+  'tamanho máximo',
   'avisos ao paciente',
   'lembrete',
   'dias antes',
@@ -262,7 +288,7 @@ export const artigoSerConfiguracao: Artigo = {
   slug: 'ser-configuracao',
   titulo: 'Configuração do SER',
   resumo:
-    'O motor que copia os pedidos do SER (Estado), a credencial, a rodada diária, o catálogo e os avisos ao paciente — lembrete e cancelamento.',
+    'O motor que copia os pedidos do SER (Estado), a credencial, a rodada diária, o catálogo, o limite de anexo e os avisos ao paciente — lembrete e cancelamento.',
   grupo: 'regulacao',
   icone: Settings2,
   rota: '/app/regulacao/configuracao',
@@ -282,7 +308,7 @@ export const artigoSerConfiguracao: Artigo = {
           </P>
           <ListaDefinicoes
             itens={[
-              { termo: 'SER', descricao: 'Estado do motor, rodada manual e diária, catálogo, avisos ao paciente, credencial e últimas rodadas.' },
+              { termo: 'SER', descricao: 'Estado do motor, rodada manual e diária, catálogo, anexos, avisos ao paciente, credencial e últimas rodadas.' },
               {
                 termo: 'SER — consulta direta',
                 descricao:
@@ -310,7 +336,7 @@ export const artigoSernitConfiguracao: Artigo = {
   slug: 'sernit-configuracao',
   titulo: 'Configuração do SERNIT',
   resumo:
-    'O motor que copia os pedidos do SERNIT (Niterói), a credencial, a rodada diária, o catálogo e os avisos ao paciente — lembrete e cancelamento.',
+    'O motor que copia os pedidos do SERNIT (Niterói), a credencial, a rodada diária, o catálogo, o limite de anexo e os avisos ao paciente — lembrete e cancelamento.',
   grupo: 'regulacao',
   icone: Settings2,
   rota: '/app/regulacao/sernit/configuracao',

@@ -116,13 +116,17 @@ public sealed class SernitMotorService(
     {
         await TestarCredencialAsync(usuario, senha, cancellationToken);
 
+        // O resto da linha fica como está: os parâmetros guardam o horário da rodada diária, o limite
+        // de anexo e os operadores das estatísticas. Antes de 21/10/2026 iam como null e salvar a
+        // credencial apagava tudo isso em silêncio.
+        var atual = await credenciais.ObterAsync(SernitWebSessao.Provedor, cancellationToken);
         await credenciais.AtualizarAsync(
             SernitWebSessao.Provedor,
             new AtualizarIntegracaoCredencialRequest(
                 ClientId: usuario,
                 ClientSecret: senha,
-                RedirectUri: null,
-                ParametrosJson: null,
+                RedirectUri: atual.RedirectUri,
+                ParametrosJson: atual.ParametrosJson,
                 Ativo: true),
             cancellationToken);
 
