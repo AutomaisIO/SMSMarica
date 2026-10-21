@@ -17,3 +17,4 @@ como registro, a critério do Bernardo).
 | Item | Situação |
 |---|---|
 | [`2026-10-20-holter-mapa-satelite`](./2026-10-20-holter-mapa-satelite/README.md) | Auditado e aplicado em 20/10/2026 (`feat/holter-mapa-satelite`) — ver "Decisões do Bernardo" no item |
+| [`2026-10-21-apaga-imagem-invalidada`](./2026-10-21-apaga-imagem-invalidada/README.md) | Auditado e aplicado em 21/10/2026 (`feat/imagem-invalidada`) — migration, build, testes e Manual feitos na aplicação |

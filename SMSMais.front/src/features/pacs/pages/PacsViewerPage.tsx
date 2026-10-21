@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
@@ -9,7 +9,15 @@ import {
   type ImagemLista,
 } from '@/features/pacs/components/PacsImagensSidebar';
 import { PacsViewport } from '@/features/pacs/components/PacsViewport';
-import { useAssociacoesPorStudyUIDs, usePreviewSolicitacao } from '@/features/pacs/api/queries';
+import {
+  useAlternarImagemInvalidada,
+  useAssociacoesPorStudyUIDs,
+  useImagensInvalidadas,
+  usePreviewSolicitacao,
+} from '@/features/pacs/api/queries';
+import type { ImagemInvalidada } from '@/features/pacs/api/imagensInvalidadasApi';
+import { Modal } from '@/shared/ui/Modal';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import type { Layout } from '@/features/pacs/components/SeletorLayoutGrade';
 import { notificar } from '@/shared/ui/Notificacoes';
 import {
@@ -86,6 +94,64 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
   const metaPorImageId = useRef<Map<string, DatasetDicom>>(new Map());
 
   const imageIdFocado = celulas[focado] ?? null;
+
+  // Imagens retiradas do que vai ao paciente (ex.: 5 chegaram do aparelho, 1 foi laudada). Ficam
+  // visíveis aqui, esmaecidas; só saem dos PDFs do paciente. Quem pode é decidido no backend.
+  const studyUID = estudo?.studyInstanceUID ?? null;
+  const invalidadasQuery = useImagensInvalidadas(studyUID);
+  const alternarInvalidacao = useAlternarImagemInvalidada(studyUID);
+  const invalidadas = useMemo(
+    () => new Map<string, ImagemInvalidada>((invalidadasQuery.data?.imagens ?? []).map((i) => [i.sopInstanceUID, i])),
+    [invalidadasQuery.data],
+  );
+  const [confirmarRetirada, setConfirmarRetirada] = useState<{ sop: string; rotulo: string } | null>(null);
+  const [motivoRetirada, setMotivoRetirada] = useState('');
+  const imagemFocada = imagens.find((im) => im.imageId === imageIdFocado) ?? null;
+  const sopFocado = imagemFocada?.sopInstanceUID ?? null;
+  const invalidadaFocada = sopFocado ? invalidadas.get(sopFocado) : undefined;
+  const podeInvalidar = invalidadasQuery.data?.podeInvalidar ?? false;
+
+  function alternarImagemFocada() {
+    if (!sopFocado || !imagemFocada) return;
+    if (invalidadaFocada) {
+      alternarInvalidacao.mutate(
+        { sopUID: sopFocado, retirar: false },
+        {
+          onSuccess: () => notificar('Imagem devolvida ao exame do paciente. O arquivo dele foi refeito.', 'sucesso'),
+          onError: (e) => notificar(extrairMensagemDeErro(e) || 'Não foi possível devolver a imagem.', 'erro'),
+        },
+      );
+      return;
+    }
+    setMotivoRetirada('');
+    setConfirmarRetirada({ sop: sopFocado, rotulo: imagemFocada.rotulo });
+  }
+
+  function retirarConfirmado() {
+    if (!confirmarRetirada) return;
+    alternarInvalidacao.mutate(
+      { sopUID: confirmarRetirada.sop, retirar: true, motivo: motivoRetirada.trim() || null },
+      {
+        onSuccess: () => {
+          setConfirmarRetirada(null);
+          notificar('Imagem retirada do exame do paciente. O arquivo dele foi refeito sem ela.', 'sucesso');
+        },
+        onError: (e) => notificar(extrairMensagemDeErro(e) || 'Não foi possível retirar a imagem.', 'erro'),
+      },
+    );
+  }
+
+  // Botão só aparece para quem pode retirar, ou quando a imagem em foco já está retirada (aí
+  // habilita só para quem pode devolver: quem retirou ou acesso global).
+  const imagemDoPaciente =
+    sopFocado && (podeInvalidar || invalidadaFocada)
+      ? {
+          retirada: Boolean(invalidadaFocada),
+          habilitado: invalidadaFocada ? invalidadaFocada.podeRestaurar : podeInvalidar,
+          ocupado: alternarInvalidacao.isPending,
+          aoAlternar: alternarImagemFocada,
+        }
+      : null;
 
   useEffect(() => {
     celulasRef.current = celulas;
@@ -167,7 +233,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
           const id = construirImageId(e.studyInstanceUID, uid, sop);
           registrarMetadados(id, garantirPixelSpacing(inst, id));
           metaPorImageId.current.set(id, inst);
-          lista.push({ imageId: id, rotulo: rotuloImagemMG(inst) });
+          lista.push({ imageId: id, rotulo: rotuloImagemMG(inst), sopInstanceUID: sop });
           todosImageIds.push(id);
         }
       });
@@ -376,6 +442,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
       <div className="flex flex-1 overflow-hidden">
         <PacsImagensSidebar
           imagens={imagens}
+          invalidadas={invalidadas}
           imageIdFocado={imageIdFocado}
           aoSelecionar={selecionarImagem}
           aoRecriar={recriarImagem}
@@ -391,8 +458,48 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
           carregando={carregandoMeta}
           progresso={progresso}
           studyInstanceUID={estudo?.studyInstanceUID ?? null}
+          imagemDoPaciente={imagemDoPaciente}
         />
       </div>
+
+      {/* Confirmação na própria página — alert/confirm nativo travaria a janela do visualizador. */}
+      <Modal
+        aberto={confirmarRetirada !== null}
+        aoFechar={() => (alternarInvalidacao.isPending ? undefined : setConfirmarRetirada(null))}
+        titulo="Retirar imagem do exame do paciente?"
+        descricao={confirmarRetirada?.rotulo || undefined}
+        largura="sm"
+      >
+        <div className="space-y-3 text-sm text-gray-700">
+          <p>
+            A imagem <b>continua guardada</b> e aparece aqui para quem lauda, marcada. Ela só deixa de ir
+            para o paciente: o PDF do exame é refeito agora, sem ela — inclusive se o laudo já foi assinado.
+          </p>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-gray-600">Motivo (opcional)</span>
+            <input
+              type="text"
+              value={motivoRetirada}
+              onChange={(e) => setMotivoRetirada(e.target.value)}
+              maxLength={500}
+              placeholder="Ex.: imagem tremida, posicionamento"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </label>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variante="outline"
+              onClick={() => setConfirmarRetirada(null)}
+              disabled={alternarInvalidacao.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button variante="danger" onClick={retirarConfirmado} disabled={alternarInvalidacao.isPending}>
+              {alternarInvalidacao.isPending ? 'Retirando…' : 'Retirar do exame do paciente'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {!janela ? (
         <PacsBuscaModal

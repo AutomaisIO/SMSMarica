@@ -25,7 +25,14 @@ public interface IExamePacsImagensReader
     /// JPEGs renderizados do estudo, ordenados por série/instância. Lista vazia se o
     /// estudo não existir/sem imagens. Trunca em <paramref name="maxImagens"/>.
     /// </summary>
-    Task<IReadOnlyList<byte[]>> ObterImagensAsync(string studyInstanceUID, int maxImagens, CancellationToken cancellationToken = default);
+    /// <param name="sopsExcluidos">
+    /// Imagens que a médica retirou do que vai ao paciente (<c>ImagemInvalidada</c>) — ficam de
+    /// fora do resultado. O cache continua guardando o estudo INTEIRO: quem filtra é a leitura,
+    /// então restaurar uma imagem não exige ir ao PACS de novo.
+    /// </param>
+    Task<IReadOnlyList<byte[]>> ObterImagensAsync(
+        string studyInstanceUID, int maxImagens, IReadOnlyCollection<string>? sopsExcluidos,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Nº de instâncias do estudo no PACS AGORA (QIDO). 0 se inexistente/indisponível.</summary>
     Task<int> ContarInstanciasPacsAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
@@ -46,15 +53,21 @@ public sealed class ExamePacsImagensReader(
     private const string Jpeg = "image/jpeg";
 
     public async Task<IReadOnlyList<byte[]>> ObterImagensAsync(
-        string studyInstanceUID, int maxImagens, CancellationToken cancellationToken = default)
+        string studyInstanceUID, int maxImagens, IReadOnlyCollection<string>? sopsExcluidos,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(studyInstanceUID)) return [];
 
+        var excluir = sopsExcluidos is { Count: > 0 }
+            ? new HashSet<string>(sopsExcluidos, StringComparer.Ordinal)
+            : null;
         var chaveCache = $"render-cache/{studyInstanceUID.Trim()}.zip";
 
+        // Cache gravado antes da invalidação de imagens (entradas sem o SOP no nome) não sabe
+        // filtrar: havendo o que excluir, re-materializa do PACS — e o novo cache já sai com SOP.
         var doCache = await LerCacheAsync(chaveCache, cancellationToken);
-        if (doCache is { Count: > 0 })
-            return doCache.Count > maxImagens ? doCache.Take(maxImagens).ToList() : doCache;
+        if (doCache is { Count: > 0 } && (excluir is null || doCache.All(i => i.Sop is not null)))
+            return Filtrar(doCache, excluir, maxImagens);
 
         var instancias = await ListarInstanciasAsync(studyInstanceUID, cancellationToken);
         if (instancias.Count == 0) return [];
@@ -67,13 +80,13 @@ public sealed class ExamePacsImagensReader(
             instancias = instancias.Take(maxImagens).ToList();
         }
 
-        var imagens = new List<byte[]>(instancias.Count);
+        var imagens = new List<ImagemRenderizada>(instancias.Count);
         foreach (var inst in instancias)
         {
             var jpeg = await ObterImagemRenderizadaAsync(
                 studyInstanceUID, inst.SeriesUid, inst.SopUid, cancellationToken);
             if (jpeg is { Length: > 0 })
-                imagens.Add(jpeg);
+                imagens.Add(new ImagemRenderizada(inst.SopUid, jpeg));
         }
 
         // Só cacheia o conjunto COMPLETO (toda instância pedida rasterizou) — cachear um
@@ -81,8 +94,17 @@ public sealed class ExamePacsImagensReader(
         if (imagens.Count > 0 && imagens.Count == instancias.Count)
             await GravarCacheAsync(chaveCache, imagens, cancellationToken);
 
-        return imagens;
+        return Filtrar(imagens, excluir, maxImagens);
     }
+
+    /// <summary>Uma imagem rasterizada e a instância de onde veio (null = cache antigo, sem SOP).</summary>
+    private sealed record ImagemRenderizada(string? Sop, byte[] Jpeg);
+
+    private static List<byte[]> Filtrar(IEnumerable<ImagemRenderizada> imagens, HashSet<string>? excluir, int maxImagens) =>
+        [.. imagens
+            .Where(i => excluir is null || i.Sop is null || !excluir.Contains(i.Sop))
+            .Select(i => i.Jpeg)
+            .Take(maxImagens)];
 
     public async Task<int> ContarInstanciasPacsAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
     {
@@ -117,8 +139,10 @@ public sealed class ExamePacsImagensReader(
     }
 
     // ---------------- Cache S3 (zip de JPEGs, ordem preservada pelo nome da entrada) ----------------
+    // Entrada = "{ordem:D4}_{SOPInstanceUID}.jpg" (o SOP permite filtrar imagens invalidadas sem
+    // ir ao PACS). Caches antigos têm só "{ordem:D4}.jpg" — lidos com Sop = null.
 
-    private async Task<IReadOnlyList<byte[]>?> LerCacheAsync(string chave, CancellationToken ct)
+    private async Task<IReadOnlyList<ImagemRenderizada>?> LerCacheAsync(string chave, CancellationToken ct)
     {
         try
         {
@@ -126,7 +150,7 @@ public sealed class ExamePacsImagensReader(
             if (zip is not { Length: > 0 }) return null;
 
             using var arquivo = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
-            var imagens = new List<byte[]>(arquivo.Entries.Count);
+            var imagens = new List<ImagemRenderizada>(arquivo.Entries.Count);
             foreach (var entrada in arquivo.Entries.OrderBy(e => e.Name, StringComparer.Ordinal))
             {
                 using var ms = new MemoryStream((int)entrada.Length);
@@ -134,7 +158,7 @@ public sealed class ExamePacsImagensReader(
                 {
                     await s.CopyToAsync(ms, ct);
                 }
-                if (ms.Length > 0) imagens.Add(ms.ToArray());
+                if (ms.Length > 0) imagens.Add(new ImagemRenderizada(SopDaEntrada(entrada.Name), ms.ToArray()));
             }
             return imagens;
         }
@@ -145,7 +169,14 @@ public sealed class ExamePacsImagensReader(
         }
     }
 
-    private async Task GravarCacheAsync(string chave, IReadOnlyList<byte[]> imagens, CancellationToken ct)
+    private static string? SopDaEntrada(string nome)
+    {
+        var semExtensao = Path.GetFileNameWithoutExtension(nome);
+        var separador = semExtensao.IndexOf('_');
+        return separador > 0 && separador < semExtensao.Length - 1 ? semExtensao[(separador + 1)..] : null;
+    }
+
+    private async Task GravarCacheAsync(string chave, IReadOnlyList<ImagemRenderizada> imagens, CancellationToken ct)
     {
         try
         {
@@ -155,9 +186,10 @@ public sealed class ExamePacsImagensReader(
                 for (var i = 0; i < imagens.Count; i++)
                 {
                     // JPEG já é comprimido — o zip é só contêiner ordenado (sem recomprimir).
-                    var entrada = zip.CreateEntry($"{i + 1:D4}.jpg", CompressionLevel.NoCompression);
+                    // SOP UID é só dígitos e pontos: seguro como nome de entrada.
+                    var entrada = zip.CreateEntry($"{i + 1:D4}_{imagens[i].Sop}.jpg", CompressionLevel.NoCompression);
                     await using var s = entrada.Open();
-                    await s.WriteAsync(imagens[i], ct);
+                    await s.WriteAsync(imagens[i].Jpeg, ct);
                 }
             }
             await armazenamento.SalvarAsync(chave, ms.ToArray(), ct);
