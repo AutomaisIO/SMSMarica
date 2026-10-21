@@ -39,9 +39,9 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 </tbody></table></div>
 <h2>Decisão</h2>
 <ol>
-<li><strong>Uma tabela que é a fila: <code>guia_agendamento</code>.</strong> Uma linha por agendamento, criada **vazia, sem</li>
+<li><strong>Uma tabela que é a fila: <code>guia_agendamento</code>.</strong> Uma linha por agendamento <strong>de amanhã em diante</strong>,</li>
 </ol>
-<p>   arquivo**, assim que o agendamento aparece; "quantas faltam" é contar as pendentes. Âncora por    sistema, exatamente uma (CHECK): <code>agendamento_externo_id</code> no SER/SERNIT/ESUS (o agendamento já é    pedido × data, ADR-0072) ou <code>solicitacao_id</code> + <code>data_atendimento</code> no SISREG (a remarcação muda a    data da mesma solicitação). Situação <code>Pendente</code> → <code>Obtida</code> | <code>Falhou</code> (5 tentativas, espera    crescente) | <code>Descartada</code> (o agendamento deixou de valer, ou o atendimento passou, antes de a guia    vir — no SER/SERNIT isso evita gastar via à toa).</p>
+<p>   criada <strong>vazia, sem arquivo</strong>, assim que o agendamento aparece; "quantas faltam" é contar as pendentes. Âncora por    sistema, exatamente uma (CHECK): <code>agendamento_externo_id</code> no SER/SERNIT/ESUS (o agendamento já é    pedido × data, ADR-0072) ou <code>solicitacao_id</code> + <code>data_atendimento</code> no SISREG (a remarcação muda a    data da mesma solicitação). Situação <code>Pendente</code> → <code>Obtida</code> | <code>Falhou</code> (5 tentativas, espera    crescente) | <code>Descartada</code> (o agendamento deixou de valer, ou chegou o dia do atendimento, antes de a    guia vir — no SER/SERNIT isso evita gastar via à toa). No dia a guia chega tarde, e o SER/SERNIT já tiram    o pedido de "Agendada" quando o paciente chega: na primeira rodada em produção (21/10/2026) as buscas do    dia falharam, e só no SISREG eram 1.099 do dia, que tomariam o ritmo inteiro da fila.</p>
 <ol>
 <li><strong>Um arquivo só, no acervo do paciente.</strong> O PDF entra em <code>documento_paciente</code> com a origem</li>
 </ol>

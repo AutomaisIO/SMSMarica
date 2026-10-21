@@ -77,7 +77,7 @@ export function FilaGuiasSecao({ sistema, podeEditar }: { sistema: SistemaFilaGu
           <AjudaManual artigo="guias-agendamento" secao="fila" />
         </h2>
         <p className="mt-1 max-w-3xl text-xs text-gray-600">
-          Todo agendamento do {nome} entra numa fila; a guia é buscada <strong>uma vez</strong>, no
+          Todo agendamento do {nome} de amanhã em diante entra numa fila; a guia é buscada <strong>uma vez</strong>, no
           ritmo abaixo, e fica no cadastro do paciente — na tela do pedido, em “Exames anexados” e no app
           do cidadão, junto do agendamento. O atendimento mais perto sai primeiro.
         </p>

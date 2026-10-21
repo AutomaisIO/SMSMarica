@@ -15,9 +15,9 @@ namespace SMSMais.Core.GuiasAgendamento;
 /// </summary>
 /// <param name="JanelaInicio">"HH:mm" em Brasília.</param>
 /// <param name="JanelaFim">"HH:mm" em Brasília. Igual ao início = o dia inteiro.</param>
-/// <param name="NaFila">Guias pendentes de agendamentos de hoje em diante.</param>
+/// <param name="NaFila">Guias pendentes de agendamentos de amanhã em diante.</param>
 /// <param name="ObtidasHoje">Guias que chegaram hoje (Brasília).</param>
-/// <param name="Falharam">Guias que esgotaram as tentativas, de agendamentos de hoje em diante.</param>
+/// <param name="Falharam">Guias que esgotaram as tentativas, de agendamentos de amanhã em diante.</param>
 /// <param name="Impedimento">Por que a fila não está buscando agora (pausa, janela, varredura,
 /// orçamento…), ou nulo quando está.</param>
 public sealed record FilaGuiasDto(
@@ -86,11 +86,11 @@ public sealed class FilaGuiasConfiguracaoService(
         var guias = db.GuiasAgendamento.AsNoTracking().Where(g => g.Sistema == sistema);
 
         var naFila = await guias.CountAsync(
-            g => g.Situacao == SituacaoGuiaAgendamento.Pendente && g.DataAtendimento >= hoje, ct);
+            g => g.Situacao == SituacaoGuiaAgendamento.Pendente && g.DataAtendimento > hoje, ct);
         var obtidasHoje = await guias.CountAsync(
             g => g.Situacao == SituacaoGuiaAgendamento.Obtida && g.ObtidaEm >= inicioDoDia, ct);
         var falharam = await guias.CountAsync(
-            g => g.Situacao == SituacaoGuiaAgendamento.Falhou && g.DataAtendimento >= hoje, ct);
+            g => g.Situacao == SituacaoGuiaAgendamento.Falhou && g.DataAtendimento > hoje, ct);
         var ultima = await guias.Where(g => g.Situacao == SituacaoGuiaAgendamento.Obtida)
             .MaxAsync(g => g.ObtidaEm, ct);
 

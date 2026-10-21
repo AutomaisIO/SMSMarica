@@ -27,7 +27,7 @@ public sealed record GuiaDoAgendamentoDto(
 public interface IFilaGuiasService
 {
     /// <summary>
-    /// Põe na fila, vazia e sem arquivo, a guia de todo agendamento de hoje em diante que ainda não
+    /// Põe na fila, vazia e sem arquivo, a guia de todo agendamento de AMANHÃ em diante que ainda não
     /// tem uma — SER/SERNIT/ESUS pelo <c>agendamento_externo</c>, SISREG pela solicitação agendada — e
     /// tira da fila (Descartada) o que deixou de valer. Só banco, nenhuma requisição externa.
     /// </summary>
@@ -66,9 +66,12 @@ public sealed class FilaGuiasService(
         var hoje = FusoBrasilia.HojeEmBrasilia();
         var agora = DateTime.UtcNow;
 
+        // De AMANHÃ em diante, como o aviso do ADR-0072. No dia, a guia chega tarde, e o SER/SERNIT já
+        // tiram o pedido de "Agendada" quando o paciente chega (medido na 1ª rodada, 21/10/2026): a
+        // busca falharia e, no SISREG, o dia de hoje (1.099 guias) tomaria o ritmo inteiro da fila.
         // SER/SERNIT/ESUS: o agendamento externo já é pedido × data.
         var externos = await db.AgendamentosExternos.AsNoTracking()
-            .Where(a => a.Situacao == SituacaoAgendamentoExterno.Ativo && a.Data >= hoje
+            .Where(a => a.Situacao == SituacaoAgendamentoExterno.Ativo && a.Data > hoje
                         && !db.GuiasAgendamento.Any(g => g.AgendamentoExternoId == a.Id))
             .Select(a => new { a.Id, a.Sistema, a.PacienteId, a.Data })
             .ToListAsync(ct);
@@ -80,7 +83,7 @@ public sealed class FilaGuiasService(
         // SISREG: a solicitação agendada, uma guia por data (a remarcação pede guia nova).
         var sisreg = await SolicitacoesSisregAgendadasAsync(ct);
         var jaNaFila = (await db.GuiasAgendamento.AsNoTracking()
-                .Where(g => g.SolicitacaoId != null && g.DataAtendimento >= hoje)
+                .Where(g => g.SolicitacaoId != null && g.DataAtendimento > hoje)
                 .Select(g => new { SolicitacaoId = g.SolicitacaoId!.Value, g.DataAtendimento })
                 .ToListAsync(ct))
             .Select(g => (g.SolicitacaoId, g.DataAtendimento))
@@ -96,7 +99,7 @@ public sealed class FilaGuiasService(
         // Fora da fila o que deixou de valer — não vale buscar (e, no SER/SERNIT, gastar via) à toa.
         var descartadas = await db.GuiasAgendamento
             .Where(g => g.Situacao == SituacaoGuiaAgendamento.Pendente
-                        && (g.DataAtendimento < hoje
+                        && (g.DataAtendimento <= hoje
                             || (g.AgendamentoExternoId != null
                                 && !db.AgendamentosExternos.Any(a => a.Id == g.AgendamentoExternoId
                                                                      && a.Situacao == SituacaoAgendamentoExterno.Ativo))))
@@ -140,17 +143,17 @@ public sealed class FilaGuiasService(
     private sealed record SolicitacaoAgendada(Guid Id, Guid PacienteId, DateOnly Data);
 
     /// <summary>
-    /// As solicitações do SISREG agendadas de hoje em diante, com o dia em Brasília. Fora: o pedido
+    /// As solicitações do SISREG agendadas de amanhã em diante, com o dia em Brasília. Fora: o pedido
     /// sem número do SISREG (o "0000" do extra-SUS não tem ficha lá) e quem já chegou à recepção (a
     /// guia não serve mais) — a mesma régua do comando da chave.
     /// </summary>
     private async Task<List<SolicitacaoAgendada>> SolicitacoesSisregAgendadasAsync(CancellationToken ct)
     {
-        var inicioDoDia = FusoBrasilia.InicioDoDiaAtualEmUtc();
+        var inicioDeAmanha = FusoBrasilia.InicioDoDiaAtualEmUtc().AddDays(1);
         var linhas = await db.Solicitacoes.AsNoTracking()
             .Where(s => s.Status == StatusSolicitacao.Agendada && s.ExcluidoEm == null && s.AutorizadoEm == null
                         && s.CodigoSolicitacao != null && s.CodigoSolicitacao != "0000"
-                        && s.DataAgendada >= inicioDoDia)
+                        && s.DataAgendada >= inicioDeAmanha)
             .Select(s => new { s.Id, s.PacienteId, s.DataAgendada, s.CodigoSolicitacao })
             .ToListAsync(ct);
         return linhas
@@ -169,7 +172,7 @@ public sealed class FilaGuiasService(
         var agora = DateTime.UtcNow;
         var guia = await db.GuiasAgendamento
             .Where(g => g.Sistema == sistema && g.Situacao == SituacaoGuiaAgendamento.Pendente
-                        && g.DataAtendimento >= hoje
+                        && g.DataAtendimento > hoje
                         && (g.ProximaTentativaEm == null || g.ProximaTentativaEm <= agora))
             .OrderBy(g => g.DataAtendimento)
             .ThenBy(g => g.CriadoEm)

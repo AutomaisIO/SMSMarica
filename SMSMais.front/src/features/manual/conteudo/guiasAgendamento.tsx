@@ -117,7 +117,7 @@ export const artigoGuiasAgendamento: Artigo = {
       conteudo: (
         <>
           <P>
-            Todo agendamento entra numa fila assim que a plataforma o vê. Cada sistema tem a sua fila, que anda
+            Todo agendamento <strong>de amanhã em diante</strong> entra numa fila assim que a plataforma o vê. Cada sistema tem a sua fila, que anda
             sozinha, uma guia de cada vez, <strong>o atendimento mais perto primeiro</strong>. O ritmo é
             configurado na tela de configuração de cada sistema, no quadro <em>Guias dos agendamentos</em> — o
             mesmo quadro no SISREG, no SER, no SERNIT e no ESUS:
@@ -194,7 +194,8 @@ export const artigoGuiasAgendamento: Artigo = {
               SERNIT, isso evita gastar uma via à toa.
             </Item>
             <Item>
-              <strong>Atendimento que já passou</strong>: a guia que não veio a tempo também sai da fila.
+              <strong>No dia do atendimento</strong>: a guia que não veio até a véspera sai da fila — no dia ela
+              chega tarde, e o SER e o SERNIT já tiram o pedido de “Agendada” quando o paciente chega.
             </Item>
           </Lista>
         </>

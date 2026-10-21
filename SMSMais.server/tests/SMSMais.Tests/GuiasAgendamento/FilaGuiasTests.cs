@@ -175,6 +175,30 @@ public class FilaGuiasTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Atendimento_de_hoje_nao_entra_e_o_que_ficou_pendente_sai_da_fila()
+    {
+        // 1ª rodada em produção (21/10/2026): no dia, o SER/SERNIT já tiraram o pedido de "Agendada"
+        // (o paciente chegou) e o SISREG tinha 1.099 do dia — a fila vale de amanhã em diante.
+        await using var db = fixture.CriarDbContext();
+        var c = Montar(db);
+        var deHoje = await AgendamentoAsync(db, SistemaRegulacao.Ser, Hoje);
+        var pendenteDeHoje = await AgendamentoAsync(db, SistemaRegulacao.Sernit, Hoje);
+        db.GuiasAgendamento.Add(new GuiaAgendamento
+        {
+            Id = Guid.CreateVersion7(), Sistema = SistemaRegulacao.Sernit, AgendamentoExternoId = pendenteDeHoje.Id,
+            PacienteId = pendenteDeHoje.PacienteId, DataAtendimento = Hoje, CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        await c.Fila.EnfileirarAsync(CancellationToken.None);
+        await DrenarAsync(c.Fila, SistemaRegulacao.Ser);
+
+        Assert.Null(await GuiaDoExternoAsync(db, deHoje.Id));
+        await c.Ser.DidNotReceive().EmitirGuiaAsync(deHoje.NumeroExterno, Arg.Any<CancellationToken>());
+        Assert.Equal(SituacaoGuiaAgendamento.Descartada, (await GuiaDoExternoAsync(db, pendenteDeHoje.Id))!.Situacao);
+    }
+
+    [Fact]
     public async Task SISREG_enfileira_pela_solicitacao_e_remarcacao_pede_guia_nova()
     {
         await using var db = fixture.CriarDbContext();

@@ -24,13 +24,15 @@ Sondado em produção em 21/10/2026 (laboratórios `Automais.SER/probe_guia.py`,
 
 ## Decisão
 
-1. **Uma tabela que é a fila: `guia_agendamento`.** Uma linha por agendamento, criada **vazia, sem
-   arquivo**, assim que o agendamento aparece; "quantas faltam" é contar as pendentes. Âncora por
+1. **Uma tabela que é a fila: `guia_agendamento`.** Uma linha por agendamento **de amanhã em diante**,
+   criada **vazia, sem arquivo**, assim que o agendamento aparece; "quantas faltam" é contar as pendentes. Âncora por
    sistema, exatamente uma (CHECK): `agendamento_externo_id` no SER/SERNIT/ESUS (o agendamento já é
    pedido × data, ADR-0072) ou `solicitacao_id` + `data_atendimento` no SISREG (a remarcação muda a
    data da mesma solicitação). Situação `Pendente` → `Obtida` | `Falhou` (5 tentativas, espera
-   crescente) | `Descartada` (o agendamento deixou de valer, ou o atendimento passou, antes de a guia
-   vir — no SER/SERNIT isso evita gastar via à toa).
+   crescente) | `Descartada` (o agendamento deixou de valer, ou chegou o dia do atendimento, antes de a
+   guia vir — no SER/SERNIT isso evita gastar via à toa). No dia a guia chega tarde, e o SER/SERNIT já tiram
+   o pedido de "Agendada" quando o paciente chega: na primeira rodada em produção (21/10/2026) as buscas do
+   dia falharam, e só no SISREG eram 1.099 do dia, que tomariam o ritmo inteiro da fila.
 2. **Um arquivo só, no acervo do paciente.** O PDF entra em `documento_paciente` com a origem
    `GuiaAgendamento` (5), já aceito. A tela do pedido (quadro *Contato com o paciente*), o cartão do
    agendamento no app e a lista de documentos (painel e app) apontam para o mesmo documento. A equipe
