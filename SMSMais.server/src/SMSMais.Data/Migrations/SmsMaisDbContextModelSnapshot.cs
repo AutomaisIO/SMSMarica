@@ -4430,6 +4430,59 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("ia_fonte", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.ImagemInvalidada", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo");
+
+                    b.Property<string>("SopInstanceUID")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("sop_instance_uid");
+
+                    b.Property<string>("StudyInstanceUID")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("study_instance_uid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoPor");
+
+                    b.HasIndex("StudyInstanceUID");
+
+                    b.HasIndex("StudyInstanceUID", "SopInstanceUID")
+                        .IsUnique()
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.ToTable("imagem_invalidada", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Indicador", b =>
                 {
                     b.Property<Guid>("Id")
@@ -17520,6 +17573,17 @@ namespace SMSMais.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Fonte");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ImagemInvalidada", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Usuario", "CriadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CriadoPor")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CriadoPorUsuario");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Indicador", b =>

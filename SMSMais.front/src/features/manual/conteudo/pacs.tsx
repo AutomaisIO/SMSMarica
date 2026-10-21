@@ -8,6 +8,8 @@ import {
   FlipHorizontal2,
   Hand,
   History,
+  ImageOff,
+  ImagePlus,
   Link2,
   Maximize2,
   MessageSquarePlus,
@@ -36,11 +38,13 @@ import type { Artigo } from '@/features/manual/tipos';
  *
  * A ordem segue a dúvida de quem chega: o que é → achar o exame → ler a lista → o que fazer na
  * linha → abrir o visualizador → o cabeçalho (com o CID do pedido) → imagens e grade →
- * ferramentas → anotações → casos chatos → quem pode o quê → dúvidas.
+ * ferramentas → anotações → retirar imagem do exame do paciente → casos chatos → quem pode o
+ * quê → dúvidas.
  *
  * Conferido em `features/pacs` (PacsListagemPage, PacsViewerPage, PacsViewport,
  * PacsViewportCelula, PacsImagensSidebar, SeletorLayoutGrade, PacsHistoricoAnotacoesModal,
- * ModalAssociarExame) e no backend da associação (`ExameAssociacaoService`).
+ * ModalAssociarExame), no backend da associação (`ExameAssociacaoService`) e no das imagens
+ * retiradas (`ImagensInvalidadasService`).
  */
 
 /** Ícone da barra do visualizador, na mesma cor escura da tela, para citar no texto. */
@@ -95,7 +99,7 @@ export const artigoPacs: Artigo = {
   icone: ScanLine,
   rota: '/app/pacs',
   publico: 'Quem lauda, quem confere a chegada das imagens e quem associa exame ao pedido',
-  atualizadoEm: '2026-10-20',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'PACS',
     'visualizador',
@@ -159,6 +163,15 @@ export const artigoPacs: Artigo = {
     'recriar imagem',
     'sem compressão',
     'resolução diagnóstica',
+    'retirar imagem',
+    'devolver imagem',
+    'excluir imagem',
+    'apagar imagem',
+    'imagem ruim',
+    'imagem repetida',
+    'não vai ao paciente',
+    'PDF do paciente',
+    'densitometria',
   ],
   secoes: () => [
     {
@@ -563,6 +576,74 @@ export const artigoPacs: Artigo = {
       ),
     },
     {
+      id: 'retirar-imagem-do-paciente',
+      titulo: 'Retirar imagem do exame do paciente',
+      busca:
+        'retirar imagem devolver imagem excluir apagar imagem ruim repetida tremida posicionamento não vai ao paciente PDF do paciente app do cidadão exames anexados acervo densitometria raio-x laudo assinado motivo última imagem quem retirou acesso global',
+      conteudo: (
+        <>
+          <P>
+            Alguns aparelhos mandam imagens a mais — na densitometria e no raio‑X é comum chegarem
+            cinco imagens e só uma ser a que vale. Antes, o paciente recebia todas no PDF do exame.
+            Agora quem lauda pode <strong>retirar</strong> do que vai ao paciente as imagens que não
+            servem.
+          </P>
+          <Passos
+            itens={[
+              { titulo: 'Clique na miniatura da imagem que não deve ir ao paciente — ela vai para o quadro em foco.' },
+              {
+                titulo: (
+                  <>
+                    Na barra, ao lado de resetar, clique em <IconeBarra icone={ImageOff} /> (imagem
+                    riscada).
+                  </>
+                ),
+              },
+              {
+                titulo: 'Confira e confirme em “Retirar do exame do paciente”.',
+                detalhe:
+                  'O motivo é opcional (“imagem tremida”, “posicionamento”) e aparece para quem passar o mouse na miniatura depois.',
+              },
+            ]}
+          />
+          <P>
+            A miniatura fica esmaecida, com o nome riscado e o selo{' '}
+            <SeloRef cor="alerta">Não vai ao paciente</SeloRef>. Ao passar o mouse, aparece quem retirou
+            e o motivo.
+          </P>
+          <Callout tipo="regra" titulo="Não apaga nada — só tira da entrega">
+            A imagem <strong>continua guardada no PACS</strong> e continua aqui no visualizador. Ela só
+            deixa de entrar no PDF que vai ao paciente: o do app do cidadão, o da aba Exames anexados
+            do cadastro e o do download do exame completo. O PDF é refeito na hora, já sem ela. Não
+            confunda com a lixeira <IconeBarra icone={Trash2} />, que apaga só as{' '}
+            <em>marcas</em>, nem com o “Excluir” da lista, que apaga o exame do PACS.
+          </Callout>
+          <Lista>
+            <Item>
+              Vale também <strong>depois de o laudo ser assinado</strong>. O laudo em si não muda: ele
+              não leva imagens.
+            </Item>
+            <Item>
+              Não dá para retirar a <strong>última</strong> imagem que sobrou: o paciente ficaria com um
+              PDF vazio.
+            </Item>
+            <Item>
+              Quem já tinha baixado o PDF antes fica com a cópia antiga — não há como recolher. Daí em
+              diante, o app, o cadastro e o download entregam a versão nova.
+            </Item>
+          </Lista>
+          <Sub>Devolver a imagem</Sub>
+          <P>
+            Com a imagem retirada no quadro em foco, o botão vira <IconeBarra icone={ImagePlus} />{' '}
+            (imagem com +). Um clique devolve a imagem ao exame do paciente, e o PDF é refeito de novo.
+            Só pode devolver <strong>quem retirou</strong> ou um usuário com{' '}
+            <strong>acesso global</strong>; para os demais o botão aparece apagado. Tudo fica
+            registrado: quem retirou, quem devolveu e quando.
+          </P>
+        </>
+      ),
+    },
+    {
       id: 'casos-chatos',
       titulo: 'Casos chatos',
       busca:
@@ -597,7 +678,8 @@ export const artigoPacs: Artigo = {
     {
       id: 'quem-pode',
       titulo: 'Quem pode o quê',
-      busca: 'permissão módulo PACS consulta edição exclusão laudos inclusão perfil',
+      busca:
+        'permissão módulo PACS consulta edição exclusão laudos inclusão perfil retirar devolver imagem acesso global',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -614,6 +696,11 @@ export const artigoPacs: Artigo = {
               termo: 'Laudos — Inclusão / Edição',
               descricao: 'Criar o laudo pela linha do exame / abrir o laudo que já existe.',
             },
+            {
+              termo: 'Laudos — Edição, ou acesso global',
+              descricao:
+                'Retirar imagem do exame do paciente no visualizador. Devolver: quem retirou ou acesso global.',
+            },
           ]}
         />
       ),
@@ -621,7 +708,8 @@ export const artigoPacs: Artigo = {
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'dúvidas CID não aparece medida errada laudar apagado anotação sumiu criar laudo não aparece ultrassom laudado fora',
+      busca:
+        'dúvidas CID não aparece medida errada laudar apagado anotação sumiu criar laudo não aparece ultrassom laudado fora retirar imagem botão não aparece paciente ainda tem a imagem',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -644,6 +732,16 @@ export const artigoPacs: Artigo = {
               termo: 'A medida em mm é confiável?',
               descricao:
                 'Com calibração “equipamento”, sim. Com “estimada”, use como aproximação; com “ausente”, não use a medida em mm.',
+            },
+            {
+              termo: 'Não vejo o botão de retirar imagem.',
+              descricao:
+                'Ele só aparece para quem tem Laudos — Edição ou acesso global, e age sobre a imagem do quadro em foco. Clique numa miniatura primeiro.',
+            },
+            {
+              termo: 'Retirei a imagem, mas o paciente ainda tem ela.',
+              descricao:
+                'Ele baixou o PDF antes da retirada. O que já foi baixado não volta; a partir da retirada, o app, o cadastro e o download entregam o PDF sem a imagem.',
             },
           ]}
         />

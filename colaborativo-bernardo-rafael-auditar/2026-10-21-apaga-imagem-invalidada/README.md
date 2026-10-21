@@ -76,3 +76,21 @@ O "exame completo" (link de download / painel) não tem cache próprio.
 - A regeração do PDF roda **dentro da requisição**. Para DX/DO são poucas imagens, mas, se pesar, dá
   para mover para o `PreparadorImagensExameService`.
 - O SOP não é validado contra o estudo no PACS: um SOP que não existe só criaria uma linha inócua.
+
+## Aplicação (21/10/2026, branch `feat/imagem-invalidada`)
+
+O commit do Rafael entrou sem alteração em cima da `main` (nenhum arquivo dele tinha mudado desde
+a base `bc2935a`). Na aplicação:
+
+- **Migration `ImagemInvalidada`** gerada com `dotnet ef`: cria só `smsmarica.imagem_invalidada`,
+  a FK para `usuario` (`Restrict`), o índice único filtrado `(study_instance_uid, sop_instance_uid)
+  WHERE excluido_em IS NULL`, o índice por `study_instance_uid` e o da FK. O snapshot ganhou só
+  esse bloco.
+- **Build:** `SMSMais.server` com 0 erros e 0 avisos; `SMSMais.front` passou no `npm run build`.
+- **Testes** (Testcontainers, Docker local): `ImagensInvalidadasServiceTests` mais as classes que
+  usam o leitor e os PDFs de imagens (`AgendaDoPacienteTests`, `DocumentosPacienteServiceTests`,
+  `DownloadPublicoGateCpfTests`, `FilaGuiasTests`, `LiberacaoExamePacienteTests`): 58/58. A suíte
+  inteira roda no CI do deploy.
+- **Manual:** o artigo `pacs` ganhou a seção "Retirar imagem do exame do paciente", o item em
+  "Quem pode o quê" e duas dúvidas; o artigo `pacientes` diz que o PDF de imagens sai sem as
+  retiradas.
