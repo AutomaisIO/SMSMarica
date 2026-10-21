@@ -50,7 +50,11 @@ public sealed class ExameCompletoPdfService(
         // Worklist: o StudyInstanceUID da solicitação é o real. Exames associados
         // (sem worklist) têm UID pré-gerado que não existe no PACS — nesses casos o
         // estudo REAL vem da associação ativa.
-        var imagens = await imagensReader.ObterImagensAsync(sol.StudyInstanceUID, MaxImagens, cancellationToken);
+        // Imagens que a médica retirou do que vai ao paciente ficam fora do PDF (ImagemInvalidada).
+        var imagens = await imagensReader.ObterImagensAsync(
+            sol.StudyInstanceUID, MaxImagens,
+            await ImagensInvalidadas.SopsInvalidados.DoEstudoAsync(db, sol.StudyInstanceUID, cancellationToken),
+            cancellationToken);
         if (imagens.Count == 0)
         {
             var studyReal = await db.ExameAssociacoes.AsNoTracking()
@@ -59,7 +63,10 @@ public sealed class ExameCompletoPdfService(
                 .Select(a => a.StudyInstanceUID)
                 .FirstOrDefaultAsync(cancellationToken);
             if (!string.IsNullOrWhiteSpace(studyReal) && studyReal != sol.StudyInstanceUID)
-                imagens = await imagensReader.ObterImagensAsync(studyReal, MaxImagens, cancellationToken);
+                imagens = await imagensReader.ObterImagensAsync(
+                    studyReal, MaxImagens,
+                    await ImagensInvalidadas.SopsInvalidados.DoEstudoAsync(db, studyReal, cancellationToken),
+                    cancellationToken);
         }
 
         var (nome, cpf, cns, nascimento) = await ResolverPacienteAsync(sol.Solicitacao!.PacienteId, cancellationToken);

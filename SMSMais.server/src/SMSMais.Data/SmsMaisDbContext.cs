@@ -51,6 +51,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<Avaliacao> Avaliacoes => Set<Avaliacao>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<EstudoAnotacao> EstudoAnotacoes => Set<EstudoAnotacao>();
+    public DbSet<ImagemInvalidada> ImagensInvalidadas => Set<ImagemInvalidada>();
     public DbSet<Perfil> Perfis => Set<Perfil>();
     public DbSet<PermissaoPerfil> PermissoesPerfil => Set<PermissaoPerfil>();
     public DbSet<UsuarioPerfil> UsuariosPerfis => Set<UsuarioPerfil>();

@@ -8,11 +8,45 @@ import {
   previewSolicitacaoPorAccession,
   resincronizarExames,
 } from '@/features/pacs/api/associacaoExameApi';
+import {
+  invalidarImagem,
+  listarImagensInvalidadas,
+  restaurarImagem,
+} from '@/features/pacs/api/imagensInvalidadasApi';
 import type { FiltroBusca } from '@/features/pacs/types';
 
 export const pacsKeys = {
   series: (studyUID: string) => ['pacs', 'series', studyUID] as const,
+  imagensInvalidadas: (studyUID: string) => ['pacs', 'imagens-invalidadas', studyUID] as const,
 };
+
+/** Imagens do estudo retiradas do que vai ao paciente + o que o usuário pode fazer. */
+export function useImagensInvalidadas(studyUID: string | null) {
+  return useQuery({
+    queryKey: studyUID ? pacsKeys.imagensInvalidadas(studyUID) : ['pacs', 'imagens-invalidadas', 'nenhum'],
+    queryFn: () => {
+      if (!studyUID) throw new Error('Estudo não informado.');
+      return listarImagensInvalidadas(studyUID);
+    },
+    enabled: Boolean(studyUID),
+  });
+}
+
+/** Retirar/devolver uma imagem — a resposta já é a lista atualizada do estudo. */
+export function useAlternarImagemInvalidada(studyUID: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: { sopUID: string; retirar: boolean; motivo?: string | null }) => {
+      if (!studyUID) throw new Error('Estudo não informado.');
+      return p.retirar
+        ? invalidarImagem(studyUID, p.sopUID, p.motivo)
+        : restaurarImagem(studyUID, p.sopUID);
+    },
+    onSuccess: (dados) => {
+      if (studyUID) qc.setQueryData(pacsKeys.imagensInvalidadas(studyUID), dados);
+    },
+  });
+}
 
 export const associacoesKeys = {
   raiz: ['exames', 'associacoes'] as const,

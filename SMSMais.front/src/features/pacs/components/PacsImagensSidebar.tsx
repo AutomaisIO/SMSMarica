@@ -1,12 +1,19 @@
 import { useState } from 'react';
-import { Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, ImageOff, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { useImagemRendered } from '@/features/pacs/lib/rendered';
+import type { ImagemInvalidada } from '@/features/pacs/api/imagensInvalidadasApi';
 
-export type ImagemLista = { imageId: string; rotulo: string };
+/** `sopInstanceUID` identifica a imagem para retirá-la do que vai ao paciente. */
+export type ImagemLista = { imageId: string; rotulo: string; sopInstanceUID?: string };
 
 type Props = {
   imagens: ImagemLista[];
+  /**
+   * Imagens retiradas do que vai ao paciente, por SOPInstanceUID. Continuam aqui (esmaecidas)
+   * para quem lauda; só saem dos PDFs do paciente.
+   */
+  invalidadas?: ReadonlyMap<string, ImagemInvalidada>;
   /** imageId carregado no quadrado em foco (destaca a miniatura). */
   imageIdFocado: string | null;
   aoSelecionar: (imageId: string) => void;
@@ -30,6 +37,7 @@ type Props = {
  */
 export function PacsImagensSidebar({
   imagens,
+  invalidadas,
   imageIdFocado,
   aoSelecionar,
   aoRecriar,
@@ -70,29 +78,47 @@ export function PacsImagensSidebar({
           <ul className="space-y-1.5">
             {imagens.map((img, i) => {
               const ativa = img.imageId === imageIdFocado;
+              const invalidada = img.sopInstanceUID ? invalidadas?.get(img.sopInstanceUID) : undefined;
               return (
                 <li key={img.imageId}>
                   <button
                     type="button"
                     onClick={() => aoSelecionar(img.imageId)}
                     onDoubleClick={() => void recriar(img.imageId)}
-                    title="Duplo-clique para limpar o cache e recriar esta imagem"
+                    title={
+                      invalidada
+                        ? `Não vai ao paciente — retirada por ${invalidada.invalidadaPorNome}`
+                          + (invalidada.motivo ? ` (${invalidada.motivo})` : '')
+                        : 'Duplo-clique para limpar o cache e recriar esta imagem'
+                    }
                     className={cn(
                       'flex w-full items-center gap-2 rounded-md p-1.5 text-left transition-colors',
                       ativa ? 'bg-primary-600/20 ring-2 ring-primary-500' : 'hover:bg-gray-800',
                     )}
                   >
-                    <ThumbnailImagem
-                      imageId={img.imageId}
-                      ativa={ativa}
-                      versao={versoes[img.imageId] ?? 0}
-                      recriando={recriandoId === img.imageId}
-                    />
+                    <span className={cn('relative', invalidada && 'opacity-40 grayscale')}>
+                      <ThumbnailImagem
+                        imageId={img.imageId}
+                        ativa={ativa}
+                        versao={versoes[img.imageId] ?? 0}
+                        recriando={recriandoId === img.imageId}
+                      />
+                    </span>
                     <span className="min-w-0 flex-1 text-xs">
-                      <span className="block truncate font-semibold text-gray-200">
+                      <span
+                        className={cn(
+                          'block truncate font-semibold',
+                          invalidada ? 'text-gray-500 line-through' : 'text-gray-200',
+                        )}
+                      >
                         {img.rotulo || `Imagem ${i + 1}`}
                       </span>
                       <span className="block text-[10px] text-gray-500">#{i + 1}</span>
+                      {invalidada ? (
+                        <span className="mt-0.5 inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                          <ImageOff className="h-3 w-3" /> Não vai ao paciente
+                        </span>
+                      ) : null}
                     </span>
                   </button>
                 </li>

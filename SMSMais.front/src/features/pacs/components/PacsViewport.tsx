@@ -30,6 +30,8 @@ import {
   FlipVertical2,
   Hand,
   History,
+  ImageOff,
+  ImagePlus,
   Loader2,
   Maximize2,
   MessageSquarePlus,
@@ -111,6 +113,19 @@ type Props = {
    * anotações ao montar e expõe os botões "Salvar" e "Histórico".
    */
   studyInstanceUID?: string | null;
+  /**
+   * Retirar/devolver a imagem em foco do que vai ao paciente. Ausente = o usuário não pode
+   * (nem quem lauda nem acesso global) ou não há imagem em foco — o botão não aparece.
+   * Não confundir com a lixeira das MARCAS (régua, ângulo, comentário).
+   */
+  imagemDoPaciente?: {
+    /** A imagem em foco já está fora do que vai ao paciente. */
+    retirada: boolean;
+    /** Pode clicar: retirar (quem lauda/global) ou devolver (quem retirou/global). */
+    habilitado: boolean;
+    ocupado: boolean;
+    aoAlternar: () => void;
+  } | null;
 };
 
 export function PacsViewport({
@@ -122,6 +137,7 @@ export function PacsViewport({
   carregando,
   progresso,
   studyInstanceUID,
+  imagemDoPaciente,
 }: Props) {
   const podeSalvarAnotacoes = usePermissao('Pacs', 'Edicao');
   const gridRef = useRef<HTMLDivElement>(null);
@@ -480,6 +496,40 @@ export function PacsViewport({
         <button type="button" title="Resetar (foco)" onClick={resetar} className={botaoBase}>
           <Maximize2 className="h-5 w-5" />
         </button>
+
+        {imagemDoPaciente ? (
+          <>
+            <div className="mx-1 h-6 w-px bg-gray-700" />
+            <button
+              type="button"
+              title={
+                !imagemDoPaciente.habilitado
+                  ? 'Só quem retirou esta imagem (ou acesso global) pode devolvê-la ao paciente'
+                  : imagemDoPaciente.retirada
+                    ? 'Devolver esta imagem ao exame do paciente'
+                    : 'Retirar esta imagem do exame do paciente (continua guardada)'
+              }
+              onClick={imagemDoPaciente.aoAlternar}
+              disabled={!imagemDoPaciente.habilitado || imagemDoPaciente.ocupado}
+              className={cn(
+                'rounded-md p-2 transition-colors',
+                !imagemDoPaciente.habilitado || imagemDoPaciente.ocupado
+                  ? 'cursor-not-allowed text-gray-600'
+                  : imagemDoPaciente.retirada
+                    ? 'text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100'
+                    : 'text-amber-300 hover:bg-amber-900/30 hover:text-amber-100',
+              )}
+            >
+              {imagemDoPaciente.ocupado ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : imagemDoPaciente.retirada ? (
+                <ImagePlus className="h-5 w-5" />
+              ) : (
+                <ImageOff className="h-5 w-5" />
+              )}
+            </button>
+          </>
+        ) : null}
 
         <div className="mx-1 h-6 w-px bg-gray-700" />
 
