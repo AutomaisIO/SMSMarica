@@ -140,7 +140,7 @@ systemctl list-timers sisreg-egress-verificar.timer</code></pre>
 <li><strong>Persistência:</strong> <code>wg-quick@wg-eveo</code> habilitado no boot; config do CCR é permanente.</li>
 <li><strong>Se o SISREG mudar de IP:</strong> nada a fazer — o verificador põe o IP novo no túnel em até 1 min</li>
 </ul>
-<p>  e o CCR já libera qualquer destino em 443. Conferir no card do SISREG em Integrações (ou   <code>journalctl -t sisreg-egress</code>). Se o SISREG deixar de ser HTTPS/443, aí sim mexer no CCR.</p>
+<p>  e o CCR já libera qualquer destino em 443. Conferir em Sistema → Fontes de dados, fonte SISREG III   (bloco Endereço do SISREG), ou <code>journalctl -t sisreg-egress</code>. Se o SISREG deixar de ser HTTPS/443, aí sim mexer no CCR.</p>
 <ul>
 <li><strong>Outro sistema bloqueado geograficamente (SER, CADSUS…):</strong> só o lado da VM — <code>/32</code> no</li>
 </ul>
