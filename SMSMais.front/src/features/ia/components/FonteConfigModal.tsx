@@ -46,9 +46,12 @@ function estadoInicial(fonte?: FonteConfig): FormState {
   return {
     nome: fonte?.nome ?? '',
     slug: fonte?.slug ?? '',
+    // A API devolve o NOME do enum ("SqlServer", "Postgres", "Producao"): o valor de cada
+    // <option> tem de ser igual, senão o navegador exibe a primeira opção da lista no lugar do
+    // valor gravado (era o que mostrava as bases do Klinikos como "Salux / Oracle").
     tipo: fonte?.tipo ?? 'Salux',
-    dialeto: fonte?.dialeto ?? 'oracle',
-    ambiente: fonte?.ambiente ?? 'PRODUCAO',
+    dialeto: fonte?.dialeto ?? 'Oracle',
+    ambiente: (fonte?.ambiente?.toUpperCase() ?? 'PRODUCAO') as Ambiente,
     host: fonte?.host ?? '',
     porta: fonte?.porta != null ? String(fonte.porta) : '',
     servico: fonte?.servico ?? '',
@@ -195,15 +198,22 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
             />
           </Campo>
 
-          <Campo label="Tipo" htmlFor="fc-tipo" required dica="Família da base (não o motor de banco).">
+          <Campo
+            label="Tipo"
+            htmlFor="fc-tipo"
+            required
+            dica={ehEdicao ? 'Fixo depois de criada a base.' : 'Família da base (não o motor de banco).'}
+          >
             <Select
               id="fc-tipo"
               value={form.tipo}
+              // O servidor não troca tipo nem dialeto na edição; a tela não finge que troca.
+              disabled={ehEdicao}
               onChange={(e) => {
                 const t = e.target.value;
                 // Sugere o dialeto conforme o tipo (ajustável).
                 const postgres = t === 'Postgres' || t === 'Regulacao' || t === 'Atendimento';
-                const dialeto = postgres ? 'postgres' : t === 'Fhir' || t === 'KlinikosWeb' ? '' : 'oracle';
+                const dialeto = postgres ? 'Postgres' : t === 'Fhir' || t === 'KlinikosWeb' ? '' : 'Oracle';
                 setForm((f) => ({
                   ...f,
                   tipo: t,
@@ -225,14 +235,22 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
               <option value="Postgres">PostgreSQL</option>
               <option value="Regulacao">Regulação — SISREG, SER e SERNIT (banco do SMSMais)</option>
               <option value="Atendimento">Atendimento — conversas com pacientes (banco do SMSMais)</option>
+              {/* Base SQL Server nasce pelo agente (provisionar), nunca por este formulário. */}
+              {form.tipo === 'SqlServer' ? <option value="SqlServer">SQL Server (via agente)</option> : null}
             </Select>
           </Campo>
 
           {!ehWeb && (
             <Campo label="Dialeto" htmlFor="fc-dialeto" dica="Dialeto SQL usado na geração das consultas.">
-              <Select id="fc-dialeto" value={form.dialeto} onChange={(e) => set('dialeto', e.target.value)}>
-                <option value="oracle">Oracle</option>
-                <option value="postgres">PostgreSQL</option>
+              <Select
+                id="fc-dialeto"
+                value={form.dialeto}
+                disabled={ehEdicao}
+                onChange={(e) => set('dialeto', e.target.value)}
+              >
+                <option value="Oracle">Oracle</option>
+                <option value="Postgres">PostgreSQL</option>
+                {form.dialeto === 'SqlServer' ? <option value="SqlServer">SQL Server (T-SQL)</option> : null}
               </Select>
             </Campo>
           )}
