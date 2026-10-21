@@ -23,9 +23,13 @@ export const artigoSisregConfiguracao: Artigo = {
   icone: Settings2,
   rota: '/app/sisreg/configuracao',
   publico: 'Quem cuida da integração com o SISREG (não quem está regulando)',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'configuração sisreg',
+    'avisos ao paciente',
+    'lembrete',
+    'dias antes',
+    'aviso de cancelamento',
     'endereço do sisreg',
     'ip do sisreg',
     'trocou de ip',
@@ -330,6 +334,34 @@ export const artigoSisregConfiguracao: Artigo = {
               { termo: 'Histórico', descricao: 'Cada IP em que o SISREG já respondeu, de quando a quando.' },
             ]}
           />
+        </>
+      ),
+    },
+    {
+      id: 'avisos-paciente',
+      titulo: 'Avisos ao paciente: lembrete e cancelamento',
+      busca:
+        'avisos ao paciente lembrete dias antes aviso de cancelamento whatsapp mensageria regras mesmas chaves conciliação de cancelamentos ligar vale daqui para frente',
+      conteudo: (
+        <>
+          <P>
+            O bloco <strong>Avisos ao paciente</strong> liga o <strong>lembrete</strong> (e quantos dias antes do
+            agendamento ele sai) e o <strong>aviso de cancelamento</strong> dos agendamentos do SISREG. São as{' '}
+            <strong>mesmas chaves</strong> de Mensageria → Regras: mudar aqui muda lá, e vice-versa.
+          </P>
+          <Lista>
+            <Item>
+              O aviso de que foi <em>agendado</em> não se liga aqui: ele é por unidade e por procedimento (Unidade → aba
+              SISREG).
+            </Item>
+            <Item>
+              Os cancelamentos feitos no SISREG por outra pessoa só chegam à plataforma pela{' '}
+              <strong>conciliação de cancelamentos</strong> (Mensageria → Regras). Desligada, só avisa o cancelamento
+              feito pela tela de Confirmações — o bloco mostra um alerta quando é o caso.
+            </Item>
+            <Item>Ligar o aviso de cancelamento vale daqui para frente: o que foi cancelado antes não é avisado.</Item>
+          </Lista>
+          <P>SER, SERNIT e ESUS têm o mesmo bloco, com chaves próprias, na Configuração de cada regulação.</P>
         </>
       ),
     },

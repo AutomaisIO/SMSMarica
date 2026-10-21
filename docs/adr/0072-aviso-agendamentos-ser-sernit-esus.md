@@ -87,3 +87,44 @@ completa **com o local e o procedimento** e **sem mandar buscar a guia no posto*
 - Banco: tabela nova `agendamento_externo` e `unidade_atendimento_nome_externo`; colunas novas em
   `comunicacao_paciente` e `confirmacao_configuracao`. Com a replicação lógica para a EVEO ligada, a DDL
   das colunas novas em tabelas publicadas precisa estar no destino **antes** do deploy.
+
+## Fase 2 (21/10/2026): lembrete e aviso de cancelamento, por regulação
+
+Pedido do dono: "enviar para o SER, SERNIT e ESUS mensagem antes, habilitar dentro de configurações da
+própria regulação, com quantos dias antes" e "enviar informação de cancelamento igual ao SISREG, também
+como opção na configuração".
+
+1. **As chaves moram na tela de Configuração de cada regulação** (bloco *Avisos ao paciente*), numa tabela
+   própria, `aviso_regulacao_configuracao` (uma linha por sistema: lembrete ligado, dias antes, aviso de
+   cancelamento ligado e quando foi ligado). Não no `parametros_json` da credencial, porque salvar a
+   credencial do SER e do SERNIT regrava aquele JSON inteiro e apagaria a chave em silêncio. Sem linha,
+   tudo desligado; nada de seed em migration. O aviso de que foi **agendado** segue com a chave única da
+   Mensageria (item 7). A tela de Configuração do **SISREG** ganhou o mesmo bloco, editando as chaves que
+   ele já tinha em `confirmacao_configuracao`: um valor só, visto de dois lugares.
+2. **Lembrete:** as regras do SISREG. Quem confirmou e tem número provado recebe `agendamento_proximo`, com
+   dia e hora. Sem hora, ou com número não provado, vai a primeira mensagem de novo, e os dados saem na
+   conversa depois da identificação. Quem avisou que não vai não recebe, e quem recebeu o aviso há menos de
+   `LembreteIntervaloMinimoDias` também não. Não sai enquanto o aviso do agendamento ainda está na fila. As
+   respostas "Sim! Está confirmado!" e "Não poderei ir." voltam como texto e caem no `agendamento_externo`
+   (só a partir do lembrete que saiu com os dados, para não revelar o agendamento a número não provado).
+3. **Aviso de cancelamento:** o modelo do SISREG (`agendamento_cancelado_anonimo`), anônimo para número
+   não provado. Sai quando o agendamento é **desmarcado com a data pela frente e o sistema diz por quê**:
+   `Cancelada` no SER e no SERNIT, ou **de volta à fila** nos três. Nesse segundo caso, a frase diz
+   "foi desmarcado e o pedido voltou para a fila da regulação". O motivo fica em
+   `agendamento_externo.motivo_desmarque`. **Pendência não avisa**: o SER às vezes pendencia e reagenda o
+   mesmo dia. **Saída da fila do ESUS não avisa**: o ESUS não diz por quê, e "saiu da fila" não é
+   cancelado (ADR-0063).
+4. **Carência de 30 minutos** antes de o cancelamento poder sair. Se o pedido voltar a "Agendada" com o
+   **mesmo dia** antes disso, o aviso é dispensado. Isso acontece, por exemplo, com uma leitura no meio da
+   rodada do ESUS, que lê a fila antes dos agendados. Se o aviso já tinha saído e o pedido voltou com o
+   mesmo dia, nasce um agendamento novo e o paciente recebe o aviso do agendamento outra vez, em vez de
+   ficar com "foi cancelado" como última palavra.
+5. **Ligar vale daqui para frente**, como no SISREG: o envio recusa o que entrou na fila antes da última
+   vez em que a chave foi ligada.
+6. **Remarcação** continua como no item 4 da fase 1: a data nova gera um aviso novo. Isso inclui o pedido
+   que o paciente não conseguiu fazer e a regulação devolveu à fila. Conferido em produção em 21/10/2026:
+   no SER 7023054, marcado para 14/10, devolvido e remarcado para 21/10, o aviso novo saiu em 16/10.
+
+**Consequências:** as duas chaves nascem desligadas em cada regulação. Uma coluna nova em
+`agendamento_externo` e uma tabela nova; desde a virada para a EVEO (14/10/2026) não há replicação a
+preparar. Continua de fora a régua de reforço desses sistemas.

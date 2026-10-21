@@ -120,17 +120,23 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         if (string.IsNullOrEmpty(ctx.InterativoReplyId))
         {
             if (InterpretadorRespostaCidadao.ConfirmaComparecimento(ctx.Texto)
-                && await SolicitacaoDoLembreteAsync(ctx, ct) is { } idConfirma)
+                && await AlvoDoLembreteAsync(ctx, ct) is { } confirma)
             {
                 ctx.Consumido = true;
-                await TratarSegueConfirmadoAsync(ctx, idConfirma, ct);
+                if (confirma.AgendamentoExternoId is { } idExterno)
+                    await TratarExternoConfirmadoAsync(ctx, idExterno, ct);
+                else
+                    await TratarSegueConfirmadoAsync(ctx, confirma.SolicitacaoId!.Value, ct);
                 return;
             }
             if (InterpretadorRespostaCidadao.NaoPodereiIr(ctx.Texto)
-                && await SolicitacaoDoLembreteAsync(ctx, ct) is { } idNaoVai)
+                && await AlvoDoLembreteAsync(ctx, ct) is { } naoVai)
             {
                 ctx.Consumido = true;
-                await TratarNaoPodereiAsync(ctx, idNaoVai, ct);
+                if (naoVai.AgendamentoExternoId is { } idExterno)
+                    await TratarExternoNaoPodereiAsync(ctx, idExterno, ct);
+                else
+                    await TratarNaoPodereiAsync(ctx, naoVai.SolicitacaoId!.Value, ct);
                 return;
             }
         }
@@ -138,19 +144,31 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         await TratarTextoLivreComoMotivoAsync(ctx, ct);
     }
 
+    /// <summary>De quem é o lembrete respondido: uma solicitação (SISREG) OU um agendamento do
+    /// SER/SERNIT/ESUS SG — nunca os dois.</summary>
+    private sealed record AlvoDoLembrete(Guid? SolicitacaoId, Guid? AgendamentoExternoId);
+
     /// <summary>
     /// De qual agendamento a pessoa está falando? Do que a mensagem RESPONDE (a Meta manda o
     /// contexto) — e, sem contexto, do lembrete mais recente enviado para aquele número. Sem isso,
     /// "Não poderei ir." de quem tem dois exames marcados cancelaria o errado.
+    ///
+    /// <para>Do lado do SER/SERNIT/ESUS SG só vale o lembrete que saiu COM os dados
+    /// (<c>agendamento_proximo</c>, para contato provado): a resposta à primeira mensagem — que não diz
+    /// nada do agendamento — devolveria "Você quer cancelar a consulta de X do dia Y?" a um número
+    /// que ainda não provou ser do paciente.</para>
     /// </summary>
-    private async Task<Guid?> SolicitacaoDoLembreteAsync(ManipuladorContexto ctx, CancellationToken ct)
+    private async Task<AlvoDoLembrete?> AlvoDoLembreteAsync(ManipuladorContexto ctx, CancellationToken ct)
     {
         if (ctx.Mensagem.ContextoWaMessageId is { } wamid)
         {
             var porContexto = await db.ComunicacoesPaciente.AsNoTracking()
                 .Where(c => c.MensagemWhatsApp != null && c.MensagemWhatsApp.WaMessageId == wamid
-                    && c.SolicitacaoId != null)
-                .Select(c => c.SolicitacaoId)
+                    && (c.SolicitacaoId != null
+                        || (c.AgendamentoExternoId != null
+                            && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                            && c.Status != StatusComunicacao.AguardandoVerificacaoCadastral)))
+                .Select(c => new AlvoDoLembrete(c.SolicitacaoId, c.AgendamentoExternoId))
                 .FirstOrDefaultAsync(ct);
             if (porContexto is not null) return porContexto;
         }
@@ -158,16 +176,19 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         var telefone = ctx.Conversa.TelefoneCanonical;
         var recentes = await db.ComunicacoesPaciente.AsNoTracking()
             .Where(c => c.Finalidade == FinalidadeComunicacao.LembreteAgendamento
-                && c.SolicitacaoId != null && c.Telefone != null && c.EnviadoEm != null
+                && (c.SolicitacaoId != null
+                    || (c.AgendamentoExternoId != null && c.Status != StatusComunicacao.AguardandoVerificacaoCadastral))
+                && c.Telefone != null && c.EnviadoEm != null
                 && c.EnviadoEm > DateTime.UtcNow.AddDays(-30))
             .OrderByDescending(c => c.EnviadoEm)
-            .Select(c => new { c.SolicitacaoId, c.Telefone })
+            .Select(c => new { c.SolicitacaoId, c.AgendamentoExternoId, c.Telefone })
             .Take(50)
             .ToListAsync(ct);
 
         return recentes
-            .FirstOrDefault(c => Conversas.TelefoneWhatsApp.MesmoNumero(c.Telefone, telefone))
-            ?.SolicitacaoId;
+            .Where(c => Conversas.TelefoneWhatsApp.MesmoNumero(c.Telefone, telefone))
+            .Select(c => new AlvoDoLembrete(c.SolicitacaoId, c.AgendamentoExternoId))
+            .FirstOrDefault();
     }
 
     /// <summary>"Sim! Está confirmado!" do lembrete: confirma (ou só agradece, se já estava).</summary>
@@ -403,8 +424,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             return;
         }
 
-        var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
-            n => n.AgendamentoExternoId == agendamentoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+        var notificacao = await ComunicacaoDoExternoAsync(agendamentoId, ct);
         if (notificacao is null) return;
 
         await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
@@ -445,8 +465,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         a.AtualizadoEm = DateTime.UtcNow;
         logger.LogInformation("Paciente avisou que não irá ao agendamento externo {Id} via WhatsApp.", a.Id);
 
-        var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
-            n => n.AgendamentoExternoId == agendamentoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+        var notificacao = await ComunicacaoDoExternoAsync(agendamentoId, ct);
         if (notificacao is not null)
             await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
                 EtapaConfirmacaoAgendamento.AguardandoMotivo, ct);
@@ -460,6 +479,16 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             + "O seu aviso fica registrado para a equipe de regulação da Secretaria de Saúde.",
             pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
+
+    /// <summary>A comunicação que ancora a conversa do agendamento externo: o aviso do agendamento,
+    /// ou — quando só houve lembrete — o lembrete.</summary>
+    private Task<ComunicacaoPaciente?> ComunicacaoDoExternoAsync(Guid agendamentoId, CancellationToken ct) =>
+        db.ComunicacoesPaciente
+            .Where(n => n.AgendamentoExternoId == agendamentoId
+                && (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                    || n.Finalidade == FinalidadeComunicacao.LembreteAgendamento))
+            .OrderBy(n => n.Finalidade)
+            .FirstOrDefaultAsync(ct);
 
     private async Task GravarMotivoExternoAsync(ManipuladorContexto ctx, Guid agendamentoId, CancellationToken ct)
     {

@@ -1,4 +1,5 @@
 import { Settings2 } from 'lucide-react';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { AbaSernitConfiguracao } from '@/features/sernit/components/AbaSernitConfiguracao';
 
@@ -21,7 +22,10 @@ export default function RegulacaoSernitConfiguracaoPage() {
       <header className="flex items-center gap-3">
         <Settings2 className="size-6 text-red-600" />
         <div>
-          <h1 className="text-xl font-semibold">Regulação — Configuração do SERNIT (Niterói)</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold">Regulação — Configuração do SERNIT (Niterói)</h1>
+            <AjudaManual artigo="sernit-configuracao" />
+          </div>
           <p className="text-sm text-slate-500">
             Credenciais e motores das fontes externas de regulação.
           </p>

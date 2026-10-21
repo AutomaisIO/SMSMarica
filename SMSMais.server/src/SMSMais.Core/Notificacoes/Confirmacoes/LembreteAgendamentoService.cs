@@ -171,6 +171,19 @@ public sealed class LembreteAgendamentoWorker(
                 logger.LogError(ex, "Falha ao enfileirar lembretes de agendamento — tenta de novo.");
             }
 
+            // SER/SERNIT/ESUS SG em escopo próprio: falha de um lado não segura o lembrete do outro.
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<AgendamentosExternos.ILembreteAgendamentoExternoService>()
+                    .EnfileirarDevidosAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Falha ao enfileirar lembretes do SER/SERNIT/ESUS SG — tenta de novo.");
+            }
+
             try { await Task.Delay(Intervalo, stoppingToken); }
             catch (OperationCanceledException) { return; }
         }

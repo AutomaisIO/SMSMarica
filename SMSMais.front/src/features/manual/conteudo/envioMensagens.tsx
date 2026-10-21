@@ -245,7 +245,7 @@ export const artigoEnvioMensagens: Artigo = {
   grupo: 'atendimento',
   icone: Send,
   publico: 'Gestão e equipe técnica — quem configura o automático e quem investiga por que uma mensagem não chegou',
-  atualizadoEm: '2026-10-20',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'envio',
     'mensagem',
@@ -354,8 +354,9 @@ export const artigoEnvioMensagens: Artigo = {
                 <tr>
                   <td className="px-3 py-2 font-medium">Lembrete</td>
                   <td className="px-3 py-2">
-                    Os dias antes configurados em Regras. Não sai se a primeira mensagem tem menos de 7 dias, se a
-                    pessoa disse que não vai, ou depois da orientação ao posto / "Vou ao posto".
+                    Os dias antes configurados em Regras (SISREG) ou na Configuração de cada regulação (SER, SERNIT,
+                    ESUS). Não sai se a primeira mensagem tem menos de 7 dias, se a pessoa disse que não vai, ou depois
+                    da orientação ao posto / "Vou ao posto".
                   </td>
                   <td className="px-3 py-2">
                     já confirmou: <code>agendamento_proximo</code>
@@ -366,7 +367,11 @@ export const artigoEnvioMensagens: Artigo = {
                 </tr>
                 <tr>
                   <td className="px-3 py-2 font-medium">Aviso de cancelamento</td>
-                  <td className="px-3 py-2">Cancelamento feito aqui ou trazido do SISREG — só os feitos depois de ligar o aviso.</td>
+                  <td className="px-3 py-2">
+                    Cancelamento feito aqui ou trazido do SISREG; ou o SER/SERNIT/ESUS mostrando o pedido cancelado ou
+                    devolvido para a fila com a data pela frente (chave da regulação, espera 30 min). Só os feitos depois
+                    de ligar o aviso.
+                  </td>
                   <td className="px-3 py-2">
                     <code>agendamento_cancelado_anonimo</code>
                   </td>
@@ -743,6 +748,17 @@ export const artigoEnvioMensagens: Artigo = {
             <Item>
               Por unidade e por procedimento: a chave de aviso no mapeamento do SISREG. As duas precisam estar ligadas
               para a confirmação nascer.
+            </Item>
+          </Lista>
+          <Sub>Na Configuração de cada regulação (bloco Avisos ao paciente)</Sub>
+          <Lista>
+            <Item>
+              <strong>SER, SERNIT e ESUS</strong>: lembrete (ligado e dias antes) e aviso de cancelamento dos agendamentos
+              daquele sistema — chaves próprias, que nascem desligadas.
+            </Item>
+            <Item>
+              <strong>SISREG</strong>: o mesmo bloco mostra as chaves de Regras (lembrete e aviso de cancelamento) — um
+              valor só, visto dos dois lugares.
             </Item>
           </Lista>
           <Sub>No ambiente do servidor (prefixo ComunicacaoPaciente__)</Sub>

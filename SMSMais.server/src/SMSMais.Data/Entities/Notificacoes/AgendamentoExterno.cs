@@ -17,6 +17,23 @@ public enum SituacaoAgendamentoExterno
     Desmarcado = 3,
 }
 
+/// <summary>O que o sistema de destino mostrava quando o agendamento foi
+/// <see cref="SituacaoAgendamentoExterno.Desmarcado"/> — é o que decide se o paciente é avisado, e
+/// com que palavras.</summary>
+public enum MotivoDesmarqueExterno
+{
+    /// <summary>Saiu de "Agendada" para algo que não diz que o atendimento caiu (pendência, saída da
+    /// fila do ESUS, pedido apagado do espelho): o paciente NÃO é avisado — a pendência do SER às
+    /// vezes volta com o mesmo dia, e o ESUS não diz por que o pedido saiu.</summary>
+    Outro = 1,
+
+    /// <summary>O pedido está "Cancelada" no SER/SERNIT.</summary>
+    Cancelado = 2,
+
+    /// <summary>O pedido voltou para a fila (devolvido à regulação) com a data ainda pela frente.</summary>
+    VoltouParaFila = 3,
+}
+
 /// <summary>
 /// Um agendamento do SER, do SERNIT ou do ESUS de São Gonçalo, visto pelo lado do AVISO ao paciente
 /// (10/10/2026). É a âncora da <see cref="ComunicacaoPaciente"/> desses sistemas, no lugar da
@@ -66,6 +83,10 @@ public class AgendamentoExterno
 
     public SituacaoAgendamentoExterno Situacao { get; set; } = SituacaoAgendamentoExterno.Ativo;
     public DateTime? EncerradoEm { get; set; }
+
+    /// <summary>Só no <see cref="SituacaoAgendamentoExterno.Desmarcado"/>: por que deixou de valer.
+    /// Nulo nos desmarques anteriores a 21/10/2026.</summary>
+    public MotivoDesmarqueExterno? MotivoDesmarque { get; set; }
 
     // ---- Resposta do PACIENTE (mesma semântica da Solicitacao) ----
 

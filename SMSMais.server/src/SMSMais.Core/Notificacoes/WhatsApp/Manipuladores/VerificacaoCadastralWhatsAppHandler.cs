@@ -176,7 +176,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                         // cancelou: se a atendente registrou o motivo para o paciente, é ele que sai;
                         // sem motivo registrado, vale a orientação genérica de procurar o posto.
                         await ResponderAsync(ctx,
-                            await MotivoCancelamentoParaPacienteAsync(alvoInteresse.SolicitacaoId, ct) is { } porQue
+                            await MotivoCancelamentoParaPacienteAsync(alvoInteresse, ct) is { } porQue
                                 ? $"Esse agendamento foi cancelado. {porQue}"
                                 : "Esse agendamento foi cancelado. Para saber mais e remarcar, procure o posto de "
                                   + "saúde onde o paciente tem cadastro.", ct);
@@ -1305,9 +1305,27 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     /// ou null quando não foi registrado. É deliberadamente o texto que a atendente escreveu para
     /// ser dito — nunca a justificativa interna que foi ao SISREG.
     /// </summary>
-    private async Task<string?> MotivoCancelamentoParaPacienteAsync(Guid? solicitacaoId, CancellationToken ct)
+    private async Task<string?> MotivoCancelamentoParaPacienteAsync(
+        Data.Entities.ComunicacaoPaciente alvo, CancellationToken ct)
     {
-        if (solicitacaoId is not { } sid) return null;
+        // Agendamento do SER/SERNIT/ESUS SG: não há motivo redigido por atendente — o que se sabe é o
+        // que o sistema de regulação mostrou. Devolvido à fila não é o fim: a pessoa segue esperando.
+        if (alvo.AgendamentoExternoId is { } externoId)
+        {
+            var a = await db.AgendamentosExternos.AsNoTracking()
+                .Where(x => x.Id == externoId)
+                .Select(x => new { x.Sistema, x.MotivoDesmarque })
+                .FirstOrDefaultAsync(ct);
+            if (a is null) return null;
+            var sistema = AgendamentosExternos.AgendamentoExternoService.Rotulo(a.Sistema);
+            return a.MotivoDesmarque == Data.Entities.Notificacoes.MotivoDesmarqueExterno.VoltouParaFila
+                ? $"O pedido voltou para a fila da regulação do {sistema} e aguarda uma nova data. "
+                  + "Para saber mais, procure o posto de saúde onde o paciente tem cadastro."
+                : $"O pedido foi cancelado na regulação do {sistema}. "
+                  + "Para saber mais, procure o posto de saúde onde o paciente tem cadastro.";
+        }
+
+        if (alvo.SolicitacaoId is not { } sid) return null;
         var motivo = await db.Solicitacoes.AsNoTracking()
             .Where(s => s.Id == sid)
             .Select(s => s.MotivoCancelamentoParaPaciente)
@@ -1344,7 +1362,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             // motivo registrado para o paciente, quando existe, responde o "por quê" aqui também.
             var deQuemCancelado = nome is null ? "do paciente" : $"de *{nome}*";
             await ResponderAsync(ctx,
-                await MotivoCancelamentoParaPacienteAsync(alvo.SolicitacaoId, ct) is { } porQue
+                await MotivoCancelamentoParaPacienteAsync(alvo, ct) is { } porQue
                     ? $"Tudo bem! O agendamento {deQuemCancelado} foi cancelado. {porQue}"
                     : $"Tudo bem! O agendamento {deQuemCancelado} foi cancelado. "
                       + "Para saber mais e remarcar, procure o posto de saúde onde o paciente tem cadastro.", ct);

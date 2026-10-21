@@ -5,6 +5,7 @@ using SMSMais.Core.Integracoes.Sisreg;
 using SMSMais.Core.Integracoes.Sisreg.Configuracao;
 using SMSMais.Core.Integracoes.Sisreg.Dtos;
 using SMSMais.Core.Integracoes.SisregWeb.Importacao;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -41,6 +42,24 @@ public sealed class SisregConfiguracaoController(
         await _configuracaoService.AtualizarAsync(request, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Avisos ao paciente do SISREG (as mesmas chaves de Mensageria → Regras): lembrete X dias antes e aviso de cancelamento (21/10/2026).</summary>
+    [HttpGet("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<AvisosPacienteRegulacaoDto> ObterAvisosPaciente(
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos, CancellationToken cancellationToken) =>
+        avisos.ObterAsync(SistemaRegulacao.Sisreg, cancellationToken);
+
+    [HttpPut("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<AvisosPacienteRegulacaoDto> SalvarAvisosPaciente(
+        [FromBody] SalvarAvisosPacienteRegulacaoRequest corpo,
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
+        CancellationToken cancellationToken) =>
+        avisos.SalvarAsync(SistemaRegulacao.Sisreg, corpo, cancellationToken);
 
     /// <summary>
     /// Liga/desliga o sincronismo AUTOMÁTICO com o SISREG — varredura diária das unidades e lote de

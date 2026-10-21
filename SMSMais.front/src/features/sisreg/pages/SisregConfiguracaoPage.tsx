@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BellRing, Loader2, PlugZap, Settings2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
+import { AvisosPacienteSecao } from '@/features/regulacao/components/configuracao/AvisosPacienteSecao';
 import { testarConexaoSisreg } from '@/features/sisreg/api/sisregApi';
 import {
   useAtualizarConfiguracaoSisreg,
@@ -62,6 +64,7 @@ const FORM_VAZIO: Form = {
 };
 
 export function SisregConfiguracaoPage() {
+  const podeEditarAvisos = usePermissao('SisregConfiguracao', 'Edicao');
   const config = useConfiguracaoSisreg();
   const salvar = useAtualizarConfiguracaoSisreg();
 
@@ -327,6 +330,8 @@ export function SisregConfiguracaoPage() {
       <FilaEsperaSecao />
 
       <IndicadoresColetaSecao />
+
+      <AvisosPacienteSecao sistema="sisreg" podeEditar={podeEditarAvisos} />
 
       {/* Não há telefone de aviso por integração: a lista é uma só, em Avisos no celular. */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

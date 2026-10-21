@@ -29,6 +29,7 @@ import {
   useTestarCredencialEsusSg,
   useVarreduraAutomaticaEsusSg,
 } from '@/features/esussg/api/queries';
+import { AvisosPacienteSecao } from '@/features/regulacao/components/configuracao/AvisosPacienteSecao';
 import type {
   ExecucaoEsusSg,
   ModoVarreduraEsusSg,
@@ -67,6 +68,7 @@ const DICA_STATUS: Partial<Record<StatusVarreduraEsusSg, string>> = {
   Parcial:
     'Cobertura incompleta, declarada: alguma fatia de agendados não fechou a conta (lido ≠ declarado pelo ESUS) ou uma fila não pôde ser lida. Rode de novo.',
   Interrompida: 'Parada por queda do serviço — retoma sozinha pelo cursor.',
+  Erro: 'A rodada não terminou. A rodada diária que dá erro é refeita sozinha uma hora depois (até 4 vezes no dia).',
 };
 
 const ROTULO_MODO: Record<ModoVarreduraEsusSg, string> = {
@@ -256,8 +258,15 @@ export function AbaEsusSgConfiguracao() {
             {x.status === 'Parcial' && <AlertTriangle className="size-3.5" />}
             {ROTULO_STATUS[x.status]}
           </span>
+          {/* Vermelho só no erro e na cobertura incompleta. Concluída com texto é a retomada de antes
+              de 21/10/2026, que guardava a mensagem da queda mesmo depois de terminar bem. */}
           {x.mensagemErro && (
-            <div className="max-w-48 truncate text-[11px] text-red-700" title={x.mensagemErro}>
+            <div
+              className={`max-w-48 truncate text-[11px] ${
+                x.status === 'Erro' || x.status === 'Parcial' ? 'text-red-700' : 'text-slate-500'
+              }`}
+              title={x.mensagemErro}
+            >
               {x.mensagemErro}
             </div>
           )}
@@ -484,6 +493,8 @@ export function AbaEsusSgConfiguracao() {
           </p>
         </div>
       </section>
+
+      <AvisosPacienteSecao sistema="esussg" podeEditar={podeEditar} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">

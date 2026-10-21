@@ -10,6 +10,7 @@ import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoEnvioMensagens } from '@/features/manual/conteudo/envioMensagens';
 import { artigoEquipamentos } from '@/features/manual/conteudo/equipamentos';
 import { artigoEsusSaoGoncalo } from '@/features/manual/conteudo/esusSaoGoncalo';
+import { artigoSerConfiguracao, artigoSernitConfiguracao } from '@/features/manual/conteudo/configuracaoSerSernit';
 import { artigoExtensaoChrome } from '@/features/manual/conteudo/extensaoChrome';
 import { artigoExtensaoChromeGerenciar } from '@/features/manual/conteudo/extensaoChromeGerenciar';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
@@ -124,7 +125,9 @@ export const ARTIGOS: Artigo[] = [
   artigoRegulacaoGestaoFila,
   artigoRegulacaoSolicitacoes,
   artigoRegrasElegibilidade,
+  artigoSerConfiguracao,
   artigoSerMedicos,
+  artigoSernitConfiguracao,
   artigoSernitMedicos,
   artigoSisregConfiguracao,
   artigoSisregConsultar,

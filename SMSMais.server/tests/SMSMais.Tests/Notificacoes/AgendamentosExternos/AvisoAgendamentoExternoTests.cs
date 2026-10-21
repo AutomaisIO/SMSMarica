@@ -80,12 +80,27 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
             db, pacientes, Substitute.For<ICidadaoLoginLinkService>(), whats,
             Options.Create(new ComunicacaoPacienteOptions()), new UsuarioAtualAccessorFake(),
             Substitute.For<IDispensaContatoService>(), Substitute.For<IContatoComprometidoService>(),
-            Regras(avisoExterno), NullLogger<ComunicacaoPacienteService>.Instance);
+            Regras(avisoExterno), NullLogger<ComunicacaoPacienteService>.Instance,
+            avisosRegulacao: AvisosDaRegulacao());
     }
 
     private AgendamentoExternoService Varredura(SmsMaisDbContext db, bool avisoExterno = true) =>
         new(db, Comunicacoes(db, Whats(), Guid.NewGuid(), avisoExterno: avisoExterno), Regras(avisoExterno),
-            NullLogger<AgendamentoExternoService>.Instance);
+            AvisosDaRegulacao(), NullLogger<AgendamentoExternoService>.Instance);
+
+    /// <summary>As chaves de lembrete e cancelamento das regulações externas, sem passar pela tabela
+    /// (que é uma só para a base de testes inteira). Padrão: tudo desligado, como nasce.</summary>
+    internal static IAvisoRegulacaoConfiguracaoService AvisosDaRegulacao(
+        bool lembrete = false, int dias = 2, bool cancelamento = false, DateTime? cancelamentoLigadoEm = null)
+    {
+        var regras = new[] { SistemaRegulacao.Ser, SistemaRegulacao.Sernit, SistemaRegulacao.EsusSg }
+            .ToDictionary(s => s, s => new AvisoRegulacaoRegras(s, lembrete, dias, cancelamento,
+                cancelamento ? cancelamentoLigadoEm ?? DateTime.UtcNow.AddDays(-1) : null));
+        var avisos = Substitute.For<IAvisoRegulacaoConfiguracaoService>();
+        avisos.RegrasExternasAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<SistemaRegulacao, AvisoRegulacaoRegras>)regras);
+        return avisos;
+    }
 
     private static string Numero() => Random.Shared.Next(10_000_000, 99_999_999).ToString();
 

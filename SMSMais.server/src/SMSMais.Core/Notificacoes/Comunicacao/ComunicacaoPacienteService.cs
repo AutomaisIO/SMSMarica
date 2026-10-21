@@ -33,6 +33,12 @@ public interface IComunicacaoPacienteService
     /// × finalidade; a linha que não chegou a sair volta para a fila). NÃO salva.</summary>
     Task EnfileirarExternoAsync(Data.Entities.Notificacoes.AgendamentoExterno agendamento, CancellationToken ct = default);
 
+    /// <summary>O mesmo, para o lembrete e o aviso de cancelamento do agendamento externo.
+    /// <paramref name="saiEm"/> = a partir de quando pode sair (carência do cancelamento). NÃO salva.</summary>
+    Task EnfileirarExternoAsync(
+        Data.Entities.Notificacoes.AgendamentoExterno agendamento, FinalidadeComunicacao finalidade,
+        DateTime? saiEm, CancellationToken ct = default);
+
     /// <summary>Processa UMA tentativa de envio. Nunca lança — falha vira backoff/estado terminal.</summary>
     Task ProcessarTentativaEnvioAsync(Guid comunicacaoId, CancellationToken ct = default);
 
@@ -101,7 +107,9 @@ public sealed class ComunicacaoPacienteService(
     Confirmacoes.IConfirmacaoConfiguracaoService regrasConfirmacao,
     ILogger<ComunicacaoPacienteService> logger,
     // Opcional: só precisa do banco, e os testes que montam o serviço à mão seguem compilando.
-    Equipamentos.IRegrasDoExameService? regrasDoExame = null) : IComunicacaoPacienteService
+    Equipamentos.IRegrasDoExameService? regrasDoExame = null,
+    // Opcional pelo mesmo motivo: sem ele, as chaves do SER/SERNIT/ESUS SG são lidas direto do banco.
+    AgendamentosExternos.IAvisoRegulacaoConfiguracaoService? avisosRegulacao = null) : IComunicacaoPacienteService
 {
     private Equipamentos.IRegrasDoExameService RegrasDoExame => regrasDoExame ??= new Equipamentos.RegrasDoExameService(db);
 
@@ -195,9 +203,12 @@ public sealed class ComunicacaoPacienteService(
         });
     }
 
-    public async Task EnfileirarExternoAsync(AgendamentoExterno agendamento, CancellationToken ct = default)
+    public Task EnfileirarExternoAsync(AgendamentoExterno agendamento, CancellationToken ct = default)
+        => EnfileirarExternoAsync(agendamento, FinalidadeComunicacao.ConfirmacaoAgendamento, null, ct);
+
+    public async Task EnfileirarExternoAsync(
+        AgendamentoExterno agendamento, FinalidadeComunicacao finalidade, DateTime? saiEm, CancellationToken ct = default)
     {
-        const FinalidadeComunicacao finalidade = FinalidadeComunicacao.ConfirmacaoAgendamento;
         var existente = await db.ComunicacoesPaciente
             .FirstOrDefaultAsync(c => c.AgendamentoExternoId == agendamento.Id && c.Finalidade == finalidade, ct);
         if (existente is not null)
@@ -206,7 +217,10 @@ public sealed class ComunicacaoPacienteService(
             // que tinha sido encerrado ANTES de sair volta para a fila. O que saiu não sai de novo.
             if (existente.Status is StatusComunicacao.Dispensada or StatusComunicacao.Falha
                 && existente.EnviadoEm is null)
+            {
                 RearmarParaNovoEnvio(existente);
+                if (saiEm is not null) existente.ProximaTentativaEm = saiEm;
+            }
             return;
         }
 
@@ -218,7 +232,7 @@ public sealed class ComunicacaoPacienteService(
             AgendamentoExternoId = agendamento.Id,
             PacienteId = agendamento.PacienteId,
             Status = StatusComunicacao.Pendente,
-            ProximaTentativaEm = DateTime.UtcNow,
+            ProximaTentativaEm = saiEm ?? DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
         });
     }
@@ -382,11 +396,27 @@ public sealed class ComunicacaoPacienteService(
     internal static Impedimento? MotivoQueImpedeEnvioExterno(
         FinalidadeComunicacao finalidade, AgendamentoExterno? a, DateTime dataMinimaUtc)
     {
+        // O aviso de CANCELAMENTO fala de um agendamento desmarcado — e só dos desmarques em que o
+        // sistema diz que o atendimento caiu. Se ele voltou a valer (ou virou outra data), calado.
+        if (finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+        {
+            if (a is null || a.Situacao != SituacaoAgendamentoExterno.Desmarcado
+                || a.MotivoDesmarque is not (MotivoDesmarqueExterno.Cancelado or MotivoDesmarqueExterno.VoltouParaFila))
+                return new(ImpedimentoEnvio.SolicitacaoEncerrada,
+                    "O agendamento voltou a valer (ou foi remarcado) no sistema de regulação antes do aviso.");
+            return InstanteDoAgendamento(a) <= dataMinimaUtc
+                ? new(ImpedimentoEnvio.SemDataFutura, "Agendamento já passou: aviso de cancelamento não enviado.")
+                : null;
+        }
+
         if (a is null || a.Situacao != SituacaoAgendamentoExterno.Ativo)
             return new(ImpedimentoEnvio.SolicitacaoEncerrada,
                 "Agendamento remarcado ou desmarcado no sistema de regulação antes do envio.");
         if (InstanteDoAgendamento(a) <= dataMinimaUtc)
             return new(ImpedimentoEnvio.SemDataFutura, "Agendamento sem data futura no momento do envio.");
+        if (finalidade == FinalidadeComunicacao.LembreteAgendamento
+            && a.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
+            return new(ImpedimentoEnvio.AvisouQueNaoVai, "Paciente avisou que não poderá comparecer.");
         if (EhDaConfirmacao(finalidade) && a.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
             return new(ImpedimentoEnvio.JaRespondeu, "Paciente já respondeu.");
         return null;
@@ -1246,18 +1276,47 @@ public sealed class ComunicacaoPacienteService(
         var a = n.AgendamentoExterno;
         if (MotivoQueImpedeEnvioExterno(n.Finalidade, a, DateTime.UtcNow) is { } impedimento)
         {
-            Terminal(n, impedimento.Tipo == ImpedimentoEnvio.SolicitacaoEncerrada
+            Terminal(n, impedimento.Tipo is ImpedimentoEnvio.SolicitacaoEncerrada or ImpedimentoEnvio.AvisouQueNaoVai
                 ? StatusComunicacao.Dispensada : StatusComunicacao.Falha, impedimento.Motivo);
             return;
         }
 
-        // Chave desligada no menu Mensageria: segura na fila, sem gastar tentativa. Quem acabou de se
-        // identificar recebe mesmo assim — está na conversa esperando.
-        if (!(await RegrasAsync(ct)).AvisoAgendamentoExternoHabilitado && !n.IgnorarVerificacaoTelefone)
+        // Chave desligada: segura na fila, sem gastar tentativa. O aviso do agendamento tem a chave da
+        // Mensageria; o lembrete e o aviso de cancelamento, a da tela de Configuração da regulação.
+        // Quem acabou de se identificar recebe mesmo assim — está na conversa esperando.
+        var regraExterna = n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            ? null
+            : await RegraDaRegulacaoAsync(a!.Sistema, ct);
+        var chaveDesligada = n.Finalidade switch
+        {
+            FinalidadeComunicacao.ConfirmacaoAgendamento => (await RegrasAsync(ct)).AvisoAgendamentoExternoHabilitado
+                ? null
+                : "Aviso dos agendamentos do SER/SERNIT/ESUS desligado (Mensageria → Regras): fica na fila.",
+            FinalidadeComunicacao.LembreteAgendamento => regraExterna!.LembreteHabilitado
+                ? null
+                : $"Lembrete do {AgendamentosExternos.AgendamentoExternoService.Rotulo(a!.Sistema)} desligado "
+                  + "(Configuração da regulação): fica na fila.",
+            FinalidadeComunicacao.CancelamentoAgendamento => regraExterna!.AvisoCancelamentoHabilitado
+                ? null
+                : $"Aviso de cancelamento do {AgendamentosExternos.AgendamentoExternoService.Rotulo(a!.Sistema)} "
+                  + "desligado (Configuração da regulação): fica na fila.",
+            _ => null,
+        };
+        if (chaveDesligada is not null && !n.IgnorarVerificacaoTelefone)
         {
             n.Tentativas--;
             n.ProximaTentativaEm = DateTime.UtcNow.AddHours(1);
-            n.MotivoFalha = "Aviso dos agendamentos do SER/SERNIT/ESUS desligado (Mensageria → Regras): fica na fila.";
+            n.MotivoFalha = chaveDesligada;
+            return;
+        }
+
+        // Ligar o aviso de cancelamento vale daqui para frente — o mesmo corte do SISREG: o que entrou
+        // na fila antes da última virada da chave não sai.
+        if (n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento
+            && (regraExterna!.AvisoCancelamentoLigadoEm is not { } ligadoEm || n.CriadoEm < ligadoEm))
+        {
+            Terminal(n, StatusComunicacao.Falha,
+                "Aviso retroativo: entrou na fila antes de o aviso de cancelamento ser ligado.");
             return;
         }
 
@@ -1276,6 +1335,37 @@ public sealed class ComunicacaoPacienteService(
             return;
         }
         if (!await DefinirTelefoneAsync(n, paciente, ct)) return;
+
+        var contatoVerificado = TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
+            && TelefoneWhatsApp.MesmoNumero(paciente.TelefoneVerificado, n.Telefone);
+
+        // Aviso de cancelamento: o modelo do SISREG (agendamento_cancelado_anonimo). Anônimo para
+        // número não provado; o agendamento inteiro para o provado.
+        if (n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+        {
+            await EnviarModeloExternoAsync(n, options.Value.TemplateCancelamento,
+                [Tratamento(paciente.NomeCompleto, paciente.Sexo), FraseCancelamentoExterno(a!, contatoVerificado)], ct);
+            return;
+        }
+
+        // Lembrete de quem JÁ confirmou, para contato provado e com a hora conhecida: o lembrete
+        // objetivo do SISREG (agendamento_proximo). Sem hora o modelo não fecha ("às *{{4}}*"), e o
+        // número não provado não recebe dado nenhum — os dois seguem pela primeira mensagem, como o
+        // aviso do agendamento.
+        if (n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+            && a!.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada
+            && a.Hora is { } hora
+            && (contatoVerificado || n.IgnorarVerificacaoTelefone))
+        {
+            await EnviarModeloExternoAsync(n, options.Value.TemplateLembreteConfirmado,
+            [
+                Tratamento(paciente.NomeCompleto, paciente.Sexo),
+                $"{(a.Tipo == TipoAgendamento.Consulta ? "Sua consulta" : "Seu exame")} de {ProcedimentoParaFrase(a)}",
+                a.Data.ToString("dd/MM/yyyy", PtBr),
+                $"{hora.ToString("HH:mm", PtBr)}h",
+            ], ct);
+            return;
+        }
 
         // Liberada depois da identificação (ou o operador assumiu o risco): os dados, na conversa.
         if (n.IgnorarVerificacaoTelefone)
@@ -1313,6 +1403,7 @@ public sealed class ComunicacaoPacienteService(
     private async Task<bool> EnviarDetalhesExternoNaConversaAsync(
         ComunicacaoPaciente n, AgendamentoExterno a, string telefoneDestino, CancellationToken ct)
     {
+        // O aviso de cancelamento não tem "dados" a liberar: a frase dele já é a notícia inteira.
         if (n.Status != StatusComunicacao.Pendente
             || n.Finalidade is not (FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento)
             || MotivoQueImpedeEnvioExterno(n.Finalidade, a, DateTime.UtcNow) is not null)
@@ -1366,6 +1457,90 @@ public sealed class ComunicacaoPacienteService(
             : string.Empty;
         return await whatsApp.EnviarTextoAsync(
             telefoneDestino, texto, pacienteId: n.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+    }
+
+    /// <summary>Lembrete e aviso de cancelamento da regulação (sem linha = desligado).</summary>
+    private async Task<AgendamentosExternos.AvisoRegulacaoRegras> RegraDaRegulacaoAsync(
+        SistemaRegulacao sistema, CancellationToken ct)
+    {
+        if (avisosRegulacao is not null
+            && (await avisosRegulacao.RegrasExternasAsync(ct)).TryGetValue(sistema, out var regra))
+            return regra;
+        var l = await db.AvisosRegulacaoConfiguracao.AsNoTracking().FirstOrDefaultAsync(x => x.Sistema == sistema, ct);
+        return l is null
+            ? AgendamentosExternos.AvisoRegulacaoRegras.Desligado(sistema)
+            : new(sistema, l.LembreteHabilitado, l.LembreteDiasAntes, l.AvisoCancelamentoHabilitado, l.AvisoCancelamentoLigadoEm);
+    }
+
+    /// <summary>Envia um modelo aprovado (sem botão de link) e grava o resultado na comunicação.</summary>
+    private async Task EnviarModeloExternoAsync(
+        ComunicacaoPaciente n, string template, string[] parametros, CancellationToken ct)
+    {
+        var opts = options.Value;
+        (parametros, var incompativel) = await AjustarAoModeloAsync(template, parametros, ct);
+        if (incompativel is not null)
+        {
+            Terminal(n, StatusComunicacao.Falha, incompativel);
+            return;
+        }
+
+        var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
+            n.Telefone!, template, opts.Idioma, parametros, [],
+            pacienteId: n.PacienteId, conteudoLegivel: ConteudoLegivel(template, opts, parametros), ct: ct);
+        if (resultado.Ok)
+        {
+            n.Status = StatusComunicacao.Enviada;
+            n.EnviadoEm = DateTime.UtcNow;
+            n.MotivoFalha = null;
+            n.ProximaTentativaEm = null; // recibos (entrega/leitura/falha) chegam pelo webhook
+            if (resultado.WaMessageId is not null) n.MensagemWhatsAppId = await MensagemDoEnvioAsync(resultado, ct);
+        }
+        else
+        {
+            await TratarEnvioRecusadoAsync(n, resultado, ct);
+        }
+    }
+
+    /// <summary>
+    /// O {{2}} do <c>agendamento_cancelado_anonimo</c> para o agendamento externo, SEM ponto final:
+    /// "seu exame foi cancelado" (número não provado — nada do agendamento) ou "sua consulta de
+    /// OFTALMOLOGIA marcada para o dia 19/10/2026 às 08:30h foi desmarcada e o pedido voltou para a
+    /// fila da regulação" (provado). Devolvido à fila não é "cancelado": a pessoa continua esperando.
+    /// </summary>
+    internal static string FraseCancelamentoExterno(AgendamentoExterno a, bool contatoVerificado)
+    {
+        var consulta = a.Tipo == TipoAgendamento.Consulta;
+        var oQue = consulta ? "sua consulta" : "seu exame";
+        var voltouParaFila = a.MotivoDesmarque == MotivoDesmarqueExterno.VoltouParaFila;
+        var verbo = voltouParaFila
+            ? (consulta ? "foi desmarcada" : "foi desmarcado")
+            : (consulta ? "foi cancelada" : "foi cancelado");
+        var resto = voltouParaFila ? " e o pedido voltou para a fila da regulação" : string.Empty;
+
+        if (!contatoVerificado) return $"{oQue} {verbo}{resto}";
+
+        var procedimento = ProcedimentoParaFrase(a);
+        var de = procedimento.Length > 0 ? $" de {procedimento}" : string.Empty;
+        var marcada = consulta ? "marcada" : "marcado";
+        return $"{oQue}{de} {marcada} para o dia "
+            + $"{AgendamentosExternos.LeituraAgendamentoExterno.DataParaPaciente(a.Data, a.Hora)} {verbo}{resto}";
+    }
+
+    /// <summary>
+    /// O procedimento para caber numa frase ("Sua consulta de …"): sem o "CONSULTA EM" que o SER põe na
+    /// frente das especialidades (ficaria "consulta de CONSULTA EM OFTALMOLOGIA") e aparado.
+    /// </summary>
+    internal static string ProcedimentoParaFrase(AgendamentoExterno a)
+    {
+        var p = AgendamentosExternos.LeituraAgendamentoExterno.Espacos(a.Procedimento);
+        if (a.Tipo == TipoAgendamento.Consulta)
+            foreach (var prefixo in new[] { "CONSULTA EM ", "CONSULTA DE ", "CONSULTA " })
+                if (p.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase) && p.Length > prefixo.Length)
+                {
+                    p = p[prefixo.Length..];
+                    break;
+                }
+        return p.Length <= 120 ? p : p[..120].TrimEnd() + "…";
     }
 
     /// <summary>
