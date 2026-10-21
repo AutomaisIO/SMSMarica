@@ -15,7 +15,10 @@ public interface IIntegracaoCredencialService
 
     Task<IntegracaoCredencialDto> ObterAsync(string provedor, CancellationToken cancellationToken = default);
 
-    /// <summary>Upsert: cifra apenas os campos preenchidos; vazios mantêm o valor atual.</summary>
+    /// <summary>
+    /// Upsert: cifra apenas os campos preenchidos; vazios mantêm o valor atual. ParametrosJson nulo
+    /// mantém o JSON gravado (ele carrega a agenda dos motores — ADR-0076).
+    /// </summary>
     Task AtualizarAsync(string provedor, AtualizarIntegracaoCredencialRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>Limpa as credenciais e desativa o provedor (mantém a linha + auditoria).</summary>

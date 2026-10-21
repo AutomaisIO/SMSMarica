@@ -52,7 +52,8 @@ export function CredencialOAuthCard({ cred }: { cred: IntegracaoCredencial }) {
           clientId: clientId || undefined,
           clientSecret: clientSecret || undefined,
           redirectUri: redirectUri.trim() || null,
-          parametrosJson: parametros.trim() || null,
+          // Vazio vai como '' (limpa); null no servidor quer dizer "mantém o que está gravado".
+          parametrosJson: parametros.trim(),
           ativo,
         },
       },
