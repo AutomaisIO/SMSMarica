@@ -78,6 +78,14 @@ public interface ISolicitacoesService
     Task ReenviarWorklistAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Chamado depois de salvar a anamnese. No Holter ela alimenta a worklist (altura, peso,
+    /// fumante): exame autorizado e ainda não enviado entra na fila; já enviado volta a Solicitada
+    /// e o item do aparelho é sobrescrito com os dados corrigidos. Fora do Holter, não faz nada.
+    /// Devolve o aviso para a tela (null = nada a dizer).
+    /// </summary>
+    Task<string?> AnamneseSalvaAsync(Guid exameId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Troca a estação (equipamento) de destino de um exame já enviado à worklist (ticket #72).
     /// A FONTE DA VERDADE é o dcm4chee, não o Status/WorklistItemUid local: SEMPRE consulta a
     /// existência do item; se houver, exclui e CONFIRMA a remoção antes de recriar no novo destino

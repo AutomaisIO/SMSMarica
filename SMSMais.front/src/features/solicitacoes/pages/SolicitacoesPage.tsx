@@ -480,7 +480,7 @@ export function SolicitacoesPage() {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
           <div className="flex items-center justify-end gap-2">
-            {/* O aparelho que não usa anamnese (MAPA, Holter) não oferece o botão (ADR-0075). */}
+            {/* O aparelho que não usa anamnese (MAPA) não oferece o botão (ADR-0075). No Holter ela é o que manda o exame à worklist. */}
             {s.usaAnamnese !== false ? (
               <BotaoAnamnese
                 solicitacaoExameId={s.id}

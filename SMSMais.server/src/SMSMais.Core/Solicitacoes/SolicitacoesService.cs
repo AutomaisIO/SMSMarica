@@ -741,6 +741,16 @@ public sealed class SolicitacoesService(
         var impedidos = new List<(ExameImagem Exame, string Motivo)>();
         foreach (var exame in exames.Where(x => x.Status == StatusSolicitacaoExame.Solicitada))
         {
+            // Holter: a worklist espera a anamnese (altura, peso, fumante vão no item). Não é erro —
+            // é o próximo passo, e quem o dá é a técnica ao salvar a anamnese (AnamneseSalvaAsync).
+            if (await AguardaAnamneseHolterAsync(exame, cancellationToken))
+            {
+                exame.ProximaTentativaEm = null;
+                exame.ErroIntegracaoPacs = AguardandoAnamneseHolter;
+                exame.AtualizadoEm = agora;
+                continue;
+            }
+
             var impedimento = await ImpedimentoEnvioPacsAsync(exame, reg, cancellationToken);
             if (impedimento is null)
             {
@@ -850,6 +860,119 @@ public sealed class SolicitacoesService(
                 s.EquipamentoId = candidatos[0].Id;
             }
         }
+    }
+
+    /// <summary>Texto que a tela mostra no exame de Holter parado à espera da anamnese.</summary>
+    private const string AguardandoAnamneseHolter =
+        "Aguardando a anamnese do Holter (altura, peso e fumante). O exame vai à worklist do aparelho "
+        + "quando a técnica salvar a anamnese.";
+
+    /// <summary>
+    /// O exame é Holter, o aparelho usa anamnese (ADR-0075) e ela ainda não foi salva. Aparelho com
+    /// a anamnese desligada não segura nada — senão desligar o botão prenderia o exame para sempre.
+    /// </summary>
+    private async Task<bool> AguardaAnamneseHolterAsync(ExameImagem exame, CancellationToken ct)
+    {
+        var modalidade = exame.TipoExame?.ModalidadeDicom
+            ?? await _db.TiposExame.AsNoTracking()
+                .Where(t => t.Id == exame.TipoExameId)
+                .Select(t => (ModalidadeDicom?)t.ModalidadeDicom)
+                .FirstOrDefaultAsync(ct);
+        if (!Anamneses.AnamneseHolter.EhHolter(modalidade)) return false;
+        if (!(await _regrasDoExame.ResolverAsync(exame.Id, ct)).UsaAnamnese) return false;
+
+        var exameDaAnamnese = await ExamesDoPedido.ExameDaAnamneseAsync(_db, exame.Id, ct);
+        return !await _db.Anamneses.AsNoTracking().AnyAsync(a =>
+            a.ExameImagemId == exameDaAnamnese && a.ExcluidoEm == null && a.Tipo == Anamneses.AnamneseHolter.Tipo, ct);
+    }
+
+    /// <summary>Altura, peso e fumante da anamnese do Holter para o item de worklist; null fora do Holter.</summary>
+    private async Task<DadosClinicosWorklist?> DadosClinicosAsync(ExameImagem s, CancellationToken ct)
+    {
+        if (!Anamneses.AnamneseHolter.EhHolter(s.TipoExame?.ModalidadeDicom)) return null;
+
+        var exameDaAnamnese = await ExamesDoPedido.ExameDaAnamneseAsync(_db, s.Id, ct);
+        var conteudo = await _db.Anamneses.AsNoTracking()
+            .Where(a => a.ExameImagemId == exameDaAnamnese && a.ExcluidoEm == null && a.Tipo == Anamneses.AnamneseHolter.Tipo)
+            .Select(a => a.ConteudoJson)
+            .FirstOrDefaultAsync(ct);
+        return conteudo is null ? null : Anamneses.AnamneseHolter.ParaWorklist(conteudo);
+    }
+
+    public async Task<string?> AnamneseSalvaAsync(Guid exameId, CancellationToken cancellationToken = default)
+    {
+        var alvo = await _db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == exameId && e.ExcluidoEm == null)
+            .Select(e => new { e.SolicitacaoId })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (alvo is null) return null;
+
+        // A anamnese é do pedido (ADR-0074): vale para todos os exames de Holter dele.
+        var exames = await _db.ExamesImagem
+            .Include(x => x.TipoExame)
+            .Include(x => x.Solicitacao)
+            .Where(x => x.SolicitacaoId == alvo.SolicitacaoId && x.ExcluidoEm == null)
+            .OrderBy(x => x.Ordem)
+            .ToListAsync(cancellationToken);
+
+        var agora = DateTime.UtcNow;
+        string? aviso = null;
+        var impedidos = new List<(ExameImagem Exame, string Motivo)>();
+        foreach (var exame in exames)
+        {
+            if (!Anamneses.AnamneseHolter.EhHolter(exame.TipoExame?.ModalidadeDicom)) continue;
+            if (!(await _regrasDoExame.ResolverAsync(exame.Id, cancellationToken)).UsaAnamnese) continue;
+
+            // Antes da recepção, nada a fazer: a autorização já encontra a anamnese e enfileira.
+            if (exame.Solicitacao!.AutorizadoEm is null)
+            {
+                aviso = "Anamnese salva. O exame vai à worklist quando a recepção confirmar a presença.";
+                continue;
+            }
+
+            switch (exame.Status)
+            {
+                case StatusSolicitacaoExame.Solicitada:
+                    if (await ImpedimentoEnvioPacsAsync(exame, exame.Solicitacao, cancellationToken) is { } motivo)
+                    {
+                        exame.ProximaTentativaEm = null;
+                        exame.ErroIntegracaoPacs = motivo;
+                        impedidos.Add((exame, motivo));
+                        aviso = motivo;
+                        break;
+                    }
+                    exame.ProximaTentativaEm = agora;
+                    exame.TentativasEnvio = 0;
+                    exame.ErroIntegracaoPacs = null;
+                    aviso = "Anamnese salva. O exame está indo para a worklist do aparelho.";
+                    break;
+
+                case StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida:
+                    // Correção: volta a Solicitada e o worker refaz o POST /mwlitems — upsert pela
+                    // mesma chave (StudyInstanceUID + SPS ID), então o item da estação é SOBRESCRITO,
+                    // não duplicado. O WorklistItemUid fica: é a mesma chave.
+                    exame.Status = StatusSolicitacaoExame.Solicitada;
+                    exame.ProximaTentativaEm = agora;
+                    exame.TentativasEnvio = 0;
+                    exame.ErroIntegracaoPacs = null;
+                    aviso = "Anamnese corrigida. O paciente está sendo atualizado na worklist do aparelho.";
+                    break;
+
+                default:
+                    // Em execução, realizado, laudado ou cancelado: o item já saiu (ou vai sair) da
+                    // estação. A correção fica na anamnese, mas não chega mais ao aparelho.
+                    aviso = $"Anamnese salva. O exame já está {exame.Status} — a correção não chega mais à "
+                        + "worklist; se o aparelho já gravou, corrija os dados nele.";
+                    continue;
+            }
+            exame.AtualizadoEm = agora;
+            exame.AtualizadoPor = _usuarioAtual.UsuarioId;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        foreach (var (exame, motivo) in impedidos)
+            await ReportarImpedimentoAsync(exame, exame.Solicitacao!, motivo, cancellationToken);
+        return aviso;
     }
 
     /// <summary>
@@ -1156,6 +1279,9 @@ public sealed class SolicitacoesService(
             throw new ConflitoException("solicitacaoExame.envio_impedido", impedimento);
         }
 
+        if (await AguardaAnamneseHolterAsync(s, cancellationToken))
+            throw new ConflitoException("solicitacaoExame.aguardando_anamnese", AguardandoAnamneseHolter);
+
         s.ProximaTentativaEm = DateTime.UtcNow;
         s.ErroIntegracaoPacs = null;
         s.AtualizadoEm = DateTime.UtcNow;
@@ -1344,8 +1470,20 @@ public sealed class SolicitacoesService(
             switch (s.Status)
             {
                 case StatusSolicitacaoExame.Solicitada:
+                    // Última trava do Holter: qualquer caminho que enfileire (escopo religado,
+                    // correção de identidade, satélite) para aqui até a anamnese existir.
+                    if (await AguardaAnamneseHolterAsync(s, cancellationToken))
+                    {
+                        s.ProximaTentativaEm = null;
+                        s.ErroIntegracaoPacs = AguardandoAnamneseHolter;
+                        s.AtualizadoEm = agora;
+                        await _db.SaveChangesAsync(cancellationToken);
+                        break;
+                    }
+
                     // 1) Cria o MWL item (resolve paciente no FHIR + registra no dcm4chee + POST /mwlitems).
-                    var sps = await _mwlClient.CriarOuAtualizarMwlItemAsync(s, cancellationToken);
+                    var sps = await _mwlClient.CriarOuAtualizarMwlItemAsync(
+                        s, await DadosClinicosAsync(s, cancellationToken), cancellationToken);
                     s.WorklistItemUid = sps;
                     s.Status = StatusSolicitacaoExame.Enviada;
                     s.ErroIntegracaoPacs = null;
@@ -1599,7 +1737,8 @@ public sealed class SolicitacoesService(
         //    EnviadorWorklistService recria pela via resiliente (reversível, sem meio-caminho no PACS).
         try
         {
-            s.WorklistItemUid = await _mwlClient.CriarOuAtualizarMwlItemAsync(s, cancellationToken);
+            s.WorklistItemUid = await _mwlClient.CriarOuAtualizarMwlItemAsync(
+                s, await DadosClinicosAsync(s, cancellationToken), cancellationToken);
             s.ErroIntegracaoPacs = null;
 
             if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))

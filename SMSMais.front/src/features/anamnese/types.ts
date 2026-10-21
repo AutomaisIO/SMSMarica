@@ -572,6 +572,8 @@ export type AnamneseDto = {
   preenchidoPorNome: string | null;
   criadoEm: string;
   atualizadoEm: string | null;
+  /** O que aconteceu com a worklist ao salvar (Holter). Null = nada a dizer. */
+  avisoWorklist?: string | null;
 };
 
 export type AnamneseContexto = {
@@ -593,7 +595,22 @@ export type AnamneseContexto = {
   cidCodigo: string | null;
   /** Descrição do CID por extenso quando o catálogo reconhece; null = mostra só o código. */
   cidDescricao: string | null;
+  /** Qual questionário a tela abre — pela modalidade do tipo de exame (ECG = Holter). */
+  questionario?: 'mamografia' | 'holter';
 };
+
+// ---- Anamnese do Holter (vai à worklist do CardioNet) ----
+
+export type RespostaFumante = 'sim' | 'nao' | 'parou';
+
+/** Conteúdo da anamnese do Holter — o servidor confere o mesmo shape (AnamneseHolter.cs). */
+export type AnamneseHolterConteudo = {
+  alturaCm: number | null;
+  pesoKg: number | null;
+  fumante: RespostaFumante | null;
+};
+
+export const holterVazio = (): AnamneseHolterConteudo => ({ alturaCm: null, pesoKg: null, fumante: null });
 
 export type SalvarAnamnesePayload = {
   tipo: string;
