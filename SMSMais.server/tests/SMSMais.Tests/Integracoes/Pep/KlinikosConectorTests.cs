@@ -393,6 +393,108 @@ public class KlinikosConectorTests
 
     // ---------------- resolução da estratégia ----------------
 
+    // ---------------- duas versões do banco: U.2025 (UPAs) e K.2024 (Conde) ----------------
+
+    private static Dictionary<string, bool> Sonda(params string[] existentes) =>
+        KlinikosLayoutSonda.Colunas.ToDictionary(c => c, existentes.Contains);
+
+    /// <summary>
+    /// As assinaturas medidas em 21/10/2026 nas três bases. Meia assinatura NÃO é "quase igual":
+    /// um Conde que perdesse <c>spa_nome_social</c> rodaria um SQL que lê a coluna e cairia no meio.
+    /// </summary>
+    [Fact]
+    public void A_versao_do_banco_sai_do_esquema_e_meia_assinatura_e_desconhecida()
+    {
+        Assert.Equal(KlinikosLayout.U2025,
+            KlinikosLayoutSonda.Detectar(Sonda("evo_spa", "evo_atendamb", "tab_sinais")));
+        Assert.Equal(KlinikosLayout.K2024, KlinikosLayoutSonda.Detectar(Sonda(
+            "evo_atendamb", "evo_inativa", "evo_rascunho", "aco_vitais", "spa_nome_social")));
+
+        Assert.Null(KlinikosLayoutSonda.Detectar(Sonda(
+            "evo_atendamb", "evo_inativa", "evo_rascunho", "aco_vitais")));
+        Assert.Null(KlinikosLayoutSonda.Detectar(Sonda("evo_spa")));
+        Assert.Null(KlinikosLayoutSonda.Detectar(Sonda()));
+    }
+
+    /// <summary>
+    /// O SQL das UPAs não muda com a versão nova: o default é a U.2025, e ela ainda lê o boletim
+    /// direto da evolução e os sinais de <c>UPA_SinaisVitais</c>.
+    /// </summary>
+    [Fact]
+    public void O_SQL_das_UPAs_segue_o_mesmo()
+    {
+        Assert.Equal(KlinikosImportacaoStrategy.SqlEvolucoes(10, 20),
+            KlinikosImportacaoStrategy.SqlEvolucoes(10, 20, KlinikosLayout.U2025));
+        Assert.Contains("AND SPA_CODIGO IS NOT NULL", KlinikosImportacaoStrategy.SqlEvolucoes(10, 20), StringComparison.Ordinal);
+        Assert.Contains("FROM UPA_SinaisVitais", KlinikosImportacaoStrategy.SqlSinaisVitais(10, 20), StringComparison.Ordinal);
+        Assert.Contains("spa_nomesocial, spa_cartao_nsaude", KlinikosImportacaoStrategy.SqlBoletins(10, 20), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// K.2024: a evolução chega ao boletim pelo atendimento, e evolução inativada ou em rascunho
+    /// não entra — nem como documento, nem como "teve atendimento", nem como sinal vital.
+    /// </summary>
+    [Fact]
+    public void Na_K2024_a_evolucao_chega_ao_boletim_pelo_atendimento_e_descarta_inativa_e_rascunho()
+    {
+        var evo = KlinikosImportacaoStrategy.SqlEvolucoes(10, 20, KlinikosLayout.K2024);
+        var flags = KlinikosImportacaoStrategy.SqlFlagsAtendimento(["B1"], KlinikosLayout.K2024);
+        var sinais = KlinikosImportacaoStrategy.SqlSinaisVitais(10, 20, KlinikosLayout.K2024);
+
+        foreach (var sql in new[] { evo, flags, sinais })
+        {
+            Assert.Contains("JOIN atendimento_ambulatorial aa ON aa.atendamb_codigo = e.atendamb_codigo", sql, StringComparison.Ordinal);
+            Assert.Contains("ISNULL(e.Inativa, 'N') <> 'S' AND ISNULL(e.Rascunho, 0) = 0", sql, StringComparison.Ordinal);
+            Assert.DoesNotContain("e.SPA_CODIGO", sql, StringComparison.OrdinalIgnoreCase);
+        }
+        Assert.Contains("aa.spa_codigo AS SPA_CODIGO", evo, StringComparison.Ordinal);
+        Assert.Contains("aa.spa_codigo IN ('B1')", flags, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// K.2024 não tem <c>UPA_SinaisVitais</c>: as três etapas que a UPA junta nessa tabela
+    /// (acolhimento, classificação, evolução) entram por um UNION, cada uma com a sua origem.
+    /// A classificação chega ao boletim pelo acolhimento — o <c>spa_codigo</c> dela é vazio.
+    /// </summary>
+    [Fact]
+    public void Na_K2024_os_sinais_vem_das_tres_etapas_com_origem()
+    {
+        var sql = KlinikosImportacaoStrategy.SqlSinaisVitais(10, 20, KlinikosLayout.K2024);
+
+        Assert.Contains("'aco' AS origem", sql, StringComparison.Ordinal);
+        Assert.Contains("SELECT 'cr'", sql, StringComparison.Ordinal);
+        Assert.Contains("SELECT 'evo'", sql, StringComparison.Ordinal);
+        Assert.Contains("JOIN UPA_ACOLHIMENTO a ON a.ACO_CODIGO = c.aco_codigo", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("UPA_SinaisVitais", sql, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(sql, @"rv_atualizacao\) > 10").Count);
+    }
+
+    [Fact]
+    public void Na_K2024_o_nome_social_do_boletim_vem_da_coluna_com_sublinhado()
+    {
+        var sql = KlinikosImportacaoStrategy.SqlBoletins(10, 20, KlinikosLayout.K2024);
+
+        Assert.Contains("spa_nome_social AS spa_nomesocial", sql, StringComparison.Ordinal);
+        // O boletim da K.2024 não tem CNS: a coluna sai nula, e o CNS vem do cadastro do paciente.
+        Assert.Contains("CAST(NULL AS VARCHAR(20)) AS spa_cartao_nsaude", sql, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Com origem, o identifier leva a tabela: o acolhimento 777 e a evolução 777 são medidas
+    /// diferentes. Sem origem (UPAs), o identifier é o que já está no hub — mudar duplicaria
+    /// toda Observation das UPAs no próximo ciclo.
+    /// </summary>
+    [Fact]
+    public void Identifier_do_sinal_vital_leva_a_origem_so_quando_ha_origem()
+    {
+        var semOrigem = Mapper().BuildObservacoesVitais(Sv(), "Patient/a", "Encounter/e").Select(o => o.Chave);
+        var acolhimento = Mapper().BuildObservacoesVitais(Sv() with { Origem = "aco" }, "Patient/a", "Encounter/e")
+            .Select(o => o.Chave);
+
+        Assert.All(semOrigem, c => Assert.StartsWith("upa24h-marica:777:", c, StringComparison.Ordinal));
+        Assert.All(acolhimento, c => Assert.StartsWith("upa24h-marica:aco-777:", c, StringComparison.Ordinal));
+    }
+
     /// <summary>
     /// <c>TipoFonte.SqlServer</c> é o TIPO DE BANCO, não o produto de PEP. Sem a família como
     /// discriminador, um prontuário diferente rodando sobre SQL Server casaria com a estratégia

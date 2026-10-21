@@ -109,7 +109,14 @@ internal sealed record ItemPrescricaoLinha(
     int? Duracao, string? Sos, long Rv);
 
 /// <summary>Sinais vitais colunados (<c>UPA_SinaisVitais</c>) — cada coluna vira uma Observation.</summary>
+/// <param name="Origem">
+/// Tabela de onde a medida veio, quando a base não tem <c>UPA_SinaisVitais</c> (Conde, K.2024):
+/// <c>aco</c> (acolhimento), <c>cr</c> (classificação de risco) ou <c>evo</c> (evolução). Entra no
+/// identifier porque os três códigos são sequências independentes — o acolhimento 5 e a evolução 5
+/// são medidas diferentes. Nulo na U.2025, e é o nulo que mantém os identifiers das UPAs iguais
+/// aos que já estão no hub.
+/// </param>
 internal sealed record SinaisVitaisLinha(
     long Codigo, string? SpaCodigo, string? Data, string? ProfCodigo,
     string? PressaoArterial, string? Pulso, string? Temperatura, string? FrequenciaRespiratoria,
-    string? Hgt, string? SaturacaoO2, string? Peso, long Rv);
+    string? Hgt, string? SaturacaoO2, string? Peso, long Rv, string? Origem = null);
