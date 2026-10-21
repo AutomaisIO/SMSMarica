@@ -133,14 +133,15 @@ public class CompressaoPdfTests
     }
 
     [Fact]
-    public async Task A_recusa_cita_o_limite_configurado_e_onde_mudar()
+    public async Task A_recusa_diz_so_o_tamanho_e_o_limite_do_destino()
     {
         var acao = () => AnexosParaSer.PrepararAsync(
             [Pdf("PEDIDO", ComCabecalhoPdf(3_000_000))], "SERNIT", 2 * 1024 * 1024,
             new CompressorFalso(CompressaoPdf.NaoCoube), CancellationToken.None);
 
-        await acao.Should().ThrowAsync<ValidacaoException>()
-            .WithMessage("*limite do SERNIT é 2,0 MB*Configuração do SERNIT*");
+        // Quem regula não precisa saber como a compressão tentou nem onde o limite se configura.
+        var erro = await acao.Should().ThrowAsync<ValidacaoException>();
+        erro.Which.Message.Should().Be("O arquivo \"PEDIDO.pdf\" tem 2,9 MB. O limite do SERNIT é 2,0 MB por arquivo.");
     }
 
     [Fact]
@@ -157,14 +158,14 @@ public class CompressaoPdfTests
     }
 
     [Fact]
-    public async Task Pdf_que_nem_no_piso_cabe_e_recusado_dizendo_ate_onde_desceu()
+    public async Task Pdf_que_nem_comprimido_cabe_e_recusado_com_o_limite()
     {
         var compressor = new CompressorFalso(CompressaoPdf.NaoCoube);
 
         var acao = () => AnexosParaSer.PrepararAsync(
             [Pdf("PEDIDO MÉDICO", ComCabecalhoPdf(6_000_000))], "SERNIT", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
-        await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*PEDIDO MEDICO.pdf*SERNIT*150 dpi*");
+        await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*PEDIDO MEDICO.pdf*limite do SERNIT é 4,5 MB*");
     }
 
     [Fact]
@@ -175,7 +176,7 @@ public class CompressaoPdfTests
         var acao = () => AnexosParaSer.PrepararAsync(
             [Pdf("EXAME", ComCabecalhoPdf(6_000_000))], "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
-        await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*EXAME.pdf*5 MB*comprimi-lo*");
+        await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*EXAME.pdf*limite do SER é 4,5 MB*");
     }
 
     [Fact]
@@ -221,7 +222,7 @@ public class CompressaoPdfTests
         var acao = () => AnexosParaSer.PrepararAsync(
             [grande, Foto("A", PngRuido(10)), Foto("B", PngRuido(10))], "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
-        await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*3 anexos*mesmo comprimidos*");
+        await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*3 anexos juntos*limite do SER é 4,5 MB*");
     }
 
     [Fact]

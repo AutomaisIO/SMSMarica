@@ -82,39 +82,33 @@ public static class AnexosParaSer
         if (a.Conteudo.LongLength <= limite)
             return new AnexoParaSer(nome, a.ContentType, a.Conteudo, [a.Id], [nome]);
 
-        var acima = $"O arquivo \"{nome}\" tem {Mb(a.Conteudo.LongLength)} — o limite do {sistema} é "
-            + $"{Mb(limite)} por arquivo (Configuração do {sistema}). ";
+        var acima = AcimaDoLimite($"O arquivo \"{nome}\" tem", a.Conteudo.LongLength, sistema, limite);
 
         if (EhImagem(a))
         {
-            var menor = CompressorImagem.ComprimirAte(a.Conteudo, limite)
-                ?? throw new ValidacaoException(
-                    "anexos", acima + "Mesmo comprimido não coube sem ficar ilegível; envie uma versão menor.");
+            var menor = CompressorImagem.ComprimirAte(a.Conteudo, limite) ?? throw acima;
             return new AnexoParaSer(
                 Path.ChangeExtension(nome, ".jpg"), "image/jpeg", menor, [a.Id], [nome],
                 a.Conteudo.LongLength, "foto reduzida");
         }
 
-        if (!EhPdf(a))
-            throw new ValidacaoException(
-                "anexos", acima + "Substitua por uma versão menor (PDF comprimido) ou separe o conteúdo.");
+        if (!EhPdf(a)) throw acima;
 
         var compressao = compressorPdf is null
             ? CompressaoPdf.Indisponivel
             : await compressorPdf.ComprimirAteAsync(a.Conteudo, limite, ct);
-        return compressao.Desfecho switch
-        {
-            DesfechoCompressaoPdf.Coube => new AnexoParaSer(
-                nome, "application/pdf", compressao.Conteudo!, [a.Id], [nome],
-                a.Conteudo.LongLength, compressao.Degrau),
-            DesfechoCompressaoPdf.NaoCoube => throw new ValidacaoException(
-                "anexos", acima + $"Nem comprimido a {EscadaCompressaoPdf.Piso.Rotulo} ele coube; separe o conteúdo "
-                    + "em dois arquivos ou peça à unidade uma versão menor."),
-            _ => throw new ValidacaoException(
-                "anexos", acima + "Não foi possível comprimi-lo aqui agora; substitua por uma versão menor "
-                    + "(PDF comprimido) ou separe o conteúdo."),
-        };
+        if (compressao.Desfecho != DesfechoCompressaoPdf.Coube) throw acima;
+        return new AnexoParaSer(
+            nome, "application/pdf", compressao.Conteudo!, [a.Id], [nome], a.Conteudo.LongLength, compressao.Degrau);
     }
+
+    /// <summary>
+    /// A recusa por tamanho diz só o tamanho e o limite do destino — quem regula não precisa saber como
+    /// a compressão tentou nem onde o limite se configura. O motivo técnico (Ghostscript fora, piso de
+    /// 150 dpi) fica no log.
+    /// </summary>
+    private static ValidacaoException AcimaDoLimite(string oQue, long tamanho, string sistema, long limite) =>
+        new("anexos", $"{oQue} {Mb(tamanho)}. O limite do {sistema} é {Mb(limite)} por arquivo.");
 
     /// <summary>
     /// 3+ arquivos viram um PDF só (o "documento" que a tela pede). Se o PDF estourar o limite, passa
@@ -152,12 +146,7 @@ public static class AnexosParaSer
         }
 
         if (pdf.LongLength > limite)
-        {
-            throw new ValidacaoException(
-                "anexos",
-                $"Os {arquivos.Count} anexos juntos num PDF dão {Mb(pdf.LongLength)} mesmo comprimidos — o limite "
-                + $"do {sistema} é {Mb(limite)} por arquivo. Remova anexos ou envie um PDF menor no lugar.");
-        }
+            throw AcimaDoLimite($"Os {arquivos.Count} anexos juntos num PDF têm", pdf.LongLength, sistema, limite);
 
         return new AnexoParaSer(
             "anexos-da-solicitacao.pdf", "application/pdf", pdf,
