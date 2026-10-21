@@ -123,7 +123,8 @@ public sealed class EsusSgNotificacaoController(IEsusSgNotificacaoService notifi
         notificacoes.MarcarVistasDaSolicitacaoAsync(idEsusSg, cancellationToken);
 }
 
-/// <summary>Motor do ESUS SG: status, rodadas, disparo, credencial, agendamento diário, catálogo.</summary>
+/// <summary>Motor do ESUS SG: status, rodadas, disparo, agendamento diário, catálogo. O login é editado em
+/// Sistema → Fontes de dados (ADR-0076).</summary>
 [ApiController]
 [Route("regulacao/esussg/configuracao")]
 public sealed class EsusSgConfiguracaoController(
@@ -156,26 +157,6 @@ public sealed class EsusSgConfiguracaoController(
         await motor.DispararAsync(pedido, usuarioAtual.UsuarioId, User.Identity?.Name, cancellationToken);
         return Accepted();
     }
-
-    [HttpPut("credencial")]
-    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SalvarCredencial(
-        [FromBody] EsusSgCredencialRequest requisicao, CancellationToken cancellationToken)
-    {
-        await motor.SalvarCredencialAsync(requisicao, cancellationToken);
-        return NoContent();
-    }
-
-    /// <summary>Testa o login sem salvar. Devolve o nome do usuário no ESUS (prova de que entrou).</summary>
-    [HttpPost("testar-credencial")]
-    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType<string>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<string>> TestarCredencial(
-        [FromBody] EsusSgCredencialRequest requisicao, CancellationToken cancellationToken) =>
-        Ok(await motor.TestarCredencialAsync(requisicao, cancellationToken));
 
     [HttpGet("varredura-automatica")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]

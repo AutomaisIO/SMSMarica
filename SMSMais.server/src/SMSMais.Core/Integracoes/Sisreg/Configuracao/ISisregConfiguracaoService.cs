@@ -11,8 +11,14 @@ public interface ISisregConfiguracaoService
     /// <summary>Configuração mascarada para a tela (sem senha/token).</summary>
     Task<SisregConfiguracaoDto> ObterAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Atualiza a configuração; senha/token vazios mantêm o atual.</summary>
+    /// <summary>Atualiza o USO da API (escopo, UF/município, centrais, operação). Não toca na conexão.</summary>
     Task AtualizarAsync(AtualizarSisregConfiguracaoRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atualiza a CONEXÃO da API (URL, autenticação, login, senha, token, ativo) — chamada pela tela
+    /// Sistema → Fontes de dados (ADR-0076). Senha/token vazios mantêm o atual.
+    /// </summary>
+    Task AtualizarCredencialAsync(AtualizarCredencialSisregApiRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Liga/desliga o sincronismo AUTOMÁTICO com o SISREG (varredura diária das unidades + lote de
