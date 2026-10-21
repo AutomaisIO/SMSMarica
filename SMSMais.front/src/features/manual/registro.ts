@@ -13,6 +13,7 @@ import { artigoEsusSaoGoncalo } from '@/features/manual/conteudo/esusSaoGoncalo'
 import { artigoSerConfiguracao, artigoSernitConfiguracao } from '@/features/manual/conteudo/configuracaoSerSernit';
 import { artigoExtensaoChrome } from '@/features/manual/conteudo/extensaoChrome';
 import { artigoExtensaoChromeGerenciar } from '@/features/manual/conteudo/extensaoChromeGerenciar';
+import { artigoFontesDados } from '@/features/manual/conteudo/fontesDados';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoGuiasAgendamento } from '@/features/manual/conteudo/guiasAgendamento';
 import { artigoIndicadoresRegulacao } from '@/features/manual/conteudo/indicadoresRegulacao';
@@ -110,6 +111,7 @@ export const ARTIGOS: Artigo[] = [
   artigoEsusSaoGoncalo,
   artigoExtensaoChrome,
   artigoExtensaoChromeGerenciar,
+  artigoFontesDados,
   artigoFluxoAtendimentoWhatsApp,
   artigoGuiasAgendamento,
   artigoEnvioMensagens,

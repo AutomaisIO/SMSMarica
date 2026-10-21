@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   BookCopy,
   Clock,
-  KeyRound,
   Loader2,
   Play,
   RefreshCw,
@@ -20,14 +19,13 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { FonteDoRecurso } from '@/features/fontes-dados/components/FonteDoRecurso';
 import {
   useDispararVarreduraEsusSg,
   useExecucoesEsusSg,
-  useSalvarCredencialEsusSg,
   useSalvarVarreduraAutomaticaEsusSg,
   useSincronizarCatalogoEsusSg,
   useStatusMotorEsusSg,
-  useTestarCredencialEsusSg,
   useVarreduraAutomaticaEsusSg,
 } from '@/features/esussg/api/queries';
 import { AvisosPacienteSecao } from '@/features/regulacao/components/configuracao/AvisosPacienteSecao';
@@ -36,8 +34,6 @@ import type {
   ModoVarreduraEsusSg,
   StatusVarreduraEsusSg,
 } from '@/features/esussg/types';
-
-const CLIENTE_PADRAO = 'SGO';
 
 const ROTULO_STATUS: Record<StatusVarreduraEsusSg, string> = {
   Pendente: 'Pendente',
@@ -123,7 +119,7 @@ function duracao(seg: number | null): string {
 
 /**
  * Configuração do motor do ESUS de São Gonçalo (ADR-0063): estado, rodada manual, catálogo,
- * disparo diário, credencial e as últimas rodadas. Espelha a aba do SERNIT.
+ * disparo diário e as últimas rodadas (o login fica em Sistema → Fontes de dados). Espelha a aba do SERNIT.
  */
 export function AbaEsusSgConfiguracao() {
   const podeEditar = usePermissao('RegulacaoConfiguracao', 'Edicao');
@@ -133,13 +129,8 @@ export function AbaEsusSgConfiguracao() {
   const { data: automatica } = useVarreduraAutomaticaEsusSg();
   const salvarAutomatica = useSalvarVarreduraAutomaticaEsusSg();
   const sincronizarCatalogo = useSincronizarCatalogoEsusSg();
-  const testar = useTestarCredencialEsusSg();
-  const salvar = useSalvarCredencialEsusSg();
 
   const [modo, setModo] = useState<ModoVarreduraEsusSg>('Diaria');
-  const [usuario, setUsuario] = useState('');
-  const [senha, setSenha] = useState('');
-  const [cliente, setCliente] = useState(CLIENTE_PADRAO);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [horaEdit, setHoraEdit] = useState<string | null>(null);
@@ -190,30 +181,6 @@ export function AbaEsusSgConfiguracao() {
           `${r.alterados} alterado(s), ${r.inativados} inativado(s).` +
           (mudou ? ' As mudanças foram levadas ao catálogo canônico.' : ' Nada mudou.'),
       );
-    } catch (e) {
-      setErro(extrairMensagemDeErro(e));
-    }
-  }
-
-  const credencial = () => ({ usuario: usuario.trim(), senha, cliente: cliente.trim() || null });
-
-  async function aoTestar() {
-    limparMensagens();
-    try {
-      const nome = await testar.mutateAsync(credencial());
-      setAviso(`O ESUS aceitou a credencial${nome ? ` — entrou como ${nome}` : ''}. Nada foi salvo.`);
-    } catch (e) {
-      setErro(extrairMensagemDeErro(e));
-    }
-  }
-
-  async function aoSalvar() {
-    limparMensagens();
-    try {
-      await salvar.mutateAsync(credencial());
-      // A senha não fica na tela depois de salva: ela é write-only.
-      setSenha('');
-      setAviso('Credencial validada no ESUS e salva (cifrada). O motor já pode rodar.');
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -372,8 +339,9 @@ export function AbaEsusSgConfiguracao() {
 
           {!status.credencialConfigurada && (
             <p className="rounded bg-amber-50 p-3 text-sm text-amber-800">
-              A credencial do ESUS ainda não está cadastrada. Preencha usuário, senha e cliente
-              abaixo, teste e salve — sem ela o motor não roda.
+              O login do ESUS ainda não está cadastrado. Ele é gravado em
+              <strong> Sistema → Fontes de dados</strong>, na fonte “ESUS — São Gonçalo”, que testa
+              usuário e senha antes de salvar — sem ele o motor não roda.
             </p>
           )}
         </>
@@ -500,61 +468,11 @@ export function AbaEsusSgConfiguracao() {
       {/* Fila de guias dos agendamentos (ADR-0076) — o mesmo quadro nos quatro sistemas. */}
       <FilaGuiasSecao sistema="EsusSg" podeEditar={podeEditar} />
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <KeyRound className="size-4 text-red-600" /> Credencial do ESUS
-        </h3>
-        <div className="flex flex-wrap items-end gap-3">
-          <Campo label="Usuário" htmlFor="esussg-usuario" className="w-56">
-            <Input
-              id="esussg-usuario"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              autoComplete="off"
-              placeholder={status?.usuario ?? ''}
-            />
-          </Campo>
-          <Campo label="Senha" htmlFor="esussg-senha" className="w-56">
-            <Input
-              id="esussg-senha"
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              autoComplete="new-password"
-            />
-          </Campo>
-          <Campo label="Cliente" htmlFor="esussg-cliente" className="w-32">
-            <Input
-              id="esussg-cliente"
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value.toUpperCase())}
-              autoComplete="off"
-            />
-          </Campo>
-          <Button
-            variante="secundaria"
-            onClick={aoTestar}
-            disabled={!podeEditar || testar.isPending || salvar.isPending || !usuario || !senha}
-          >
-            {testar.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Testar
-          </Button>
-          <Button
-            onClick={aoSalvar}
-            disabled={!podeEditar || salvar.isPending || testar.isPending || !usuario || !senha}
-          >
-            {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            Salvar
-          </Button>
-        </div>
-        <p className="mt-2 text-xs text-slate-500">
-          <strong>Testar</strong> só faz o login e mostra o nome com que o ESUS reconheceu a conta,
-          sem gravar nada. <strong>Salvar</strong> valida primeiro e só então guarda a credencial
-          cifrada — credencial que não funciona faria o motor falhar de madrugada, sem ninguém por
-          perto. A senha é write-only: depois de salva, não volta para a tela. O cliente é o código
-          da instalação do ESUS (padrão {CLIENTE_PADRAO}).
-        </p>
-      </section>
+      <FonteDoRecurso
+        nome="ESUS — São Gonçalo"
+        configurada={status?.credencialConfigurada ?? null}
+        detalhe={status?.credencialConfigurada ? `login: ${status.usuario ?? '—'} · cliente ${status.cliente}` : null}
+      />
 
       <section>
         <h3 className="mb-2 text-sm font-semibold">Últimas rodadas</h3>

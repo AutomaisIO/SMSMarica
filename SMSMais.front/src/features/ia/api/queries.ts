@@ -1,19 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   atualizarConfiguracao,
-  atualizarFonteConfig,
-  criarFonteConfig,
   desativarAprendizado,
   listarAprendizados,
   listarCorrecoes,
   listarFeedbacks,
   listarFontesConfig,
   obterConfiguracao,
-  removerFonteConfig,
-  testarConexaoFonte,
   tratarFeedback,
 } from '@/features/ia/api/iaApi';
-import type { AtualizarConfiguracaoPayload, SalvarFonteConfigPayload } from '@/features/ia/types';
+import type { AtualizarConfiguracaoPayload } from '@/features/ia/types';
 
 export const iaKeys = {
   raiz: ['ia'] as const,
@@ -48,46 +44,6 @@ export function useFontesConfig() {
   return useQuery({
     queryKey: iaKeys.fontesConfig,
     queryFn: listarFontesConfig,
-  });
-}
-
-export function useCriarFonteConfig() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: SalvarFonteConfigPayload) => criarFonteConfig(payload),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: iaKeys.fontesConfig });
-      client.invalidateQueries({ queryKey: iaKeys.fontes });
-    },
-  });
-}
-
-export function useAtualizarFonteConfig() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: SalvarFonteConfigPayload }) =>
-      atualizarFonteConfig(id, payload),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: iaKeys.fontesConfig });
-      client.invalidateQueries({ queryKey: iaKeys.fontes });
-    },
-  });
-}
-
-export function useRemoverFonteConfig() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => removerFonteConfig(id),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: iaKeys.fontesConfig });
-      client.invalidateQueries({ queryKey: iaKeys.fontes });
-    },
-  });
-}
-
-export function useTestarConexaoFonte() {
-  return useMutation({
-    mutationFn: (id: string) => testarConexaoFonte(id),
   });
 }
 

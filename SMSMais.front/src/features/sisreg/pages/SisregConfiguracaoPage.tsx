@@ -9,6 +9,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { AvisosPacienteSecao } from '@/features/regulacao/components/configuracao/AvisosPacienteSecao';
+import { FonteDoRecurso } from '@/features/fontes-dados/components/FonteDoRecurso';
 import { testarConexaoSisreg } from '@/features/sisreg/api/sisregApi';
 import {
   useAtualizarConfiguracaoSisreg,
@@ -24,20 +25,13 @@ import type {
   AtualizarSisregConfiguracaoPayload,
   EscopoSisreg,
   FonteCadastroPaciente,
-  TipoAutenticacaoSisreg,
 } from '@/features/sisreg/types';
 
 type Form = {
-  baseUrl: string;
   escopo: EscopoSisreg;
   uf: string;
   municipio: string;
   centraisReguladoras: string;
-  tipoAutenticacao: TipoAutenticacaoSisreg;
-  login: string;
-  senha: string;
-  token: string;
-  ativo: boolean;
   fonteCadastroPaciente: FonteCadastroPaciente;
   consultasSimultaneasSer: number;
 };
@@ -50,16 +44,10 @@ function normalizarSimultaneas(valor: string | number): number {
 }
 
 const FORM_VAZIO: Form = {
-  baseUrl: 'https://sisreg-es.saude.gov.br/',
   escopo: 'Municipal',
   uf: '',
   municipio: '',
   centraisReguladoras: '',
-  tipoAutenticacao: 'Basic',
-  login: '',
-  senha: '',
-  token: '',
-  ativo: true,
   fonteCadastroPaciente: 'Sisreg',
   consultasSimultaneasSer: 1,
 };
@@ -79,14 +67,10 @@ export function SisregConfiguracaoPage() {
     if (config.data) {
       setForm((f) => ({
         ...f,
-        baseUrl: config.data.baseUrl,
         escopo: config.data.escopo,
         uf: config.data.uf,
         municipio: config.data.municipio,
         centraisReguladoras: config.data.centraisReguladoras,
-        tipoAutenticacao: config.data.tipoAutenticacao,
-        login: config.data.login ?? '',
-        ativo: config.data.ativo,
         fonteCadastroPaciente: config.data.fonteCadastroPaciente,
         consultasSimultaneasSer: normalizarSimultaneas(config.data.consultasSimultaneasSer),
       }));
@@ -102,24 +86,15 @@ export function SisregConfiguracaoPage() {
     e.preventDefault();
     setErro(null);
     const payload: AtualizarSisregConfiguracaoPayload = {
-      baseUrl: form.baseUrl.trim(),
       escopo: form.escopo,
       uf: form.uf.trim(),
       municipio: form.municipio.trim(),
       centraisReguladoras: form.centraisReguladoras.trim(),
-      tipoAutenticacao: form.tipoAutenticacao,
-      login: form.login.trim() || null,
-      senha: form.senha ? form.senha : undefined,
-      token: form.token ? form.token : undefined,
-      ativo: form.ativo,
       fonteCadastroPaciente: form.fonteCadastroPaciente,
       consultasSimultaneasSer: normalizarSimultaneas(form.consultasSimultaneasSer),
     };
     salvar.mutate(payload, {
-      onSuccess: () => {
-        setSalvo(true);
-        setForm((f) => ({ ...f, senha: '', token: '' }));
-      },
+      onSuccess: () => setSalvo(true),
       onError: (err) => setErro(extrairMensagemDeErro(err)),
     });
   }
@@ -146,8 +121,8 @@ export function SisregConfiguracaoPage() {
           <AjudaManual artigo="sisreg-configuracao" />
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Credenciais e escopo da integração de leitura com o SISREG (DATASUS). Senha e token são
-          gravados de forma segura e nunca exibidos.
+          Escopo e operação da integração de leitura com o SISREG (DATASUS). O login, a senha e o
+          endereço da API ficam em Sistema → Fontes de dados.
         </p>
       </header>
 
@@ -160,12 +135,15 @@ export function SisregConfiguracaoPage() {
       {/* Antes do formulário: é o que se procura com pressa quando o sincronismo precisa parar. */}
       <SincronismoAutomaticoSecao />
 
+      <FonteDoRecurso
+        nome="SISREG — API (DATASUS)"
+        configurada={config.data ? config.data.senhaDefinida || config.data.tokenDefinido : null}
+        detalhe={config.data ? `${config.data.ativo ? 'Ativa' : 'Inativa'} · ${config.data.baseUrl}` : null}
+      />
+
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <form onSubmit={aoSalvar} className="space-y-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Campo label="URL base" htmlFor="sr-url" className="sm:col-span-2">
-              <Input id="sr-url" value={form.baseUrl} onChange={(e) => set('baseUrl', e.target.value)} />
-            </Campo>
 
             <Campo label="Escopo" htmlFor="sr-escopo">
               <Select
@@ -175,18 +153,6 @@ export function SisregConfiguracaoPage() {
               >
                 <option value="Municipal">Municipal</option>
                 <option value="Nacional">Nacional</option>
-              </Select>
-            </Campo>
-
-            <Campo label="Tipo de autenticação" htmlFor="sr-auth">
-              <Select
-                id="sr-auth"
-                value={form.tipoAutenticacao}
-                onChange={(e) => set('tipoAutenticacao', e.target.value as TipoAutenticacaoSisreg)}
-              >
-                <option value="Basic">Basic (login/senha)</option>
-                <option value="Bearer">Bearer (token)</option>
-                <option value="ApiKey">ApiKey (token)</option>
               </Select>
             </Campo>
 
@@ -253,46 +219,7 @@ export function SisregConfiguracaoPage() {
               />
             </Campo>
 
-            <Campo label="Login" htmlFor="sr-login" dica="Usado no esquema Basic.">
-              <Input id="sr-login" value={form.login} onChange={(e) => set('login', e.target.value)} autoComplete="off" />
-            </Campo>
-
-            <Campo
-              label="Senha"
-              htmlFor="sr-senha"
-              dica={config.data?.senhaDefinida ? 'Já definida — preencha apenas para substituir.' : 'Ainda não definida.'}
-            >
-              <Input
-                id="sr-senha"
-                type="password"
-                value={form.senha}
-                onChange={(e) => set('senha', e.target.value)}
-                placeholder={config.data?.senhaDefinida ? '••••••••' : 'Senha (esquema Basic)'}
-                autoComplete="new-password"
-              />
-            </Campo>
-
-            <Campo
-              label="Token"
-              htmlFor="sr-token"
-              className="sm:col-span-2"
-              dica={config.data?.tokenDefinido ? 'Já definido — preencha apenas para substituir.' : 'Usado nos esquemas Bearer/ApiKey.'}
-            >
-              <Input
-                id="sr-token"
-                type="password"
-                value={form.token}
-                onChange={(e) => set('token', e.target.value)}
-                placeholder={config.data?.tokenDefinido ? '••••••••••••' : 'Cole o token aqui'}
-                autoComplete="new-password"
-              />
-            </Campo>
           </div>
-
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={form.ativo} onChange={(e) => set('ativo', e.target.checked)} />
-            Integração ativa
-          </label>
 
           {erro ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>

@@ -249,7 +249,7 @@ public sealed class SisregWebSessao(
         {
             throw new ValidacaoException(
                 "sisreg.credencial_incompleta",
-                "Configure o usuário e a senha do SISREG na tela de Integrações (credencial "
+                "Configure o usuário e a senha do SISREG em Sistema → Fontes de dados (credencial "
                 + "global, usada por todas as unidades).");
         }
 
@@ -260,7 +260,7 @@ public sealed class SisregWebSessao(
     private static ValidacaoException FalhaReautenticacaoDesativada() => new(
         "sisreg.reautenticacao_desativada",
         "Falha no SISREG: a reautenticação automática está desativada para não conflitar com o "
-        + "operador humano. Ligue-a na tela de Integrações quando o robô puder reconectar.");
+        + "operador humano. Ligue-a em Sistema → Fontes de dados, na fonte do SISREG, quando o robô puder reconectar.");
 
     private async Task LoginAsync(SessaoSisreg sessao, string usuario, string senha, CancellationToken cancellationToken)
     {

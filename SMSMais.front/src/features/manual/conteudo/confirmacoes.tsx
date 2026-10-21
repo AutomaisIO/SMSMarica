@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
@@ -453,7 +453,7 @@ export const artigoConfirmacoes: Artigo = {
           />
           <Sub>De madrugada, o sistema tenta sozinho pelo e-SUS</Sub>
           <P>
-            Quando a integração com o <strong>e-SUS da atenção básica</strong> está ligada (Sistema → Integrações), toda
+            Quando a fonte <strong>e-SUS da atenção básica</strong> está ligada (Sistema → Fontes de dados), toda
             madrugada o sistema consulta o cadastro do posto de quem está nesta aba, de quem tem pendência de número
             errado e de quem teve a mensagem recusada pelo WhatsApp. É <strong>só consulta</strong>: nada é gravado no
             e-SUS. O que acontece depende do que ele encontra:

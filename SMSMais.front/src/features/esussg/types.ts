@@ -229,8 +229,6 @@ export type StatusMotorEsusSg = {
 
 export type DispararVarreduraEsusSgPayload = { modo: ModoVarreduraEsusSg };
 
-export type CredencialEsusSg = { usuario: string; senha: string; cliente?: string | null };
-
 /** Disparo diário do motor: ligado/desligado e a que horas (Brasília). */
 export type VarreduraAutomaticaEsusSg = {
   ativo: boolean;

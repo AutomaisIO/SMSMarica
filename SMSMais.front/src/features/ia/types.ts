@@ -58,29 +58,6 @@ export type FonteConfig = {
   parametrosJson?: string | null;
 };
 
-/** Payload de criação/edição de base. Senha só vai quando o usuário a digita. */
-export type SalvarFonteConfigPayload = {
-  nome: string;
-  slug?: string;
-  tipo: string;
-  dialeto: string;
-  ambiente: Ambiente;
-  host?: string;
-  porta?: number;
-  servico?: string;
-  usuario?: string;
-  baseUrl?: string;
-  /** Nova senha; omitida mantém a atual. */
-  senha?: string;
-  ativo: boolean;
-  /** Cria a base como proxy via agente (sem host/senha; credenciais no .env do destino). */
-  viaAgente?: boolean;
-  /** Família de bases de mesma estrutura (ex.: `klinikos`). */
-  familia?: string;
-  /** Parâmetros específicos do conector, em JSON. */
-  parametrosJson?: string;
-};
-
 /** Documento de conhecimento (.md) de uma base — repositório orientado ao banco. */
 export type DocumentoConhecimento = {
   id: string;
@@ -118,19 +95,6 @@ export type EmbeddingsBackfillResultado = {
   gerados: number;
   restantes: number;
   aviso?: string | null;
-};
-
-/** Token de agente recém-gerado (mostrado uma vez). */
-export type TokenAgenteGerado = {
-  slug: string;
-  token: string;
-  wssUrl: string;
-};
-
-/** Resultado de POST /ia/configuracao/fontes/{id}/testar-conexao */
-export type ResultadoTesteConexao = {
-  sucesso: boolean;
-  mensagem: string;
 };
 
 // ── Governança / Melhorias (aprendizado) ─────────────────────────────────────

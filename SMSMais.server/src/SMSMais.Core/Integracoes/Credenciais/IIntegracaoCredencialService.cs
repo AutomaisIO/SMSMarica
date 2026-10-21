@@ -53,7 +53,7 @@ public static class ProvedoresIntegracao
         ["sisreg"] = "SISREG (consulta de paciente por CNS)",
         // SER — Sistema Estadual de Regulação (SES-RJ), web scraping SOMENTE LEITURA (ADR-0042).
         // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
-        // Cadastrada pela aba SER de Regulação → Configuração, não por esta tela.
+        // Cadastrada em Sistema → Fontes de dados (ADR-0076), não por esta tela.
         ["ser"] = "SER — Sistema Estadual de Regulação (SES-RJ)",
         // SERNIT — SER de Niterói (regulacao.niteroi.rj.gov.br), mesma stack, instância própria.
         // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
@@ -61,7 +61,7 @@ public static class ProvedoresIntegracao
         // ESUS de São Gonçalo ("Novo Esus", saogoncalo.esusmais.com.br) — o produto ESUS, NÃO o
         // e-SUS do governo. JSON (APIs :8001 + :9001), SOMENTE LEITURA (ADR-0063).
         // clientId=usuário, clientSecret=senha, parametrosJson={cliente, apiUrl, legadoUrl}.
-        // Cadastrada pela aba ESUS SG de Regulação → Configuração, não por esta tela.
+        // Cadastrada em Sistema → Fontes de dados (ADR-0076), não por esta tela.
         ["esussg"] = "ESUS — São Gonçalo",
         // e-SUS APS PEC do município (o e-SUS do GOVERNO, esus.marica.rj.gov.br) — consulta do cadastro
         // do cidadão (celular) para corrigir telefone que falhou, SOMENTE LEITURA (ADR-0067).
@@ -69,10 +69,9 @@ public static class ProvedoresIntegracao
         // parametrosJson={baseUrl, acessoId, janelaInicio, janelaFim}. Credencial CEDIDA por uma
         // servidora e o PEC é sessão única: só se usa na janela da madrugada, para não derrubá-la.
         ["esuspec"] = "e-SUS APS PEC (cadastro do cidadão)",
-        // NB: o conector web do Klinikos NÃO é um provedor de credencial de serviço (não é
-        // integração tipo Google/Spaces). É uma FONTE DE PRONTUÁRIO — configurada em
-        // "Importar Prontuários → Fontes/Conectores" como uma IaFonte (Tipo=KlinikosWeb), com
-        // URL/usuário/senha próprios. Por isso não aparece aqui.
+        // NB: sisreg, ser, sernit, esussg e esuspec são FONTES DE DADOS (ADR-0076): moram nesta
+        // tabela, mas se editam em Sistema → Fontes de dados, e a tela de Integrações os esconde.
+        // O conector web do Klinikos é uma IaFonte (Tipo=KlinikosWeb), editada no mesmo lugar.
     };
 
     public static bool EhSuportado(string provedor) => Suportados.ContainsKey(provedor);

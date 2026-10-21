@@ -7,17 +7,20 @@ import {
   listarAgendasPep,
   listarBasesPep,
   listarExecucoesPep,
+  listarUsoKlinikosWeb,
   obterDiagnosticoPep,
   obterResumoDivergenciasPep,
   reprocessarDivergenciasPep,
   obterStatusPep,
   pausarMotorPep,
   salvarAgendaPep,
+  salvarUsoKlinikosWeb,
   verificarDivergenciasPep,
 } from '@/features/pep-sincronizacao/api/pepApi';
 import type {
   IniciarImportacaoPayload,
   SalvarAgendaPayload,
+  SalvarUsoKlinikosWeb,
   StatusDivergencia,
 } from '@/features/pep-sincronizacao/types';
 
@@ -26,6 +29,7 @@ export const pepKeys = {
   status: ['pep', 'status'] as const,
   execucoes: (fonteId?: string) => ['pep', 'execucoes', fonteId ?? 'todas'] as const,
   agendas: ['pep', 'agendas'] as const,
+  usoKlinikosWeb: ['pep', 'klinikos-web', 'uso'] as const,
   diagnostico: (fonteId: string) => ['pep', 'diagnostico', fonteId] as const,
   divergencias: (fonteId?: string, status?: string) =>
     ['pep', 'divergencias', fonteId ?? 'todas', status ?? 'todos'] as const,
@@ -150,5 +154,20 @@ export function useReprocessarDivergenciasPep() {
       client.invalidateQueries({ queryKey: ['pep', 'divergencias'] });
       client.invalidateQueries({ queryKey: pepKeys.status });
     },
+  });
+}
+
+// ── Conector web do Klinikos (uso por base) ──
+
+export function useUsoKlinikosWeb() {
+  return useQuery({ queryKey: pepKeys.usoKlinikosWeb, queryFn: listarUsoKlinikosWeb });
+}
+
+export function useSalvarUsoKlinikosWeb() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fonteId, payload }: { fonteId: string; payload: SalvarUsoKlinikosWeb }) =>
+      salvarUsoKlinikosWeb(fonteId, payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: pepKeys.usoKlinikosWeb }),
   });
 }

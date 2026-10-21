@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ChevronDown, Network } from 'lucide-react';
 import { formatarInstante } from '@/shared/lib/datas';
-import { useEnderecoSisreg } from '@/features/integracoes/api';
-import type { SituacaoEnderecoSisreg } from '@/features/integracoes/types';
+import { useEnderecoSisreg } from '@/features/fontes-dados/api/fontesDadosApi';
+import type { SituacaoEnderecoSisreg } from '@/features/fontes-dados/types';
 
 const SITUACAO: Record<SituacaoEnderecoSisreg, { texto: string; classe: string }> = {
   NoTunel: { texto: 'Saindo pelo túnel', classe: 'bg-green-100 text-green-700' },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Clock, HardDriveDownload, KeyRound, Loader2, Play, RefreshCw, Save } from 'lucide-react';
+import { AlertTriangle, Clock, HardDriveDownload, Loader2, Play, RefreshCw, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { FilaGuiasSecao } from '@/shared/guias/FilaGuiasSecao';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -8,6 +8,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { FonteDoRecurso } from '@/features/fontes-dados/components/FonteDoRecurso';
 import { RegrasAnexoEnvio } from '@/features/regulacao/components/configuracao/RegrasAnexoEnvio';
 import {
   useDispararVarreduraSernit,
@@ -16,9 +17,7 @@ import {
   useSalvarVarreduraAutomaticaSernit,
   useVarreduraAutomaticaSernit,
   useExecucoesSernit,
-  useSalvarCredencialSernit,
   useStatusMotorSernit,
-  useTestarCredencialSernit,
 } from '@/features/sernit/api/queries';
 import { AvisosPacienteSecao } from '@/features/regulacao/components/configuracao/AvisosPacienteSecao';
 import type { ExecucaoSernit, ModoVarreduraSernit, StatusVarreduraSernit } from '@/features/sernit/types';
@@ -104,12 +103,8 @@ export function AbaSernitConfiguracao() {
   const { data: catalogo } = useFormularioCatalogoSernit();
   const sincronizarCatalogo = useSincronizarCatalogoSernit();
   const salvarAutomatica = useSalvarVarreduraAutomaticaSernit();
-  const testar = useTestarCredencialSernit();
-  const salvar = useSalvarCredencialSernit();
 
   const [modo, setModo] = useState<ModoVarreduraSernit>('Diaria');
-  const [usuario, setUsuario] = useState('');
-  const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [horaEdit, setHoraEdit] = useState<string | null>(null);
@@ -139,30 +134,6 @@ export function AbaSernitConfiguracao() {
     try {
       await disparar.mutateAsync({ modo });
       setAviso('Varredura enfileirada. Ela roda em segundo plano — acompanhe abaixo.');
-    } catch (e) {
-      setErro(extrairMensagemDeErro(e));
-    }
-  }
-
-  async function aoTestar() {
-    setErro(null);
-    setAviso(null);
-    try {
-      await testar.mutateAsync({ usuario, senha });
-      setAviso('Credencial aceita pelo SERNIT e módulo Ambulatório acessível.');
-    } catch (e) {
-      setErro(extrairMensagemDeErro(e));
-    }
-  }
-
-  async function aoSalvar() {
-    setErro(null);
-    setAviso(null);
-    try {
-      await salvar.mutateAsync({ usuario, senha });
-      // A senha não fica na tela depois de salva: ela é write-only no store.
-      setSenha('');
-      setAviso('Credencial validada no SERNIT e salva (cifrada). O motor já pode rodar.');
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -297,9 +268,9 @@ export function AbaSernitConfiguracao() {
 
           {!status.credencialConfigurada && (
             <p className="rounded bg-amber-50 p-3 text-sm text-amber-800">
-              A credencial do SERNIT ainda não está cadastrada. Ela é gravada na tela de
-              <strong> Integrações</strong>, no provedor <code>sernit</code>. Use o teste abaixo para
-              confirmar usuário e senha antes de salvar lá.
+              O login do SERNIT ainda não está cadastrado. Ele é gravado em
+              <strong> Sistema → Fontes de dados</strong>, na fonte “SERNIT”, que testa usuário e senha
+              antes de salvar.
             </p>
           )}
         </>
@@ -473,40 +444,7 @@ export function AbaSernitConfiguracao() {
       {/* Fila de guias dos agendamentos (ADR-0076) — o mesmo quadro nos quatro sistemas. */}
       <FilaGuiasSecao sistema="Sernit" podeEditar={podeEditar} />
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <KeyRound className="size-4 text-red-600" /> Credencial do SERNIT
-        </h3>
-        <div className="flex flex-wrap items-end gap-3">
-          <Campo label="Usuário" htmlFor="sernit-usuario" className="w-56">
-            <Input id="sernit-usuario" value={usuario} onChange={(e) => setUsuario(e.target.value)} autoComplete="off" />
-          </Campo>
-          <Campo label="Senha" htmlFor="sernit-senha" className="w-56">
-            <Input
-              id="sernit-senha"
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              autoComplete="new-password"
-            />
-          </Campo>
-          <Button variante="secundaria" onClick={aoTestar} disabled={testar.isPending || salvar.isPending}>
-            {testar.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Testar
-          </Button>
-          <Button onClick={aoSalvar} disabled={salvar.isPending || testar.isPending || !usuario || !senha}>
-            {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            Salvar
-          </Button>
-        </div>
-        <p className="mt-2 text-xs text-slate-500">
-          <strong>Testar</strong> só autentica e confere se o módulo Ambulatório abre, sem gravar
-          nada. <strong>Salvar</strong> valida primeiro e só então guarda a credencial cifrada —
-          credencial que não funciona faria o motor falhar de madrugada, sem ninguém por perto.
-          A senha é write-only: depois de salva, não volta para a tela.
-        </p>
-
-      </section>
+      <FonteDoRecurso nome="SERNIT — SER de Niterói" configurada={status?.credencialConfigurada ?? null} />
 
       <section>
         <h3 className="mb-2 text-sm font-semibold">Últimas rodadas</h3>

@@ -10,15 +10,17 @@ import type { Artigo } from '@/features/manual/tipos';
  * `SincronizarTudoSecao`, `SincronismoEscalasSecao`, `FilaEsperaSecao` e `IndicadoresColetaSecao`;
  * no servidor, `VarreduraAgendaService` (janela, dias não lidos, chegadas), `DecididorVarreduraSisreg`
  * (nova tentativa) e `SisregConfiguracaoController` (Testar conexão, permissões).
- * Seção "endereco" conferida em 09/10/2026: `features/integracoes/components/EnderecoSisregStatus`
- * (cartão do SISREG em Integrações) e, no servidor, `VerificadorEnderecoSisregWorker` (verificação a
- * cada 2 min, avisos) — o conserto da rota é o timer do servidor, docs/sisreg-egress.md.
+ * Seção "endereco" conferida em 09/10/2026: `features/fontes-dados/components/EnderecoSisregStatus`
+ * (fonte "SISREG III" em Sistema → Fontes de dados desde 21/10/2026, ADR-0076) e, no servidor,
+ * `VerificadorEnderecoSisregWorker` (verificação a cada 2 min, avisos) — o conserto da rota é o timer
+ * do servidor, docs/sisreg-egress.md. Login, senha, token e URL da API saíram desta tela em 21/10/2026
+ * (ADR-0076): seção "credenciais" conferida contra `SisregConfiguracaoPage` e `FonteDadosModal`.
  */
 export const artigoSisregConfiguracao: Artigo = {
   slug: 'sisreg-configuracao',
   titulo: 'Configuração do SISREG',
   resumo:
-    'Credenciais da integração, o interruptor do sincronismo automático e os motores que leem o SISREG sozinhos: unidades e médicos, agenda de cada unidade, escalas, fila de espera e a coleta dos indicadores.',
+    'Escopo da integração, o interruptor do sincronismo automático e os motores que leem o SISREG sozinhos: unidades e médicos, agenda de cada unidade, escalas, fila de espera e a coleta dos indicadores. O login fica em Sistema → Fontes de dados.',
   grupo: 'regulacao',
   icone: Settings2,
   rota: '/app/sisreg/configuracao',
@@ -39,6 +41,8 @@ export const artigoSisregConfiguracao: Artigo = {
     'não foi possível autenticar',
     'credenciais',
     'senha',
+    'fontes de dados',
+    'trocar a senha do sisreg',
     'testar conexão',
     'sincronismo automático',
     'desligar sincronismo',
@@ -129,18 +133,20 @@ export const artigoSisregConfiguracao: Artigo = {
     },
     {
       id: 'credenciais',
-      titulo: 'Credenciais e escopo',
-      busca: 'url base escopo municipal nacional uf município ibge centrais reguladoras login senha token testar conexão integração ativa cadastro do paciente cadsus ser consultas simultâneas',
+      titulo: 'Escopo e cadastro do paciente',
+      busca: 'escopo municipal nacional uf município ibge centrais reguladoras login senha token url fontes de dados testar conexão cadastro do paciente cadsus ser consultas simultâneas',
       conteudo: (
         <>
+          <Callout tipo="dica" titulo="Login, senha e endereço ficam em Sistema → Fontes de dados">
+            Esta tela cuida do que a integração faz. A conexão — URL da API, tipo de autenticação, login,
+            senha, token e se ela está ativa — é editada em <strong>Sistema → Fontes de dados</strong>, na
+            fonte <strong>SISREG — API (DATASUS)</strong>. O login do robô que lê as agendas e o CADSUS é a
+            fonte <strong>SISREG III</strong>, no mesmo lugar. A linha “Fonte” no topo desta tela mostra se
+            o login está configurado e leva até lá.
+          </Callout>
           <ListaDefinicoes
             itens={[
-              { termo: 'URL base, Escopo, UF, Município e Centrais reguladoras', descricao: 'De onde e de quem a integração lê. As centrais vão separadas por vírgula.' },
-              {
-                termo: 'Login, Senha e Token',
-                descricao:
-                  'A senha e o token são guardados de forma segura e nunca aparecem de volta. Quando já existem, o campo diz “Já definida”: preencha só para trocar.',
-              },
+              { termo: 'Escopo, UF, Município e Centrais reguladoras', descricao: 'De quem a integração lê. As centrais vão separadas por vírgula.' },
               {
                 termo: 'Consulta de cadastro do paciente',
                 descricao:
@@ -150,13 +156,12 @@ export const artigoSisregConfiguracao: Artigo = {
                 termo: 'Consultas simultâneas no SER',
                 descricao: 'De 1 a 8 consultas de cadastro ao mesmo tempo, cada uma na sua sessão do SER. Só vale quando a fonte é o SER.',
               },
-              { termo: 'Integração ativa', descricao: 'Desmarcada, a integração não é usada.' },
             ]}
           />
           <P>
-            <BotaoRef variante="outline">Testar conexão</BotaoRef> faz uma consulta mínima à fila com as credenciais{' '}
-            <strong>salvas</strong> e responde “Conexão OK” com o total da fila, ou o motivo da falha. Salve antes
-            de testar uma senha nova.
+            <BotaoRef variante="outline">Testar conexão</BotaoRef> faz uma consulta mínima à fila com o login{' '}
+            <strong>salvo</strong> em Fontes de dados e responde “Conexão OK” com o total da fila, ou o motivo da
+            falha.
           </P>
         </>
       ),
@@ -298,7 +303,8 @@ export const artigoSisregConfiguracao: Artigo = {
           <P>
             Quando o SISREG recusa o login, a seção mostra “<strong>Aguardando: o SISREG recusou o login</strong>”.
             Nenhuma leitura é gasta com isso: o coletor espera alguns minutos e tenta de novo sozinho. Se a
-            recusa continuar, olhe o Endereço do SISREG em Integrações antes de mexer na senha.
+            recusa continuar, olhe o Endereço do SISREG (Sistema → Fontes de dados, fonte SISREG III) antes de
+            mexer na senha.
           </P>
         </>
       ),
@@ -306,7 +312,7 @@ export const artigoSisregConfiguracao: Artigo = {
     {
       id: 'endereco',
       titulo: 'Endereço do SISREG (IP e túnel)',
-      busca: 'endereço ip do sisreg trocou de ip túnel saída brasil bloqueio bloqueado histórico integrações não foi possível autenticar',
+      busca: 'endereço ip do sisreg trocou de ip túnel saída brasil bloqueio bloqueado histórico fontes de dados não foi possível autenticar',
       conteudo: (
         <>
           <P>
@@ -319,7 +325,8 @@ export const artigoSisregConfiguracao: Artigo = {
           <P>
             Por isso o servidor confere o IP do SISREG <strong>sozinho, a cada poucos minutos</strong>. Quando o IP
             muda, ele mesmo põe o novo no túnel, em até um minuto. O resultado aparece em{' '}
-            <strong>Integrações</strong>, no cartão do SISREG, no bloco <strong>Endereço do SISREG</strong>:
+            <strong>Sistema → Fontes de dados</strong>, ao editar a fonte <strong>SISREG III</strong>, no bloco{' '}
+            <strong>Endereço do SISREG</strong>:
           </P>
           <ListaDefinicoes
             itens={[
@@ -421,7 +428,8 @@ export const artigoSisregConfiguracao: Artigo = {
         <P>
           Ver a tela exige o módulo <strong>Configuração SISREG</strong> com consulta. Salvar, testar a conexão,
           ligar ou desligar o sincronismo e qualquer botão que dispare leitura exigem a mesma permissão com{' '}
-          <strong>edição</strong>, porque gastam o limite de acessos do operador da integração.
+          <strong>edição</strong>, porque gastam o limite de acessos do operador da integração. Trocar login,
+          senha ou token é em Sistema → Fontes de dados e exige o módulo <strong>Fontes de dados</strong>.
         </P>
       ),
     },
@@ -440,7 +448,7 @@ export const artigoSisregConfiguracao: Artigo = {
             {
               termo: 'De repente tudo falha com “Não foi possível autenticar no SISREG”. É a senha?',
               descricao:
-                'Antes de trocar a senha, abra Integrações e olhe o bloco Endereço do SISREG no cartão do SISREG. Se estiver “Fora do túnel”, o problema é o caminho até o SISREG, não a senha. Foi o que aconteceu quando o SISREG trocou de IP.',
+                'Antes de trocar a senha, abra Sistema → Fontes de dados, edite a fonte SISREG III e olhe o bloco Endereço do SISREG. Se estiver “Fora do túnel”, o problema é o caminho até o SISREG, não a senha. Foi o que aconteceu quando o SISREG trocou de IP.',
             },
             {
               termo: 'Uma unidade terminou Parcial. Perdi dados?',

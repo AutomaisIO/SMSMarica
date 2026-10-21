@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Activity, DatabaseZap, Loader2, Play, RefreshCw, StopCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -19,6 +20,7 @@ import {
 } from '@/features/pep-sincronizacao/api/queries';
 import { QuadroMotores } from '@/features/pep-sincronizacao/components/QuadroMotores';
 import { SecaoDivergencias } from '@/features/pep-sincronizacao/components/SecaoDivergencias';
+import { SecaoKlinikosWeb } from '@/features/pep-sincronizacao/components/SecaoKlinikosWeb';
 import type {
   EscopoSincronizacao,
   ModoSincronizacao,
@@ -335,6 +337,7 @@ export function PepSincronizacaoPage() {
   const iniciar = useIniciarImportacaoPep();
   const cancelar = useCancelarImportacaoPep();
   const podeImportar = usePermissao('SincronizacaoPep', 'Edicao');
+  const podeVerFontes = usePermissao('FontesDados', 'Consulta');
 
   const [fonteId, setFonteId] = useState('');
   const [intencao, setIntencao] = useState<Intencao>('ensaio');
@@ -427,6 +430,17 @@ export function PepSincronizacaoPage() {
                 </option>
               ))}
             </Select>
+            <p className="mt-1 text-xs text-gray-500">
+              As bases (conexão, login, agente) se cadastram em{' '}
+              {podeVerFontes ? (
+                <Link to="/app/fontes-dados" className="font-medium text-primary-700 underline">
+                  Sistema → Fontes de dados
+                </Link>
+              ) : (
+                'Sistema → Fontes de dados'
+              )}
+              ; aqui se escolhe a base e como ela é importada.
+            </p>
           </Campo>
 
           <div className="space-y-2">
@@ -506,6 +520,9 @@ export function PepSincronizacaoPage() {
 
       {/* ---- Divergências de identidade (origem × hub) ---- */}
       <SecaoDivergencias fonteId={fonteId} podeEditar={podeImportar} />
+
+      {/* ---- Klinikos pela web: cadência por base (o uso; a conexão é em Fontes de dados) ---- */}
+      <SecaoKlinikosWeb podeEditar={podeImportar} />
 
       {/* ---- Status / progresso ---- */}
       {status.data ? (

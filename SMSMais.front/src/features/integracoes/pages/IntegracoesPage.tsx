@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, KeySquare, Loader2, Settings2, Sparkles } from 'lucide-react';
+import { ChevronRight, DatabaseZap, KeySquare, Loader2, Settings2, Sparkles } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useTemConsulta } from '@/shared/auth/authStore';
 import { useCredenciais } from '@/features/integracoes/api';
@@ -12,9 +12,11 @@ import { ElevenLabsCard } from '@/features/integracoes/components/ElevenLabsCard
 import { GoogleMapsCard } from '@/features/integracoes/components/GoogleMapsCard';
 import { NavigationSdkCard } from '@/features/integracoes/components/NavigationSdkCard';
 import { ProxyServicoSection } from '@/features/integracoes/components/ProxyServicoSection';
-import { SisregCard, PROVEDOR_SISREG } from '@/features/integracoes/components/SisregCard';
-import { EsusPecCard, PROVEDOR_ESUS_PEC } from '@/features/integracoes/components/EsusPecCard';
 import { WhatsAppCard } from '@/features/integracoes/components/WhatsAppCard';
+
+/** Logins de sistemas de onde se LÊ dado: são fontes de dados, cadastradas em Sistema → Fontes de
+ *  dados (ADR-0076). O servidor ainda os lista aqui porque moram na mesma tabela. */
+const PROVEDORES_FONTES_DE_DADOS = ['sisreg', 'ser', 'sernit', 'esussg', 'esuspec'];
 
 function LinkCard({ to, titulo, descricao }: { to: string; titulo: string; descricao: string }) {
   return (
@@ -37,34 +39,17 @@ export function IntegracoesPage() {
   const podeVerSisreg = useTemConsulta('SisregConfiguracao');
   const podeVerTokens = useTemConsulta('ApiTokens');
   const podeVerProxy = useTemConsulta('IntegracoesConfig');
+  const podeVerFontes = useTemConsulta('FontesDados');
 
   // O Spaces (S3) tem card próprio (Access/Secret Key + endpoint/region/bucket),
   // então é separado da lista genérica de provedores OAuth.
   const lista = credenciais.data ?? [];
   const credsOauth = lista.filter(
-    (c) => c.provedor !== PROVEDOR_SPACES && c.provedor !== PROVEDOR_SISREG && c.provedor !== PROVEDOR_ESUS_PEC,
+    (c) => c.provedor !== PROVEDOR_SPACES && !PROVEDORES_FONTES_DE_DADOS.includes(c.provedor),
   );
-  const credEsusPec = lista.find((c) => c.provedor === PROVEDOR_ESUS_PEC) ?? {
-    provedor: PROVEDOR_ESUS_PEC,
-    rotulo: 'e-SUS APS PEC (cadastro do cidadão)',
-    clientIdDefinido: false,
-    clientSecretDefinido: false,
-    redirectUri: null,
-    parametrosJson: null,
-    ativo: false,
-  };
   const credSpaces = lista.find((c) => c.provedor === PROVEDOR_SPACES) ?? {
     provedor: PROVEDOR_SPACES,
     rotulo: 'DigitalOcean Spaces (S3)',
-    clientIdDefinido: false,
-    clientSecretDefinido: false,
-    redirectUri: null,
-    parametrosJson: null,
-    ativo: false,
-  };
-  const credSisreg = lista.find((c) => c.provedor === PROVEDOR_SISREG) ?? {
-    provedor: PROVEDOR_SISREG,
-    rotulo: 'SISREG (consulta de paciente por CNS)',
     clientIdDefinido: false,
     clientSecretDefinido: false,
     redirectUri: null,
@@ -117,20 +102,22 @@ export function IntegracoesPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Consulta de pacientes (SISREG)
+          Fontes de dados
         </h2>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <SisregCard cred={credSisreg} />
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Correção de telefone pelo e-SUS (atenção básica)
-        </h2>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <EsusPecCard cred={credEsusPec} />
-        </div>
+        <p className="flex items-start gap-2 text-sm text-gray-600">
+          <DatabaseZap className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+          Os logins do SISREG, SER, SERNIT, ESUS São Gonçalo e e-SUS PEC, os bancos de prontuário e os
+          agentes ficam em Sistema → Fontes de dados. Aqui só os serviços que a plataforma usa.
+        </p>
+        {podeVerFontes ? (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <LinkCard
+              to="/app/fontes-dados"
+              titulo="Fontes de dados"
+              descricao="Bancos, agentes e logins dos sistemas de onde a plataforma lê dado."
+            />
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-3">
@@ -178,14 +165,14 @@ export function IntegracoesPage() {
               <LinkCard
                 to="/app/ia/configuracao"
                 titulo="Inteligência (Claude / Anthropic)"
-                descricao="Token do provedor de IA e bases consultáveis."
+                descricao="Token do provedor de IA e conhecimento das bases."
               />
             ) : null}
             {podeVerSisreg ? (
               <LinkCard
                 to="/app/sisreg/configuracao"
                 titulo="SISREG / DATASUS"
-                descricao="Credenciais e escopo do feed de regulação."
+                descricao="Escopo e operação da API do SISREG (o login fica em Fontes de dados)."
               />
             ) : null}
             {podeVerTokens ? (
