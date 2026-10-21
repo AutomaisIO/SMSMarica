@@ -16,7 +16,8 @@ public sealed record IntegracaoCredencialDto(
 
 /// <summary>
 /// Upsert de credencial de provedor. client_id/client_secret vazios = mantém o atual;
-/// preenchidos = cifra e substitui (padrão write-only).
+/// preenchidos = cifra e substitui (padrão write-only). <see cref="ParametrosJson"/> nulo = mantém,
+/// vazio = limpa, preenchido = substitui o JSON inteiro.
 /// </summary>
 public sealed record AtualizarIntegracaoCredencialRequest(
     string? ClientId,
