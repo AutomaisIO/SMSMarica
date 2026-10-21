@@ -14,6 +14,7 @@ import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import { useContextoAnamnese, useSalvarAnamnese } from '@/features/anamnese/api/queries';
+import { AnamneseHolter } from '@/features/anamnese/components/AnamneseHolter';
 import { AnamneseLeitura } from '@/features/anamnese/components/AnamneseLeitura';
 import { AnexosExameSecao } from '@/features/anamnese/components/AnexosExameSecao';
 import { DiagramaMamas } from '@/features/anamnese/components/DiagramaMamas';
@@ -66,7 +67,23 @@ function TituloSecao({ numero, titulo, cor }: { numero: number; titulo: string; 
   );
 }
 
+/**
+ * A tela de anamnese escolhe o questionário pelo que o servidor diz do exame: Holter tem o seu
+ * (altura, peso, fumante, que vão à worklist); o resto segue com o de mamografia.
+ */
 export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
+  const [params] = useSearchParams();
+  const contexto = useContextoAnamnese({
+    solicitacaoExameId: params.get('solicitacaoId') ?? undefined,
+    accessionNumber: params.get('accession') ?? undefined,
+  });
+  if (contexto.data?.questionario === 'holter') {
+    return <AnamneseHolter ctx={contexto.data} janela={janela} leitura={params.get('leitura') === '1'} />;
+  }
+  return <AnamneseMamografiaPage janela={janela} />;
+}
+
+function AnamneseMamografiaPage({ janela = false }: { janela?: boolean } = {}) {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const solicitacaoId = params.get('solicitacaoId') ?? undefined;

@@ -10,7 +10,10 @@ public sealed record AnamneseDto(
     string? ClassificacaoRisco,
     string? PreenchidoPorNome,
     DateTime CriadoEm,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+    /// <summary>O que aconteceu com a worklist ao salvar (Holter): enviado, atualizado, aguardando a
+    /// recepção. Null = nada a dizer (mamografia).</summary>
+    string? AvisoWorklist = null);
 
 /// <summary>
 /// Contexto para abrir a tela de anamnese: identifica o pedido + paciente
@@ -36,7 +39,10 @@ public sealed record AnamneseContextoDto(
     /// saber o tipo de laudo (ticket #155). Null = o pedido não trouxe CID.</summary>
     string? CidCodigo = null,
     /// <summary>Descrição do CID por extenso (catálogo canônico); null = mostra só o código.</summary>
-    string? CidDescricao = null);
+    string? CidDescricao = null,
+    /// <summary>Qual questionário a tela abre: "mamografia" ou "holter" (pela modalidade do tipo de
+    /// exame — <see cref="AnamneseHolter.QuestionarioDa"/>).</summary>
+    string Questionario = "mamografia");
 
 /// <summary>Payload de criação/edição (upsert) da anamnese de uma solicitação.</summary>
 public sealed record SalvarAnamneseDto(

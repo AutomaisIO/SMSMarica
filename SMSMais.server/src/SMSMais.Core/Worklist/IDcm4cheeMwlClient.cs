@@ -19,6 +19,14 @@ public interface IDcm4cheeMwlClient
     Task<string> CriarOuAtualizarMwlItemAsync(ExameImagem solicitacao, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Igual ao de cima, levando também os dados clínicos da anamnese (altura, peso, fumante — a do
+    /// Holter). O POST é upsert pela chave StudyInstanceUID + SPS ID: chamar de novo com os dados
+    /// corrigidos SOBRESCREVE o item que o aparelho já enxerga.
+    /// </summary>
+    Task<string> CriarOuAtualizarMwlItemAsync(
+        ExameImagem solicitacao, DadosClinicosWorklist? clinicos, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Confirma se o MWL item ainda existe no dcm4chee (QIDO por StudyInstanceUID).
     /// <c>true</c> = existe; <c>false</c> = sumiu/expirou; lança
     /// <see cref="Common.Excecoes.ConflitoException"/> se indisponível.
