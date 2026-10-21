@@ -15,7 +15,7 @@ import { ProxyServicoSection } from '@/features/integracoes/components/ProxyServ
 import { WhatsAppCard } from '@/features/integracoes/components/WhatsAppCard';
 
 /** Logins de sistemas de onde se LÊ dado: são fontes de dados, cadastradas em Sistema → Fontes de
- *  dados (ADR-0076). O servidor ainda os lista aqui porque moram na mesma tabela. */
+ *  dados (ADR-0077). O servidor ainda os lista aqui porque moram na mesma tabela. */
 const PROVEDORES_FONTES_DE_DADOS = ['sisreg', 'ser', 'sernit', 'esussg', 'esuspec'];
 
 function LinkCard({ to, titulo, descricao }: { to: string; titulo: string; descricao: string }) {

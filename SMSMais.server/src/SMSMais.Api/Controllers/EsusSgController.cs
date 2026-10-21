@@ -124,7 +124,7 @@ public sealed class EsusSgNotificacaoController(IEsusSgNotificacaoService notifi
 }
 
 /// <summary>Motor do ESUS SG: status, rodadas, disparo, agendamento diário, catálogo. O login é editado em
-/// Sistema → Fontes de dados (ADR-0076).</summary>
+/// Sistema → Fontes de dados (ADR-0077).</summary>
 [ApiController]
 [Route("regulacao/esussg/configuracao")]
 public sealed class EsusSgConfiguracaoController(

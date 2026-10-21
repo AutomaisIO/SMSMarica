@@ -11,7 +11,7 @@ import { CATEGORIAS, rotuloTipo } from '@/features/fontes-dados/lib/rotulos';
 import type { FonteDados } from '@/features/fontes-dados/types';
 
 /**
- * Sistema → Fontes de dados (ADR-0076): o cadastro único de toda fonte de onde a plataforma lê dado.
+ * Sistema → Fontes de dados (ADR-0077): o cadastro único de toda fonte de onde a plataforma lê dado.
  * Aqui mora a CONEXÃO; o que cada recurso faz com a fonte (agenda, cadência, conhecimento) fica na
  * tela do recurso, que só escolhe a fonte.
  */

@@ -7,7 +7,7 @@ import { useSalvarUsoKlinikosWeb, useUsoKlinikosWeb } from '@/features/pep-sincr
 import type { SalvarUsoKlinikosWeb, UsoKlinikosWeb } from '@/features/pep-sincronizacao/types';
 
 /**
- * Como a importação usa cada fonte Klinikos Web (ADR-0076): cadência da puxada periódica e quem é
+ * Como a importação usa cada fonte Klinikos Web (ADR-0077): cadência da puxada periódica e quem é
  * dono da escrita. A conexão (URL, login, versão) é cadastrada em Sistema → Fontes de dados.
  *
  * A cadência é MANUAL e por base: o Crystal da origem vaza memória e o orçamento de relatórios é

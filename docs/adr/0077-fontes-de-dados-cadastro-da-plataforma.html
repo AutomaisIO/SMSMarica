@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADR-0076 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso</title>
+<title>ADR-0077 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso</title>
 <style>
 :root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
 @media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
@@ -26,7 +26,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 </head>
 <body>
 <main>
-<h1>ADR-0076 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso</h1>
+<h1>ADR-0077 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso</h1>
 <p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-21 · <strong>Implementação:</strong> branch <code>feat/fontes-de-dados</code> <strong>Relacionado:</strong> <a href="./0011-modulo-ia-consulta-linguagem-natural.md">ADR-0011</a> (o CRUD de bases nasceu dentro da IA) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (API-SISREG em <code>sisreg_configuracao</code>) · <a href="./0014-importacao-salux-no-backend.md">ADR-0014</a> (a importação de prontuários usa a base cadastrada na IA) · <a href="./0023-proxy-sql-agente-e-conhecimento.md">ADR-0023</a> (base via agente, token, provisionamento) · <a href="./0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> · <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a> · <a href="./0067-telefone-pelo-esus-pec-rotina-noturna.md">ADR-0067</a> (logins em <code>integracao_credencial</code>) · <a href="./0046-rename-smsmais.md">ADR-0046</a> (purpose <code>SMSMarica.Ia.Segredos</code> congelado)</p>
 <h2>Contexto</h2>
 <p>"De onde a plataforma lê dado" era cadastrado em seis telas e três tabelas, e cada cadastro misturava a conexão com o uso que um recurso faz dela:</p>

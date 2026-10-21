@@ -80,7 +80,7 @@ function inicial(fonte?: FonteDados): Form {
 }
 
 /**
- * Cria ou edita uma fonte de dados (ADR-0076). Mostra só os campos de CONEXÃO de cada tipo; o uso
+ * Cria ou edita uma fonte de dados (ADR-0077). Mostra só os campos de CONEXÃO de cada tipo; o uso
  * (agenda, cadência, conhecimento) fica na tela do recurso. Senha, token e login de operador nunca
  * voltam do servidor: vazio = mantém o que está gravado.
  */

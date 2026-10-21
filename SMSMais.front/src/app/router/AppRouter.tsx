@@ -349,7 +349,7 @@ export function AppRouter() {
           </Route>
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
-          {/* Rota antiga de "Fontes / Conectores": as fontes agora são cadastro de Sistema (ADR-0076). */}
+          {/* Rota antiga de "Fontes / Conectores": as fontes agora são cadastro de Sistema (ADR-0077). */}
           <Route path="pep-sincronizacao/fontes" element={<Navigate to="/app/fontes-dados" replace />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />
           <Route path="integracoes" element={<IntegracoesPage />} />

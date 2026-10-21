@@ -184,7 +184,7 @@ export type ResultadoVerificacaoDivergencias = {
 };
 
 /** Uso de uma fonte Klinikos Web pela importação (GET /klinikos-web/uso). A conexão é cadastrada em
- *  Sistema → Fontes de dados; aqui fica só como a importação usa a fonte (ADR-0076). */
+ *  Sistema → Fontes de dados; aqui fica só como a importação usa a fonte (ADR-0077). */
 export type UsoKlinikosWeb = {
   fonteId: string;
   nome: string;

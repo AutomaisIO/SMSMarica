@@ -9,7 +9,7 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Api.Controllers;
 
 /// <summary>
-/// Sistema → Fontes de dados (ADR-0076): o cadastro único de toda fonte de onde a plataforma lê
+/// Sistema → Fontes de dados (ADR-0077): o cadastro único de toda fonte de onde a plataforma lê
 /// dado. A chave da rota é o id da base ou a chave fixa do sistema (<c>sisreg</c>, <c>ser</c>,
 /// <c>sernit</c>, <c>esussg</c>, <c>esuspec</c>, <c>sisreg-api</c>). Segredos são write-only.
 /// </summary>

@@ -9,7 +9,7 @@ namespace SMSMais.Api.Controllers;
 /// <summary>
 /// Tela de configuração do módulo IA: configuração global (provedor/modelo/tokens) e a lista, só de
 /// leitura, das bases que a IA consulta. Cadastrar, editar, testar e gerar token de base é em
-/// Sistema → Fontes de dados (<see cref="FontesDadosController"/>, ADR-0076).
+/// Sistema → Fontes de dados (<see cref="FontesDadosController"/>, ADR-0077).
 /// </summary>
 [ApiController]
 [Route("ia/configuracao")]

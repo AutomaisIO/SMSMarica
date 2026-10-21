@@ -7,7 +7,7 @@ using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Integracoes.KlinikosWeb;
 
-/// <summary>Como a importação usa uma fonte Klinikos Web (ADR-0076: o uso fica no recurso).</summary>
+/// <summary>Como a importação usa uma fonte Klinikos Web (ADR-0077: o uso fica no recurso).</summary>
 /// <param name="WebPrimaria">Esta base é a dona da escrita no hub (só o Conde; as UPAs têm o SQL).</param>
 /// <param name="PeriodicoIntervaloMin">Minutos entre puxadas periódicas; 0 = desligado. MANUAL e por
 ///   base — o motor nunca ajusta (o Crystal da origem vaza memória).</param>

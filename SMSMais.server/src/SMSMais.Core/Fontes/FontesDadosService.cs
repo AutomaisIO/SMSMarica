@@ -25,7 +25,7 @@ using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMais.Core.Fontes;
 
-/// <summary>Cadastro único das fontes de dados — Sistema → Fontes de dados (ADR-0076).</summary>
+/// <summary>Cadastro único das fontes de dados — Sistema → Fontes de dados (ADR-0077).</summary>
 public interface IFontesDadosService
 {
     Task<IReadOnlyList<FonteDadosDto>> ListarAsync(CancellationToken cancellationToken = default);
@@ -39,7 +39,7 @@ public interface IFontesDadosService
 }
 
 /// <summary>
-/// Fachada da Entrega 1 do ADR-0076: uma lista e uma edição para todas as fontes, sem mudar onde o
+/// Fachada da Entrega 1 do ADR-0077: uma lista e uma edição para todas as fontes, sem mudar onde o
 /// dado mora. Bases continuam em <c>ia_fonte</c> (via <see cref="IIaFonteService"/>); os logins de
 /// SISREG/SER/SERNIT/ESUS SG/e-SUS PEC em <c>integracao_credencial</c>; a API-SISREG em
 /// <c>sisreg_configuracao</c>. Os motores leem de onde sempre leram.

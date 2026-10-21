@@ -11,10 +11,10 @@ import type { Artigo } from '@/features/manual/tipos';
  * no servidor, `VarreduraAgendaService` (janela, dias não lidos, chegadas), `DecididorVarreduraSisreg`
  * (nova tentativa) e `SisregConfiguracaoController` (Testar conexão, permissões).
  * Seção "endereco" conferida em 09/10/2026: `features/fontes-dados/components/EnderecoSisregStatus`
- * (fonte "SISREG III" em Sistema → Fontes de dados desde 21/10/2026, ADR-0076) e, no servidor,
+ * (fonte "SISREG III" em Sistema → Fontes de dados desde 21/10/2026, ADR-0077) e, no servidor,
  * `VerificadorEnderecoSisregWorker` (verificação a cada 2 min, avisos) — o conserto da rota é o timer
  * do servidor, docs/sisreg-egress.md. Login, senha, token e URL da API saíram desta tela em 21/10/2026
- * (ADR-0076): seção "credenciais" conferida contra `SisregConfiguracaoPage` e `FonteDadosModal`.
+ * (ADR-0077): seção "credenciais" conferida contra `SisregConfiguracaoPage` e `FonteDadosModal`.
  */
 export const artigoSisregConfiguracao: Artigo = {
   slug: 'sisreg-configuracao',

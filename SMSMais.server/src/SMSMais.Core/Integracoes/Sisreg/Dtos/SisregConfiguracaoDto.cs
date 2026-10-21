@@ -30,7 +30,7 @@ public sealed record SisregConfiguracaoDto(
 /// <summary>
 /// Atualização do USO da API-SISREG (escopo, UF/município, centrais e operação). A conexão — URL,
 /// autenticação, login, senha, token e ativo — vai por <see cref="AtualizarCredencialSisregApiRequest"/>,
-/// pela tela Sistema → Fontes de dados (ADR-0076).
+/// pela tela Sistema → Fontes de dados (ADR-0077).
 /// </summary>
 public sealed record AtualizarSisregConfiguracaoRequest(
     EscopoSisreg Escopo,
