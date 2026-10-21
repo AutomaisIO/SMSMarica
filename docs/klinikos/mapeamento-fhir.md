@@ -13,10 +13,10 @@
 
 ---
 
-## 1. As duas instâncias
+## 1. As instâncias
 
 O Klinikos assumiu a **UPA Inoã** e o **PA Santa Rita** em **07/04/2025** (data do primeiro
-boletim medido), substituindo o Salux. O **Conde** ainda é Salux e migrará.
+boletim medido), substituindo o Salux. O **Conde** migrou em agosto/2026 — ver §1.2.
 
 | Instância | Slug da base | Estado em 03/08 |
 |---|---|---|
@@ -26,6 +26,35 @@ boletim medido), substituindo o Salux. O **Conde** ainda é Salux e migrará.
 > **Ponta aberta P1.** Enquanto o agente de Santa Rita não subir, o censo daquela instância é
 > desconhecido. O conector é por instância (slug próprio), então Santa Rita pode entrar depois
 > sem tocar no que já roda.
+
+### 1.2 Conde: a mesma aplicação, outra versão do banco (medido em 21/10/2026)
+
+O Conde migrou para o Klinikos em agosto/2026 (base `conde-marica-sqlserver`, banco
+`KLINIKOSNET`, unidade `0005`). A aplicação é a mesma das UPAs, mas o banco está numa versão
+mais antiga (build `K.2024`; as UPAs estão na `U.2025`). O conector lia três coisas que não
+existem lá:
+
+| O que o conector das UPAs lê | No Conde (K.2024) |
+|---|---|
+| `UPA_Evolucao.SPA_CODIGO` (a evolução aponta para o boletim) | **não existe**. A evolução aponta para o atendimento: `atendamb_codigo` → `atendimento_ambulatorial.spa_codigo` |
+| `UPA_SinaisVitais` (uma tabela com as medidas de todas as etapas) | **não existe**. As mesmas etapas guardam a medida na própria linha: `UPA_ACOLHIMENTO.aco_*`, `UPA_Classificacao_Risco.upaclaris_*` (chega ao boletim pelo acolhimento — o `spa_codigo` dela está vazio nas 41.547 linhas) e `UPA_Evolucao.upaevo_*` |
+| `Pronto_Atendimento.spa_nomesocial` / `spa_cartao_nsaude` | `spa_nome_social` (com sublinhado); o boletim não tem CNS, que vem do cadastro do paciente |
+
+E a evolução tem duas colunas que as UPAs não têm: `Inativa` (713 evoluções anuladas) e
+`Rascunho` (4 ainda não assinadas). As duas ficam fora, como o ESTORNO nas UPAs; o rascunho entra
+quando for assinado, porque a linha muda e o rowversion avança.
+
+**Como o conector decide.** A cada run, antes de escrever qualquer coisa, uma sonda de metadado
+(`COL_LENGTH`/`OBJECT_ID`, sem ler dado) diz qual versão o banco é (`KlinikosLayout`). Cada
+versão exige a assinatura inteira; esquema que não bate com nenhuma **para o run** com a lista do
+que viu, em vez de rodar o SQL mais parecido. O mapeamento FHIR é o mesmo nas duas; só o SQL muda.
+
+Volumes no Conde em 21/10/2026: 29.028 pacientes, 44.066 boletins, 74.667 evoluções ligadas a
+boletim, 164.436 itens de prescrição, 42.905 linhas de acolhimento/classificação com sinal vital.
+
+**O que fica de fora: a internação.** 39.629 evoluções do Conde são de internação
+(`inter_codigo`) e não têm boletim. O `JOIN` com o atendimento é o que as deixa de fora — se
+entrassem, cada uma seguraria o ponteiro da fase como "boletim não resolvido". Ver P7.
 
 ---
 
@@ -321,6 +350,11 @@ Colunas separadas (`pressaoarterial`, `pulso`, `temperatura`, `frequenciarespira
 Observation LOINC com `encounter` amarrado. A pressão vem como texto ("120/80") e precisa ser
 partida em sistólica/diastólica.
 
+No Conde (K.2024, §1.2) as medidas vêm do acolhimento, da classificação e da evolução, num
+`UNION` com um ponteiro só: o rowversion é um contador do banco, não da tabela. O identifier
+leva a origem na frente do código (`aco-5`, `cr-5`, `evo-5`), porque as três sequências são
+independentes. Nas UPAs o identifier não muda.
+
 ### DocumentReference ← `UPA_Atendimento_Medico` (o boletim médico)
 
 **É o documento principal do atendimento** — o análogo do eDoc "Boletim de Atendimento de
@@ -429,4 +463,5 @@ Consequências para o conector:
 | P10 | CNS não é âncora secundária de dedup (cobertura de 0,16% no cadastro; provisórios sem semântica) | decidir com validação CADSUS |
 | P11 | Entradas de sala amarela/vermelha não viram `statusHistory` (o CID delas JÁ é extraído) | Fase 2 |
 | P12 | `MedicationRequest.status` fixo em `completed` para prescrição histórica | aceito para importação |
-| P7 | Internação: morta no Klinikos desde 25/01/2026. Se o Conde migrar como a UPA roda hoje, o hub **perde a internação no dia do cutover** | não bloqueia hoje; **bloqueia o cutover do Conde** |
+| P7 | Internação: morta no Klinikos das UPAs desde 25/01/2026, mas **viva no Conde** (`Internacao_Pep`, e 39.629 evoluções com `inter_codigo` em 21/10/2026). O conector traz o pronto-atendimento do Conde (§1.2); a internação dele ainda não entra no hub | **pendente**: precisa de fase própria (Encounter IMP) |
+| P14 | **Inativação não retroage** no Conde: evolução anulada (`Inativa = 'S'`) depois de importada fica no hub — mesmo caso do P9 | qualidade, não bloqueia |

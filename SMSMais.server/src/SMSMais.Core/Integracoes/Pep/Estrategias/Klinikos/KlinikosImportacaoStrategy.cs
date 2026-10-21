@@ -9,9 +9,11 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.Integracoes.Pep.Estrategias.Klinikos;
 
 /// <summary>
-/// Importação Klinikos (SQL Server, via agente WSS) → hub FHIR. Atende as duas instâncias —
-/// UPA Maricá e PA Santa Rita — pela família <c>klinikos</c> da <c>IaFonte</c>; cada uma roda
-/// com o próprio slug, então os códigos internos nunca colidem.
+/// Importação Klinikos (SQL Server, via agente WSS) → hub FHIR. Atende as três instâncias —
+/// UPA Maricá, PA Santa Rita e Conde — pela família <c>klinikos</c> da <c>IaFonte</c>; cada uma
+/// roda com o próprio slug, então os códigos internos nunca colidem. O Conde está numa versão
+/// mais antiga do banco, detectada a cada run (<see cref="KlinikosLayout"/>): muda o SQL, não o
+/// mapeamento.
 ///
 /// <para>Desenho, e por que difere do conector do Salux:</para>
 /// <list type="bullet">
@@ -138,6 +140,12 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 $"O agente '{slug}' não está conectado. Suba o proxy no servidor da unidade e tente de novo.");
         }
 
+        // Versão do banco: decide o SQL do run inteiro. Antes de qualquer escrita — esquema
+        // desconhecido para aqui, sem ter gravado meio run.
+        p.FaseAtual = "conferindo a versão do banco…";
+        var layout = await DetectarLayoutAsync(leitor, slug, ct);
+        logger.LogInformation("Klinikos {Slug}: banco na versão {Layout}.", slug, layout);
+
         // Caches do run: código da origem → referência no hub. Evitam reconsultar o hub a cada
         // linha; o incremental de um ciclo é pequeno, então cabem em memória com folga.
         var orgPorUnidade = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -229,9 +237,9 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             p.FaseAtual = "atendimentos…";
             foreach (var lote in EmLotes(direcionado, TamanhoLote))
             {
-                var achados = (await leitor.ConsultarAsync(SqlBoletinsDePacientes(lote), ct))
+                var achados = (await leitor.ConsultarAsync(SqlBoletinsDePacientes(lote, layout), ct))
                     .Select(MapBoletim).OfType<BoletimLinha>().ToList();
-                var comAtd = await CarregarFlagsAtendimentoAsync(leitor, achados.Select(b => b.Codigo), ct);
+                var comAtd = await CarregarFlagsAtendimentoAsync(leitor, achados.Select(b => b.Codigo), layout, ct);
                 var desfechos = await CarregarDesfechosAsync(leitor, achados.Select(b => b.Codigo), ct);
                 foreach (var b in achados)
                 {
@@ -278,7 +286,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
         // ---------- 4. Boletins → Encounter ----------
         p.FaseAtual = "atendimentos…";
-        await PaginarAsync(leitor, FaseAtendimento, ctx, incremental, SqlBoletins, async (linhas, fase) =>
+        await PaginarAsync(leitor, FaseAtendimento, ctx, incremental, (d, t) => SqlBoletins(d, t, layout), async (linhas, fase) =>
         {
             var boletins = linhas.Select(MapBoletim).OfType<BoletimLinha>().ToList();
             if (limitado)
@@ -288,7 +296,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 boletins = [.. boletins.Where(b => b.PacCodigo is { } pc && pacPorCodigo.ContainsKey(pc))];
             }
             var comAtendimento = await CarregarFlagsAtendimentoAsync(
-                leitor, boletins.Select(b => b.Codigo), ct);
+                leitor, boletins.Select(b => b.Codigo), layout, ct);
             var desfechos = await CarregarDesfechosAsync(leitor, boletins.Select(b => b.Codigo), ct);
             if (!limitado)
             {
@@ -350,7 +358,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             // idioma usado quando o INÍCIO tardio cura o status de um boletim.
             foreach (var f in fechados) atendPorBoletim.Remove(f.Spa!);
 
-            await GarantirAtendimentosAsync(ctx, mapper, leitor, fechados.Select(f => f.Spa),
+            await GarantirAtendimentosAsync(ctx, mapper, leitor, layout, fechados.Select(f => f.Spa),
                 orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
 
             foreach (var f in fechados)
@@ -396,7 +404,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         // guarda, a EDIÇÃO de uma evolução antiga (rowversion novo, datahora velha) regrediria
         // o diagnóstico já revisado.
         var cidDataPorBoletim = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        await PaginarAsync(leitor, FaseEvolucao, ctx, incremental, SqlEvolucoes, async (linhas, fase) =>
+        await PaginarAsync(leitor, FaseEvolucao, ctx, incremental, (d, t) => SqlEvolucoes(d, t, layout), async (linhas, fase) =>
         {
             var evolucoes = linhas.Select(MapEvolucao).OfType<EvolucaoLinha>().ToList();
             if (limitado)
@@ -417,7 +425,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
             if (!limitado)
             {
-                await GarantirAtendimentosAsync(ctx, mapper, leitor, evolucoes.Select(e => e.SpaCodigo),
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, layout, evolucoes.Select(e => e.SpaCodigo),
                     orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
@@ -456,7 +464,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             }
             else
             {
-                await GarantirAtendimentosAsync(ctx, mapper, leitor, boletinsMedicos.Select(b => b.SpaCodigo),
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, layout, boletinsMedicos.Select(b => b.SpaCodigo),
                     orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
@@ -507,7 +515,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             }
             else
             {
-                await GarantirAtendimentosAsync(ctx, mapper, leitor, itens.Select(i => i.SpaCodigo),
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, layout, itens.Select(i => i.SpaCodigo),
                     orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
@@ -539,7 +547,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
         // ---------- 6. Sinais vitais → Observation ----------
         p.FaseAtual = "sinais vitais…";
-        await PaginarAsync(leitor, FaseSinais, ctx, incremental, SqlSinaisVitais, async (linhas, fase) =>
+        await PaginarAsync(leitor, FaseSinais, ctx, incremental, (d, t) => SqlSinaisVitais(d, t, layout), async (linhas, fase) =>
         {
             var vitais = linhas.Select(MapSinaisVitais).OfType<SinaisVitaisLinha>().ToList();
             if (limitado)
@@ -548,7 +556,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             }
             else
             {
-                await GarantirAtendimentosAsync(ctx, mapper, leitor, vitais.Select(v => v.SpaCodigo),
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, layout, vitais.Select(v => v.SpaCodigo),
                     orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
@@ -785,13 +793,13 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     /// verificar com o agente offline. O lote tem custo previsível: uma passada por consulta.
     /// </summary>
     private static async Task<HashSet<string>> CarregarFlagsAtendimentoAsync(
-        LeitorAgenteSql leitor, IEnumerable<string> boletins, CancellationToken ct)
+        LeitorAgenteSql leitor, IEnumerable<string> boletins, KlinikosLayout layout, CancellationToken ct)
     {
         var todos = boletins.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var com = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var lote in EmLotes(todos, TamanhoLote))
         {
-            foreach (var linha in await leitor.ConsultarAsync(SqlFlagsAtendimento(lote), ct))
+            foreach (var linha in await leitor.ConsultarAsync(SqlFlagsAtendimento(lote, layout), ct))
             {
                 if (linha.Texto("SPA_CODIGO") is { } spa) com.Add(spa);
             }
@@ -891,6 +899,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     /// </summary>
     private static async Task GarantirAtendimentosAsync(
         ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, LeitorAgenteSql leitor,
+        KlinikosLayout layout,
         IEnumerable<string?> boletins,
         IReadOnlyDictionary<string, string> orgPorUnidade,
         Dictionary<string, string> pacPorCodigo,
@@ -906,10 +915,10 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
         foreach (var lote in EmLotes(faltantes, TamanhoLote))
         {
-            var linhas = await leitor.ConsultarAsync(SqlBoletinsPorCodigo(lote), ct);
+            var linhas = await leitor.ConsultarAsync(SqlBoletinsPorCodigo(lote, layout), ct);
             var achados = linhas.Select(MapBoletim).OfType<BoletimLinha>().ToList();
             var comAtendimento = await CarregarFlagsAtendimentoAsync(
-                leitor, achados.Select(b => b.Codigo), ct);
+                leitor, achados.Select(b => b.Codigo), layout, ct);
             var desfechos = await CarregarDesfechosAsync(leitor, achados.Select(b => b.Codigo), ct);
 
             await GarantirPacientesAsync(ctx, mapper, leitor, achados.Select(b => b.PacCodigo),
@@ -1052,8 +1061,23 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                CONVERT(BIGINT, rv_atualizacao) AS rv
         """;
 
-    internal static string SqlBoletins(long desde, int top) => $"""
-        SELECT TOP {top} {ColunasBoletim}
+    /// <summary>
+    /// K.2024 (Conde): o nome social é <c>spa_nome_social</c> e o boletim não tem CNS — o do
+    /// paciente vem do cadastro. Os aliases mantêm o contrato de <see cref="MapBoletim"/>.
+    /// </summary>
+    private const string ColunasBoletimK2024 =
+        """
+        spa_codigo, pac_codigo, unid_codigo, spa_chegada, spa_dt_boletim,
+               spa_nome_social AS spa_nomesocial, CAST(NULL AS VARCHAR(20)) AS spa_cartao_nsaude,
+               spa_forma_chegada, risaco_codigo,
+               CONVERT(BIGINT, rv_atualizacao) AS rv
+        """;
+
+    private static string ColunasBoletimDe(KlinikosLayout layout) =>
+        layout == KlinikosLayout.K2024 ? ColunasBoletimK2024 : ColunasBoletim;
+
+    internal static string SqlBoletins(long desde, int top, KlinikosLayout layout = KlinikosLayout.U2025) => $"""
+        SELECT TOP {top} {ColunasBoletimDe(layout)}
           FROM Pronto_Atendimento
          WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
            AND pac_codigo IS NOT NULL
@@ -1061,14 +1085,16 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         """;
 
     /// <summary>Boletins DE uma lista de pacientes (reimport direcionado).</summary>
-    internal static string SqlBoletinsDePacientes(IReadOnlyList<string> pacientes) => $"""
-        SELECT {ColunasBoletim}
+    internal static string SqlBoletinsDePacientes(
+        IReadOnlyList<string> pacientes, KlinikosLayout layout = KlinikosLayout.U2025) => $"""
+        SELECT {ColunasBoletimDe(layout)}
           FROM Pronto_Atendimento
          WHERE pac_codigo IN ({ListaTexto(pacientes)})
         """;
 
-    internal static string SqlBoletinsPorCodigo(IReadOnlyList<string> codigos) => $"""
-        SELECT {ColunasBoletim}
+    internal static string SqlBoletinsPorCodigo(
+        IReadOnlyList<string> codigos, KlinikosLayout layout = KlinikosLayout.U2025) => $"""
+        SELECT {ColunasBoletimDe(layout)}
           FROM Pronto_Atendimento
          WHERE spa_codigo IN ({ListaTexto(codigos)})
            AND pac_codigo IS NOT NULL
@@ -1080,13 +1106,35 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     /// os ~2.200 boletins atendidos apenas pela enfermagem — status clínico FALSO no hub.
     /// "Não atendido" de verdade = boletim sem evolução nenhuma (evasão antes de tudo).
     /// O <c>%</c> no fim do LIKE blinda contra padding de <c>char</c>/espaço à direita.
+    ///
+    /// <para>K.2024: a evolução chega ao boletim pelo atendimento (<c>atendamb_codigo</c>), e
+    /// evolução inativada ou em rascunho não conta — é o equivalente do ESTORNO nessa versão.</para>
     /// </summary>
-    internal static string SqlFlagsAtendimento(IReadOnlyList<string> boletins) => $"""
-        SELECT DISTINCT SPA_CODIGO
-          FROM UPA_Evolucao
-         WHERE SPA_CODIGO IN ({ListaTexto(boletins)})
-           AND Tipo NOT LIKE 'ESTORNO%'
-        """;
+    internal static string SqlFlagsAtendimento(
+        IReadOnlyList<string> boletins, KlinikosLayout layout = KlinikosLayout.U2025) => layout switch
+    {
+        KlinikosLayout.K2024 => $"""
+            SELECT DISTINCT aa.spa_codigo AS SPA_CODIGO
+              FROM UPA_Evolucao e
+              JOIN atendimento_ambulatorial aa ON aa.atendamb_codigo = e.atendamb_codigo
+             WHERE aa.spa_codigo IN ({ListaTexto(boletins)})
+               AND e.Tipo NOT LIKE 'ESTORNO%'
+               AND {EvolucaoValidaK2024}
+            """,
+        _ => $"""
+            SELECT DISTINCT SPA_CODIGO
+              FROM UPA_Evolucao
+             WHERE SPA_CODIGO IN ({ListaTexto(boletins)})
+               AND Tipo NOT LIKE 'ESTORNO%'
+            """,
+    };
+
+    /// <summary>
+    /// K.2024: evolução que vale para o prontuário. <c>Inativa = 'S'</c> é anulada pelo
+    /// profissional (713 no Conde em 21/10/2026); <c>Rascunho = 1</c> ainda não foi assinada —
+    /// quando for, a linha muda, o rowversion avança e ela entra no ciclo seguinte.
+    /// </summary>
+    private const string EvolucaoValidaK2024 = "ISNULL(e.Inativa, 'N') <> 'S' AND ISNULL(e.Rascunho, 0) = 0";
 
     /// <summary>
     /// Quando cada boletim FECHOU e com que desfecho — o par que o <c>Pronto_Atendimento</c> não
@@ -1125,15 +1173,35 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     internal static string SqlCapRowversion() =>
         "SELECT CONVERT(BIGINT, MIN_ACTIVE_ROWVERSION()) - 1 AS cap";
 
-    internal static string SqlEvolucoes(long desde, int top) => $"""
-        SELECT TOP {top} upaevo_codigo, SPA_CODIGO, Tipo, upaevo_datahora, upaevo_descricao,
-               prof_codigo, cid_codigo_primario, cid_codigo_secundario,
-               CONVERT(BIGINT, rv_atualizacao) AS rv
-          FROM UPA_Evolucao
-         WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
-           AND SPA_CODIGO IS NOT NULL
-         ORDER BY CONVERT(BIGINT, rv_atualizacao)
-        """;
+    /// <summary>
+    /// CDC das evoluções. Na K.2024 o boletim vem do atendimento, e o <c>JOIN</c> é também o
+    /// que deixa de fora as evoluções de INTERNAÇÃO (<c>inter_codigo</c>, 39.629 no Conde em
+    /// 21/10/2026): elas não têm boletim, e cada uma seguraria o ponteiro da fase para sempre
+    /// como "boletim não resolvido".
+    /// </summary>
+    internal static string SqlEvolucoes(long desde, int top, KlinikosLayout layout = KlinikosLayout.U2025) => layout switch
+    {
+        KlinikosLayout.K2024 => $"""
+            SELECT TOP {top} e.upaevo_codigo, aa.spa_codigo AS SPA_CODIGO, e.Tipo, e.upaevo_datahora,
+                   e.upaevo_descricao, e.prof_codigo, e.cid_codigo_primario, e.cid_codigo_secundario,
+                   CONVERT(BIGINT, e.rv_atualizacao) AS rv
+              FROM UPA_Evolucao e
+              JOIN atendimento_ambulatorial aa ON aa.atendamb_codigo = e.atendamb_codigo
+             WHERE CONVERT(BIGINT, e.rv_atualizacao) > {desde}
+               AND aa.spa_codigo IS NOT NULL
+               AND {EvolucaoValidaK2024}
+             ORDER BY CONVERT(BIGINT, e.rv_atualizacao)
+            """,
+        _ => $"""
+            SELECT TOP {top} upaevo_codigo, SPA_CODIGO, Tipo, upaevo_datahora, upaevo_descricao,
+                   prof_codigo, cid_codigo_primario, cid_codigo_secundario,
+                   CONVERT(BIGINT, rv_atualizacao) AS rv
+              FROM UPA_Evolucao
+             WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
+               AND SPA_CODIGO IS NOT NULL
+             ORDER BY CONVERT(BIGINT, rv_atualizacao)
+            """,
+    };
 
     /// <summary>
     /// CDC do BOLETIM MÉDICO — a narrativa do atendimento. O <c>JOIN</c> com
@@ -1194,15 +1262,98 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         OFFSET {offset} ROWS FETCH NEXT {top} ROWS ONLY
         """;
 
-    internal static string SqlSinaisVitais(long desde, int top) => $"""
-        SELECT TOP {top} sv_codigo, spa_codigo, data, prof_codigo, pressaoarterial, pulso,
-               temperatura, frequenciarespiratoria, hgt, saturacaoO2, peso,
-               CONVERT(BIGINT, rv_atualizacao) AS rv
-          FROM UPA_SinaisVitais
-         WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
-           AND spa_codigo IS NOT NULL
-         ORDER BY CONVERT(BIGINT, rv_atualizacao)
-        """;
+    /// <summary>
+    /// CDC dos sinais vitais.
+    ///
+    /// <para>Na U.2025 tudo está em <c>UPA_SinaisVitais</c>, que junta as etapas (classificação
+    /// de risco, acolhimento, evolução…). A K.2024 não tem essa tabela: as MESMAS três etapas
+    /// guardam a medida na própria linha. O <c>UNION ALL</c> as lê como uma fonte só, com UM
+    /// ponteiro — o rowversion é um contador do BANCO, não da tabela, então ordenar as três por
+    /// ele é ordenar pelo tempo das escritas. A classificação chega ao boletim pelo acolhimento
+    /// (o <c>spa_codigo</c> dela está vazio nas 41.547 linhas do Conde, medido em 21/10/2026).</para>
+    ///
+    /// <para>Só entra linha com pelo menos uma medida: acolhimento sem sinal nenhum faria o run
+    /// buscar o boletim à toa.</para>
+    /// </summary>
+    internal static string SqlSinaisVitais(long desde, int top, KlinikosLayout layout = KlinikosLayout.U2025) => layout switch
+    {
+        KlinikosLayout.K2024 => $"""
+            SELECT TOP {top} *
+              FROM (
+                SELECT 'aco' AS origem, a.ACO_CODIGO AS sv_codigo, a.spa_codigo, a.ACO_DATAHORA AS data,
+                       CAST(NULL AS CHAR(10)) AS prof_codigo, a.aco_pressaoarterial AS pressaoarterial,
+                       a.aco_pulso AS pulso, a.aco_temperatura AS temperatura,
+                       a.aco_frequenciarespiratoria AS frequenciarespiratoria, a.aco_hgt AS hgt,
+                       a.aco_saturacaoO2 AS saturacaoO2, CONVERT(VARCHAR(20), a.aco_peso) AS peso,
+                       CONVERT(BIGINT, a.rv_atualizacao) AS rv
+                  FROM UPA_ACOLHIMENTO a
+                 WHERE CONVERT(BIGINT, a.rv_atualizacao) > {desde}
+                   AND a.spa_codigo IS NOT NULL
+                   AND COALESCE(NULLIF(LTRIM(a.aco_pressaoarterial), ''), NULLIF(LTRIM(a.aco_pulso), ''),
+                                NULLIF(LTRIM(a.aco_temperatura), ''), NULLIF(LTRIM(a.aco_frequenciarespiratoria), ''),
+                                NULLIF(LTRIM(a.aco_hgt), ''), NULLIF(LTRIM(a.aco_saturacaoO2), ''),
+                                CONVERT(VARCHAR(20), NULLIF(a.aco_peso, 0))) IS NOT NULL
+                UNION ALL
+                SELECT 'cr', c.upaclaris_codigo, a.spa_codigo, c.upaclaris_datahora, c.prof_codigo,
+                       c.upaclaris_pressaoarterial, c.upaclaris_pulso, c.upaclaris_temperatura,
+                       c.upaclaris_frequenciarespiratoria,
+                       COALESCE(NULLIF(LTRIM(c.upaclaris_hgt), ''), c.upaclaris_glicemiacapilar),
+                       c.upaclaris_saturacaoO2, CONVERT(VARCHAR(20), c.upaclaris_peso),
+                       CONVERT(BIGINT, c.rv_atualizacao)
+                  FROM UPA_Classificacao_Risco c
+                  JOIN UPA_ACOLHIMENTO a ON a.ACO_CODIGO = c.aco_codigo
+                 WHERE CONVERT(BIGINT, c.rv_atualizacao) > {desde}
+                   AND a.spa_codigo IS NOT NULL
+                   AND COALESCE(NULLIF(LTRIM(c.upaclaris_pressaoarterial), ''), NULLIF(LTRIM(c.upaclaris_pulso), ''),
+                                NULLIF(LTRIM(c.upaclaris_temperatura), ''), NULLIF(LTRIM(c.upaclaris_frequenciarespiratoria), ''),
+                                NULLIF(LTRIM(c.upaclaris_hgt), ''), NULLIF(LTRIM(c.upaclaris_glicemiacapilar), ''),
+                                NULLIF(LTRIM(c.upaclaris_saturacaoO2), ''),
+                                CONVERT(VARCHAR(20), NULLIF(c.upaclaris_peso, 0))) IS NOT NULL
+                UNION ALL
+                SELECT 'evo', e.upaevo_codigo, aa.spa_codigo, e.upaevo_datahora, e.prof_codigo,
+                       e.upaevo_pa, e.upaevo_pulso, e.upaevo_temperatura, e.upaevo_frequencia_respiratoria,
+                       e.upaevo_hgt, e.upaevo_satO2, CONVERT(VARCHAR(20), e.upaevo_peso),
+                       CONVERT(BIGINT, e.rv_atualizacao)
+                  FROM UPA_Evolucao e
+                  JOIN atendimento_ambulatorial aa ON aa.atendamb_codigo = e.atendamb_codigo
+                 WHERE CONVERT(BIGINT, e.rv_atualizacao) > {desde}
+                   AND aa.spa_codigo IS NOT NULL
+                   AND {EvolucaoValidaK2024}
+                   AND COALESCE(NULLIF(LTRIM(e.upaevo_pa), ''), NULLIF(LTRIM(e.upaevo_pulso), ''),
+                                NULLIF(LTRIM(e.upaevo_temperatura), ''), NULLIF(LTRIM(e.upaevo_frequencia_respiratoria), ''),
+                                NULLIF(LTRIM(e.upaevo_hgt), ''), NULLIF(LTRIM(e.upaevo_satO2), ''),
+                                CONVERT(VARCHAR(20), NULLIF(e.upaevo_peso, 0))) IS NOT NULL
+              ) sv
+             ORDER BY rv
+            """,
+        _ => $"""
+            SELECT TOP {top} sv_codigo, spa_codigo, data, prof_codigo, pressaoarterial, pulso,
+                   temperatura, frequenciarespiratoria, hgt, saturacaoO2, peso,
+                   CONVERT(BIGINT, rv_atualizacao) AS rv
+              FROM UPA_SinaisVitais
+             WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
+               AND spa_codigo IS NOT NULL
+             ORDER BY CONVERT(BIGINT, rv_atualizacao)
+            """,
+    };
+
+    /// <summary>
+    /// Lê a sonda de <see cref="KlinikosLayoutSonda"/> e devolve a versão do banco — ou para o
+    /// run, dizendo o que viu, quando o esquema não bate com nenhuma versão conhecida.
+    /// </summary>
+    private static async Task<KlinikosLayout> DetectarLayoutAsync(
+        LeitorAgenteSql leitor, string slug, CancellationToken ct)
+    {
+        var linhas = await leitor.ConsultarAsync(KlinikosLayoutSonda.Sql(), ct);
+        var existe = KlinikosLayoutSonda.Colunas.ToDictionary(
+            c => c, c => linhas.Count > 0 && linhas[0].Numero(c) == 1);
+
+        return KlinikosLayoutSonda.Detectar(existe)
+            ?? throw new ValidacaoException("pep.klinikos_versao_desconhecida",
+                $"O banco do Klinikos de '{slug}' não bate com nenhuma versão conhecida do conector "
+                + $"({string.Join(", ", existe.Select(kv => $"{kv.Key}={(kv.Value ? 1 : 0)}"))}). "
+                + "Nada foi importado.");
+    }
 
     /// <summary>
     /// Lista literal para <c>IN</c>. Os códigos do Klinikos são alfanuméricos de tamanho fixo
@@ -1299,6 +1450,6 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             ? new SinaisVitaisLinha(cod, l.Texto("spa_codigo"), l.DataHora("data"), l.Texto("prof_codigo"),
                 l.Texto("pressaoarterial"), l.Texto("pulso"), l.Texto("temperatura"),
                 l.Texto("frequenciarespiratoria"), l.Texto("hgt"), l.Texto("saturacaoO2"),
-                l.Texto("peso"), l.Numero("rv") ?? 0)
+                l.Texto("peso"), l.Numero("rv") ?? 0, l.Texto("origem"))
             : null;
 }

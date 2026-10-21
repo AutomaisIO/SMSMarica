@@ -486,9 +486,13 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         return obs;
     }
 
-    /// <summary>Identifier determinístico da medida: uma Observation por (linha de sinais, campo).</summary>
+    /// <summary>
+    /// Identifier determinístico da medida: uma Observation por (linha de sinais, campo). Com
+    /// origem (K.2024), o código leva a tabela na frente — ver <see cref="SinaisVitaisLinha.Origem"/>.
+    /// </summary>
     private string ChaveVital(SinaisVitaisLinha sv, string campo) =>
-        Pref(sv.Codigo.ToString(CultureInfo.InvariantCulture)) + ":" + campo;
+        Pref((sv.Origem is { } o ? o + "-" : string.Empty) + sv.Codigo.ToString(CultureInfo.InvariantCulture))
+        + ":" + campo;
 
     private Observation Observacao(
         SinaisVitaisLinha sv, string patientRef, string encRef, string? eff,
