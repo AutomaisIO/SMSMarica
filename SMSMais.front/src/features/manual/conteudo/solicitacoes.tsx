@@ -85,7 +85,7 @@ export const artigoSolicitacoes: Artigo = {
       id: 'para-que-serve',
       titulo: 'Para que serve',
       busca:
-        'lista única exames de imagem consultas laboratório cirurgia regulado SISREG uma tela só tem exame holter MAPA eletrocardiograma ECG modalidade DICOM gráfico funcional',
+        'lista única exames de imagem consultas laboratório cirurgia regulado SISREG uma tela só tem exame holter MAPA eletrocardiograma ECG modalidade DICOM gráfico funcional worklist integrada escopo ressonância outro',
       conteudo: (
         <>
           <P>
@@ -107,16 +107,19 @@ export const artigoSolicitacoes: Artigo = {
           </Callout>
           <Sub>Quem tem exame</Sub>
           <P>
-            Todo exame de imagem tem. Fora da imagem, só o pedido cujo tipo de exame foi configurado
-            com uma <strong>modalidade DICOM</strong> (em Tipos de Exame) — hoje, o{' '}
-            <strong>Holter</strong> e o <strong>MAPA</strong>. Eles continuam sendo do tipo{' '}
+            Todo exame de imagem tem. Fora da imagem, só quando as duas coisas estão configuradas: o
+            tipo de exame tem uma <strong>modalidade DICOM</strong> (em Tipos de Exame) e a unidade que
+            executa tem esse exame no escopo com o <strong>envio à worklist ligado</strong> — ou seja, a
+            unidade está integrada a um aparelho. Hoje, o <strong>Holter</strong> e o{' '}
+            <strong>MAPA</strong> no CDT. Eles continuam sendo do tipo{' '}
             <strong>Gráfico/funcional</strong>, que é o que são, mas ganham nº do pedido e vão para o
             aparelho da cardiologia como um exame de imagem, e o laudo volta pelo PACS.
           </P>
           <P>
             O <strong>eletrocardiograma</strong> não tem exame: a máquina imprime o traçado na hora e
             ele é entregue ao paciente, sem nada a mandar nem a receber. Audiometria, espirometria e
-            os demais métodos gráficos também seguem sem.
+            os demais métodos gráficos também seguem sem — e também o pedido que chega com o tipo
+            errado (ex.: uma ressonância marcada como “Outro”) numa clínica com que não há integração.
           </P>
         </>
       ),
