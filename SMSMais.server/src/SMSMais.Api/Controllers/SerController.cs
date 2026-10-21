@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Ser;
 using SMSMais.Core.Ser.Dtos;
@@ -496,6 +497,27 @@ public sealed class SerConfiguracaoController(
         [FromServices] ISerVarreduraConfigService config,
         CancellationToken cancellationToken) =>
         config.SalvarAsync(corpo, cancellationToken);
+
+    /// <summary>
+    /// Regra de anexos do SER no envio automático: o tamanho máximo por arquivo. Acima dele o envio
+    /// comprime (foto e PDF) para caber; o padrão fica abaixo dos 5 MB que a tela do SER declara.
+    /// </summary>
+    [HttpGet("anexos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<RegrasAnexoDestinoDto>(StatusCodes.Status200OK)]
+    public Task<RegrasAnexoDestinoDto> ObterRegrasAnexo(
+        [FromServices] IRegrasAnexoDestinoService regras, CancellationToken cancellationToken) =>
+        regras.ObterAsync(SistemaRegulacao.Ser, cancellationToken);
+
+    [HttpPut("anexos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegrasAnexoDestinoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<RegrasAnexoDestinoDto> SalvarRegrasAnexo(
+        [FromBody] SalvarRegrasAnexoDestinoRequest corpo,
+        [FromServices] IRegrasAnexoDestinoService regras,
+        CancellationToken cancellationToken) =>
+        regras.SalvarAsync(SistemaRegulacao.Ser, corpo.TamanhoMaximoMb, cancellationToken);
 
     [HttpPost("testar-credencial")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]

@@ -42,28 +42,32 @@ public static class AnexosParaSer
     public const int MaximoDeArquivos = 2;
 
     /// <summary>
-    /// O alvo de tamanho por arquivo: <b>4.800.000 bytes</b>, abaixo dos "5 MB" que a tela do SER
-    /// declara. Nunca se mediu se o limite do servidor deles é 5.000.000 ou 5.242.880 bytes — o alvo
-    /// cabe nos dois, com folga para o envelope do upload.
+    /// O limite por arquivo quando o destino não tem um configurado: <b>4,5 MB</b> (4.718.592 bytes),
+    /// abaixo dos "5 MB" que a tela do SER declara. Nunca se mediu se o limite do servidor deles é
+    /// 5.000.000 ou 5.242.880 bytes — o padrão cabe nos dois, com folga para o envelope do upload. O
+    /// limite de cada destino se configura na aba dele (<see cref="IRegrasAnexoDestinoService"/>).
     /// </summary>
-    public const long TamanhoMaximo = 4_800_000;
+    public const long TamanhoMaximoPadrao = 4_718_592;
 
-    /// <summary>Sem compressor de PDF: PDF acima do limite é recusado (o comportamento de antes).</summary>
+    /// <summary>Sem compressor de PDF e no limite padrão: PDF acima do limite é recusado.</summary>
     public static IReadOnlyList<AnexoParaSer> Preparar(IReadOnlyList<ArquivoLido> arquivos, string sistema = "SER") =>
-        PrepararAsync(arquivos, sistema, compressorPdf: null, CancellationToken.None).GetAwaiter().GetResult();
+        PrepararAsync(arquivos, sistema, TamanhoMaximoPadrao, compressorPdf: null, CancellationToken.None)
+            .GetAwaiter().GetResult();
 
+    /// <param name="tamanhoMaximo">O limite por arquivo do destino, em bytes (configurado na aba dele).</param>
     /// <param name="compressorPdf">Comprime PDF acima do limite (Ghostscript). <c>null</c> = não há como
     /// comprimir PDF: o avulso grande é recusado e o agrupado cai na compressão das imagens-fonte.</param>
     public static async Task<IReadOnlyList<AnexoParaSer>> PrepararAsync(
-        IReadOnlyList<ArquivoLido> arquivos, string sistema, ICompressorPdf? compressorPdf, CancellationToken ct)
+        IReadOnlyList<ArquivoLido> arquivos, string sistema, long tamanhoMaximo, ICompressorPdf? compressorPdf,
+        CancellationToken ct)
     {
         if (arquivos.Count == 0) return [];
 
         if (arquivos.Count > MaximoDeArquivos)
-            return [await AgrupadoEmPdfAsync(arquivos, sistema, compressorPdf, ct)];
+            return [await AgrupadoEmPdfAsync(arquivos, sistema, tamanhoMaximo, compressorPdf, ct)];
 
         var saida = new List<AnexoParaSer>(arquivos.Count);
-        foreach (var a in arquivos) saida.Add(await UmArquivoAsync(a, sistema, compressorPdf, ct));
+        foreach (var a in arquivos) saida.Add(await UmArquivoAsync(a, sistema, tamanhoMaximo, compressorPdf, ct));
         return saida;
     }
 
@@ -72,17 +76,18 @@ public static class AnexosParaSer
     /// caber (vira JPEG) e PDF passa pelo Ghostscript; outros tipos acima do limite são recusados.
     /// </summary>
     private static async Task<AnexoParaSer> UmArquivoAsync(
-        ArquivoLido a, string sistema, ICompressorPdf? compressorPdf, CancellationToken ct)
+        ArquivoLido a, string sistema, long limite, ICompressorPdf? compressorPdf, CancellationToken ct)
     {
         var nome = NomeParaOSer(a);
-        if (a.Conteudo.LongLength <= TamanhoMaximo)
+        if (a.Conteudo.LongLength <= limite)
             return new AnexoParaSer(nome, a.ContentType, a.Conteudo, [a.Id], [nome]);
 
-        var acima = $"O arquivo \"{nome}\" tem {Mb(a.Conteudo.LongLength)} — o {sistema} aceita até 5 MB por arquivo. ";
+        var acima = $"O arquivo \"{nome}\" tem {Mb(a.Conteudo.LongLength)} — o limite do {sistema} é "
+            + $"{Mb(limite)} por arquivo (Configuração do {sistema}). ";
 
         if (EhImagem(a))
         {
-            var menor = CompressorImagem.ComprimirAte(a.Conteudo, TamanhoMaximo)
+            var menor = CompressorImagem.ComprimirAte(a.Conteudo, limite)
                 ?? throw new ValidacaoException(
                     "anexos", acima + "Mesmo comprimido não coube sem ficar ilegível; envie uma versão menor.");
             return new AnexoParaSer(
@@ -96,7 +101,7 @@ public static class AnexosParaSer
 
         var compressao = compressorPdf is null
             ? CompressaoPdf.Indisponivel
-            : await compressorPdf.ComprimirAteAsync(a.Conteudo, TamanhoMaximo, ct);
+            : await compressorPdf.ComprimirAteAsync(a.Conteudo, limite, ct);
         return compressao.Desfecho switch
         {
             DesfechoCompressaoPdf.Coube => new AnexoParaSer(
@@ -117,18 +122,19 @@ public static class AnexosParaSer
     /// couber, recusa.
     /// </summary>
     private static async Task<AnexoParaSer> AgrupadoEmPdfAsync(
-        IReadOnlyList<ArquivoLido> arquivos, string sistema, ICompressorPdf? compressorPdf, CancellationToken ct)
+        IReadOnlyList<ArquivoLido> arquivos, string sistema, long limite, ICompressorPdf? compressorPdf,
+        CancellationToken ct)
     {
         var pdf = JuntarEmPdf(arquivos, comprimirImagens: false);
         long? original = null;
         string? como = null;
 
-        if (pdf.LongLength > TamanhoMaximo)
+        if (pdf.LongLength > limite)
         {
             original = pdf.LongLength;
             var compressao = compressorPdf is null
                 ? CompressaoPdf.Indisponivel
-                : await compressorPdf.ComprimirAteAsync(pdf, TamanhoMaximo, ct);
+                : await compressorPdf.ComprimirAteAsync(pdf, limite, ct);
             switch (compressao.Desfecho)
             {
                 case DesfechoCompressaoPdf.Coube:
@@ -145,12 +151,12 @@ public static class AnexosParaSer
             }
         }
 
-        if (pdf.LongLength > TamanhoMaximo)
+        if (pdf.LongLength > limite)
         {
             throw new ValidacaoException(
                 "anexos",
-                $"Os {arquivos.Count} anexos juntos num PDF dão {Mb(pdf.LongLength)} mesmo comprimidos — o {sistema} "
-                + "aceita até 5 MB por arquivo. Remova anexos ou envie um PDF menor no lugar.");
+                $"Os {arquivos.Count} anexos juntos num PDF dão {Mb(pdf.LongLength)} mesmo comprimidos — o limite "
+                + $"do {sistema} é {Mb(limite)} por arquivo. Remova anexos ou envie um PDF menor no lugar.");
         }
 
         return new AnexoParaSer(

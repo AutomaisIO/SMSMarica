@@ -272,7 +272,8 @@ function ModalEnvioAutomatico({
                     {a.tamanhoOriginal != null && (
                       <span className="text-xs text-amber-700">
                         · comprimido de {emMb(a.tamanhoOriginal)} MB
-                        {a.compressao && ` (${a.compressao})`} para caber nos 5 MB do {nome}
+                        {a.compressao && ` (${a.compressao})`} para caber no limite
+                        {previa.limiteAnexoBytes ? ` de ${emMb(previa.limiteAnexoBytes)} MB` : ''} do {nome}
                       </span>
                     )}
                   </li>

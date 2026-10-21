@@ -481,8 +481,8 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             </Item>
             <Item>
               Os tipos e o tamanho máximo do upload são os da configuração (normalmente PDF e imagens, até 15 MB).
-              Não precisa reduzir o arquivo para o SER ou o SERNIT, que aceitam só 5 MB: ao levar o pedido, a
-              regulação comprime sozinha o que passar disso, e aqui fica o original.
+              Não precisa reduzir o arquivo para o SER ou o SERNIT, que têm limite por arquivo (perto de 5 MB):
+              ao levar o pedido, a regulação comprime sozinha o que passar do limite, e aqui fica o original.
             </Item>
             <Item>
               Quando a rede já tem um exame do paciente que serve para a caixinha, aparece a sugestão com{' '}

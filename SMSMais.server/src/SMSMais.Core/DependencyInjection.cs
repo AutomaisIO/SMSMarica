@@ -1153,6 +1153,8 @@ public static class DependencyInjection
         services.Configure<Regulacao.EnvioSer.GhostscriptOptions>(
             configuration.GetSection(Regulacao.EnvioSer.GhostscriptOptions.Secao));
         services.AddSingleton<Regulacao.EnvioSer.ICompressorPdf, Regulacao.EnvioSer.CompressorPdfGhostscript>();
+        // Tamanho máximo por arquivo de cada destino (SER, SERNIT), configurado na aba dele.
+        services.AddScoped<Regulacao.EnvioSer.IRegrasAnexoDestinoService, Regulacao.EnvioSer.RegrasAnexoDestinoService>();
         // Cópia diária dos catálogos do SER/SERNIT (07/10/2026): agendador de madrugada + a
         // primeira solicitação aberta no dia confere também.
         services.Configure<Regulacao.Catalogo.CatalogoDiarioOpcoes>(
