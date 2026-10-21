@@ -190,13 +190,14 @@ Acrescentar o aparelho às tabelas de `docs/pacs.md` (§8 e §9.1).
   densitometrias pendentes passariam a pedir sala na recepção. Fixe primeiro o tipo que já existia,
   depois cadastre o aparelho novo. A troca da modalidade do tipo vem antes de fixar o aparelho dele:
   o seletor só mostra aparelhos da mesma modalidade.
-- **Método gráfico (MAPA, Holter) só tem exame se o TIPO tiver modalidade DICOM.** O SISREG manda
-  esses pedidos como gráfico funcional (SIGTAP 0211), não imagem, e sem exame nada vai à worklist.
-  Desde 20/10/2026 (adendo do ADR-0021) o pedido não-imagem ganha exame quando o tipo de exame dele
-  já existe com modalidade ≠ Indefinida (`CategoriaSigtap.CriaSatelite`) — em qualquer unidade; a
-  importação nunca cria tipo fora da imagem. Por isso **pôr modalidade num tipo de método gráfico
-  liga o exame dele**: o ELETROCARDIOGRAMA fica Indefinida de propósito (a máquina imprime e entrega
-  ao paciente). Antes disso, só os gravados como Imagem pela carga de 08/09 tinham exame — de 31/10
+- **Método gráfico (MAPA, Holter) só tem exame com modalidade no TIPO e worklist no ESCOPO.** O SISREG
+  manda esses pedidos como gráfico funcional (SIGTAP 0211), não imagem, e sem exame nada vai à
+  worklist. Desde 20/10/2026 (adendo do ADR-0021) o pedido não-imagem ganha exame quando o tipo dele
+  já existe com modalidade ≠ Indefinida **e** a unidade executante o tem no escopo com o envio à
+  worklist ligado (`CategoriaSigtap.CriaSatelite`); a importação nunca cria tipo fora da imagem. As
+  duas condições são de propósito: só a modalidade deu exame a 178 ressonâncias "Outro" da DIMAGEM
+  (sem integração); só o escopo daria ao ELETROCARDIOGRAMA do CDT, que fica Indefinida de propósito
+  (a máquina imprime e entrega ao paciente). Antes disso, só os gravados como Imagem pela carga de 08/09 tinham exame — de 31/10
   em diante nenhuma MAPA ou Holter chegaria ao CardioNet. Aparelho novo de método gráfico: modalidade
   no tipo, depois o reparo (`POST /sisreg/importacao/reparar-exames-sem-satelite`) para os pedidos
   **futuros**, e conferir que eles têm exame (`exame_imagem`), não só os de hoje.

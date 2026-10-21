@@ -27,8 +27,10 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Importacao;
 ///
 /// <para><b>Fora da imagem (20/10/2026):</b> Holter e MAPA são Gráfico/funcional, mas vão à worklist
 /// da cardiologia e o laudo volta em PDF pelo PACS, casado pelo accession/Study — então também têm
-/// satélite. O critério é o tipo de exame ter modalidade DICOM (<see cref="CategoriaSigtap.CriaSatelite"/>);
-/// fora da imagem o tipo nunca é criado aqui, só reaproveitado.</para>
+/// satélite. O critério é o tipo de exame ter modalidade DICOM <b>e</b> a unidade executante o ter no
+/// escopo com o envio à worklist ligado (<see cref="CategoriaSigtap.CriaSatelite"/>) — a ressonância
+/// gravada como "Outro" numa clínica sem integração não entra; fora da imagem o tipo nunca é criado
+/// aqui, só reaproveitado.</para>
 ///
 /// <para>Espelha o caminho de criação da importação: tipo pelo NOME do SISREG
 /// (<see cref="IResolvedorTipoExameSisreg"/>, nasce com worklist desligado), par tipo×unidade no
@@ -84,7 +86,8 @@ public sealed class SateliteImagemSisreg(
         Solicitacao solicitacao, Func<string>? proximoAccession, CancellationToken ct)
     {
         // A categoria não barra mais aqui: quem decide é CategoriaSigtap.CriaSatelite, via
-        // ResolverParaExecucaoAsync — imagem sempre; fora dela, só tipo com modalidade (Holter, MAPA).
+        // ResolverParaExecucaoAsync — imagem sempre; fora dela, só tipo com modalidade que a unidade
+        // executante envia à worklist (Holter, MAPA no CDT).
         if (solicitacao.Status == StatusSolicitacao.Cancelada
             || solicitacao.ExcluidoEm is not null)
             return ResultadoSatelite.NadaAFazer;
@@ -110,7 +113,8 @@ public sealed class SateliteImagemSisreg(
         var nome = ResolvedorTipoExameSisreg.NormalizarNome(solicitacao.ProcedimentoTexto ?? string.Empty);
         var sig = SoDigitos(solicitacao.ProcedimentoSigtapCodigo);
         var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
-            solicitacao.Categoria, nome, SoDigitos(solicitacao.ProcedimentoCodigoSisreg), sig, ct);
+            solicitacao.Categoria, nome, SoDigitos(solicitacao.ProcedimentoCodigoSisreg), sig,
+            solicitacao.UnidadeExecutanteId, ct);
         if (exame is null && !criaSatelite) return (ResultadoSatelite.NadaAFazer, null);
         if (tipoExameId is { } tipo)
             await escopoExameUnidade.GarantirAsync(tipo, solicitacao.UnidadeExecutanteId, ct);
@@ -182,8 +186,10 @@ public sealed class SateliteImagemSisreg(
             var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
                 solicitacao.Categoria,
                 ResolvedorTipoExameSisreg.NormalizarNome(item.ProcedimentoTexto ?? string.Empty),
-                SoDigitos(item.ProcedimentoCodigoSisreg), SoDigitos(item.ProcedimentoSigtapCodigo), ct);
-            // Fora da imagem, procedimento extra sem tipo com modalidade não vira exame.
+                SoDigitos(item.ProcedimentoCodigoSisreg), SoDigitos(item.ProcedimentoSigtapCodigo),
+                solicitacao.UnidadeExecutanteId, ct);
+            // Fora da imagem, procedimento extra sem tipo com modalidade e worklist na unidade não
+            // vira exame.
             if (exame is null && !criaSatelite) continue;
             if (tipoExameId is { } tipo)
                 await escopoExameUnidade.GarantirAsync(tipo, solicitacao.UnidadeExecutanteId, ct);
@@ -255,12 +261,13 @@ public sealed class SateliteImagemSisreg(
         var hojeBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date;
         var desdeUtc = DateTime.SpecifyKind(hojeBrasilia.AddHours(3), DateTimeKind.Utc);
 
-        // Fora da imagem, só o procedimento cujo tipo já tem modalidade DICOM ganha satélite
-        // (CategoriaSigtap.CriaSatelite). ProcedimentoTexto e TipoExame.Nome usam a mesma
-        // normalização (NomeTipoExame.Normalizar), então a comparação é direta.
-        var tiposComModalidade = db.TiposExame
-            .Where(t => t.ExcluidoEm == null && t.ModalidadeDicom != ModalidadeDicom.Indefinida)
-            .Select(t => t.Nome);
+        // Fora da imagem, só o procedimento cujo tipo tem modalidade DICOM E está no escopo da
+        // executante com o envio à worklist ligado ganha satélite (CategoriaSigtap.CriaSatelite).
+        // ProcedimentoTexto e TipoExame.Nome usam a mesma normalização (NomeTipoExame.Normalizar),
+        // então a comparação é direta.
+        var escoposComWorklist = db.TiposExameUnidade.Where(a =>
+            a.Ativo && a.EnviarParaWorklist && a.ExcluidoEm == null
+            && a.TipoExame!.ExcluidoEm == null && a.TipoExame.ModalidadeDicom != ModalidadeDicom.Indefinida);
 
         IQueryable<Solicitacao> Pendentes() => db.Solicitacoes.Where(s =>
             s.ExcluidoEm == null
@@ -274,7 +281,8 @@ public sealed class SateliteImagemSisreg(
                 // Holter, MAPA…: o retroativo é pedido explícito (acervo de laudos em PDF a trazer).
                 : (incluirAnterioresForaDaImagem || s.DataAgendada >= desdeUtc)
                   && s.ProcedimentoTexto != null
-                  && tiposComModalidade.Contains(s.ProcedimentoTexto)
+                  && escoposComWorklist.Any(a =>
+                      a.UnidadeId == s.UnidadeExecutanteId && a.TipoExame!.Nome == s.ProcedimentoTexto)
                   && !db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)));
 
         // Cursor por id (não por data): o exame sem nome de procedimento fica sem tipo e continua

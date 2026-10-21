@@ -211,12 +211,16 @@ public sealed class ImportacaoSisregService(
 
         var sigtapComTipo = await SigtapComTipoAsync(ct);
 
-        // Fora da imagem, quem ganha exame é o tipo que já tem modalidade DICOM (Holter, MAPA) —
-        // mesmo critério de CategoriaSigtap.CriaSatelite, para a prévia não dizer "sem exame" deles.
-        var tiposComModalidade = (await db.TiposExame.AsNoTracking()
-            .Where(t => t.ExcluidoEm == null && t.ModalidadeDicom != ModalidadeDicom.Indefinida)
-            .Select(t => t.Nome)
-            .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
+        // Fora da imagem, quem ganha exame é o tipo com modalidade DICOM que a executante envia à
+        // worklist (Holter, MAPA no CDT) — mesmo critério de CategoriaSigtap.CriaSatelite, para a
+        // prévia não dizer "sem exame" deles.
+        var tiposComModalidade = executante.Id is { } execId
+            ? (await db.TiposExameUnidade.AsNoTracking()
+                .Where(a => a.UnidadeId == execId && a.Ativo && a.EnviarParaWorklist && a.ExcluidoEm == null
+                    && a.TipoExame!.ExcluidoEm == null && a.TipoExame.ModalidadeDicom != ModalidadeDicom.Indefinida)
+                .Select(a => a.TipoExame!.Nome)
+                .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
 
         // Executante já resolvida (tenant atual); o mesmo nome/CNES vale para todas as linhas.
         var execNome = executante.Nome ?? marcacoes.Select(m => m.NomeUnidadeExecutante).FirstOrDefault(n => n is not null);
@@ -236,7 +240,7 @@ public sealed class ImportacaoSisregService(
             else if (categoria != CategoriaSolicitacao.Imagem)
                 alertas.Add(tiposComModalidade.Contains(
                         ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty))
-                    ? $"Categoria {categoria} — o tipo tem modalidade DICOM: importa com exame (worklist/PACS)."
+                    ? $"Categoria {categoria} — o tipo tem modalidade DICOM e worklist nesta unidade: importa com exame (worklist/PACS)."
                     : $"Categoria {categoria} — importa como solicitação (sem exame de imagem/PACS).");
             if (string.IsNullOrWhiteSpace(m.CnsPaciente)) alertas.Add("Sem CNS do paciente.");
             if (m.DataHoraAtendimento is null) alertas.Add("Sem data/hora de atendimento.");
@@ -354,26 +358,20 @@ public sealed class ImportacaoSisregService(
         // código exportado pelo SISREG entrava no catálogo OFICIAL com o nome do SISREG, e foi
         // assim que o 0205020062 virou "ULTRASSONOGRAFIA DA REGIÃO INGUINAL" — nome que passou a
         // representar 15 procedimentos diferentes.
-        // Fora da imagem, o satélite só vem de um tipo que já existe com modalidade (Holter, MAPA) —
-        // ver CategoriaSigtap.CriaSatelite; aí o tipo nunca é criado.
-        var (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
-            categoria, nomeProcedimento, codigoProcedimento, sig, ct);
+        // Fora da imagem, o satélite só vem de um tipo que já existe com modalidade e que a unidade
+        // executante envia à worklist (Holter, MAPA no CDT) — ver CategoriaSigtap.CriaSatelite; aí o
+        // tipo nunca é criado, e a decisão espera a executante (passo 4c).
+        var criaSatelite = false;
+        Guid? tipoExameId = null;
         if (categoria == CategoriaSolicitacao.Imagem)
         {
+            (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
+                categoria, nomeProcedimento, codigoProcedimento, sig, unidadeExecutanteId: null, ct);
             passos.Add(tipoExameId is null
                 ? "Exame de imagem SEM nome de procedimento no SISREG — importa sem tipo."
                 : $"Exame de imagem \"{nomeProcedimento}\""
                   + (codigoProcedimento.Length > 0 ? $" (SISREG {codigoProcedimento})" : string.Empty)
                   + " → tipo de exame resolvido pelo nome do SISREG.");
-        }
-        else if (criaSatelite)
-        {
-            passos.Add($"Categoria {categoria} (SIGTAP {sig}) — o tipo \"{nomeProcedimento}\" tem modalidade "
-                + "DICOM: ganha exame (accession, Study e worklist).");
-        }
-        else
-        {
-            passos.Add($"Categoria {categoria} (SIGTAP {sig}) — importa como solicitação, sem satélite de execução.");
         }
 
         // 3. Paciente. PRIMEIRO tenta a NOSSA base por CNS — o CADSUS/SISREG tem limite de
@@ -567,6 +565,18 @@ public sealed class ImportacaoSisregService(
                 passos.Add(escopo.EnviarParaWorklist
                     ? $"Exame adicionado ao escopo de {exec.Nome} — envio à worklist LIGADO (a unidade tem aparelho da modalidade)."
                     : $"Exame adicionado ao escopo de {exec.Nome} — envio à worklist DESLIGADO: a unidade não tem aparelho da modalidade.");
+        }
+
+        // 4c. Fora da imagem: ganha exame só o tipo com modalidade que ESTA executante envia à
+        //     worklist (o escopo já existe — nada é criado aqui).
+        if (categoria != CategoriaSolicitacao.Imagem)
+        {
+            (criaSatelite, tipoExameId) = await resolvedorTipoExame.ResolverParaExecucaoAsync(
+                categoria, nomeProcedimento, codigoProcedimento, sig, unidadeExecId, ct);
+            passos.Add(criaSatelite
+                ? $"Categoria {categoria} (SIGTAP {sig}) — \"{nomeProcedimento}\" tem modalidade DICOM e worklist "
+                  + $"ligada em {exec.Nome}: ganha exame (accession, Study e worklist)."
+                : $"Categoria {categoria} (SIGTAP {sig}) — importa como solicitação, sem satélite de execução.");
         }
 
         var (unidadeSolicId, solicCriada) = await ResolverOuCriarUnidadeAsync(m.CnesUnidadeSolicitante, m.NomeUnidadeSolicitante, ct);

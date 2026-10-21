@@ -12,8 +12,9 @@ namespace SMSMais.Tests.Solicitacoes;
 
 /// <summary>
 /// Adendo de 20/10/2026 ao ADR-0021: Holter e MAPA seguem Gráfico/funcional, mas ganham exame
-/// (accession, Study, worklist) porque o TIPO deles tem modalidade DICOM — o laudo volta em PDF pelo
-/// PACS, casado pelo accession/Study. Fora da imagem o tipo nunca é criado; e o reparo retroativo
+/// (accession, Study, worklist) porque o TIPO deles tem modalidade DICOM e a unidade executante o envia
+/// à worklist — o laudo volta em PDF pelo PACS, casado pelo accession/Study. Fora da imagem o tipo
+/// nunca é criado; e o reparo retroativo
 /// é só para o que não é imagem (a carga de 08/09 deixou ~512 mil imagens antigas sem satélite).
 /// </summary>
 [Collection(nameof(PostgresCollection))]
@@ -26,6 +27,7 @@ public class SateliteForaDaImagemTests(PostgresFixture fixture)
         var sufixo = Sufixo();
         var tipo = await SemearTipoAsync(db, $"HOLTER 24 HORAS TESTE {sufixo}", ModalidadeDicom.ECG);
         var solicitacao = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, tipo.Nome, DateTime.UtcNow.AddDays(3));
+        await SemearEscopoAsync(db, tipo.Id, solicitacao.UnidadeExecutanteId, enviarParaWorklist: true);
 
         Assert.Equal(ResultadoSatelite.Criado, await CriarSatelite(db).GarantirAsync(solicitacao, null, default));
         await db.SaveChangesAsync();
@@ -70,6 +72,36 @@ public class SateliteForaDaImagemTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Modalidade_sem_worklist_na_unidade_nao_ganha_exame()
+    {
+        // 20/10/2026: ressonância gravada como "Outro" na DIMAGEM — tipo MR, mas a clínica não é
+        // integrada (escopo com o envio desligado). Só a modalidade bastava, e o reparo deu exame a 178.
+        await using var db = fixture.CriarDbContext();
+        var tipo = await SemearTipoAsync(db, $"RESSONANCIA MAGNETICA TESTE {Sufixo()}", ModalidadeDicom.MR);
+        var solicitacao = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.Outro, tipo.Nome, DateTime.UtcNow.AddDays(3));
+        await SemearEscopoAsync(db, tipo.Id, solicitacao.UnidadeExecutanteId, enviarParaWorklist: false);
+
+        Assert.Equal(ResultadoSatelite.NadaAFazer, await CriarSatelite(db).GarantirAsync(solicitacao, null, default));
+        await db.SaveChangesAsync();
+        await RepararTudoAsync(incluirAnterioresForaDaImagem: true);
+
+        await using var depois = fixture.CriarDbContext();
+        Assert.False(await depois.ExamesImagem.AnyAsync(e => e.SolicitacaoId == solicitacao.Id));
+    }
+
+    [Fact]
+    public async Task Worklist_ligada_em_outra_unidade_nao_vale()
+    {
+        await using var db = fixture.CriarDbContext();
+        var tipo = await SemearTipoAsync(db, $"HOLTER OUTRA UNIDADE TESTE {Sufixo()}", ModalidadeDicom.ECG);
+        var solicitacao = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, tipo.Nome, DateTime.UtcNow.AddDays(3));
+        var outra = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, tipo.Nome, DateTime.UtcNow.AddDays(3));
+        await SemearEscopoAsync(db, tipo.Id, outra.UnidadeExecutanteId, enviarParaWorklist: true);
+
+        Assert.Equal(ResultadoSatelite.NadaAFazer, await CriarSatelite(db).GarantirAsync(solicitacao, null, default));
+    }
+
+    [Fact]
     public async Task Reparo_retroativo_pega_o_mapa_passado_e_deixa_a_imagem_passada()
     {
         await using var db = fixture.CriarDbContext();
@@ -77,6 +109,7 @@ public class SateliteForaDaImagemTests(PostgresFixture fixture)
         var tipoMapa = await SemearTipoAsync(db, $"MAPA TESTE {sufixo}", ModalidadeDicom.OT);
         var passado = DateTime.UtcNow.AddDays(-60);
         var mapaPassado = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.GraficoFuncional, tipoMapa.Nome, passado);
+        await SemearEscopoAsync(db, tipoMapa.Id, mapaPassado.UnidadeExecutanteId, enviarParaWorklist: true);
         var imagemPassada = await SemearSolicitacaoAsync(db, CategoriaSolicitacao.Imagem, $"RADIOGRAFIA TESTE {sufixo}", passado);
 
         // Sem o pedido explícito, o passado fica de fora — inclusive fora da imagem.
@@ -128,6 +161,21 @@ public class SateliteForaDaImagemTests(PostgresFixture fixture)
         db.TiposExame.Add(tipo);
         await db.SaveChangesAsync();
         return tipo;
+    }
+
+    /// <summary>Par tipo×unidade do escopo (ADR-0056) — o "configurado" de que o satélite fora da imagem depende.</summary>
+    private static async Task SemearEscopoAsync(SmsMaisDbContext db, Guid tipoId, Guid unidadeId, bool enviarParaWorklist)
+    {
+        db.TiposExameUnidade.Add(new TipoExameUnidade
+        {
+            Id = Guid.CreateVersion7(),
+            TipoExameId = tipoId,
+            UnidadeId = unidadeId,
+            EnviarParaWorklist = enviarParaWorklist,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
     }
 
     /// <summary>Solicitação importada do SISREG ainda SEM exame (o caso do Holter de antes de 05/10).</summary>
