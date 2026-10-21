@@ -1,5 +1,8 @@
 ﻿using System.Globalization;
 using Hl7.Fhir.Model;
+using Microsoft.Extensions.Logging;
+using SMSMais.Core.Auditoria;
+using SMSMais.Core.Integracoes.Cadastro;
 using SMSMais.Core.Integracoes.Pep.Divergencias;
 using SMSMais.Core.Integracoes.Pep.Estrategias;
 using SMSMais.Data.Entities.Enums;
@@ -25,6 +28,9 @@ namespace SMSMais.Core.Integracoes.Pep.Fhir;
 /// nem telefone verificado — <see cref="Pacientes.Fhir.PatientMergeFhir.PreservarDoExistente"/>.</item>
 /// <item><b>Conciliação de identidade</b>: mesmo CPF com nascimento diferente NÃO sobrescreve —
 /// congela o valor do hub e registra a divergência para a arbitragem (ADR-0039 §3.2).</item>
+/// <item><b>Fonte parcial não funde duas pessoas</b>: SER/SERNIT/ESUS SG, quando a chave acha uma
+/// ficha cujo primeiro nome E nascimento são de outra pessoa, não escrevem nada — lança
+/// <see cref="FusaoRecusadaException"/> e quem chama registra (<see cref="ConferenciaPessoa"/>).</item>
 /// <item><b>Concorrência otimista</b>: If-Match; se o painel editou no meio, re-lê e re-mergeia.</item>
 /// <item><b>Guarda de no-op</b> (<see cref="Identico"/>): se o recurso montado é igual ao que já
 /// está no hub, o PUT não sai.</item>
@@ -52,6 +58,9 @@ internal static class UpsertCanonicoPep
     /// "não sei" e é completado do hub — a fonte só acrescenta. Com <c>false</c> (padrão, e o caso
     /// de Salux e Klinikos) a origem é prontuário completo: campo que sumiu lá some aqui.
     /// </param>
+    /// <exception cref="FusaoRecusadaException">
+    /// Só com <paramref name="fonteParcial"/>: a chave achou a ficha de OUTRA pessoa. Nada é escrito.
+    /// </exception>
     /// <param name="aoEscrever">
     /// Chamado imediatamente antes de cada escrita, com (estado no hub, recurso a gravar) — e
     /// <c>null</c> no primeiro argumento quando é criação. Existe para a trilha de auditoria
@@ -103,6 +112,12 @@ internal static class UpsertCanonicoPep
 
         for (var tentativa = 1; atual is not null; tentativa++)
         {
+            // Antes de qualquer união: fonte parcial só COMPLETA, e completar a ficha de outra pessoa
+            // é como o CNS de uma mãe foi parar na ficha da filha (caso de 21/10/2026) — a trilha
+            // registrava o nome da mãe ao lado do da filha e o upsert seguia. Prontuário completo (Salux,
+            // Klinikos) não passa por aqui: lá o nascimento divergente já vai para a arbitragem.
+            if (fonteParcial && novo is Patient pn && atual is Patient pa) RecusarSeOutraPessoa(pn, pa);
+
             UnirIdentifiers(novo, atual);
             if (novo is Patient np && atual is Patient ap)
             {
@@ -187,6 +202,21 @@ internal static class UpsertCanonicoPep
             if (atual.Meta is { } ma) { ma.VersionId = vA; ma.LastUpdated = luA; }
         }
     }
+
+    private static void RecusarSeOutraPessoa(Patient novo, Patient atual)
+    {
+        var (nomeOrigem, nascimentoOrigem) = (NomeParaConferir(novo), ConferenciaPessoa.Data(novo.BirthDate));
+        var (nomeHub, nascimentoHub) = (NomeParaConferir(atual), ConferenciaPessoa.Data(atual.BirthDate));
+        if (ConferenciaPessoa.SaoPessoasDiferentes(nomeOrigem, nascimentoOrigem, nomeHub, nascimentoHub))
+            throw new FusaoRecusadaException(atual.Id!, nomeHub, nascimentoHub, nomeOrigem, nascimentoOrigem);
+    }
+
+    /// <summary>Nome oficial; sem <c>text</c>, monta de given + family (ficha antiga do painel).</summary>
+    private static string? NomeParaConferir(Patient p) =>
+        NomeOficial(p) is { Length: > 0 } texto ? texto
+        : p.Name?.FirstOrDefault() is { } n
+            ? string.Join(' ', (n.Given ?? []).Append(n.Family).Where(x => !string.IsNullOrWhiteSpace(x)))
+            : null;
 
     /// <summary>
     /// Conflito de VERDADE (não de escrita): mesmo CPF, nascimento diferente. A origem não
@@ -322,5 +352,49 @@ internal static class UpsertCanonicoPep
         if (novo.Gender is null or AdministrativeGender.Unknown
             && atual.Gender is not null and not AdministrativeGender.Unknown)
             novo.Gender = atual.Gender;
+    }
+}
+
+/// <summary>
+/// A fonte parcial (SER, SERNIT, ESUS SG) trouxe uma pessoa, a chave dela (CPF/CNS) achou no hub a
+/// ficha de OUTRA — primeiro nome e nascimento discordam. O upsert não escreve nada; quem chama
+/// devolve o resultado "pessoa diferente", deixa o pedido SEM paciente e registra na trilha da
+/// ficha. Interna de propósito: os três serviços de conciliação a capturam, nunca chega à API.
+/// </summary>
+internal sealed class FusaoRecusadaException(
+    string patientIdHub, string? nomeHub, DateOnly? nascimentoHub, string? nomeOrigem, DateOnly? nascimentoOrigem)
+    : Exception(
+        $"A chave aponta para {ConferenciaPessoa.Descrever(nomeHub, nascimentoHub)} (Patient/{patientIdHub}), "
+        + $"mas a origem descreve {ConferenciaPessoa.Descrever(nomeOrigem, nascimentoOrigem)}.")
+{
+    public string PatientIdHub { get; } = patientIdHub;
+
+    /// <summary>Texto para a trilha: quem está na ficha × quem a origem descreve.</summary>
+    public string Descricao { get; } =
+        $"a ficha é de {ConferenciaPessoa.Descrever(nomeHub, nascimentoHub)}, "
+        + $"o pedido é de {ConferenciaPessoa.Descrever(nomeOrigem, nascimentoOrigem)}";
+}
+
+/// <summary>O registro de uma <see cref="FusaoRecusadaException"/> — igual para as três conciliações.</summary>
+internal static class FusaoRecusada
+{
+    /// <summary>
+    /// Na trilha da FICHA (é lá que quem abrir o cadastro vai ver que um pedido de outra pessoa
+    /// tentou entrar por esta chave) e no log. Uma vez por conciliação: a marca do pedido é limpa
+    /// como no "sem chave", e só volta se o dado do paciente mudar na origem.
+    /// </summary>
+    public static async Task RegistrarAsync(
+        IAuditoriaService auditoria, ILogger logger, FusaoRecusadaException recusa,
+        string fonte, string pedido, CancellationToken ct)
+    {
+        logger.LogWarning(
+            "Conciliação com o {Fonte} recusada ({Pedido}): {Motivo}", fonte, pedido, recusa.Message);
+        await auditoria.RegistrarAsync(
+            entidade: "Paciente",
+            entidadeId: recusa.PatientIdHub,
+            acao: $"Conciliação com o {fonte} recusada — pessoa diferente",
+            valorAnterior: null,
+            valorNovo: $"{pedido}: {recusa.Descricao}. O pedido ficou sem paciente e nada foi gravado nesta ficha.",
+            cancellationToken: ct);
     }
 }

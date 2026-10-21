@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Text;
 using Hl7.Fhir.Model;
 using SMSMais.Core.Conversas;
+using SMSMais.Core.Integracoes.Cadastro;
+using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Fhir;
 
 namespace SMSMais.Core.Integracoes.EsusPec;
@@ -21,6 +23,12 @@ public enum DecisaoTelefoneEsus
     JaEOPrincipal,
     /// <summary>O celular do PEC é o confirmado (próprio) de OUTRA pessoa, sem sobrenome em comum.</summary>
     NumeroDeOutraPessoa,
+    /// <summary>
+    /// O cadastro que o PEC achou pelo CPF/CNS da ficha é de OUTRA pessoa (primeiro nome e nascimento
+    /// discordam) — a ficha carrega o documento de alguém da família. O celular dele não é do nosso
+    /// paciente: não troca.
+    /// </summary>
+    CadastroDeOutraPessoa,
 }
 
 /// <summary>
@@ -62,6 +70,14 @@ public static class TrocaTelefoneEsus
         (p.Telecom ?? []).Any(t => t.System == ContactPoint.ContactPointSystem.Phone
             && t.GetExtension(PatientMergeFhir.ExtContatoNegado) is not null
             && TelefoneWhatsApp.MesmoNumero(t.Value, numero));
+
+    /// <summary>
+    /// O cadastro do PEC é de outra pessoa que não a da ficha? Caso de 21/10/2026: a ficha de uma
+    /// criança carregava o CPF da mãe, o PEC achou a MÃE por ele e a rotina pôs o celular dela na
+    /// ficha da filha. Régua de <see cref="ConferenciaPessoa"/>: nome E nascimento.
+    /// </summary>
+    public static bool CadastroDeOutraPessoa(Patient p, CidadaoEsusPec cidadao) =>
+        ConferenciaPessoa.SaoPessoasDiferentes(PacienteFhirMapper.NomeDe(p), p.BirthDate, cidadao.Nome, cidadao.DataNascimento);
 
     /// <summary>Sobrenomes (sem o primeiro nome e sem partículas) em comum — o "é da família".</summary>
     public static bool SobrenomeEmComum(string? nomeA, string? nomeB)

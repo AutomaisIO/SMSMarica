@@ -6,9 +6,11 @@ using System.Text.RegularExpressions;
 namespace SMSMais.Core.Integracoes.EsusPec;
 
 /// <summary>Cidadão como o e-SUS PEC o devolve — só o que a correção de telefone usa.</summary>
+/// <param name="Nome">Com <paramref name="DataNascimento"/> (<c>yyyy-MM-dd</c>), é o que deixa a rotina
+/// conferir se o cadastro achado pelo documento da ficha é mesmo do nosso paciente.</param>
 public sealed record CidadaoEsusPec(
     string Id, string? Cpf, string? Cns, string? TelefoneCelular, string? TelefoneResidencial,
-    string? TelefoneContato, DateTime? AtualizadoEm);
+    string? TelefoneContato, DateTime? AtualizadoEm, string? Nome = null, string? DataNascimento = null);
 
 /// <summary>Cadastro do cidadão no PEC como o "Enriquecer" da ficha usa — tudo o que dá para comparar
 /// com o nosso. Nascimento e óbito em <c>yyyy-MM-dd</c>; UF por extenso (o PEC não manda a sigla).</summary>
@@ -73,7 +75,7 @@ public sealed class EsusPecCliente : IDisposable
         """;
     private const string QDetalheCidadao = """
         query BuscaDetailCidadao($id: ID!) {
-          cidadao(id: $id) { id cpf cns telefoneCelular telefoneResidencial telefoneContato dataAtualizado }
+          cidadao(id: $id) { id cpf cns nome dataNascimento telefoneCelular telefoneResidencial telefoneContato dataAtualizado }
         }
         """;
     // Campos tirados do BuscaDetailCidadao do próprio front do PEC (catálogo do laboratório,
@@ -262,7 +264,8 @@ public sealed class EsusPecCliente : IDisposable
             ? DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime
             : null;
         return new CidadaoEsusPec(id, Texto(det["cpf"]), Texto(det["cns"]), Texto(det["telefoneCelular"]),
-            Texto(det["telefoneResidencial"]), Texto(det["telefoneContato"]), atualizado);
+            Texto(det["telefoneResidencial"]), Texto(det["telefoneContato"]), atualizado,
+            Nome: Texto(det["nome"]), DataNascimento: Texto(det["dataNascimento"]));
     }
 
     public async Task LogoutAsync(CancellationToken ct)

@@ -6,6 +6,7 @@ using SMSMais.Core.Common.Dtos;
 using SMSMais.Core.Common.Excecoes;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Integracoes.Cadastro;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
@@ -381,6 +382,24 @@ public sealed class ImportacaoSisregService(
         bool pacienteCriado;
         string? nomeResolvido;
 
+        // A chave achou uma ficha — mas é a pessoa que o SISREG descreve? Nome E nascimento da linha
+        // contra os da ficha (ConferenciaPessoa). Sem isto, a ficha de uma criança que ganhou o CNS
+        // da mãe recebia todos os pedidos da mãe (caso de 21/10/2026). Só a pessoa decide quem é
+        // quem: a linha vira pendência acionável, e nada é gravado na ficha errada.
+        ImportacaoExecucaoResultado? OutraPessoa(
+            string comoAchou, string? nomeFicha, DateOnly? nascimentoFicha,
+            string? nomeOrigem = null, DateOnly? nascimentoOrigem = null)
+        {
+            var nome = nomeOrigem ?? m.NomePaciente;
+            var nascimento = nascimentoOrigem ?? m.NascimentoPaciente;
+            if (!ConferenciaPessoa.SaoPessoasDiferentes(nome, nascimento, nomeFicha, nascimentoFicha)) return null;
+            return Falha(
+                $"{comoAchou} está na ficha de {ConferenciaPessoa.Descrever(nomeFicha, nascimentoFicha)}, "
+                + $"mas o SISREG diz que o paciente é {ConferenciaPessoa.Descrever(nome, nascimento)}. "
+                + "Não liguei o pedido a uma pessoa diferente — informe o paciente certo.",
+                CausaFalhaImportacao.IdentidadeDivergente);
+        }
+
         // Caminho privilegiado: o operador já identificou o paciente na tela de pendências
         // (ADR-0035). Não há CNS a consultar nem CADSUS a chamar — a identidade já foi decidida
         // por uma pessoa, que é uma fonte melhor que o cadweb50.
@@ -400,6 +419,11 @@ public sealed class ImportacaoSisregService(
         }
         else if (await pacientes.ObterPorCnsAsync(m.CnsPaciente!, ct) is { } porCns)
         {
+            // Antes de completar a ficha: completar a de outra pessoa grudaria nela o CPF que o
+            // CADSUS der para este CNS — e a mistura ficaria mais funda.
+            if (OutraPessoa($"O CNS {Mascara(m.CnsPaciente)}", porCns.NomeCompleto, porCns.DataNascimento) is { } recusa)
+                return (recusa, false);
+
             pacienteCriado = false;
             if (string.IsNullOrWhiteSpace(porCns.Cpf))
             {
@@ -408,6 +432,14 @@ public sealed class ImportacaoSisregService(
                 // O completador consulta o CADSUS (porta configurada, com teto e memória) e ou
                 // carimba o CPF aqui, ou descobre que a pessoa já existia noutra ficha e a usa.
                 var completo = await completadorFicha.CompletarAsync(porCns, m.CnsPaciente!, ct);
+                if (completo.PacienteId != porCns.Id)
+                {
+                    // O CADSUS repontou para quem já tinha o CPF: essa ficha também precisa ser da
+                    // pessoa da linha — o CPF dela pode estar errado (é o caso que abriu esta guarda).
+                    var destino = await pacientes.ObterPorIdAsync(completo.PacienteId, ct);
+                    if (OutraPessoa("O CPF que o CADSUS deu para este CNS", destino.NomeCompleto, destino.DataNascimento) is { } recusaDestino)
+                        return (recusaDestino, false);
+                }
                 pacienteId = completo.PacienteId;
                 nomeResolvido = completo.Nome;
                 passos.Add($"Paciente já cadastrado (CNS {Mascara(m.CnsPaciente)}).");
@@ -422,6 +454,9 @@ public sealed class ImportacaoSisregService(
         }
         else if (await completadorFicha.DestinoMemorizadoAsync(m.CnsPaciente!, ct) is { } memorizado)
         {
+            if (OutraPessoa($"O CNS {Mascara(m.CnsPaciente)} (memória do CADSUS)", memorizado.NomeCompleto, memorizado.DataNascimento) is { } recusa)
+                return (recusa, false);
+
             // Este CNS já foi resolvido antes: o dono do CPF é conhecido e a consulta ao CADSUS
             // não precisa se repetir (ela é o passo caro — e era paga de novo a cada varredura
             // quando o dono não conseguia guardar o CNS por já ter outro).
@@ -484,6 +519,13 @@ public sealed class ImportacaoSisregService(
             var porCpf = cpfAncora is null ? null : await pacientes.ObterPorCpfAsync(cpfAncora, ct);
             if (porCpf is not null)
             {
+                // Antes de registrar o CNS como dele: o CPF do CADSUS pode ter caído numa ficha que
+                // carrega o CPF de outra pessoa. A régua é a linha; sem nome/nascimento nela, o CADSUS.
+                if (OutraPessoa($"O CPF {Mascara(cpfAncora)} (que o CADSUS deu para o CNS)", porCpf.NomeCompleto,
+                        porCpf.DataNascimento, m.NomePaciente ?? cadsus.Nome, m.NascimentoPaciente ?? cadsus.DataNascimento)
+                    is { } recusa)
+                    return (recusa, false);
+
                 pacienteId = porCpf.Id;
                 pacienteCriado = false;
                 nomeResolvido = porCpf.NomeCompleto;
@@ -1241,12 +1283,36 @@ public sealed class ImportacaoSisregService(
         if (digitos.Length != 11)
             throw new ValidacaoException("falha.cpf_invalido", "Informe um CPF válido (11 dígitos).");
 
-        if (await pacientes.ObterPorCpfAsync(digitos, ct) is { } porCpf) return porCpf.Id;
+        // A régua da importação vale aqui também: o CPF digitado pode estar numa ficha que é de
+        // outra pessoa (a criança cadastrada com o CPF da mãe). Ligar mesmo assim refaria a mistura
+        // com carimbo de "o operador escolheu" — então a tela diz quem está na ficha e para.
+        var linha = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo).Marcacoes.FirstOrDefault();
+        void RecusarSeOutraPessoa(string comoAchou, PacienteExistenciaDto ficha)
+        {
+            if (linha is null
+                || !ConferenciaPessoa.SaoPessoasDiferentes(linha.NomePaciente, linha.NascimentoPaciente,
+                    ficha.NomeCompleto, ficha.DataNascimento)) return;
+            throw new ValidacaoException("falha.pessoa_diferente",
+                $"{comoAchou} está na ficha de {ConferenciaPessoa.Descrever(ficha.NomeCompleto, ficha.DataNascimento)}, "
+                + $"mas o SISREG diz que o paciente é {ConferenciaPessoa.Descrever(linha.NomePaciente, linha.NascimentoPaciente)}. "
+                + "Confira o CPF. Se for a ficha que está errada, corrija o cadastro em Pacientes antes de importar.");
+        }
 
-        // O CNS da pendência é a segunda chance de achar o mesmo cidadão sob outro cadastro.
-        if (!string.IsNullOrWhiteSpace(f.PacienteCns)
+        if (await pacientes.ObterPorCpfAsync(digitos, ct) is { } porCpf)
+        {
+            RecusarSeOutraPessoa($"O CPF {digitos}", porCpf);
+            return porCpf.Id;
+        }
+
+        // O CNS da pendência é a segunda chance de achar o mesmo cidadão sob outro cadastro — menos
+        // quando a pendência existe justamente porque esse CNS aponta para a ficha de outra pessoa.
+        if (f.Causa != CausaFalhaImportacao.IdentidadeDivergente
+            && !string.IsNullOrWhiteSpace(f.PacienteCns)
             && await pacientes.ObterPorCnsAsync(f.PacienteCns!, ct) is { } porCns)
+        {
+            RecusarSeOutraPessoa("O CNS desta pendência", porCns);
             return porCns.Id;
+        }
 
         throw new ValidacaoException("falha.paciente_nao_cadastrado",
             $"Não há paciente cadastrado com o CPF {digitos}. Cadastre-o em Pacientes (o SISREG não "

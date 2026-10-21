@@ -48,8 +48,9 @@ public sealed record MarcacaoSisreg(
 
     // ---- Só a VARREDURA (cons_agendas) preenche; o TXT não traz nenhum destes ----
 
-    /// <summary>Nascimento do paciente. <b>O TXT não traz</b> — é por isso que a resolução de
-    /// pendência por CPF recusa criar paciente novo. Com a varredura, passa a existir.</summary>
+    /// <summary>Nascimento do paciente — coluna 11 do TXT/CSV (<c>dt_nascimento</c>) e a ficha da
+    /// varredura. É o que deixa a importação conferir se a ficha achada pelo CNS é mesmo de quem o
+    /// SISREG descreve (<see cref="Cadastro.ConferenciaPessoa"/>).</summary>
     DateOnly? NascimentoPaciente = null,
 
     /// <summary>Situação no SISREG (ex.: <c>Agendamento/Pendente Confirmação/Executante</c>).

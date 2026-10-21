@@ -23,6 +23,30 @@ public class TrocaTelefoneEsusTests
 
     private static Patient Paciente(params ContactPoint[] fones) => new() { Telecom = [.. fones] };
 
+    private static Patient Ficha(string nome, string nascimento) => new()
+    {
+        Name = [new HumanName { Use = HumanName.NameUse.Official, Text = nome }],
+        BirthDate = nascimento,
+    };
+
+    private static CidadaoEsusPec Cidadao(string? nome, string? nascimento) =>
+        new("1", "52998224725", null, "21999990000", null, null, null, Nome: nome, DataNascimento: nascimento);
+
+    [Fact]
+    // Caso de 21/10/2026: a ficha da filha tinha o CPF da mãe; o PEC achou a MÃE por ele.
+    public void Cadastro_do_PEC_de_outra_pessoa_nao_serve_para_trocar() =>
+        TrocaTelefoneEsus.CadastroDeOutraPessoa(
+                Ficha("ALICE MOURA ROCHA", "2017-06-12"), Cidadao("JULIANA COSTA MOURA", "1994-11-23"))
+            .Should().BeTrue();
+
+    [Theory]
+    [InlineData("JULIANA COSTA MOURA", "1994-11-23")] // a mesma pessoa
+    [InlineData("JULIANA C MOURA", "1994-11-03")]        // a mesma, com nascimento digitado errado num lado
+    [InlineData(null, null)]                          // PEC sem nome/nascimento: não se afirma nada
+    public void Cadastro_do_PEC_da_mesma_pessoa_ou_sem_dado_segue(string? nome, string? nascimento) =>
+        TrocaTelefoneEsus.CadastroDeOutraPessoa(Ficha("JULIANA COSTA MOURA", "1994-11-23"), Cidadao(nome, nascimento))
+            .Should().BeFalse();
+
     [Theory]
     [InlineData("(21) 99876-5432", "21998765432")]
     [InlineData("5521998765432", "21998765432")]

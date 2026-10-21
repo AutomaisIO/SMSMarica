@@ -6,12 +6,17 @@ import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { apenasDigitosCpf, cpfValido } from '@/shared/lib/cpf';
 import { useResolverPendenciaComPaciente } from '@/features/painel-inicio/api/queries';
+import type { CausaFalhaImportacao } from '@/features/painel-inicio/types';
 
 type PendenciaAlvo = {
   id: string;
   pacienteNome: string | null;
   procedimento: string | null;
   codigoSolicitacao: string | null;
+  /** Decide o texto: o CPF faltou, ou a ficha achada pelo CNS é de outra pessoa. */
+  causa?: CausaFalhaImportacao;
+  /** Na ficha de outra pessoa, o motivo diz quem está na ficha e quem o SISREG descreve. */
+  motivo?: string | null;
 };
 
 type Props = {
@@ -35,6 +40,10 @@ export function ModalInformarCpf({ pendencia, aoFechar }: Props) {
 
   if (!pendencia) return null;
 
+  // A ficha que o CNS achou é de outra pessoa (nome E nascimento não batem): o operador precisa
+  // ver quem é quem antes de digitar — e o CPF que ele digitar passa pela mesma conferência.
+  const outraPessoa = pendencia.causa === 'IdentidadeDivergente';
+
   const digitos = apenasDigitosCpf(cpf);
   // Valida o dígito verificador aqui, antes da ida ao servidor: um CPF mal digitado que por acaso
   // exista importaria a marcação para o PACIENTE ERRADO — o pior modo de falha desta tela.
@@ -57,7 +66,11 @@ export function ModalInformarCpf({ pendencia, aoFechar }: Props) {
       aberto
       aoFechar={aoFechar}
       titulo="Informar CPF e importar"
-      descricao="Esta marcação do SISREG não entrou no sistema porque o CADSUS não devolveu o CPF do paciente."
+      descricao={
+        outraPessoa
+          ? 'Esta marcação do SISREG não entrou porque o CNS dela está na ficha de outra pessoa — o nome e o nascimento não batem. Informe o CPF do paciente certo.'
+          : 'Esta marcação do SISREG não entrou no sistema porque o CADSUS não devolveu o CPF do paciente.'
+      }
       largura="sm"
     >
       <div className="space-y-4">
@@ -68,6 +81,10 @@ export function ModalInformarCpf({ pendencia, aoFechar }: Props) {
             <p className="mt-1 text-xs text-gray-500">SISREG nº {pendencia.codigoSolicitacao}</p>
           )}
         </div>
+
+        {outraPessoa && pendencia.motivo && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{pendencia.motivo}</p>
+        )}
 
         <Campo
           label="CPF do paciente"

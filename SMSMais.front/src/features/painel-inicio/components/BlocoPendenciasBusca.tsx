@@ -62,6 +62,8 @@ export function BlocoPendenciasBusca({ busca }: { busca: string }) {
             pacienteNome: alvo.nomePaciente,
             procedimento: alvo.procedimentoTexto,
             codigoSolicitacao: alvo.codigoSolicitacao,
+            causa: alvo.causa,
+            motivo: alvo.motivo,
           }
         }
         aoFechar={() => setAlvo(null)}

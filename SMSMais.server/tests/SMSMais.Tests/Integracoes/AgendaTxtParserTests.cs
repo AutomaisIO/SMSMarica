@@ -123,6 +123,29 @@ public class AgendaTxtParserTests
     }
 
     [Fact]
+    // A coluna 11 é o nascimento (dt_nascimento) — é com ele que a importação confere se a ficha
+    // achada pelo CNS é mesmo de quem o SISREG descreve.
+    public void Traz_o_nascimento_do_paciente_da_coluna_11()
+    {
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + Linha("670119011");
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        r.Marcacoes.Should().ContainSingle()
+            .Which.NascimentoPaciente.Should().Be(new DateOnly(1983, 5, 8));
+    }
+
+    [Fact]
+    public void Nascimento_vazio_vira_null_e_nao_impede_a_marcacao()
+    {
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + Linha("670119011").Replace(";08.05.1983;", ";;");
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        r.Marcacoes.Should().ContainSingle().Which.NascimentoPaciente.Should().BeNull();
+    }
+
+    [Fact]
     public void Codigo_do_procedimento_vazio_vira_null_e_nao_impede_a_marcacao()
     {
         // O SISREG deixa a coluna em branco em ~1/3 das linhas de produção — não é erro.

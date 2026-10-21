@@ -24,6 +24,10 @@ public enum ResultadoConciliacaoSer
 
     /// <summary>Sem CPF válido e sem CNS: não há chave nenhuma. Fica de fora (1 caso em 25.439).</summary>
     SemChave = 3,
+
+    /// <summary>A chave achou no hub a ficha de OUTRA pessoa (primeiro nome e nascimento
+    /// discordam). Nada é escrito e o pedido fica SEM paciente — ver ConferenciaPessoa.</summary>
+    PessoaDiferente = 4,
 }
 
 public sealed record ConciliacaoSerDto(
@@ -89,14 +93,25 @@ public sealed class SerConciliacaoPacienteService(
         Resource? antes = null;
         var escreveu = false;
 
-        var id = await UpsertCanonicoPep.UpsertAsync(
-            ctx, "Patient", system, valor, novo,
-            // O SER não tem código interno de paciente: a chave dele JÁ é nacional. Passar o
-            // próprio system da âncora desliga a ponte "local→CPF", que aqui não faz sentido.
-            systemCdInterno: system,
-            ct,
-            fonteParcial: true,
-            aoEscrever: (atual, _) => { antes = atual; escreveu = true; });
+        string id;
+        try
+        {
+            id = await UpsertCanonicoPep.UpsertAsync(
+                ctx, "Patient", system, valor, novo,
+                // O SER não tem código interno de paciente: a chave dele JÁ é nacional. Passar o
+                // próprio system da âncora desliga a ponte "local→CPF", que aqui não faz sentido.
+                systemCdInterno: system,
+                ct,
+                fonteParcial: true,
+                aoEscrever: (atual, _) => { antes = atual; escreveu = true; });
+        }
+        catch (FusaoRecusadaException recusa)
+        {
+            // A chave achou a ficha de OUTRA pessoa: nada foi escrito, e o pedido fica sem
+            // paciente — ligá-lo ali é a mistura que a recusa existe para impedir.
+            await FusaoRecusada.RegistrarAsync(auditoria, logger, recusa, "SER", $"Solicitação SER {s.IdSer}", ct);
+            return new ConciliacaoSerDto(ResultadoConciliacaoSer.PessoaDiferente, null, []);
+        }
 
         var pacienteId = Guid.TryParse(id, out var g) ? g : (Guid?)null;
 

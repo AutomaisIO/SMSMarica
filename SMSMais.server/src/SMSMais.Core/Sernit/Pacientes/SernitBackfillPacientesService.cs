@@ -8,7 +8,7 @@ namespace SMSMais.Core.Sernit.Pacientes;
 
 public sealed record BackfillPacientesSernitDto(
     int Pacientes, int Criados, int Enriquecidos, int Inalterados, int SemChave, int Falhas,
-    int DuracaoSegundos);
+    int DuracaoSegundos, int PessoaDiferente = 0);
 
 /// <summary>
 /// Alinhamento entre a base espelhada do SERNIT e o hub FHIR. <c>ExecutarAsync</c> é o acerto único
@@ -36,7 +36,7 @@ public sealed class SernitBackfillPacientesService(
     public async Task<BackfillPacientesSernitDto> ExecutarAsync(int throttleMs, CancellationToken ct)
     {
         var inicio = DateTime.UtcNow;
-        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, falhas = 0, vistos = 0;
+        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, pessoaDiferente = 0, falhas = 0, vistos = 0;
 
         var ids = await IdsMaisRecentesPorPacienteAsync(ct);
         logger.LogInformation(
@@ -68,6 +68,7 @@ public sealed class SernitBackfillPacientesService(
                         case ResultadoConciliacaoSernit.Enriquecido: enriquecidos++; break;
                         case ResultadoConciliacaoSernit.Inalterado: inalterados++; break;
                         case ResultadoConciliacaoSernit.SemChave: semChave++; break;
+                        case ResultadoConciliacaoSernit.PessoaDiferente: pessoaDiferente++; break;
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -98,13 +99,13 @@ public sealed class SernitBackfillPacientesService(
         logger.LogInformation("SERNIT/backfill de pacientes: terminado em {Seg}s.", duracao);
 
         return new BackfillPacientesSernitDto(
-            ids.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
+            ids.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao, PessoaDiferente: pessoaDiferente);
     }
 
     public async Task<BackfillPacientesSernitDto> ExecutarPendentesAsync(int limite, CancellationToken ct)
     {
         var inicio = DateTime.UtcNow;
-        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, falhas = 0;
+        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, pessoaDiferente = 0, falhas = 0;
 
         var pendentes = await db.SernitSolicitacoes
             .Where(s => s.ExcluidoEm == null && s.PacienteConciliarEm != null)
@@ -126,6 +127,7 @@ public sealed class SernitBackfillPacientesService(
                     case ResultadoConciliacaoSernit.Enriquecido: enriquecidos++; break;
                     case ResultadoConciliacaoSernit.Inalterado: inalterados++; break;
                     case ResultadoConciliacaoSernit.SemChave: semChave++; break;
+                    case ResultadoConciliacaoSernit.PessoaDiferente: pessoaDiferente++; break;
                 }
 
                 if (r.PacienteId is { } pid)
@@ -158,7 +160,7 @@ public sealed class SernitBackfillPacientesService(
             pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
 
         return new BackfillPacientesSernitDto(
-            pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
+            pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao, PessoaDiferente: pessoaDiferente);
     }
 
     /// <summary>A solicitação com o que só as irmãs sabem (telefones e CPF), sem tocar no espelho.
