@@ -33,7 +33,12 @@ public sealed record EnvioSerPassoDto(string Campo, string? Valor, bool Ok, stri
 /// <param name="ArquivosJuntados">Quantos arquivos entraram neste anexo (1, ou 3+ quando viraram um PDF).</param>
 /// <param name="NomesJuntados">Os nomes desses arquivos — a tela os lista para a pessoa confirmar o
 /// agrupamento antes de enviar (ticket #167).</param>
-public sealed record EnvioSerAnexoDto(string Nome, long Tamanho, int ArquivosJuntados, IReadOnlyList<string> NomesJuntados);
+/// <param name="TamanhoOriginal">O tamanho antes da compressão — só quando o arquivo foi comprimido para
+/// caber nos 5 MB do sistema.</param>
+/// <param name="Compressao">Como foi comprimido ("200 dpi", "foto reduzida").</param>
+public sealed record EnvioSerAnexoDto(
+    string Nome, long Tamanho, int ArquivosJuntados, IReadOnlyList<string> NomesJuntados,
+    long? TamanhoOriginal = null, string? Compressao = null);
 
 /// <summary>Pedido que o sistema já tem para o mesmo paciente e o mesmo recurso.</summary>
 public sealed record EnvioSerDuplicadoDto(string IdSer, string? Recurso, string? DataSolicitacao, string? Situacao);
@@ -135,6 +140,7 @@ public sealed partial class RegulacaoEnvioSerService(
     IRegulacaoSolicitacaoService solicitacoes,
     IRegulacaoFormularioService formularios,
     IArquivoExigenciaStore arquivos,
+    ICompressorPdf compressorPdf,
     ISerSessaoOperadorStore sessoesSer,
     ISernitSessaoOperadorStore sessoesSernit,
     IPacientesService pacientes,
@@ -173,7 +179,8 @@ public sealed partial class RegulacaoEnvioSerService(
 
         return new EnvioSerPreparoDto(
             ctx.Operador, dados.RecursoRotulo, passos,
-            [.. anexos.Select(a => new EnvioSerAnexoDto(a.Nome, a.Conteudo.LongLength, a.Origens.Count, a.NomesOrigem))],
+            [.. anexos.Select(a => new EnvioSerAnexoDto(
+                a.Nome, a.Conteudo.LongLength, a.Origens.Count, a.NomesOrigem, a.TamanhoOriginal, a.Compressao))],
             duplicados, ctx.Nome, medicoNovo.Bloco);
     }
 
@@ -1131,7 +1138,7 @@ public sealed partial class RegulacaoEnvioSerService(
             throw new ValidacaoException(
                 "anexos", $"A solicitação não tem anexo. O {ctx.Nome} exige o pedido médico legível, datado e justificado.");
         }
-        return AnexosParaSer.Preparar(lidos, ctx.Nome);
+        return await AnexosParaSer.PrepararAsync(lidos, ctx.Nome, compressorPdf, ct);
     }
 
     private static string Obrigatorio(IReadOnlyDictionary<string, string> traduzido, string campo, string rotulo) =>

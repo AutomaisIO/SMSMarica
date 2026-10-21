@@ -1148,6 +1148,11 @@ public static class DependencyInjection
         services.AddScoped<Regulacao.Catalogo.IRegulacaoCatalogoService, Regulacao.Catalogo.RegulacaoCatalogoService>();
         // Envio automático ao SER (07/10/2026): preenche, anexa e grava com a senha do regulador.
         services.AddScoped<Regulacao.EnvioSer.IRegulacaoEnvioSerService, Regulacao.EnvioSer.RegulacaoEnvioSerService>();
+        // PDF acima de 5 MB é comprimido pelo Ghostscript antes de subir (21/10/2026). Singleton: o
+        // semáforo de passadas simultâneas vale para o servidor inteiro.
+        services.Configure<Regulacao.EnvioSer.GhostscriptOptions>(
+            configuration.GetSection(Regulacao.EnvioSer.GhostscriptOptions.Secao));
+        services.AddSingleton<Regulacao.EnvioSer.ICompressorPdf, Regulacao.EnvioSer.CompressorPdfGhostscript>();
         // Cópia diária dos catálogos do SER/SERNIT (07/10/2026): agendador de madrugada + a
         // primeira solicitação aberta no dia confere também.
         services.Configure<Regulacao.Catalogo.CatalogoDiarioOpcoes>(

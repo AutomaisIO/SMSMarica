@@ -68,6 +68,11 @@ function erroDoPaciente(e: unknown): boolean {
   return !!erros && 'ser.paciente' in erros;
 }
 
+/** Bytes em MB com uma casa, no formato brasileiro ("9,9"). */
+function emMb(bytes: number): string {
+  return (bytes / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+}
+
 function EnvioSer(props: PropsModal) {
   const sessao = useSessaoSerObrigatoria();
   return <ModalEnvioAutomatico {...props} nome="SER" sessao={sessao} ModalLogin={ModalLoginSer} />;
@@ -261,9 +266,15 @@ function ModalEnvioAutomatico({
                     <FileText className="size-4 text-slate-400" />
                     {a.nome}
                     <span className="text-xs text-slate-400">
-                      {(a.tamanho / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB
+                      {emMb(a.tamanho)} MB
                       {a.arquivosJuntados > 1 && ` · ${a.arquivosJuntados} arquivos juntados num PDF`}
                     </span>
+                    {a.tamanhoOriginal != null && (
+                      <span className="text-xs text-amber-700">
+                        · comprimido de {emMb(a.tamanhoOriginal)} MB
+                        {a.compressao && ` (${a.compressao})`} para caber nos 5 MB do {nome}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

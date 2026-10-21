@@ -48,9 +48,12 @@ outro recurso.
    *Atualização 21/10/2026:* desde 15/10 (ticket #167, `0099abe`) imagem JPEG/PNG acima de 5 MB é
    comprimida (SkiaSharp) e o PDF agrupado é refeito com as imagens menores; PDF avulso acima de
    5 MB continua recusado. Em produção, quem estoura são justamente os PDFs (2 de 12 anexos da
-   regulação em 21/10). O Ghostscript foi instalado na VM em 21/10 para comprimir PDF (receita
-   medida e cuidados de segurança na skill `operar-servidor`); a compressão de PDF na API ainda
-   não está implementada.
+   regulação em 21/10). Desde 21/10 o PDF também é comprimido: avulso ou agrupado, passa pelo
+   Ghostscript instalado na VM (receita e cuidados de segurança na skill `operar-servidor`), numa
+   escada de 300 a 150 dpi em que a busca binária acha o degrau mais fiel que cabe em até 3
+   passadas. O alvo passou a ser 4.800.000 bytes, abaixo das duas leituras de "5 MB". A prévia mostra
+   "comprimido de X MB (N dpi)", e o original continua intacto no armazenamento. Sem Ghostscript no
+   servidor, vale o comportamento anterior.
 7. **O SERNIT pelo mesmo motor** (08/10/2026). SER-RJ e SERNIT são a mesma aplicação (JSF 1.2 +
    RichFaces 3.3 + Seam) em instâncias diferentes; o motor da tela de criação recebe um transporte
    (a sessão de cada um) e um perfil com o que muda — medido na aba real do SERNIT:
