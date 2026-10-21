@@ -6,6 +6,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { RegrasAnexoEnvio } from '@/features/regulacao/components/configuracao/RegrasAnexoEnvio';
 import {
   useDispararVarreduraSer,
   useFormularioCatalogoSer,
@@ -460,6 +461,8 @@ export function AbaSerConfiguracao() {
           filtro, então o delta sai da comparação com o que já temos.
         </p>
       </section>
+
+      <RegrasAnexoEnvio destino="ser" nome="SER" />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">

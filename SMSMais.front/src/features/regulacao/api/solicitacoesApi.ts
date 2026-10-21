@@ -309,6 +309,8 @@ export type PreparoEnvioSer = {
   possiveisDuplicados: PedidoParecidoSer[];
   /** O médico pedido pela unidade não está na lista do sistema: a pergunta ao regulador. */
   medicoNovo: MedicoNovoNoSistema | null;
+  /** O tamanho máximo por arquivo do destino (configurado na aba dele), em bytes. */
+  limiteAnexoBytes?: number | null;
 };
 
 /** O médico pedido na abertura que o combo "Médico responsável" do sistema não tem HOJE. */

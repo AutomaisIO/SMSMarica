@@ -5,6 +5,7 @@ using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Sernit;
 using SMSMais.Core.Sernit.Dtos;
@@ -325,6 +326,27 @@ public sealed class SernitConfiguracaoController(
         [FromServices] ISernitVarreduraConfigService config,
         CancellationToken cancellationToken) =>
         config.SalvarAsync(corpo, cancellationToken);
+
+    /// <summary>
+    /// Regra de anexos do SERNIT no envio automático: o tamanho máximo por arquivo. Acima dele o envio
+    /// comprime (foto e PDF) para caber; o padrão fica abaixo dos 5 MB que a tela do SERNIT declara.
+    /// </summary>
+    [HttpGet("anexos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<RegrasAnexoDestinoDto>(StatusCodes.Status200OK)]
+    public Task<RegrasAnexoDestinoDto> ObterRegrasAnexo(
+        [FromServices] IRegrasAnexoDestinoService regras, CancellationToken cancellationToken) =>
+        regras.ObterAsync(SistemaRegulacao.Sernit, cancellationToken);
+
+    [HttpPut("anexos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegrasAnexoDestinoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<RegrasAnexoDestinoDto> SalvarRegrasAnexo(
+        [FromBody] SalvarRegrasAnexoDestinoRequest corpo,
+        [FromServices] IRegrasAnexoDestinoService regras,
+        CancellationToken cancellationToken) =>
+        regras.SalvarAsync(SistemaRegulacao.Sernit, corpo.TamanhoMaximoMb, cancellationToken);
 
     /// <summary>Copia o catálogo do SERNIT para a nossa base (leitura longa, retomável, background).</summary>
     [HttpPost("catalogo/sincronizar")]

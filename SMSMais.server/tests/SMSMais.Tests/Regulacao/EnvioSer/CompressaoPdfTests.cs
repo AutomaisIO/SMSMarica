@@ -93,7 +93,7 @@ public class CompressaoPdfTests
     public void Alvo_fica_abaixo_dos_5MB_nas_duas_leituras_do_limite()
     {
         // Nunca se mediu se o "5 MB" do SER é 5.000.000 ou 5.242.880 bytes.
-        AnexosParaSer.TamanhoMaximo.Should().BeLessThan(5_000_000);
+        AnexosParaSer.TamanhoMaximoPadrao.Should().BeLessThan(5_000_000);
     }
 
     [Fact]
@@ -102,7 +102,8 @@ public class CompressaoPdfTests
         var compressor = new CompressorFalso(new CompressaoPdf(DesfechoCompressaoPdf.Coube, PdfPequeno, "200 dpi"));
         var pedido = Pdf("PEDIDO MÉDICO", ComCabecalhoPdf(6_000_000));
 
-        var saida = await AnexosParaSer.PrepararAsync([pedido], "SERNIT", compressor, CancellationToken.None);
+        var saida = await AnexosParaSer.PrepararAsync(
+            [pedido], "SERNIT", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
         saida.Should().ContainSingle();
         saida[0].Nome.Should().Be("PEDIDO MEDICO.pdf");
@@ -110,7 +111,36 @@ public class CompressaoPdfTests
         saida[0].Conteudo.Should().Equal(PdfPequeno);
         saida[0].TamanhoOriginal.Should().Be(6_000_000);
         saida[0].Compressao.Should().Be("200 dpi");
-        compressor.Alvo.Should().Be(AnexosParaSer.TamanhoMaximo);
+        compressor.Alvo.Should().Be(AnexosParaSer.TamanhoMaximoPadrao, "sem configuração, vale o padrão");
+    }
+
+    [Fact]
+    public async Task O_limite_configurado_no_destino_e_o_que_decide_comprimir()
+    {
+        var pedido = Pdf("PEDIDO", ComCabecalhoPdf(3_000_000));
+        var compressor = new CompressorFalso(new CompressaoPdf(DesfechoCompressaoPdf.Coube, PdfPequeno, "200 dpi"));
+
+        // 3 MB cabem no padrão (4,5 MB): vai como está.
+        await AnexosParaSer.PrepararAsync([pedido], "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
+        compressor.Chamadas.Should().Be(0);
+
+        // Com o SER configurado para 2 MB, os mesmos 3 MB passam a ser comprimidos — e o alvo é os 2 MB.
+        const long doisMb = 2 * 1024 * 1024;
+        var saida = await AnexosParaSer.PrepararAsync([pedido], "SER", doisMb, compressor, CancellationToken.None);
+        compressor.Chamadas.Should().Be(1);
+        compressor.Alvo.Should().Be(doisMb);
+        saida[0].TamanhoOriginal.Should().Be(3_000_000);
+    }
+
+    [Fact]
+    public async Task A_recusa_cita_o_limite_configurado_e_onde_mudar()
+    {
+        var acao = () => AnexosParaSer.PrepararAsync(
+            [Pdf("PEDIDO", ComCabecalhoPdf(3_000_000))], "SERNIT", 2 * 1024 * 1024,
+            new CompressorFalso(CompressaoPdf.NaoCoube), CancellationToken.None);
+
+        await acao.Should().ThrowAsync<ValidacaoException>()
+            .WithMessage("*limite do SERNIT é 2,0 MB*Configuração do SERNIT*");
     }
 
     [Fact]
@@ -119,7 +149,7 @@ public class CompressaoPdfTests
         var compressor = new CompressorFalso(CompressaoPdf.Falhou);
 
         var saida = await AnexosParaSer.PrepararAsync(
-            [Pdf("PEDIDO", ComCabecalhoPdf(1_000_000))], "SER", compressor, CancellationToken.None);
+            [Pdf("PEDIDO", ComCabecalhoPdf(1_000_000))], "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
         compressor.Chamadas.Should().Be(0);
         saida[0].TamanhoOriginal.Should().BeNull();
@@ -132,7 +162,7 @@ public class CompressaoPdfTests
         var compressor = new CompressorFalso(CompressaoPdf.NaoCoube);
 
         var acao = () => AnexosParaSer.PrepararAsync(
-            [Pdf("PEDIDO MÉDICO", ComCabecalhoPdf(6_000_000))], "SERNIT", compressor, CancellationToken.None);
+            [Pdf("PEDIDO MÉDICO", ComCabecalhoPdf(6_000_000))], "SERNIT", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
         await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*PEDIDO MEDICO.pdf*SERNIT*150 dpi*");
     }
@@ -143,7 +173,7 @@ public class CompressaoPdfTests
         var compressor = new CompressorFalso(CompressaoPdf.Indisponivel);
 
         var acao = () => AnexosParaSer.PrepararAsync(
-            [Pdf("EXAME", ComCabecalhoPdf(6_000_000))], "SER", compressor, CancellationToken.None);
+            [Pdf("EXAME", ComCabecalhoPdf(6_000_000))], "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
         await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*EXAME.pdf*5 MB*comprimi-lo*");
     }
@@ -156,16 +186,16 @@ public class CompressaoPdfTests
         var compressor = new CompressorFalso(
             new CompressaoPdf(DesfechoCompressaoPdf.Coube, pequeno.ToArray(), "170 dpi"));
         var grande = Pdf("LAUDO ANTERIOR", PdfEscaneado(PngRuido()));
-        grande.Conteudo.LongLength.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximo, "o PDF de ruído tem de estourar");
+        grande.Conteudo.LongLength.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximoPadrao, "o PDF de ruído tem de estourar");
 
         var saida = await AnexosParaSer.PrepararAsync(
-            [grande, Foto("A", PngRuido(10)), Foto("B", PngRuido(10))], "SER", compressor, CancellationToken.None);
+            [grande, Foto("A", PngRuido(10)), Foto("B", PngRuido(10))], "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
         saida.Should().ContainSingle();
         saida[0].Nome.Should().Be("anexos-da-solicitacao.pdf");
         saida[0].Conteudo.Should().Equal(pequeno.ToArray());
         saida[0].Compressao.Should().Be("170 dpi");
-        saida[0].TamanhoOriginal.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximo);
+        saida[0].TamanhoOriginal.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximoPadrao);
     }
 
     [Fact]
@@ -174,10 +204,11 @@ public class CompressaoPdfTests
         var compressor = new CompressorFalso(CompressaoPdf.Indisponivel);
         var fotos = new[] { Foto("A", PngRuido()), Foto("B", PngRuido()), Foto("C", PngRuido()) };
 
-        var saida = await AnexosParaSer.PrepararAsync(fotos, "SER", compressor, CancellationToken.None);
+        var saida = await AnexosParaSer.PrepararAsync(
+            fotos, "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
         saida.Should().ContainSingle();
-        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximo);
+        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximoPadrao);
         saida[0].Compressao.Should().Be("fotos reduzidas");
     }
 
@@ -188,7 +219,7 @@ public class CompressaoPdfTests
         var grande = Pdf("LAUDO ANTERIOR", PdfEscaneado(PngRuido()));
 
         var acao = () => AnexosParaSer.PrepararAsync(
-            [grande, Foto("A", PngRuido(10)), Foto("B", PngRuido(10))], "SER", compressor, CancellationToken.None);
+            [grande, Foto("A", PngRuido(10)), Foto("B", PngRuido(10))], "SER", AnexosParaSer.TamanhoMaximoPadrao, compressor, CancellationToken.None);
 
         await acao.Should().ThrowAsync<ValidacaoException>().WithMessage("*3 anexos*mesmo comprimidos*");
     }
@@ -291,12 +322,12 @@ public class CompressaoPdfTests
     {
         using var compressor = Compressor(FactComGhostscriptAttribute.Caminho);
         var original = PdfEscaneado(PngRuido(2400));
-        original.LongLength.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximo);
+        original.LongLength.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximoPadrao);
 
-        var r = await compressor.ComprimirAteAsync(original, AnexosParaSer.TamanhoMaximo, CancellationToken.None);
+        var r = await compressor.ComprimirAteAsync(original, AnexosParaSer.TamanhoMaximoPadrao, CancellationToken.None);
 
         r.Desfecho.Should().Be(DesfechoCompressaoPdf.Coube);
-        r.Conteudo!.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximo);
+        r.Conteudo!.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximoPadrao);
         r.Degrau.Should().EndWith("dpi");
         using var pdf = PdfReader.Open(new MemoryStream(r.Conteudo), PdfDocumentOpenMode.Import);
         pdf.PageCount.Should().Be(1);

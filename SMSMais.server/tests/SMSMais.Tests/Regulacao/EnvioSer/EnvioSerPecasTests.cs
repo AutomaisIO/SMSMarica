@@ -78,12 +78,12 @@ public class EnvioSerPecasTests
     public void Imagem_acima_de_5MB_e_comprimida_em_vez_de_recusada()
     {
         var foto = new ArquivoLido(Guid.NewGuid(), "2026-10-02_004.jpg", "RELATÓRIO MÉDICO", "image/jpeg", PngGrande());
-        foto.Conteudo.LongLength.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximo, "o PNG de ruído precisa estourar o limite");
+        foto.Conteudo.LongLength.Should().BeGreaterThan(AnexosParaSer.TamanhoMaximoPadrao, "o PNG de ruído precisa estourar o limite");
 
         var saida = AnexosParaSer.Preparar([foto]);
 
         saida.Should().ContainSingle();
-        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximo);
+        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximoPadrao);
         saida[0].ContentType.Should().Be("image/jpeg");
         saida[0].Nome.Should().Be("RELATORIO MEDICO.jpg");
         SKBitmap.Decode(saida[0].Conteudo).Should().NotBeNull("o resultado tem de continuar sendo uma imagem legível");
@@ -114,7 +114,7 @@ public class EnvioSerPecasTests
 
         saida.Should().ContainSingle();
         saida[0].ContentType.Should().Be("application/pdf");
-        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximo,
+        saida[0].Conteudo.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximoPadrao,
             "três fotos grandes juntas passam de 5 MB; o PDF é refeito comprimindo as imagens");
     }
 
