@@ -58,6 +58,9 @@ public static class AgendaTxtParser
     private const int DataRegulacao = 31;   // data em que a solicitação foi regulada (seguida do operador de regulação na col. 32).
     private const int CnsPaciente = 9;
     private const int NomePaciente = 10;
+    /// <summary>Coluna 11 (<c>dt_nascimento</c> no cabeçalho do CSV), em <c>dd.MM.yyyy</c>. As
+    /// colunas 12/13 são a idade em anos e em meses, e a 14 o nome da mãe.</summary>
+    private const int NascimentoPaciente = 11;
     private const int TipoLogradouro = 15;
     private const int Logradouro = 16;
     private const int Complemento = 17;
@@ -227,6 +230,7 @@ public static class AgendaTxtParser
                 MunicipioResidencia: LimparNulo(c[MunicipioResidencia]),
                 CodigoIbgeResidencia: Digitos(c[CodigoIbgeResidencia]) is { Length: >= 6 } ibge ? ibge : null,
                 LinhaRaw: linha,
+                NascimentoPaciente: Data(c[NascimentoPaciente]),
                 CpfProfissionalExecutante: Digitos(c[CpfProfissionalExecutante]) is { Length: 11 } cpfExec ? cpfExec : null,
                 NomeProfissionalExecutante: LimparNulo(c[NomeProfissionalExecutante]),
                 CodigoProcedimentoSisreg: LimparNulo(c[CodigoProcedimentoSisreg]),

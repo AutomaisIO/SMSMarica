@@ -28,7 +28,7 @@ export const artigoPacientes: Artigo = {
   icone: Users,
   rota: '/app/pacientes',
   publico: 'Quem atende, regula ou acompanha o paciente e precisa da ficha dele',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'paciente',
     'pacientes',
@@ -109,6 +109,10 @@ export const artigoPacientes: Artigo = {
     'Receita',
     'verificar',
     'senha do e-SUS',
+    'pessoa diferente',
+    'documento de outra pessoa',
+    'CPF da mãe',
+    'conciliação recusada',
   ],
   secoes: () => [
     {
@@ -341,6 +345,53 @@ export const artigoPacientes: Artigo = {
           <P>
             Os botões aparecem para quem tem <strong>Edição</strong> no módulo Pacientes do perfil. A
             comparação vale por 20 minutos; depois disso, clique de novo no botão.
+          </P>
+        </>
+      ),
+    },
+    {
+      id: 'documento-de-outra-pessoa',
+      titulo: 'Quando o CPF ou o CNS da ficha é de outra pessoa',
+      busca:
+        'documento de outra pessoa CPF da mãe CNS da mãe criança filho filha responsável RN recém-nascido pessoa diferente conciliação recusada SER SERNIT ESUS SISREG pendência ficha errada misturou nome nascimento não bate telefone e-SUS histórico de alterações',
+      conteudo: (
+        <>
+          <P>
+            Às vezes uma ficha é feita com o documento de outra pessoa — o caso mais comum é a criança
+            atendida com o CPF ou o CNS da mãe. Daí em diante, tudo o que chega por esse documento
+            procura essa ficha. Para não misturar duas pessoas, a plataforma compara o{' '}
+            <strong>primeiro nome</strong> e a <strong>data de nascimento</strong> de quem chegou com os
+            da ficha. Quando <strong>os dois</strong> não batem, ela não junta:
+          </P>
+          <Lista>
+            <Item>
+              <strong>Pedido do SER, do SERNIT ou do ESUS de São Gonçalo</strong>: não completa a ficha,
+              e o pedido fica sem paciente. No <AbaRef>Histórico de alterações</AbaRef> da ficha aparece
+              “Conciliação com o … recusada — pessoa diferente”, dizendo de quem é a ficha e de quem é o
+              pedido.
+            </Item>
+            <Item>
+              <strong>Agendamento do SISREG</strong>: não entra. Vira pendência da importação com a causa
+              “A ficha do CNS é de outra pessoa”, e o botão <BotaoRef>Informar CPF</BotaoRef> pede o CPF
+              do paciente certo. Se esse CPF também estiver na ficha de outra pessoa, a tela recusa e diz
+              quem está lá.
+            </Item>
+            <Item>
+              <strong>Correção de telefone pelo e-SUS</strong> (rotina da madrugada): se o cadastro que o
+              e-SUS achou pelo documento da ficha é de outra pessoa, o telefone da ficha não é trocado — o
+              número viria dessa outra pessoa.
+            </Item>
+          </Lista>
+          <Callout tipo="regra" titulo="Só os dois juntos travam">
+            Nome diferente com o mesmo nascimento (nome social, casamento, abreviação) e nascimento
+            diferente com o mesmo nome (erro de digitação) seguem como sempre. Grafias como Thaís/Taís ou
+            Kauany/Kauane contam como o mesmo nome. A trava é para nome <strong>e</strong> nascimento
+            diferentes — aí são duas pessoas. “RN de …” nunca é a mãe, mesmo com o nome dela.
+          </Callout>
+          <P>
+            O que resolve é corrigir o cadastro: tirar da ficha o documento que não é dela e, se a outra
+            pessoa ainda não tem ficha, cadastrá-la com o documento certo. Antes de unificar duas fichas
+            da mesma pessoa, confira se nenhuma delas carrega documento de outra.
           </P>
         </>
       ),

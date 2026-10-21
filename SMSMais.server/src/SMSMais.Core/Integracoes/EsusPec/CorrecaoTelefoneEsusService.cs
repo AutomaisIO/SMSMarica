@@ -22,7 +22,7 @@ namespace SMSMais.Core.Integracoes.EsusPec;
 /// <summary>Resultado de uma passagem da rotina (para log).</summary>
 public sealed record ResumoCorrecaoTelefoneEsus(
     int Consultados, int Trocados, int JaCorrigidos, int EsusTambemErrado, int SemCelular, int Verificados,
-    int NumeroDeOutraPessoa, int NaoAchados, int Reenvios, string? Interrompida);
+    int NumeroDeOutraPessoa, int NaoAchados, int Reenvios, string? Interrompida, int CadastroDeOutraPessoa = 0);
 
 /// <summary>
 /// Rotina da madrugada do ADR-0067: quem teve o telefone furado (marca de telefone comprometido,
@@ -101,7 +101,7 @@ public sealed class CorrecaoTelefoneEsusService(
         logger.LogInformation("Correção de telefone pelo e-SUS: {Qtd} paciente(s) na fila desta passagem.", candidatos.Count);
 
         int consultados = 0, trocados = 0, jaCorrigidos = 0, tambemErrado = 0, semCelular = 0, verificados = 0,
-            deOutro = 0, naoAchados = 0, reenvios = 0, errosSeguidos = 0;
+            deOutro = 0, outraPessoa = 0, naoAchados = 0, reenvios = 0, errosSeguidos = 0;
         string? interrompida = null;
 
         // O login no PEC só acontece se algum paciente precisar dele — passagem só de cadastros já
@@ -143,6 +143,7 @@ public sealed class CorrecaoTelefoneEsusService(
                         case DecisaoTelefoneEsus.EsusSemCelular: semCelular++; break;
                         case DecisaoTelefoneEsus.MantemVerificado: verificados++; break;
                         case DecisaoTelefoneEsus.NumeroDeOutraPessoa: deOutro++; break;
+                        case DecisaoTelefoneEsus.CadastroDeOutraPessoa: outraPessoa++; break;
                         case null when r.ConsultouPec: naoAchados++; break;
                     }
                 }
@@ -167,7 +168,7 @@ public sealed class CorrecaoTelefoneEsusService(
         }
 
         var resumo = new ResumoCorrecaoTelefoneEsus(consultados, trocados, jaCorrigidos, tambemErrado, semCelular,
-            verificados, deOutro, naoAchados, reenvios, interrompida);
+            verificados, deOutro, naoAchados, reenvios, interrompida, CadastroDeOutraPessoa: outraPessoa);
         logger.LogInformation("Correção de telefone pelo e-SUS: {@Resumo}", resumo);
         return resumo;
     }
@@ -308,6 +309,15 @@ public sealed class CorrecaoTelefoneEsusService(
         {
             await RegistrarConsultaAsync(c.PacienteId, "NaoAchado", null, ct);
             return new Resultado(null, true);
+        }
+
+        // Antes de olhar o celular: o PEC achou a pessoa pelo documento da FICHA, e se a ficha carrega
+        // o documento de outra pessoa (criança com o CPF da mãe), o celular que vem é dessa outra.
+        // Trocar mandaria o aviso do paciente para quem não é ele (ADR-0057).
+        if (TrocaTelefoneEsus.CadastroDeOutraPessoa(patient, cidadao))
+        {
+            await RegistrarConsultaAsync(c.PacienteId, nameof(DecisaoTelefoneEsus.CadastroDeOutraPessoa), null, ct);
+            return new Resultado(DecisaoTelefoneEsus.CadastroDeOutraPessoa, true);
         }
 
         var celular = TrocaTelefoneEsus.CelularNacional(cidadao.TelefoneCelular);

@@ -164,8 +164,13 @@ public interface IPacientesService
 }
 
 /// <summary>Resumo para checar existência por CPF (inclusive inativos).</summary>
+/// <param name="DataNascimento">
+/// Vai junto para quem achou a ficha por uma chave (CPF/CNS) poder conferir se é mesmo a pessoa
+/// que a origem descreve — ver <see cref="Integracoes.Cadastro.ConferenciaPessoa"/>.
+/// </param>
 public sealed record PacienteExistenciaDto(
     Guid Id,
     string NomeCompleto,
     string Cpf,
-    bool Ativo);
+    bool Ativo,
+    DateOnly? DataNascimento = null);

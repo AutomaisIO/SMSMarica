@@ -17,6 +17,7 @@ export type CausaFalhaImportacao =
   | 'UnidadeNaoResolvida'
   | 'LinhaInvalida'
   | 'ArquivoIncompativel'
+  | 'IdentidadeDivergente'
   | 'Outro';
 
 export type RaiaPainel<T> = {
