@@ -17,6 +17,10 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # Publica na VM SMSMAIS-01 (EVEO) pelo GitHub Environment `automais`, o mesmo do
+    # deploy-server: DEPLOY_HOST/USER/KEY + var DEPLOY_PORT (SSH pela WAN). Até 21/10/2026 usava
+    # os secrets HOST/USER/PASS_SMSMARICA do droplet, desligado na virada de 14/10.
+    environment: automais
     runs-on: ubuntu-latest
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
@@ -59,24 +63,25 @@ jobs:
       - name: Copy artifact to server (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
-          port: 22
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           source: automais-fhir.tar.gz
           target: /tmp/
 
       - name: Deploy on server (SSH)
         uses: appleboy/ssh-action@v1.2.0
         env:
-          # Mesmo cluster Postgres do smsmarica (schema fhir é separado no código).
-          DB_CS: ${{ secrets.DB_CONNECTION_SMSMARICA }}
+          # Só para INSTÂNCIA NOVA (env sem a conexão): secret do ENVIRONMENT. Nunca mais o
+          # DB_CONNECTION_SMSMARICA do repositório, que apontava para o caminho antigo do banco.
+          FHIR_DB_CS: ${{ secrets.FHIR_DB_CONNECTION }}
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
-          port: 22
-          envs: DB_CS
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ vars.DEPLOY_PORT || 22 }}
+          envs: FHIR_DB_CS
           command_timeout: 15m
           script: |
             set -euo pipefail
@@ -122,12 +127,18 @@ jobs:
             $SUDO mkdir -p "$APP_DIR" "$ENV_DIR"
 
             # --- 5. Arquivo de ambiente (connection string FhirDb) ---
-            if [ -n "${DB_CS:-}" ]; then
-              log "Atualizando $ENV_FILE com ConnectionStrings__FhirDb..."
-              printf 'ConnectionStrings__FhirDb=%s\n' "$DB_CS" | $SUDO tee "$ENV_FILE" >/dev/null
-            elif [ ! -f "$ENV_FILE" ]; then
-              log "AVISO: DB_CONNECTION_SMSMARICA não setado e $ENV_FILE não existe — serviço subirá sem banco."
-              $SUDO touch "$ENV_FILE"
+            # O env do servidor é a FONTE DA VERDADE e o deploy NUNCA o regrava (21/10/2026). Antes
+            # o tee recriava o arquivo a partir do secret do repositório, que apontava para o
+            # caminho antigo do banco: repontar este deploy para a VM sem esta mudança trocaria a
+            # conexão do hub FHIR de produção. O secret do environment só preenche instância nova.
+            $SUDO touch "$ENV_FILE"
+            if $SUDO grep -q '^ConnectionStrings__FhirDb=' "$ENV_FILE"; then
+              log "Env existente preservado ($ENV_FILE) — o deploy não mexe na conexão."
+            elif [ -n "${FHIR_DB_CS:-}" ]; then
+              log "Instância nova: gravando ConnectionStrings__FhirDb em $ENV_FILE..."
+              printf 'ConnectionStrings__FhirDb=%s\n' "$FHIR_DB_CS" | $SUDO tee -a "$ENV_FILE" >/dev/null
+            else
+              log "AVISO: $ENV_FILE sem ConnectionStrings__FhirDb e sem o secret FHIR_DB_CONNECTION — o serviço subirá sem banco."
             fi
             $SUDO chmod 600 "$ENV_FILE"
             $SUDO chown automais:automais "$ENV_FILE"
@@ -201,6 +212,13 @@ jobs:
             # --- 9. Iniciar ---
             log "Iniciando $SERVICE..."
             $SUDO systemctl start "$SERVICE"
+
+            # Instância TRAVADA (ConditionPathExists=/etc/smsmais/liberado da virada não satisfeita):
+            # o artefato foi atualizado, mas o serviço não deve subir — não é falha (como no deploy-server).
+            if [ "$($SUDO systemctl show -p ConditionResult --value "$SERVICE")" = "no" ]; then
+              log "Instância TRAVADA (condição da unit não satisfeita): artefato atualizado, serviço não iniciado."
+              exit 0
+            fi
 
             # --- 10. Validação ---
             sleep 4

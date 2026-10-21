@@ -20,6 +20,10 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # Publica na VM SMSMAIS-01 (EVEO) pelo GitHub Environment `automais`, o mesmo do
+    # deploy-server: DEPLOY_HOST/USER/KEY + var DEPLOY_PORT (SSH pela WAN). Até 21/10/2026 usava
+    # os secrets HOST/USER/PASS_SMSMARICA do droplet, desligado na virada de 14/10.
+    environment: automais
     runs-on: ubuntu-latest
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
@@ -54,20 +58,20 @@ jobs:
       - name: Copy artifact to server (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
-          port: 22
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           source: automais-assinador.tar.gz
           target: /tmp/
 
       - name: Deploy on server (SSH)
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
-          port: 22
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           command_timeout: 15m
           script: |
             set -euo pipefail
@@ -188,6 +192,13 @@ jobs:
             # --- 9. Iniciar ---
             log "Iniciando $SERVICE..."
             $SUDO systemctl start "$SERVICE"
+
+            # Instância TRAVADA (ConditionPathExists=/etc/smsmais/liberado da virada não satisfeita):
+            # o artefato foi atualizado, mas o serviço não deve subir — não é falha (como no deploy-server).
+            if [ "$($SUDO systemctl show -p ConditionResult --value "$SERVICE")" = "no" ]; then
+              log "Instância TRAVADA (condição da unit não satisfeita): artefato atualizado, serviço não iniciado."
+              exit 0
+            fi
 
             # --- 10. Validação + rollback automático ---
             sleep 4
