@@ -182,16 +182,19 @@ public sealed class TrabalhoFaltas(
 }
 
 /// <summary>
-/// A lista de faltas de UM dia recente lida unidade executante por unidade (<c>cnes_executante</c>), para
-/// o dia em que a lista da rede inteira estoura o tempo do SISREG duas vezes seguidas. Caso de origem
-/// (11/10/2026): 14/09, 318 faltas, cortado aos ~65 s nas cinco tentativas da manhã, numa hora em que o
-/// SISREG cortava uma leitura em cada três. Filtrada por executante, a mesma consulta sai em segundos
-/// (<c>Automais.SISREG/coletar_faltas_historico.py</c>), e as listas por unidade somam a da rede.
+/// A lista de faltas de UM dia lida unidade executante por unidade (<c>cnes_executante</c>), para o dia em
+/// que a lista da rede inteira estoura o tempo do SISREG — nas recentes, duas vezes seguidas; na oficial
+/// (aos 30 dias), uma. Caso de origem (11/10/2026): 14/09, 318 faltas, cortado aos ~65 s nas cinco
+/// tentativas da manhã, numa hora em que o SISREG cortava uma leitura em cada três. Filtrada por
+/// executante, a mesma consulta sai em segundos (<c>Automais.SISREG/coletar_faltas_historico.py</c>), e as
+/// listas por unidade somam a da rede.
 ///
 /// <para><b>Cada unidade só troca as faltas que são dela</b> (<see cref="IArmazemIndicadoresSisreg.SubstituirFaltasDaExecutanteAsync"/>):
 /// as unidades lidas são as executantes dos agendamentos NOSSOS do dia, e a falta de um agendamento que
-/// não temos não tem executante conhecida — fica como a última leitura da rede deixou, até a leitura
-/// oficial (aos 30 dias) reler a rede inteira. Por isso este caminho é só das faltas RECENTES.</para>
+/// não temos não tem executante conhecida — fica como a última leitura da rede deixou. Na oficial isso
+/// quer dizer que o dia fecha "lido" para as executantes que temos, que são também o denominador do
+/// indicador — o mesmo critério do histórico de 2019–2024 (janelas <c>exec:&lt;CNES&gt;</c>). Antes de
+/// 21/10/2026 a oficial não tinha este caminho, e o dia pesado ficava em falha para sempre.</para>
 ///
 /// <para>Um passo por requisição. A mesma prova da rede vale por unidade: sem rodapé e com até 10
 /// linhas, a página já é a lista inteira (uma requisição só); com rodapé, a lista inteira tem de caber
@@ -208,7 +211,7 @@ public sealed class TrabalhoFaltasPorExecutante(ItemColeta item, IReadOnlyList<s
     private int _gravadasNoDia;
 
     public override string Descricao =>
-        $"faltas recentes {Br(Item.Inicio)} por unidade executante"
+        $"faltas {(Item.Coletor == ColetorIndicadorSisreg.FaltasRecentes ? "recentes " : string.Empty)}{Br(Item.Inicio)} por unidade executante"
         + (executantes.Count > 0 ? $" ({Math.Min(_indice + 1, executantes.Count)} de {executantes.Count})" : "");
 
     public override async Task<ResultadoPasso> PassoAsync(

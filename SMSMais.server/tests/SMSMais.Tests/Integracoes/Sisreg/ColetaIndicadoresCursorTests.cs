@@ -90,6 +90,97 @@ public class ColetaIndicadoresCursorTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// 21/10/2026: o servidor reiniciou no meio da leitura por executante do 22/09 e o dia voltou para a
+    /// lista da rede, que corta aos 65 s — a reserva tinha apagado a marca. Agora ela fica gravada enquanto
+    /// a leitura por unidade está em curso: sobrevive ao reinício e à devolução sem culpa (CAPTCHA, login).
+    /// </summary>
+    [Fact]
+    public async Task Marca_por_executante_sobrevive_ao_reinicio_e_a_devolucao()
+    {
+        await using (var db = fixture.CriarDbContext()) await LimparAsync(db);
+        var id = Guid.NewGuid();
+        var marca = $"{ColetaIndicadoresSisregService.MarcaPorExecutante}: o SISREG não respondeu a tempo";
+        await using (var db = fixture.CriarDbContext())
+        {
+            db.SisregIndicadorColetas.Add(new SisregIndicadorColeta
+            {
+                Id = id, Coletor = ColetorIndicadorSisreg.Ppi, JanelaInicio = InicioDoTeste,
+                JanelaFim = InicioDoTeste.AddMonths(1).AddDays(-1), Status = StatusColetaIndicador.Pendente,
+                Erro = marca, CriadoEm = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Cada passo num contexto novo, como o agendador (um escopo por tick).
+        await using (var db = fixture.CriarDbContext()) Assert.Equal(marca, (await Criar(db).ReservarProximoAsync(default))?.ErroAnterior);
+        await using (var db = fixture.CriarDbContext()) await Criar(db).ResetarEmAndamentoAsync(null, default);
+        await using (var db = fixture.CriarDbContext()) Assert.Equal(marca, (await Criar(db).ReservarProximoAsync(default))?.ErroAnterior);
+
+        await using (var db = fixture.CriarDbContext()) await Criar(db).DevolverAsync(id, "CAPTCHA — coletor pausado", default);
+        await using (var ver = fixture.CriarDbContext())
+        {
+            var gravado = await ver.SisregIndicadorColetas.SingleAsync(c => c.Id == id);
+            Assert.Equal(StatusColetaIndicador.Pendente, gravado.Status);
+            Assert.StartsWith(ColetaIndicadoresSisregService.MarcaPorExecutante, gravado.Erro);
+            Assert.Contains("CAPTCHA — coletor pausado", gravado.Erro);
+        }
+        await using (var db = fixture.CriarDbContext())
+            Assert.StartsWith(ColetaIndicadoresSisregService.MarcaPorExecutante, (await Criar(db).ReservarProximoAsync(default))?.ErroAnterior);
+
+        // Sem a marca, a devolução continua gravando só o motivo.
+        await using (var db = fixture.CriarDbContext())
+        {
+            await db.SisregIndicadorColetas.Where(c => c.Id == id)
+                .ExecuteUpdateAsync(u => u.SetProperty(c => c.Erro, (string?)null));
+            await Criar(db).DevolverAsync(id, "o coletor foi desligado no meio da leitura", default);
+        }
+        await using (var ver = fixture.CriarDbContext())
+            Assert.Equal("o coletor foi desligado no meio da leitura", (await ver.SisregIndicadorColetas.SingleAsync(c => c.Id == id)).Erro);
+
+        await using (var db = fixture.CriarDbContext()) await LimparAsync(db);
+    }
+
+    /// <summary>
+    /// A oficial de um dia que corta volta para a fila na hora, já marcada por executante e com a tentativa
+    /// contada; no teto vira falha com a mesma marca — o botão a traz de volta e ela segue por unidade.
+    /// </summary>
+    [Fact]
+    public async Task Oficial_que_corta_volta_para_a_fila_por_executante_e_no_teto_vira_falha()
+    {
+        await using var db = fixture.CriarDbContext();
+        await LimparAsync(db);
+        var comFolga = Guid.NewGuid();
+        var noTeto = Guid.NewGuid();
+        foreach (var (id, dia, tentativas) in new[] { (comFolga, 1, 2), (noTeto, 2, 6) })
+        {
+            db.SisregIndicadorColetas.Add(new SisregIndicadorColeta
+            {
+                Id = id, Coletor = ColetorIndicadorSisreg.Faltas, JanelaInicio = InicioDoTeste.AddDays(dia),
+                JanelaFim = InicioDoTeste.AddDays(dia), Escopo = PlanoColetaIndicadores.EscopoDia,
+                Status = StatusColetaIndicador.EmAndamento, Tentativas = tentativas, CriadoEm = DateTime.UtcNow,
+            });
+        }
+        await db.SaveChangesAsync();
+        var erro = ColetaIndicadoresSisregService.ErroDaOficialPorExecutante("o SISREG não respondeu a tempo (HttpRequestException)");
+
+        Assert.False(await Criar(db).ReabrirPorExecutanteAsync(comFolga, erro, default));
+        Assert.True(await Criar(db).ReabrirPorExecutanteAsync(noTeto, erro, default));
+        await Criar(db).RearmarFalhasAsync(default);
+
+        await using var ver = fixture.CriarDbContext();
+        var itens = await ver.SisregIndicadorColetas.Where(c => c.JanelaInicio >= InicioDoTeste).ToDictionaryAsync(c => c.Id);
+        Assert.Equal(StatusColetaIndicador.Pendente, itens[comFolga].Status);
+        Assert.Equal(2, itens[comFolga].Tentativas);
+        Assert.Equal(erro, itens[comFolga].Erro);
+        // Depois do botão: pendente, tentativas zeradas e a marca ainda lá.
+        Assert.Equal(StatusColetaIndicador.Pendente, itens[noTeto].Status);
+        Assert.Equal(0, itens[noTeto].Tentativas);
+        Assert.Equal(erro, itens[noTeto].Erro);
+
+        await LimparAsync(db);
+    }
+
+    /// <summary>
     /// O beco de 09/10/2026: o item interrompido no meio em todas as tentativas voltava a "pendente" com
     /// o teto gasto — a reserva não o pegava mais, e nem o botão nem a rodada do dia o enxergavam (os dois
     /// só re-armam falha). Agora ele vira falha com o motivo; e o que é devolvido sem culpa (CAPTCHA,

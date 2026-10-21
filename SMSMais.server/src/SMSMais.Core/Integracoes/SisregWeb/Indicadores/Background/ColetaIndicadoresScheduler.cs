@@ -303,6 +303,27 @@ public sealed class ColetaIndicadoresScheduler(
                 break;
             }
 
+            // A OFICIAL de um dia não espera o segundo corte: é tentada uma vez por noite, e o dia pesado
+            // cortava em todas (01, 02 e 04/09/2026, de 10 a 15/10, até gastar as tentativas). Volta para
+            // a fila na hora, já por unidade executante.
+            case DesfechoPasso.TempoEsgotado when item.Coletor == ColetorIndicadorSisreg.Faltas
+                                                  && item.Fim == item.Inicio && trabalho is TrabalhoFaltas:
+            {
+                var erro = ColetaIndicadoresSisregService.ErroDaOficialPorExecutante(r.Mensagem ?? "tempo esgotado");
+                if (await servico.ReabrirPorExecutanteAsync(item.Id, erro, ct))
+                {
+                    logger.LogError(
+                        "SISREG_INDICADORES_PARADA: {Trabalho} falhou em todas as {N} tentativas e fica parada até "
+                        + "alguém clicar Tentar todas de novo (SISREG → Configuração): {Mensagem}",
+                        trabalho.Descricao, _opcoes.MaximoTentativas, erro);
+                }
+                else
+                {
+                    logger.LogWarning("SISREG_INDICADORES: {Trabalho}: {Mensagem}", trabalho.Descricao, erro);
+                }
+                break;
+            }
+
             case DesfechoPasso.Captcha:
                 // O operador está bloqueado: parar tudo por um dia. O item não tem culpa — volta a pendente.
                 await servico.DevolverAsync(item.Id, "CAPTCHA — coletor pausado", ct);
@@ -339,6 +360,12 @@ public sealed class ColetaIndicadoresScheduler(
         var fracao = _opcoes.FracaoMinimaNaSubstituicao;
         switch (item.Coletor)
         {
+            case ColetorIndicadorSisreg.Faltas or ColetorIndicadorSisreg.FaltasRecentes
+                when item.Inicio == item.Fim
+                     && item.ErroAnterior?.StartsWith(ColetaIndicadoresSisregService.MarcaPorExecutante, StringComparison.Ordinal) == true:
+                var executantes = await scope.ServiceProvider.GetRequiredService<IColetaIndicadoresSisregService>()
+                    .ExecutantesDoDiaAsync(item.Inicio, ct);
+                return new TrabalhoFaltasPorExecutante(item, executantes);
             case ColetorIndicadorSisreg.Faltas:
                 // Enquanto a semana era nova, quem gravava a janela era a leitura provisória.
                 var provisoria = await scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>()
@@ -346,12 +373,6 @@ public sealed class ColetaIndicadoresScheduler(
                         c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes
                              && c.JanelaInicio <= item.Fim && c.JanelaFim >= item.Inicio, ct);
                 return new TrabalhoFaltas(item, fracao, substituiProvisoria: provisoria);
-            case ColetorIndicadorSisreg.FaltasRecentes
-                when item.Inicio == item.Fim
-                     && item.ErroAnterior?.StartsWith(ColetaIndicadoresSisregService.MarcaPorExecutante, StringComparison.Ordinal) == true:
-                var executantes = await scope.ServiceProvider.GetRequiredService<IColetaIndicadoresSisregService>()
-                    .ExecutantesDoDiaAsync(item.Inicio, ct);
-                return new TrabalhoFaltasPorExecutante(item, executantes);
             case ColetorIndicadorSisreg.FaltasRecentes:
                 return new TrabalhoFaltas(item, fracao, recentes: true);
             case ColetorIndicadorSisreg.Canceladas when item.Escopo == PlanoColetaIndicadores.EscopoAmostra:
