@@ -7,7 +7,7 @@ using SMSMais.Core.Integracoes.SisregWeb;
 namespace SMSMais.Core.Fontes;
 
 /// <summary>
-/// Os sistemas com login de onde a plataforma lê dado (ADR-0076). Diferente das bases, são FIXOS:
+/// Os sistemas com login de onde a plataforma lê dado (ADR-0077). Diferente das bases, são FIXOS:
 /// existem na tela mesmo antes de configurados, porque o código que os lê já existe. Nesta entrega o
 /// login continua em <c>integracao_credencial</c> (chave = provedor) e o da API-SISREG em
 /// <c>sisreg_configuracao</c>.

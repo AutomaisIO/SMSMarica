@@ -1,7 +1,7 @@
 namespace SMSMais.Core.Fontes.Dtos;
 
 /// <summary>
-/// Uma fonte de dados como a tela Sistema → Fontes de dados a mostra (ADR-0076), venha ela de
+/// Uma fonte de dados como a tela Sistema → Fontes de dados a mostra (ADR-0077), venha ela de
 /// <c>ia_fonte</c> (bancos, agentes, Klinikos Web, recortes do próprio banco) ou de um sistema com
 /// login (SISREG, SER, SERNIT, ESUS SG, e-SUS PEC, API-SISREG). Nunca carrega segredo: só se
 /// login/senha/token estão definidos.

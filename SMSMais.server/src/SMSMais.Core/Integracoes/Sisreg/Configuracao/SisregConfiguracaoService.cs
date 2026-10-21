@@ -33,7 +33,7 @@ public sealed class SisregConfiguracaoService(
         var config = await ObterOuCriarAsync(cancellationToken);
 
         // Só o USO da API. A conexão (URL, autenticação, login, senha, token, ativo) é editada em
-        // Sistema → Fontes de dados — ver AtualizarCredencialAsync e ADR-0076.
+        // Sistema → Fontes de dados — ver AtualizarCredencialAsync e ADR-0077.
         config.Escopo = request.Escopo;
         config.Uf = request.Uf.Trim();
         config.Municipio = request.Municipio.Trim();

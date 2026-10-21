@@ -12,7 +12,7 @@ type Props = {
 };
 
 /**
- * A fonte que um recurso usa, com o atalho para onde ela se edita (ADR-0076). O recurso escolhe e
+ * A fonte que um recurso usa, com o atalho para onde ela se edita (ADR-0077). O recurso escolhe e
  * usa a fonte; a conexão — endereço, login, senha — só se mexe em Sistema → Fontes de dados.
  */
 export function FonteDoRecurso({ nome, configurada, detalhe }: Props) {

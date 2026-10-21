@@ -33,7 +33,7 @@ export type SisregConfiguracao = {
 };
 
 /** Só o USO da API. A conexão (URL, autenticação, login, senha, token, ativa) é editada em
- *  Sistema → Fontes de dados, na fonte "SISREG — API (DATASUS)" (ADR-0076). */
+ *  Sistema → Fontes de dados, na fonte "SISREG — API (DATASUS)" (ADR-0077). */
 export type AtualizarSisregConfiguracaoPayload = {
   escopo: EscopoSisreg;
   uf: string;

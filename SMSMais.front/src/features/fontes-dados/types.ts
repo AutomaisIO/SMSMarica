@@ -1,5 +1,5 @@
 /**
- * Fonte de dados (ADR-0076): de onde a plataforma lê dado. Vem de `GET /fontes-dados`.
+ * Fonte de dados (ADR-0077): de onde a plataforma lê dado. Vem de `GET /fontes-dados`.
  * `origem = 'base'` é cadastrável/removível (chave = id); `origem = 'sistema'` é fixa (SISREG, SER,
  * SERNIT, ESUS SG, e-SUS PEC, API-SISREG — chave = nome do sistema). Nunca traz segredo.
  */

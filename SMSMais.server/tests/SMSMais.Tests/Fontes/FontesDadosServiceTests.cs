@@ -28,7 +28,7 @@ using SMSMais.Tests.Infraestrutura;
 namespace SMSMais.Tests.Fontes;
 
 /// <summary>
-/// Sistema → Fontes de dados (ADR-0076). O JSON da credencial e o da fonte Klinikos Web carregam a
+/// Sistema → Fontes de dados (ADR-0077). O JSON da credencial e o da fonte Klinikos Web carregam a
 /// conexão E o uso (agenda dos motores, cadência da importação): a tela de fontes só pode mexer na
 /// conexão. E trocar o login do SER/SERNIT/ESUS SG continua passando pelo motor, que testa antes de
 /// gravar.

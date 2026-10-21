@@ -1,4 +1,4 @@
-# ADR-0076 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso
+# ADR-0077 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso
 
 **Status:** aceito · **Data:** 2026-10-21 · **Implementação:** branch `feat/fontes-de-dados`
 **Relacionado:** [ADR-0011](./0011-modulo-ia-consulta-linguagem-natural.md) (o CRUD de bases nasceu dentro da IA) ·

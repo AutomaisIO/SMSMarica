@@ -6,7 +6,7 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Api.Controllers;
 
 /// <summary>
-/// Endereço do SISREG mostrado na fonte "SISREG III" de Sistema → Fontes de dados (ADR-0076): IP
+/// Endereço do SISREG mostrado na fonte "SISREG III" de Sistema → Fontes de dados (ADR-0077): IP
 /// atual, desde quando, se sai pelo túnel e o histórico das trocas. A rota manteve o prefixo antigo. Só leitura — quem conserta a rota é o timer do servidor
 /// (docs/sisreg-egress.md §Verificador).
 /// </summary>

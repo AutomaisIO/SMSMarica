@@ -5,7 +5,7 @@ import { BotaoRef } from '@/features/manual/components/Referencia';
 import type { Artigo } from '@/features/manual/tipos';
 
 /**
- * Sistema → Fontes de dados (`/app/fontes-dados`, permissão Fontes de dados — módulo 82, ADR-0076).
+ * Sistema → Fontes de dados (`/app/fontes-dados`, permissão Fontes de dados — módulo 82, ADR-0077).
  *
  * Conferido no código em 21/10/2026: `features/fontes-dados/pages/FontesDadosPage`,
  * `components/FonteDadosModal`, `NovoAgenteModal`, `FonteDoRecurso`; no servidor,

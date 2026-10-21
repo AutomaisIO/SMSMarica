@@ -12,7 +12,7 @@ namespace SMSMais.Tests.Integracoes.Credenciais;
 /// <summary>
 /// O JSON da credencial carrega também a agenda dos motores (fila, escalas, varredura). Trocar só o
 /// login não pode apagá-la — era o que acontecia com o SER/SERNIT, que salvavam com JSON nulo
-/// (ADR-0076). E substituir o JSON inteiro continua possível: a coleta de indicadores retoma
+/// (ADR-0077). E substituir o JSON inteiro continua possível: a coleta de indicadores retoma
 /// REMOVENDO a chave de pausa.
 /// </summary>
 [Collection(nameof(PostgresCollection))]

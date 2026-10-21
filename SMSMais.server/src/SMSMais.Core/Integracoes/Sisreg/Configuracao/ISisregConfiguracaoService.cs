@@ -16,7 +16,7 @@ public interface ISisregConfiguracaoService
 
     /// <summary>
     /// Atualiza a CONEXÃO da API (URL, autenticação, login, senha, token, ativo) — chamada pela tela
-    /// Sistema → Fontes de dados (ADR-0076). Senha/token vazios mantêm o atual.
+    /// Sistema → Fontes de dados (ADR-0077). Senha/token vazios mantêm o atual.
     /// </summary>
     Task AtualizarCredencialAsync(AtualizarCredencialSisregApiRequest request, CancellationToken cancellationToken = default);
 

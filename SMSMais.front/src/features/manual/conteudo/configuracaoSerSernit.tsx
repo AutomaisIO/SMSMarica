@@ -16,6 +16,8 @@ import type { Artigo, SecaoArtigo } from '@/features/manual/tipos';
  * `features/regulacao/components/configuracao/AvisosPacienteSecao`; no servidor, `SerConfiguracaoController`,
  * `SernitConfiguracaoController`, `SerSincronizacaoService` (status das rodadas), `VarreduraSerRunner`
  * (retomada na subida), `AgendamentoExternoService` e `LembreteAgendamentoExternoService`.
+ * Seção "credencial" revista em 21/10/2026 (ADR-0077): o login saiu da aba para Sistema → Fontes de
+ * dados; a aba mostra a linha `FonteDoRecurso` com o atalho.
  */
 
 type Sistema = 'SER' | 'SERNIT';
@@ -195,14 +197,15 @@ function secoesDoMotor(sistema: Sistema): SecaoArtigo[] {
     {
       id: 'credencial',
       titulo: 'Credencial',
-      busca: 'credencial usuário senha testar salvar cifrada write-only módulo ambulatório',
+      busca: 'credencial login usuário senha testar salvar cifrada write-only módulo ambulatório fontes de dados fonte',
       conteudo: (
         <P>
-          Preencha usuário e senha. <BotaoRef variante="outline">Testar</BotaoRef> só autentica e confere se o
-          módulo Ambulatório abre, sem gravar nada. <BotaoRef>Salvar</BotaoRef> testa primeiro e só então guarda a
-          credencial, cifrada: credencial que não funciona faria o motor falhar de madrugada, sem ninguém por perto. A
-          senha não volta para a tela depois de salva. Trocar a credencial não mexe no horário da rodada diária nem
-          no limite de anexo.
+          O login do {sistema} é editado em <strong>Sistema → Fontes de dados</strong>, na fonte do {sistema}; esta aba
+          mostra a linha <strong>Fonte</strong>, que diz se o login está configurado e leva até lá. Lá,{' '}
+          <BotaoRef variante="outline">Testar o login digitado</BotaoRef> só autentica e confere se o módulo
+          Ambulatório abre, sem gravar nada, e <BotaoRef>Testar e salvar</BotaoRef> testa primeiro e só então guarda,
+          cifrado: login que não funciona faria o motor falhar de madrugada, sem ninguém por perto. A senha não volta
+          para a tela. Trocar o login não mexe no horário da rodada diária nem no limite de anexo.
         </P>
       ),
     },
@@ -252,7 +255,8 @@ function secoesDoMotor(sistema: Sistema): SecaoArtigo[] {
       conteudo: (
         <P>
           A tela exige o módulo <strong>Regulação — Configuração</strong>. Para salvar os avisos ao paciente é preciso
-          a mesma permissão com <strong>edição</strong>.
+          a mesma permissão com <strong>edição</strong>. Trocar o login do {sistema} exige o módulo{' '}
+          <strong>Fontes de dados</strong>.
         </P>
       ),
     },
@@ -308,7 +312,7 @@ export const artigoSerConfiguracao: Artigo = {
           </P>
           <ListaDefinicoes
             itens={[
-              { termo: 'SER', descricao: 'Estado do motor, rodada manual e diária, catálogo, anexos, avisos ao paciente, credencial e últimas rodadas.' },
+              { termo: 'SER', descricao: 'Estado do motor, rodada manual e diária, catálogo, anexos, avisos ao paciente, a fonte (login) e últimas rodadas.' },
               {
                 termo: 'SER — consulta direta',
                 descricao:
@@ -352,7 +356,7 @@ export const artigoSernitConfiguracao: Artigo = {
         <P>
           A tela do SERNIT (a regulação de Niterói) mantém na plataforma a cópia dos pedidos do município no SERNIT e
           decide o que o paciente recebe sobre esses agendamentos. É a mesma tela do SER, com o próprio motor, a
-          própria credencial e as próprias chaves de aviso.
+          própria fonte (o login, em Sistema → Fontes de dados) e as próprias chaves de aviso.
         </P>
       ),
     },

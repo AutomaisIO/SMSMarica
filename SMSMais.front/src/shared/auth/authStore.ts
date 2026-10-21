@@ -92,7 +92,7 @@ export type ModuloPermissao =
   // Extensão do Chrome distribuída pela plataforma (80, ADR-0064): computadores autorizados e
   // versões publicadas. Baixar o instalador e autorizar o próprio computador NÃO pedem módulo.
   | 'ExtensaoNavegador'
-  // Fontes de dados (82, ADR-0076): cadastro único de toda fonte de onde se lê dado (Sistema).
+  // Fontes de dados (82, ADR-0077): cadastro único de toda fonte de onde se lê dado (Sistema).
   | 'FontesDados';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
