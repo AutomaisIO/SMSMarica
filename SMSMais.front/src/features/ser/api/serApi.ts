@@ -68,16 +68,6 @@ export async function dispararVarreduraSer(payload: DispararVarreduraPayload): P
   await http.post('/regulacao/ser/configuracao/varreduras', payload);
 }
 
-/** Testa a credencial contra o SER sem gravá-la (nenhuma escrita no SER). */
-export async function testarCredencialSer(usuario: string, senha: string): Promise<void> {
-  await http.post('/regulacao/ser/configuracao/testar-credencial', { usuario, senha });
-}
-
-/** Grava a credencial (cifrada). O backend autentica antes de persistir. */
-export async function salvarCredencialSer(usuario: string, senha: string): Promise<void> {
-  await http.put('/regulacao/ser/configuracao/credencial', { usuario, senha });
-}
-
 /** Consulta AO VIVO no SER (tela de testes). Nada é gravado na nossa base. */
 export async function consultaDiretaSer(
   filtro: ConsultaDiretaFiltro,

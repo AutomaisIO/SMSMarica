@@ -323,9 +323,9 @@ export const artigoEsusSaoGoncalo: Artigo = {
     },
     {
       id: 'configuracao',
-      titulo: 'Configuração: credencial e motor',
+      titulo: 'Configuração: login e motor',
       busca:
-        'configuração credencial usuário senha cliente sgo testar salvar rodar agora modo sincronizar catálogo rodada diária automática horário últimas rodadas avisos ao paciente lembrete dias antes aviso de cancelamento voltou para a fila',
+        'configuração credencial login usuário senha cliente sgo testar salvar fontes de dados rodar agora modo sincronizar catálogo rodada diária automática horário últimas rodadas avisos ao paciente lembrete dias antes aviso de cancelamento voltou para a fila',
       conteudo: (
         <>
           <P>
@@ -335,9 +335,9 @@ export const artigoEsusSaoGoncalo: Artigo = {
           <Passos
             itens={[
               {
-                titulo: 'Credencial: preencha Usuário, Senha e Cliente (o padrão é SGO).',
+                titulo: 'Login: em Sistema → Fontes de dados, edite a fonte “ESUS — São Gonçalo” (usuário, senha e cliente; o padrão é SGO).',
                 detalhe:
-                  '“Testar” só faz o login e mostra o nome com que o ESUS reconheceu a conta, sem gravar. “Salvar” testa primeiro e só então guarda — cifrada. A senha não volta para a tela.',
+                  'A linha “Fonte” desta aba mostra se o login está configurado e leva até lá. “Testar o login digitado” só entra e mostra o nome com que o ESUS reconheceu a conta, sem gravar; “Testar e salvar” testa primeiro e só então guarda — cifrada. A senha não volta para a tela.',
               },
               {
                 titulo: (
@@ -477,7 +477,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
             { termo: 'Estatísticas — ESUS São Gonçalo', descricao: 'Ver as estatísticas dos operadores.' },
             {
               termo: 'Regulação — Configuração',
-              descricao: 'Ver o motor (consulta); rodar, sincronizar catálogo, mudar o horário e a credencial (edição).',
+              descricao: 'Ver o motor (consulta); rodar, sincronizar catálogo e mudar o horário (edição). Trocar o login exige o módulo Fontes de dados.',
             },
           ]}
         />

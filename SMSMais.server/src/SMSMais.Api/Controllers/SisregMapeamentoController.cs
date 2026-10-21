@@ -15,7 +15,7 @@ namespace SMSMais.Api.Controllers;
 /// <c>X-Unidade-Id</c>). Na visão "todas as unidades" o service recusa com
 /// <c>sisreg.unidade_obrigatoria</c> (400): profissionais e procedimentos são sempre de uma
 /// unidade, e mapear "todas" de uma vez não quer dizer nada. A credencial do SISREG é uma só,
-/// global, e vive na tela de Integrações.</para>
+/// global, e vive em Sistema → Fontes de dados.</para>
 /// </summary>
 [ApiController]
 [Route("sisreg/mapeamento")]

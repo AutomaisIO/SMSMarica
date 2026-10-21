@@ -587,13 +587,6 @@ export const SECOES: SecaoMenu[] = [
         modulo: 'SincronizacaoPep',
         descricao: 'Status dos motores e divergências de importação.',
       },
-      {
-        rotulo: 'Fontes / Conectores',
-        to: '/app/pep-sincronizacao/fontes',
-        icone: Layers,
-        modulo: 'SincronizacaoPep',
-        descricao: 'Bases (banco/agente) e conectores web (Klinikos) de prontuário.',
-      },
     ],
   },
   {
@@ -826,6 +819,13 @@ export const SECOES: SecaoMenu[] = [
         icone: Landmark,
         modulo: 'Instituicao',
         descricao: 'Nome, marca, domínios e contatos legais desta instância.',
+      },
+      {
+        rotulo: 'Fontes de dados',
+        to: '/app/fontes-dados',
+        icone: DatabaseZap,
+        modulo: 'FontesDados',
+        descricao: 'Bancos, agentes e logins (SISREG, SER, SERNIT, ESUS SG, e-SUS PEC) de onde a plataforma lê dado.',
       },
       {
         rotulo: 'Auditoria',

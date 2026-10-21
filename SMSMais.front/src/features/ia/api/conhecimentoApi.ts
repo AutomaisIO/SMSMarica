@@ -4,7 +4,6 @@ import type {
   DocumentoConhecimentoDetalhe,
   EmbeddingsBackfillResultado,
   ExtracaoModeloResultado,
-  TokenAgenteGerado,
 } from '@/features/ia/types';
 
 // ---- Repositório de documentos (.md) por base ----
@@ -67,16 +66,6 @@ export async function extrairModelo(
 export async function gerarEmbeddings(fonteId: string): Promise<EmbeddingsBackfillResultado> {
   const { data } = await http.post<EmbeddingsBackfillResultado>(
     `/ia/conhecimento/${fonteId}/embeddings`,
-    {},
-  );
-  return data;
-}
-
-// ---- Token do agente proxy (mostrado uma vez) ----
-
-export async function gerarTokenAgente(fonteId: string): Promise<TokenAgenteGerado> {
-  const { data } = await http.post<TokenAgenteGerado>(
-    `/ia/configuracao/fontes/${fonteId}/token-agente`,
     {},
   );
   return data;

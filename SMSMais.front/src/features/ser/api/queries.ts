@@ -28,8 +28,6 @@ import {
   obterResumoSer,
   obterSolicitacaoSer,
   obterStatusMotorSer,
-  salvarCredencialSer,
-  testarCredencialSer,
   obterSessaoOperadorSer,
   entrarNoSer,
   sairDoSer,
@@ -115,22 +113,6 @@ export function useDispararVarreduraSer() {
       void qc.invalidateQueries({ queryKey: serKeys.status });
       void qc.invalidateQueries({ queryKey: serKeys.execucoes });
     },
-  });
-}
-
-export function useTestarCredencialSer() {
-  return useMutation({
-    mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
-      testarCredencialSer(usuario, senha),
-  });
-}
-
-export function useSalvarCredencialSer() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
-      salvarCredencialSer(usuario, senha),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: serKeys.status }),
   });
 }
 

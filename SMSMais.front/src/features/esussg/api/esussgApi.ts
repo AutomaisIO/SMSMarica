@@ -4,7 +4,6 @@ import type {
   BuscaEsusSgFiltro,
   BuscaEsusSgResultado,
   CatalogoSyncEsusSgResultado,
-  CredencialEsusSg,
   DispararVarreduraEsusSgPayload,
   ExecucaoEsusSg,
   NotificacoesEsusSgFiltro,
@@ -54,18 +53,6 @@ export async function listarExecucoesEsusSg(limite = 20): Promise<ExecucaoEsusSg
 /** Enfileira a rodada. Responde 202 — ela roda em segundo plano; 409 = já há uma em andamento. */
 export async function dispararVarreduraEsusSg(payload: DispararVarreduraEsusSgPayload): Promise<void> {
   await http.post('/regulacao/esussg/configuracao/varreduras', payload);
-}
-
-/** Testa o login sem salvar. Devolve o nome do usuário no ESUS — a prova de que entrou. */
-export async function testarCredencialEsusSg(credencial: CredencialEsusSg): Promise<string> {
-  const { data } = await http.post<unknown>('/regulacao/esussg/configuracao/testar-credencial', credencial);
-  // O ASP.NET pode responder a string como text/plain ou como JSON — o axios entrega um ou outro.
-  return typeof data === 'string' ? data : String(data ?? '');
-}
-
-/** Valida no ESUS primeiro e só então grava (cifrada). */
-export async function salvarCredencialEsusSg(credencial: CredencialEsusSg): Promise<void> {
-  await http.put('/regulacao/esussg/configuracao/credencial', credencial);
 }
 
 export async function obterVarreduraAutomaticaEsusSg(): Promise<VarreduraAutomaticaEsusSg> {

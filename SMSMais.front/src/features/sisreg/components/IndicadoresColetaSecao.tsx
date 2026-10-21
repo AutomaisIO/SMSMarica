@@ -32,7 +32,7 @@ const TEXTO_ESPERA: Record<EsperaColetaIndicadores, string> = {
   TetoDoColetor: 'Aguardando: atingiu o teto do coletor nesta hora.',
   OrcamentoGlobalCurto: 'Aguardando: o orçamento de requisições do operador está apertado nesta hora.',
   LoginRecusado:
-    'Aguardando: o SISREG recusou o login. O coletor tenta de novo sozinho em alguns minutos; se continuar, confira o Endereço do SISREG em Integrações.',
+    'Aguardando: o SISREG recusou o login. O coletor tenta de novo sozinho em alguns minutos; se continuar, confira o Endereço do SISREG em Sistema → Fontes de dados, na fonte do SISREG.',
 };
 
 function dataHora(iso: string | null) {

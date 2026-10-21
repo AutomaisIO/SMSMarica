@@ -96,7 +96,7 @@ import { EsusSgNotificacoesPage } from '@/features/esussg/pages/EsusSgNotificaco
 import { EsusSgSolicitacaoDetalhePage } from '@/features/esussg/pages/EsusSgSolicitacaoDetalhePage';
 import RegulacaoEsusSgConfiguracaoPage from '@/features/esussg/pages/RegulacaoEsusSgConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
-import { FontesProntuarioPage } from '@/features/pep-sincronizacao/pages/FontesProntuarioPage';
+import { FontesDadosPage } from '@/features/fontes-dados/pages/FontesDadosPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
@@ -349,11 +349,15 @@ export function AppRouter() {
           </Route>
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
-          <Route path="pep-sincronizacao/fontes" element={<FontesProntuarioPage />} />
+          {/* Rota antiga de "Fontes / Conectores": as fontes agora são cadastro de Sistema (ADR-0076). */}
+          <Route path="pep-sincronizacao/fontes" element={<Navigate to="/app/fontes-dados" replace />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />
           <Route path="integracoes" element={<IntegracoesPage />} />
           <Route path="auditoria" element={<AuditoriaPage />} />
           <Route path="instituicao" element={<InstituicaoPage />} />
+          <Route element={<RotaComModulo modulo="FontesDados" rotulo="Fontes de dados" />}>
+            <Route path="fontes-dados" element={<FontesDadosPage />} />
+          </Route>
           <Route path="erros" element={<ErrosPage />} />
           <Route path="avisos-celular" element={<AvisosCelularPage />} />
           {/* Extensão do Chrome (ADR-0064). Baixar o instalador e autorizar um computador são de
