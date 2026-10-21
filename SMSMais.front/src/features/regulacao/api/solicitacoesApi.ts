@@ -281,6 +281,10 @@ export type AnexoEnvioSer = {
   arquivosJuntados: number;
   /** Os nomes dos arquivos que entraram neste anexo — listados para a pessoa confirmar o agrupamento. */
   nomesJuntados: string[];
+  /** Só quando o arquivo foi comprimido para caber nos 5 MB do sistema: o tamanho de antes. */
+  tamanhoOriginal?: number | null;
+  /** Como foi comprimido ("200 dpi", "foto reduzida"). */
+  compressao?: string | null;
 };
 
 export type PedidoParecidoSer = {

@@ -11,8 +11,12 @@ namespace SMSMais.Core.Regulacao.EnvioSer;
 /// <param name="NomesOrigem">Os nomes (como o regulador os vê) dos arquivos que entraram neste anexo —
 /// um só, ou vários quando 3+ viraram um PDF. É o que a prévia mostra para a pessoa confirmar o
 /// agrupamento antes de enviar (ticket #167).</param>
+/// <param name="TamanhoOriginal">Quando o arquivo foi comprimido para caber: o tamanho de antes. A prévia
+/// mostra "comprimido de 9,9 MB" para o regulador saber que o que sobe não é o original.</param>
+/// <param name="Compressao">Como foi comprimido ("200 dpi", "foto reduzida") — só quando foi.</param>
 public sealed record AnexoParaSer(
-    string Nome, string ContentType, byte[] Conteudo, IReadOnlyList<Guid> Origens, IReadOnlyList<string> NomesOrigem);
+    string Nome, string ContentType, byte[] Conteudo, IReadOnlyList<Guid> Origens, IReadOnlyList<string> NomesOrigem,
+    long? TamanhoOriginal = null, string? Compressao = null);
 
 /// <summary>Um arquivo da solicitação, já lido do armazenamento.</summary>
 public sealed record ArquivoLido(Guid Id, string Nome, string? Titulo, string ContentType, byte[] Conteudo);
@@ -26,66 +30,120 @@ public sealed record ArquivoLido(Guid Id, string Nome, string? Titulo, string Co
 /// página; PDFs, página a página) — é o "documento" que a tela pede, sem ninguém precisar montar à
 /// mão.</para>
 ///
-/// <para>Arquivo acima de 5 MB é <b>comprimido automaticamente</b> antes de recusar (ticket #167):
-/// imagem (foto de celular) é reencodada menor até caber, com piso de legibilidade; o PDF agrupado,
-/// se estourar, é refeito comprimindo as imagens-fonte. Só quando nem comprimido cabe — ou quando é
-/// um PDF avulso enviado pela unidade, que não dá para recomprimir com segurança aqui — é que recusa,
-/// com o nome do arquivo, antes de tocar no SER.</para>
+/// <para>Arquivo acima do limite é <b>comprimido automaticamente</b> antes de recusar: imagem (foto
+/// de celular) é reencodada menor com SkiaSharp (ticket #167); PDF — avulso ou o agrupado — passa pelo
+/// Ghostscript (<see cref="ICompressorPdf"/>), que reduz as imagens de dentro dele até caber. Só quando
+/// nem comprimido cabe — ou quando o Ghostscript não está disponível neste servidor — é que recusa,
+/// com o nome do arquivo, antes de tocar no SER. O original continua intacto no armazenamento: só a
+/// cópia que sobe é comprimida.</para>
 /// </summary>
 public static class AnexosParaSer
 {
     public const int MaximoDeArquivos = 2;
-    public const long TamanhoMaximo = 5L * 1024 * 1024;
 
-    public static IReadOnlyList<AnexoParaSer> Preparar(IReadOnlyList<ArquivoLido> arquivos, string sistema = "SER")
+    /// <summary>
+    /// O alvo de tamanho por arquivo: <b>4.800.000 bytes</b>, abaixo dos "5 MB" que a tela do SER
+    /// declara. Nunca se mediu se o limite do servidor deles é 5.000.000 ou 5.242.880 bytes — o alvo
+    /// cabe nos dois, com folga para o envelope do upload.
+    /// </summary>
+    public const long TamanhoMaximo = 4_800_000;
+
+    /// <summary>Sem compressor de PDF: PDF acima do limite é recusado (o comportamento de antes).</summary>
+    public static IReadOnlyList<AnexoParaSer> Preparar(IReadOnlyList<ArquivoLido> arquivos, string sistema = "SER") =>
+        PrepararAsync(arquivos, sistema, compressorPdf: null, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <param name="compressorPdf">Comprime PDF acima do limite (Ghostscript). <c>null</c> = não há como
+    /// comprimir PDF: o avulso grande é recusado e o agrupado cai na compressão das imagens-fonte.</param>
+    public static async Task<IReadOnlyList<AnexoParaSer>> PrepararAsync(
+        IReadOnlyList<ArquivoLido> arquivos, string sistema, ICompressorPdf? compressorPdf, CancellationToken ct)
     {
         if (arquivos.Count == 0) return [];
 
-        return arquivos.Count <= MaximoDeArquivos
-            ? [.. arquivos.Select(a => UmArquivo(a, sistema))]
-            : [AgrupadoEmPdf(arquivos, sistema)];
+        if (arquivos.Count > MaximoDeArquivos)
+            return [await AgrupadoEmPdfAsync(arquivos, sistema, compressorPdf, ct)];
+
+        var saida = new List<AnexoParaSer>(arquivos.Count);
+        foreach (var a in arquivos) saida.Add(await UmArquivoAsync(a, sistema, compressorPdf, ct));
+        return saida;
     }
 
     /// <summary>
-    /// Um anexo que vai sozinho: o próprio arquivo. Se passar de 5 MB e for imagem, reencoda menor até
-    /// caber (vira JPEG); PDF/outros acima de 5 MB não dá para comprimir com segurança aqui — recusa.
+    /// Um anexo que vai sozinho: o próprio arquivo. Acima do limite, imagem é reencodada menor até
+    /// caber (vira JPEG) e PDF passa pelo Ghostscript; outros tipos acima do limite são recusados.
     /// </summary>
-    private static AnexoParaSer UmArquivo(ArquivoLido a, string sistema)
+    private static async Task<AnexoParaSer> UmArquivoAsync(
+        ArquivoLido a, string sistema, ICompressorPdf? compressorPdf, CancellationToken ct)
     {
         var nome = NomeParaOSer(a);
-        var conteudo = a.Conteudo;
-        var contentType = a.ContentType;
+        if (a.Conteudo.LongLength <= TamanhoMaximo)
+            return new AnexoParaSer(nome, a.ContentType, a.Conteudo, [a.Id], [nome]);
 
-        if (conteudo.LongLength > TamanhoMaximo)
+        var acima = $"O arquivo \"{nome}\" tem {Mb(a.Conteudo.LongLength)} — o {sistema} aceita até 5 MB por arquivo. ";
+
+        if (EhImagem(a))
         {
-            var menor = EhImagem(a) ? CompressorImagem.ComprimirAte(conteudo, TamanhoMaximo) : null;
-            if (menor is null)
-            {
-                throw new ValidacaoException(
-                    "anexos",
-                    $"O arquivo \"{nome}\" tem {Mb(conteudo.LongLength)} — o {sistema} aceita até 5 MB por arquivo. "
-                    + (EhImagem(a)
-                        ? "Mesmo comprimido não coube sem ficar ilegível; envie uma versão menor."
-                        : "Substitua por uma versão menor (PDF comprimido) ou separe o conteúdo."));
-            }
-            conteudo = menor;
-            contentType = "image/jpeg";
-            nome = Path.ChangeExtension(nome, ".jpg");
+            var menor = CompressorImagem.ComprimirAte(a.Conteudo, TamanhoMaximo)
+                ?? throw new ValidacaoException(
+                    "anexos", acima + "Mesmo comprimido não coube sem ficar ilegível; envie uma versão menor.");
+            return new AnexoParaSer(
+                Path.ChangeExtension(nome, ".jpg"), "image/jpeg", menor, [a.Id], [nome],
+                a.Conteudo.LongLength, "foto reduzida");
         }
 
-        return new AnexoParaSer(nome, contentType, conteudo, [a.Id], [NomeParaOSer(a)]);
+        if (!EhPdf(a))
+            throw new ValidacaoException(
+                "anexos", acima + "Substitua por uma versão menor (PDF comprimido) ou separe o conteúdo.");
+
+        var compressao = compressorPdf is null
+            ? CompressaoPdf.Indisponivel
+            : await compressorPdf.ComprimirAteAsync(a.Conteudo, TamanhoMaximo, ct);
+        return compressao.Desfecho switch
+        {
+            DesfechoCompressaoPdf.Coube => new AnexoParaSer(
+                nome, "application/pdf", compressao.Conteudo!, [a.Id], [nome],
+                a.Conteudo.LongLength, compressao.Degrau),
+            DesfechoCompressaoPdf.NaoCoube => throw new ValidacaoException(
+                "anexos", acima + $"Nem comprimido a {EscadaCompressaoPdf.Piso.Rotulo} ele coube; separe o conteúdo "
+                    + "em dois arquivos ou peça à unidade uma versão menor."),
+            _ => throw new ValidacaoException(
+                "anexos", acima + "Não foi possível comprimi-lo aqui agora; substitua por uma versão menor "
+                    + "(PDF comprimido) ou separe o conteúdo."),
+        };
     }
 
     /// <summary>
-    /// 3+ arquivos viram um PDF só (o "documento" que a tela pede). Se o PDF estourar 5 MB, refaz
-    /// comprimindo as imagens antes de juntar; se mesmo assim não couber (PDFs-fonte grandes, que não
-    /// recomprimimos), recusa.
+    /// 3+ arquivos viram um PDF só (o "documento" que a tela pede). Se o PDF estourar o limite, passa
+    /// pelo Ghostscript; sem ele, refaz comprimindo as imagens-fonte antes de juntar. Se mesmo assim não
+    /// couber, recusa.
     /// </summary>
-    private static AnexoParaSer AgrupadoEmPdf(IReadOnlyList<ArquivoLido> arquivos, string sistema)
+    private static async Task<AnexoParaSer> AgrupadoEmPdfAsync(
+        IReadOnlyList<ArquivoLido> arquivos, string sistema, ICompressorPdf? compressorPdf, CancellationToken ct)
     {
         var pdf = JuntarEmPdf(arquivos, comprimirImagens: false);
+        long? original = null;
+        string? como = null;
+
         if (pdf.LongLength > TamanhoMaximo)
-            pdf = JuntarEmPdf(arquivos, comprimirImagens: true);
+        {
+            original = pdf.LongLength;
+            var compressao = compressorPdf is null
+                ? CompressaoPdf.Indisponivel
+                : await compressorPdf.ComprimirAteAsync(pdf, TamanhoMaximo, ct);
+            switch (compressao.Desfecho)
+            {
+                case DesfechoCompressaoPdf.Coube:
+                    pdf = compressao.Conteudo!;
+                    como = compressao.Degrau;
+                    break;
+                case DesfechoCompressaoPdf.NaoCoube:
+                    // O Ghostscript já desceu até o piso; reduzir só as imagens-fonte não faria melhor.
+                    break;
+                default:
+                    pdf = JuntarEmPdf(arquivos, comprimirImagens: true);
+                    como = "fotos reduzidas";
+                    break;
+            }
+        }
 
         if (pdf.LongLength > TamanhoMaximo)
         {
@@ -97,7 +155,7 @@ public static class AnexosParaSer
 
         return new AnexoParaSer(
             "anexos-da-solicitacao.pdf", "application/pdf", pdf,
-            [.. arquivos.Select(a => a.Id)], [.. arquivos.Select(NomeParaOSer)]);
+            [.. arquivos.Select(a => a.Id)], [.. arquivos.Select(NomeParaOSer)], original, como);
     }
 
     /// <summary>

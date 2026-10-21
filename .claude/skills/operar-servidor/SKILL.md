@@ -114,8 +114,12 @@ instância nova precisa repetir** a instalação.
 
 **Ghostscript** (`ghostscript` 10.02.1 do Ubuntu 24.04, instalado em 21/10/2026). Existe para comprimir
 o PDF anexado na Regulação antes de subir ao SER/SERNIT, que aceitam até 5 MB por arquivo (ADR-0069
-§6). **A API ainda não o chama**: a compressão de PDF está por implementar; por enquanto ele só está
-instalado.
+§6). Quem chama é a API, na prévia e no envio (`CompressorPdfGhostscript`, em
+`SMSMais.Core/Regulacao/EnvioSer/`), com a configuração da seção `Ghostscript` (`Caminho`, padrão
+`/usr/bin/gs`; `TimeoutSegundos` 60 por passada; `MaximoSimultaneos` 2). **Sem o executável, nada
+quebra:** o PDF acima do limite volta a ser recusado como antes e o log avisa `Compressão de PDF
+indisponível: Ghostscript não encontrado`. Cada compressão grava no log uma linha `Compressão de PDF:`
+com os tamanhos, o degrau e o tempo.
 
 - **Instalar:** `apt-get install -y --no-install-recommends ghostscript` (22 pacotes, todos do arquivo
   oficial do Ubuntu; nenhum serviço reinicia). As correções de segurança chegam sozinhas pelo
