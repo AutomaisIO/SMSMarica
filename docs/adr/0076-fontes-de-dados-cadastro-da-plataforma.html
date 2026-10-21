@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0076 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0076 — Fonte de dados é cadastro da plataforma: cria-se em Sistema, o recurso só escolhe e configura o uso</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-21 · <strong>Implementação:</strong> branch <code>feat/fontes-de-dados</code> <strong>Relacionado:</strong> <a href="./0011-modulo-ia-consulta-linguagem-natural.md">ADR-0011</a> (o CRUD de bases nasceu dentro da IA) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (API-SISREG em <code>sisreg_configuracao</code>) · <a href="./0014-importacao-salux-no-backend.md">ADR-0014</a> (a importação de prontuários usa a base cadastrada na IA) · <a href="./0023-proxy-sql-agente-e-conhecimento.md">ADR-0023</a> (base via agente, token, provisionamento) · <a href="./0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> · <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a> · <a href="./0067-telefone-pelo-esus-pec-rotina-noturna.md">ADR-0067</a> (logins em <code>integracao_credencial</code>) · <a href="./0046-rename-smsmais.md">ADR-0046</a> (purpose <code>SMSMarica.Ia.Segredos</code> congelado)</p>
+<h2>Contexto</h2>
+<p>"De onde a plataforma lê dado" era cadastrado em seis telas e três tabelas, e cada cadastro misturava a conexão com o uso que um recurso faz dela:</p>
+<div class="tw"><table><thead><tr><th>O quê</th><th>Onde se editava</th><th>Tabela</th></tr></thead><tbody>
+<tr><td>Bancos (Oracle/Postgres), agentes SQL Server, Klinikos Web, Regulação/Atendimento</td><td>Inteligência → Configuração IA → Bases de dados <strong>e</strong> Importar Prontuários → Fontes / Conectores</td><td><code>ia_fonte</code></td></tr>
+<tr><td>Login do SISREG (web) e do e-SUS PEC</td><td>Integrações → Credenciais</td><td><code>integracao_credencial</code></td></tr>
+<tr><td>Login do SER, SERNIT e ESUS SG</td><td>aba de configuração de cada um (Regulação)</td><td><code>integracao_credencial</code></td></tr>
+<tr><td>API-SISREG (Elasticsearch)</td><td>Configuração SISREG</td><td><code>sisreg_configuracao</code></td></tr>
+</tbody></table></div>
+<p>Problemas que isso produziu (todos conferidos no código em 21/10/2026):</p>
+<ul>
+<li><strong>Duas telas para o mesmo registro</strong>, e com permissões diferentes: o item "Fontes / Conectores"</li>
+</ul>
+<p>  aparecia para quem tinha <code>SincronizacaoPep</code>, mas a API exigia <code>InteligenciaConfiguracao</code>.</p>
+<ul>
+<li><strong>O formulário mentia</strong>: as bases SQL Server do Klinikos apareciam como "Salux / Oracle /</li>
+</ul>
+<p>  TREINAMENTO" porque as opções do select não tinham o valor gravado.</p>
+<ul>
+<li><strong>Salvar login apagava a agenda dos motores.</strong> O JSON de <code>integracao_credencial</code> guarda, além</li>
+</ul>
+<p>  da URL, a agenda da fila, escalas, lote de mapeamento, coleta de indicadores, estatística de   operadores e a varredura do SER/SERNIT/ESUS SG. Salvar o login do SER/SERNIT mandava   <code>ParametrosJson: null</code> e zerava tudo isso.</p>
+<ul>
+<li><strong>Não havia um lugar para ver todas as fontes</strong> da instância — nem saber qual recurso usa qual.</li>
+</ul>
+<p>Pedido do Bernardo (21/10/2026): um cadastro e um menu em <strong>Sistema</strong> onde se cria e configura toda fonte de dado; a plataforma "ganha uma fonte de dado"; IA, Importar Prontuários e os demais recursos <strong>escolhem</strong> a fonte, e o tratamento, o agendamento e o uso ficam no recurso.</p>
+<h2>Decisão</h2>
+<h3>1. Fonte de dados é um conceito da plataforma, não da IA</h3>
+<p>Existe <strong>um</strong> cadastro, <strong>Sistema → Fontes de dados</strong> (<code>/app/fontes-dados</code>), com permissão própria <code>FontesDados</code> (módulo 82, nasce só no perfil Administrador). Ali se cria, edita, desativa, testa e gera o token de agente de toda fonte. Nenhuma outra tela edita conexão ou credencial de fonte.</p>
+<h3>2. O limite: fonte é de onde se LÊ dado</h3>
+<p>Entram: bancos (Oracle, Postgres, SQL Server por agente), Klinikos Web, os recortes do próprio banco (Regulação, Atendimento), SISREG (login web e API), SER, SERNIT, ESUS SG e e-SUS PEC.</p>
+<p>Ficam em <strong>Integrações</strong>, porque são serviço que a plataforma usa e não fonte de dado: armazenamento (Spaces), voz (ElevenLabs), mapa (Google Maps), WhatsApp/Zap, provedores de IA (Anthropic/Voyage), motores de CPF/CEP, login social (Google/Microsoft/Facebook) e tokens de API.</p>
+<h3>3. Conexão fica na fonte; uso fica no recurso</h3>
+<div class="tw"><table><thead><tr><th>Fonte</th><th>Conexão (Fontes de dados)</th><th>Uso (no recurso)</th></tr></thead><tbody>
+<tr><td>Banco / agente</td><td>host, porta, serviço, usuário, senha, dialeto, slug, token do agente</td><td>agenda do PEP, <code>indicador.fonte_id</code>, conhecimento da IA</td></tr>
+<tr><td>Klinikos Web</td><td>URL, login, senha, <code>appRoot</code>, <code>unidCodigo</code>, <code>metaSource</code>, <code>build</code></td><td><code>webPrimaria</code>, <code>periodicoLigado</code>, <code>periodicoIntervaloMin</code>, <code>deepThrottleSeg</code> (Importar Prontuários)</td></tr>
+<tr><td>SISREG web</td><td>login, senha, <code>baseUrl</code>, <code>autoLogin</code></td><td>fila, escalas, lote de mapeamento, coleta de indicadores, estatística de operadores (telas de cada motor)</td></tr>
+<tr><td>SER / SERNIT</td><td>login, senha, <code>baseUrl</code></td><td>varredura, estatística de operadores, limite de anexo (Regulação)</td></tr>
+<tr><td>ESUS SG</td><td>login, senha, <code>cliente</code>, <code>apiUrl</code>, <code>legadoUrl</code></td><td>varredura (Regulação)</td></tr>
+<tr><td>e-SUS PEC</td><td>CPF, senha, <code>baseUrl</code>, <code>acessoId</code></td><td>janela da rotina noturna (<code>janelaInicio/Fim</code>)</td></tr>
+<tr><td>API-SISREG</td><td>URL, tipo de autenticação, login, senha, token, ativo</td><td>escopo, UF, município, centrais, sincronismo automático, fonte do cadastro, consultas simultâneas (Configuração SISREG)</td></tr>
+</tbody></table></div>
+<p>O recurso <strong>escolhe</strong> a fonte (a Consulta Inteligente pergunta a base, Importar Prontuários tem o seletor, o indicador guarda a sua) e mostra a fonte que usa com um atalho para Fontes de dados — mas não edita a conexão.</p>
+<h3>4. Duas entregas</h3>
+<p><strong>Entrega 1 (esta):</strong> a tela única com todas as fontes, os formulários espalhados saem, e o salvamento deixa de apagar o uso. <strong>Os dados continuam nas tabelas atuais</strong>: um serviço de fachada (<code>SMSMais.Core/Fontes/FontesDadosService</code>) lê e grava em <code>ia_fonte</code>, <code>integracao_credencial</code> e <code>sisreg_configuracao</code>. Os motores, sessões e importadores não mudam.</p>
+<ul>
+<li>Gravar o login do SER, SERNIT e ESUS SG continua <strong>testando antes de salvar</strong> e reiniciando a</li>
+</ul>
+<p>  sessão (a fachada delega aos <code>*MotorService</code>): credencial que não entra faria o motor falhar de   madrugada.</p>
+<ul>
+<li><code>IntegracaoCredencialService.AtualizarAsync</code> passa a tratar <code>ParametrosJson</code> <strong>nulo como "mantém"</strong>.</li>
+</ul>
+<p>  Não vira merge automático: <code>ColetaIndicadoresConfig</code> retoma a coleta <strong>removendo</strong> a chave de pausa,   e um merge faria a pausa nunca sair. Quem altera parte do JSON lê, altera e grava o JSON inteiro   (como já faziam os motores); a fachada faz o mesmo com as chaves de conexão.</p>
+<ul>
+<li>Na fonte Klinikos Web, editar a conexão preserva as chaves de uso e vice-versa (mesmo campo</li>
+</ul>
+<p>  <code>parametros_json</code>, cada tela só mexe nas suas).</p>
+<ul>
+<li>SISREG web, Klinikos Web e e-SUS PEC <strong>não têm botão de teste</strong>: todos são sessão única por</li>
+</ul>
+<p>  operador, e testar derrubaria o robô (ou a servidora que cedeu o login, no e-SUS PEC).</p>
+<ul>
+<li>A rota <code>ia/configuracao/agentes/provisionar</code> continua existindo: o instalador do agente a chama</li>
+</ul>
+<p>  (<a href="../proxy-sql-agente-wss.md">proxy-sql-agente-wss.md</a>). Há a equivalente em <code>fontes-dados/</code>.</p>
+<p><strong>Entrega 2 (depois de conferida a 1, plano próprio):</strong> juntar o armazenamento numa tabela de fontes com uma tabela de uso por recurso, sem mudar a tela. Ficam registrados aqui os cuidados que a revisão da proposta "mover tudo junto" levantou, para não serem redescobertos:</p>
+<ul>
+<li><strong>Migration de dados no startup falha calada</strong> (<code>Program.cs</code> loga e segue; o deploy só olha</li>
+</ul>
+<p>  <code>systemctl is-active</code>). Se a cópia falhar, a migration de schema fica aplicada, o <code>DbSeeder</code> não   roda e SISREG/SER param com "não configurado". Conferir <code>__EFMigrationsHistory</code> e <code>/health</code> depois   do deploy; ensaiar num clone da produção antes.</p>
+<ul>
+<li><code>ia_fonte</code> tem <code>NOT NULL</code> sem default (<code>dialeto</code>, <code>ambiente</code>, <code>nome</code>, <code>criado_em</code>);</li>
+</ul>
+<p>  <code>parametros_json</code> é <code>text</code> (validar com <code>pg_input_is_valid</code> antes de <code>::jsonb</code>); slug é único   entre não excluídas; <code>sisreg_configuracao.login</code> é varchar(200) e <code>ia_fonte.usuario</code> varchar(120).</p>
+<ul>
+<li>Linha nova com tipo novo fica visível ao binário anterior e às telas de Importar Prontuários,</li>
+</ul>
+<p>  Indicadores e Consulta Inteligente — filtrar por tipo/dialeto; gravar <code>dialeto = 0</code>.</p>
+<ul>
+<li><strong>"Ativo" tem semânticas diferentes por consumidor</strong>: uns leem por <code>ObterContextoAsync</code> (inativo =</li>
+</ul>
+<p>  desligado), outros por <code>ObterAsync</code> (ignoram). Definir e testar.</p>
+<ul>
+<li>Vários leitores engolem <code>ValidacaoException</code> e caem no padrão — um consumidor esquecido muda de</li>
+</ul>
+<p>  comportamento sem erro (a fila do SISREG religaria às 03h). Apagar as constantes <code>Provedor</code> para o   compilador achar todos.</p>
+<ul>
+<li>O login do operador (SER/SERNIT/SISREG/e-SUS PEC por usuário) só lê a URL da credencial — o</li>
+</ul>
+<p>  resolvedor novo precisa de uma leitura "só conexão", sem exigir a senha institucional.</p>
+<ul>
+<li>Voltar de versão depois da cópia perde o que foi gravado depois — gravação dupla até a limpeza.</li>
+</ul>
+<h3>5. Permissão</h3>
+<p><code>FontesDados = 82</code> (o 81 está em uso em dois branches abertos). Nasce só no Administrador; os demais perfis recebem pela tela de Perfis. Quem hoje trocava a senha do SER/SERNIT/ESUS SG com <code>RegulacaoConfiguracao</code>, ou do SISREG/e-SUS PEC com <code>IntegracoesConfig</code>, precisa ganhar o módulo novo para continuar.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Um lugar para ver e mexer em todas as fontes da instância (ADR-0043: cada município cadastra as</li>
+</ul>
+<p>  suas), com "usada por" para saber o impacto antes de desativar.</p>
+<ul>
+<li>As telas de IA, Importar Prontuários, SER, SERNIT, ESUS SG, Configuração SISREG e Integrações</li>
+</ul>
+<p>  ficam menores: mostram a fonte e cuidam só do uso.</p>
+<ul>
+<li>O bug que zerava a agenda dos motores ao trocar senha deixa de existir.</li>
+<li>Na Entrega 1 convivem três armazenamentos atrás de uma fachada — a Entrega 2 é que tira isso.</li>
+</ul>
+<h2>Pendências</h2>
+<ul>
+<li>Entrega 2 (tabela única + uso por recurso), com os cuidados da seção 4.</li>
+<li>Manual: Integrações, Configuração IA e Importar Prontuários ainda não têm artigo.</li>
+<li>Spaces perde <code>forcePathStyle</code> ao salvar (fica em Integrações; bug à parte).</li>
+</ul>
+<h2>Alternativas descartadas</h2>
+<ul>
+<li><strong>Mover os dados na mesma entrega da tela.</strong> Faria o pedido de uma vez, mas uma cópia que</li>
+</ul>
+<p>  falhasse no startup pararia SISREG/SER sem erro visível, e voltar de versão perderia o que fosse   gravado depois. A tela não depende de onde o dado mora.</p>
+<ul>
+<li><strong>Merge automático do JSON em <code>AtualizarAsync</code>.</strong> Corrigiria o salvamento do SER com uma linha,</li>
+</ul>
+<p>  mas quebraria quem remove chave de propósito (retomar a coleta de indicadores).</p>
+<ul>
+<li>**Deixar as credenciais de serviço (Spaces, ElevenLabs, Maps, WhatsApp, IA) também em Fontes de</li>
+</ul>
+<p>  dados.** Misturaria "de onde se lê dado" com "o que a plataforma usa" — a tela perderia o sentido.</p>
+</main>
+</body>
+</html>
