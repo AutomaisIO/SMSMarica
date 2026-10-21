@@ -5,7 +5,8 @@ description: Conecta ao Postgres de PRODUÇÃO a partir do servidor (onde o Agen
 
 # Acessar o banco de produção (no servidor)
 
-Você roda **no servidor** `smsmarica.online`. O Postgres de produção é o mesmo que a API
+Você roda **no servidor** de produção, a VM SMSMAIS-01 da EVEO (desde 14/10/2026;
+`smsmarica.online` aponta para o proxy01, que repassa para cá). O Postgres de produção é o mesmo que a API
 `smsmarica-server` usa. A credencial **não** está no ambiente do seu serviço — está no env do
 `smsmarica-server`.
 

@@ -283,7 +283,7 @@ Depois conferir o lado do servidor: `GET /aets/<AE>/rs/mwlitems` e as **datas** 
 Três provas, nesta ordem — cada uma elimina um lado:
 
 1. **O item tem a descrição?** `GET /aets/WORKLIST/rs/mwlitems?ScheduledProcedureStepSequence.ScheduledStationAETitle=<AE>&includefield=all`
-   (pelo droplet; a 8080 não responde do Windows). Se `00321060`/`00400007` estão lá, o nosso lado está certo.
+   (pela VM SMSMAIS-01; a 8080 não responde do Windows). Se `00321060`/`00400007` estão lá, o nosso lado está certo.
 2. **Que campos o aparelho pede?** O log do dcm4chee imprime o C-FIND-RQ mas **corta o dataset
    com "..."**. Capturar só a ida (sem PHI) e decodificar com pydicom:
    ```bash

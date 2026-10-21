@@ -31,6 +31,13 @@ UPA/Santa Rita ficam fora. Memória relacionada: `project_indicadores_hmcml_2026
 Entidade `smsmarica.indicador` (colunas **snake_case**). Ler daqui **antes** de tratar qualquer item —
 mostra o SQL atual, a situação e a ressalva já escritos.
 
+> **Desde 14/10/2026 o user-secrets abaixo aponta para o banco CONGELADO da DigitalOcean:** a
+> consulta devolve o catálogo daquele dia, sem erro. A verdade é o database `smsmais` no PSQL-01
+> (EVEO). Leia por lá: SSH pela VPN Automais ao PSQL-01 e `sudo -u postgres psql -d smsmais` em
+> `BEGIN TRANSACTION READ ONLY` (endereço e chave na memória `reference_consultar_db_prod`), ou,
+> dentro da VM SMSMAIS-01, pela skill `acessar-banco-no-servidor`. O bloco Python abaixo vale para
+> o formato da consulta, não para a conexão.
+
 ```python
 import json, psycopg2
 sec = r"C:/Users/berna/AppData/Roaming/Microsoft/UserSecrets/smsmarica-api-dev/secrets.json"
@@ -68,18 +75,20 @@ meses); percentual é fração (30% = 0,30).
 
 ## 2. O banco de testes (Oracle do Salux/HMCML) — como apurar
 
-Roda pelo **proxy-sql interno** do droplet (mesmo caminho da produção, slug `salux-hcml`, **read-only**).
+Roda pelo **proxy-sql interno** da VM SMSMAIS-01 (mesmo caminho da produção, slug `salux-hcml`,
+**read-only**). Até 14/10/2026 isso rodava no droplet; o `/root/pq.sh` veio junto na virada.
 Alimente o SQL por **stdin/heredoc** (evita inferno de aspas) e **substitua os binds por literais**
 (`:hospital`→`1`, `:ini`→`DATE '2026-06-01'`, `:fim`→`DATE '2026-07-01'`):
 
 ```bash
-ssh -o BatchMode=yes -i ~/.ssh/id_ed25519_smsmarica root@smsmarica.online '/root/pq.sh salux-hcml' <<'SQL'
+ssh -o BatchMode=yes -i ~/.ssh/id_ed25519_smsmarica root@<VM SMSMAIS-01 pela VPN> '/root/pq.sh salux-hcml' <<'SQL'
 SELECT COUNT(*) FROM infosaude.baa b WHERE b.cd_hospital=1
   AND b.dt_chegada >= DATE '2026-06-01' AND b.dt_chegada < DATE '2026-07-01'
 SQL
 ```
 
-Acesso SSH: `reference_ssh_droplet_smsmarica` (chave `~/.ssh/id_ed25519_smsmarica`). Proxy: `reference_proxy_sql_interno`.
+Acesso SSH à VM: memória `reference_ssh_vm_smsmais01` (chave `~/.ssh/id_ed25519_smsmarica`; o
+`root@smsmarica.online` de antes hoje bate no proxy01 e não responde). Proxy: `reference_proxy_sql_interno`.
 
 **Armadilhas do proxy/Oracle (todas já pisadas):**
 - O guard **bloqueia `;` interno** ("múltiplos statements") — uma consulta por vez, sem `;` no meio.
@@ -227,7 +236,8 @@ usar sempre `cd_mot_cobranca_sus IN (41,42,43)` (41=DO médico, 42=IML, 43=SVO),
 Snapshot por período fica em `smsmarica.indicador_execucao` (a app grava via ApurarAsync; `ListarAsync`
 mostra a última execução com `periodo_inicio`/`periodo_fim` EXATOS do filtro). Front usa por padrão o **mês
 anterior** (`periodoPadrao`: 1º ao último dia do mês passado). Para apurar fora da app: script
-`scratchpad/apurar_junho.py` roda no droplet (lê catálogo + roda cada SQL pelo proxy 5091 + replica
+`scratchpad/apurar_junho.py` rodava no droplet e **não veio para a VM** na virada (conferido em
+21/10/2026); recriar lá se precisar (lê catálogo + roda cada SQL pelo proxy 5091 + replica
 `Interpretar`/`AvaliarMeta` + grava execução). `:fim` no SQL = fim+1 dia (a app soma). Só apura `ativo=true`,
 com `sql`+`fonte`, tipo≠Agrupador.
 

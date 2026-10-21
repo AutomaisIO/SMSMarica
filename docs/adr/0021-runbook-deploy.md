@@ -5,6 +5,12 @@
 > Branch: `feat/adr21-cutover`. Migrations (nesta ordem): `EcossistemaSolicitacaoExpand` →
 > `MigrarDadosSolicitacaoExame` → `ContractSolicitacaoExame`.
 
+> **Atualização 21/10/2026 (produção na EVEO desde 14/10/2026):** o banco de produção é o database
+> `smsmais` no PSQL-01; o user-secrets local (`smsmarica-api-dev`) **ainda aponta para o banco
+> congelado da DigitalOcean**. Não use a conn string dos user-secrets para aplicar migration nem
+> para backup: a de produção está no env da VM SMSMAIS-01 (`/etc/smsmarica-server/env`). Onde este
+> runbook diz "server smsmarica.online" ou "console DO", leia VM SMSMAIS-01 / PSQL-01.
+
 ## Ordem e por quê (ler antes)
 
 - O **código novo** (repointed) só funciona com o schema pós-`contract` (colunas dependentes

@@ -6,7 +6,7 @@ O SMSMais é composto por quatro produtos independentes que colaboram via uma ú
 
 ```mermaid
 flowchart TB
-  subgraph db [PostgreSQL · defaultdb]
+  subgraph db [PostgreSQL · smsmais]
     S[(schema smsmarica)]
   end
 
@@ -136,7 +136,7 @@ Para qualquer outra entidade de domínio:
 
 ## 4. Banco de dados
 
-Ver [database.md](./database.md). Resumo: **todas** as tabelas em schema `smsmarica` do banco compartilhado `defaultdb`. Zero cross-schema (ADR-0001).
+Ver [database.md](./database.md). Resumo: **todas** as tabelas em schema `smsmarica` do database `smsmais` (PostgreSQL 18 na VM PSQL-01 da EVEO desde 14/10/2026; antes, o `defaultdb` compartilhado da DigitalOcean). Zero cross-schema (ADR-0001).
 
 Um único `SmsMaisDbContext` aponta para o schema `smsmarica`. Tabelas usam prefixo do "domínio" (`paciente`, `tratamento_periodicidade`, `translado_alocacao`, `rastreamento_ponto_gps`, etc.).
 

@@ -28,6 +28,12 @@ caminhos, escolha o reversível.
 - **Saída:** direto pela internet da EVEO (IP brasileiro). O **SISREG** sai por aí, sem túnel — o
   `wg-eveo`, o `wg-mk` e o `sisreg-egress-verificar.timer` ficaram no droplet desligado e **não
   existem aqui** (`docs/sisreg-egress.md` é histórico).
+- **VPN automais.io (desde 21/10/2026):** interface WireGuard `wg-saud-…`, criada pelo setup Linux
+  do automais.io (device "SMSMarica" no painel). Serve para alcançar o **Oracle do Salux**
+  (importação Salux→FHIR, `LeitorOracleHis`), que ficou sem caminho da virada até essa data. O setup
+  **não** cria a rota para o Oracle (rota de recurso só vai para usuário Connect.IO): ela foi
+  acrescentada à mão no `AllowedIPs` do `.conf`. Se o device for reinstalado, confira de novo:
+  `ip route get <IP do Oracle>` tem que sair pela `wg-saud-…`.
 - **Banco:** PostgreSQL 18 na VM **PSQL-01**, no mesmo datacenter (rede interna), database
   `smsmais` **exclusivo** do SMSMais (schemas `smsmarica` e `fhir`). Conexão e regras na skill
   `acessar-banco-no-servidor`.
@@ -49,8 +55,9 @@ cada ação de impacto exige confirmação explícita nesta conversa.
 
 | Unit | Porta | Caminho |
 |---|---|---|
-| `smsmarica-server` | 5080 (0.0.0.0) | `/opt/smsmarica/server` — usuário `smsmarica` |
-| `automais-fhir` | 5081 (0.0.0.0) | `/opt/automais-fhir/api` — usuário `automais` |
+| `smsmarica-server` | 5080 (**loopback**) | `/opt/smsmarica/server` — usuário `smsmarica` |
+| `smsmarica-server` (proxy SQL) | 5091 (**loopback**) | mesma API, 2ª porta — vem SÓ do drop-in `smsmarica-server.service.d/proxy-sql.conf` (ver abaixo) |
+| `automais-fhir` | 5081 (**loopback**) | `/opt/automais-fhir/api` — usuário `automais` |
 | `automais-assinador` | 5082 (**loopback**) | `/opt/automais-assinador/api` |
 | `smsmarica-aiengine` | 5085 (**loopback**) | **você** — não se reinicie no meio de um turno |
 | `smsmarica-secretario` | 5090 (**loopback**) | `/opt/smsmarica-secretario/api` — painel do secretário |
@@ -71,6 +78,19 @@ Consequências: no access log, a API fora aparece como **503** (não mais 502). 
 backend passa intacto (`proxy_intercept_errors` off). Backup antes da mudança em
 `/root/backup-nginx/`. Ao recriar o vhost (instância nova, certbot), **repita o bloco**.
 
+**Portas só no loopback.** Nesta VM todas as portas dos serviços (5080, 5081, 5082, 5085, 5090,
+5091) escutam só em `127.0.0.1`: quem chega de fora passa pelo proxy01 e pelo nginx daqui.
+
+**A porta 5091 (proxy SQL interno) só existe por causa de um drop-in.** O unit sobe a API só na
+5080; a 5091 e o token vêm de `/etc/systemd/system/smsmarica-server.service.d/proxy-sql.conf`
+(`EnvironmentFile=-/etc/smsmarica-server/proxy-sql.env` + `ASPNETCORE_URLS=...:5080;http://127.0.0.1:5091`).
+Dependem dela a Consulta Inteligente (aiengine), o Painel do Secretário (Conde/UPAs), o guichê de
+comandos do robô e o `/root/pq.sh`. **Sem o drop-in, a API sobe normal e nada avisa:** os agentes
+WSS aparecem "conectados" e mesmo assim toda consulta falha ("base indisponível"). Foi o que
+aconteceu na virada para esta VM (14 a 16/10/2026: o drop-in não veio do droplet). Conferir com
+`ss -ltn | grep 5091`. Ao montar servidor novo, **copie o `service.d/` inteiro**, que tem também o
+`00-trava-virada.conf`.
+
 **Deploy derruba a API** (stop + start). Até 30/09/2026 eram 40–48s por deploy: o stop esperava
 30s (teto padrão do .NET) pelos WebSockets dos agentes SQL, que não ouviam a parada. Agora o
 endpoint dos agentes fecha na parada e o teto é 10s (`HostOptions.ShutdownTimeout` em
@@ -84,8 +104,51 @@ ficou congelado no instante da virada (14/10/2026) e **não é mais a verdade** 
 nele.
 
 Servidores **separados**, não confunda: PACS (`pacs.marica.automais.cloud`, dcm4chee — libera esta
-VM pelo IP de saída da EVEO no `ufw` e no `fail2ban` dele), o relay **Automais.Zap** (WhatsApp; em
-migração para a VM ZAP-01 da EVEO) e o hub de telefonia (`192.241.153.121`).
+VM pelo IP de saída da EVEO no `ufw` e no `fail2ban` dele), o relay **Automais.Zap** (WhatsApp; na
+VM ZAP-01 da EVEO desde 15/10/2026) e o hub de telefonia (`192.241.153.121`).
+
+## Pacotes do sistema (o deploy não instala)
+
+O deploy só troca os binários em `/opt/...` e `/var/www/...`; o que vem do `apt` é do host e **uma
+instância nova precisa repetir** a instalação.
+
+**Ghostscript** (`ghostscript` 10.02.1 do Ubuntu 24.04, instalado em 21/10/2026). Existe para comprimir
+o PDF anexado na Regulação antes de subir ao SER/SERNIT, que aceitam até 5 MB por arquivo (ADR-0069
+§6). **A API ainda não o chama**: a compressão de PDF está por implementar; por enquanto ele só está
+instalado.
+
+- **Instalar:** `apt-get install -y --no-install-recommends ghostscript` (22 pacotes, todos do arquivo
+  oficial do Ubuntu; nenhum serviço reinicia). As correções de segurança chegam sozinhas pelo
+  `unattended-upgrades` (origem `noble-security` habilitada). Não fixe versão.
+- **Licença AGPL:** usar o pacote do Ubuntu, chamado como processo separado, sem modificar e **sem
+  embutir o binário** em artefato nosso. Se isso mudar, falar com o jurídico antes.
+- **Segurança, porque é um interpretador e vai receber arquivo de fora** (unidade, app do cidadão):
+  sempre `-dSAFER`; rodar com `env -i`, porque o processo **não pode herdar o env da API**, que tem a
+  senha do banco e as chaves; pôr `timeout`; aceitar só entrada que comece com `%PDF`, nunca
+  PostScript; usar pasta temporária própria (`chmod 700`), apagada no fim.
+- **Com `-dSAFER`, ler arquivo exige `--permit-file-read=<pasta>/` e caminho absoluto.** Caminho
+  relativo dá `/invalidfileaccess`.
+- **Armadilha medida:** `-dPDFSETTINGS=/ebook` sozinho quase não reduz PDF escaneado: um pedido real
+  do SERNIT foi de 10,4 MB para 8,5 MB. Por padrão o `pdfwrite` **repassa o JPEG embutido sem
+  recomprimir**. É preciso ligar `-dPassThroughJPEGImages=false`, o downsample e o filtro DCT
+  explicitamente, e dar a qualidade por `QFactor`. Assim o mesmo PDF de 4 páginas foi a 3,19 MB
+  (200 dpi, QFactor 0,4) e a 1,33 MB (150 dpi, QFactor 0,76), legível nos dois casos, em 1,3 a 1,9 s
+  por passada:
+
+```bash
+sudo -u smsmarica env -i /usr/bin/timeout 120 /usr/bin/gs -q -dSAFER -dBATCH -dNOPAUSE \
+  -sDEVICE=pdfwrite -dCompatibilityLevel=1.5 -dPassThroughJPEGImages=false -dDetectDuplicateImages=true \
+  -dDownsampleColorImages=true -dColorImageDownsampleType=/Bicubic -dColorImageDownsampleThreshold=1.0 \
+  -dAutoFilterColorImages=false -dColorImageFilter=/DCTEncode -dColorImageResolution=200 \
+  -dDownsampleGrayImages=true -dGrayImageDownsampleType=/Bicubic -dGrayImageDownsampleThreshold=1.0 \
+  -dAutoFilterGrayImages=false -dGrayImageFilter=/DCTEncode -dGrayImageResolution=200 \
+  -o /tmp/<pasta>/saida.pdf \
+  -c "<< /ColorImageDict << /QFactor 0.4 /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2] >>
+        /GrayImageDict << /QFactor 0.4 /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2] >> >> setdistillerparams" \
+  -f /tmp/<pasta>/entrada.pdf
+```
+
+- **Conferir que está lá:** `gs --version` (esperado `10.02.x`).
 
 ## O que você PODE fazer direto (diagnóstico — qualquer operador)
 
@@ -109,5 +172,9 @@ LEITURA ao banco, `curl` contra `127.0.0.1:5080/health` (e 5081/5085). Nada diss
    IA) e preserva o resto. Deploy desta VM = GitHub Environment **`automais`** (SSH pela WAN da
    EVEO, porta em `vars.DEPLOY_PORT`), que **não** tem `DB_CONNECTION` — a connection string desta
    VM (banco pela rede interna) é mantida como está no env.
+   **Só o server e o front publicam nesta VM.** Os workflows de `fhir`, `assinador`, `aiengine`,
+   `app`, `arquivos` e `secretario` ainda usam o secret `HOST_SMSMARICA` (o droplet desligado) e
+   não rodaram desde a virada (conferido em 21/10/2026). Até serem repontados para o environment
+   `automais`, uma mudança nessas partes **não chega à produção**: o job falha no droplet.
 5. **Reiniciar serviço** em horário de atendimento: explicar impacto e pedir confirmação antes,
    mesmo sendo o admin.

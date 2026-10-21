@@ -69,14 +69,14 @@ URLs disponíveis após `run`:
 
 A connection string **não é commitada** no repositório. `appsettings.json` traz um placeholder vazio; a string real vem de:
 
-- **Dev local** → user-secrets (arquivo em `%APPDATA%\Microsoft\UserSecrets\smsmarica-api-dev\secrets.json`, fora do repo)
+- **Dev local** → user-secrets (arquivo em `%APPDATA%\Microsoft\UserSecrets\smsmarica-api-dev\secrets.json`, fora do repo). Atenção: desde 14/10/2026 o user-secrets da máquina do Bernardo ainda aponta para o banco **congelado** da DigitalOcean; serve para dev, nunca para conferir produção.
 - **Produção / deploy** → variável de ambiente `ConnectionStrings__DefaultDb`
 
 ### Setar em dev via user-secrets
 
 ```bash
 dotnet user-secrets --project src/SMSMais.Api set "ConnectionStrings:DefaultDb" \
-  "Host=<host>;Port=25060;Database=defaultdb;Username=<user>;Password=<senha>;SSL Mode=Require;Trust Server Certificate=true"
+  "Host=<host>;Port=5432;Database=smsmais;Username=<user>;Password=<senha>;SSL Mode=Require;Trust Server Certificate=true"
 ```
 
 A senha fica armazenada localmente no perfil do usuário Windows — **nunca no Git**.
@@ -86,7 +86,7 @@ A senha fica armazenada localmente no perfil do usuário Windows — **nunca no 
 > (ADR-0043: banco por instância). O texto abaixo descreve o arranjo antigo. Host, porta e usuário
 > ficam na connection string do env do servidor — nunca neste repositório (público).
 
-### Cluster compartilhado (DigitalOcean)
+### Cluster compartilhado (DigitalOcean), até 14/10/2026
 
 O Postgres em produção é o `defaultdb` do cluster da Prefeitura na DigitalOcean, compartilhado com outros produtos. **Tudo do SMSMais vive no schema `smsmarica`** ([ADR-0001](../docs/adr/0001-schema-isolation.md)). A migration `Initial` cria o schema automaticamente (`EnsureSchema`).
 
