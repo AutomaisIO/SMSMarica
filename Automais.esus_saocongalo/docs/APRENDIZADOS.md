@@ -200,6 +200,18 @@ não é relido, teto de 150 pessoas por rodada; grava `efetivacao`/`efetivado_em
 **Armadilha medida:** o `id_fila` do histórico NÃO é o `fil_id` das listas (2105231 × 4064691) — o
 casamento é pela data do agendamento + o `fil_id` que a TRILHA traz (às vezes vem vazio).
 
+### 5.3 Madrugada lenta (medido em produção, 01–21/10/2026)
+
+15. **Por volta das 03h05, o legado às vezes leva mais de 5 minutos para devolver os agendados.** A
+    rodada diária das 03h caiu em 16 das 21 noites. Nas 5 conferidas no log, o motivo foi
+    `HttpClient.Timeout of 300 seconds` na leitura dos agendados. A mesma rodada, retomada ou refeita
+    de dia (08h–16h), terminou em 8 a 35 s, e nas noites boas durou cerca de 80 s.
+    O timeout lança a MESMA exceção do desligamento do serviço (`TaskCanceledException`). Até
+    21/10/2026 o motor confundia as duas coisas: a rodada ficava "Interrompida" com o serviço no ar e
+    travava o disparo diário até o próximo deploy (de 18/10 03h até 19/10 16h sem leitura).
+    **Regra:** cancelamento só é desligamento quando o token do serviço foi cancelado. Tempo
+    esgotado é erro, e a rodada diária é refeita uma hora depois, até 4 vezes no dia.
+
 ## 6. Trava de somente-leitura
 
 Três portas, três regras (código em `esus/client.py`):

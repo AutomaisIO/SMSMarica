@@ -39,9 +39,13 @@ public class EsusSgSincronizacaoTests(PostgresFixture fixture)
                 linhas, FilaIncompleta ? linhas.Count + 1 : linhas.Count, linhas.Count, 1));
         }
 
+        /// <summary>Quando posto, a leitura dos agendados falha assim (tempo esgotado, desligamento…).</summary>
+        public Func<CancellationToken, Exception>? FalhaNosAgendados { get; set; }
+
         public Task<LeituraEsusSg<EsusSgLinhaAgendado>> LerAgendadosAsync(
             TipoRecursoEsusSg tipo, DateOnly de, DateOnly ate, CancellationToken ct)
         {
+            if (FalhaNosAgendados is { } falha) throw falha(ct);
             var linhas = tipo == TipoRecursoEsusSg.Exame
                 ? Agendados.Where(a => a.DataAgendada >= de && a.DataAgendada <= ate).ToList()
                 : [];
@@ -306,5 +310,115 @@ public class EsusSgSincronizacaoTests(PostgresFixture fixture)
             var s = await db.EsusSgSolicitacoes.FirstAsync(x => x.IdEsusSg == id);
             Assert.Equal(hoje.AddDays(8), s.DataAgendada);
         }
+    }
+
+    // ===================== queda, tempo esgotado e retomada (21/10/2026) =====================
+
+    [Fact]
+    public async Task Esus_que_nao_responde_a_tempo_vira_erro_com_nome_e_nao_interrompida()
+    {
+        // O HttpClient.Timeout lança o mesmo tipo de exceção do desligamento. Até 21/10/2026 a rodada
+        // ficava "Interrompida" com o serviço no ar e segurava o disparo diário até o próximo deploy.
+        var leitor = new LeitorFake
+        {
+            Fila = [NaFila(Id())],
+            FalhaNosAgendados = _ => new TaskCanceledException(
+                "The request was canceled due to the configured HttpClient.Timeout of 300 seconds elapsing.",
+                new TimeoutException()),
+        };
+
+        await using var db = fixture.CriarDbContext();
+        var execId = await RodarAsync(db, leitor);
+
+        var exec = await db.EsusSgVarreduraExecucoes.AsNoTracking().FirstAsync(x => x.Id == execId);
+        Assert.Equal(StatusVarreduraEsusSg.Erro, exec.Status);
+        Assert.Contains("não respondeu a tempo na fase agendados", exec.MensagemErro);
+        Assert.NotNull(exec.FinalizadoEm);
+        var falha = await db.EsusSgVarreduraFalhas.AsNoTracking().SingleAsync(f => f.ExecucaoId == execId);
+        Assert.Equal(TipoFalhaEsusSg.ErroAgendados, falha.Tipo);
+    }
+
+    [Fact]
+    public async Task Desligamento_do_servico_deixa_a_rodada_interrompida_e_retomavel()
+    {
+        using var cts = new CancellationTokenSource();
+        var leitor = new LeitorFake
+        {
+            Fila = [NaFila(Id())],
+            FalhaNosAgendados = ct =>
+            {
+                cts.Cancel();
+                return new OperationCanceledException(cts.Token);
+            },
+        };
+
+        await using var db = fixture.CriarDbContext();
+        var hoje = FusoBrasilia.HojeEmBrasilia();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Motor(db, leitor).ExecutarAsync(
+            ModoVarreduraEsusSg.Diaria, DisparoSincronizacao.Manual,
+            hoje.AddDays(-45), hoje.AddDays(400), null, "teste", null, cts.Token));
+
+        var exec = await db.EsusSgVarreduraExecucoes.AsNoTracking()
+            .OrderByDescending(x => x.IniciadoEm).FirstAsync(x => x.CriadoPorNome == "teste");
+        Assert.Equal(StatusVarreduraEsusSg.Interrompida, exec.Status);
+    }
+
+    [Fact]
+    public async Task Retomada_reconta_a_leitura_e_tira_a_mensagem_da_queda()
+    {
+        var hoje = FusoBrasilia.HojeEmBrasilia();
+        var leitor = new LeitorFake
+        {
+            Fila = [NaFila(Id())],
+            Agendados = [Agendado(Id(), "s1", hoje.AddDays(10))],
+        };
+
+        await using var db = fixture.CriarDbContext();
+        var interrompida = new EsusSgVarreduraExecucao
+        {
+            Id = Guid.NewGuid(),
+            Modo = ModoVarreduraEsusSg.Diaria,
+            Disparo = DisparoSincronizacao.Agendado,
+            Status = StatusVarreduraEsusSg.Interrompida,
+            Fase = FaseVarreduraEsusSg.Agendados,
+            JanelaInicio = hoje.AddDays(-45),
+            JanelaFim = hoje.AddDays(400),
+            NaFila = 683,
+            AgendadosLidos = 61,
+            SolicitacoesAtualizadas = 744,
+            MensagemErro = "Interrompida pelo desligamento do serviço na fase agendados. Retomada automática.",
+            IniciadoEm = DateTime.UtcNow.AddHours(-5),
+        };
+        db.EsusSgVarreduraExecucoes.Add(interrompida);
+        await db.SaveChangesAsync();
+
+        await Motor(db, leitor).ExecutarAsync(
+            interrompida.Modo, interrompida.Disparo, interrompida.JanelaInicio, interrompida.JanelaFim,
+            null, null, interrompida.Id, CancellationToken.None);
+
+        var exec = await db.EsusSgVarreduraExecucoes.AsNoTracking().FirstAsync(x => x.Id == interrompida.Id);
+        Assert.Equal(StatusVarreduraEsusSg.Concluida, exec.Status);
+        Assert.Equal(1, exec.Retomadas);
+        Assert.Equal(1, exec.NaFila);          // e não 683 + 1
+        Assert.Equal(1, exec.AgendadosLidos);  // e não 61 + 1
+        Assert.Null(exec.MensagemErro);
+    }
+}
+
+/// <summary>Quando a rodada diária do ESUS SG que deu erro é refeita — sem banco.</summary>
+public class EsusSgRodadaDiariaTests
+{
+    [Theory]
+    [InlineData(StatusVarreduraEsusSg.Erro, 1, 70, true)]
+    [InlineData(StatusVarreduraEsusSg.Erro, 1, 20, false)]       // cedo demais
+    [InlineData(StatusVarreduraEsusSg.Erro, 4, 70, false)]       // tentativas do dia gastas
+    [InlineData(StatusVarreduraEsusSg.Concluida, 1, 70, false)]
+    [InlineData(StatusVarreduraEsusSg.Parcial, 1, 70, false)]
+    public void Rodada_diaria_com_erro_e_refeita_depois_de_uma_hora(
+        StatusVarreduraEsusSg status, int rodadasHoje, int minutosDesdeOFim, bool refaz)
+    {
+        var agora = DateTime.UtcNow;
+        Assert.Equal(refaz, SMSMais.Core.Integracoes.EsusSgWeb.Varredura.Background.EsusSgJanelas.RefazerRodadaDiaria(
+            rodadasHoje, status, agora.AddMinutes(-minutosDesdeOFim), agora));
     }
 }
