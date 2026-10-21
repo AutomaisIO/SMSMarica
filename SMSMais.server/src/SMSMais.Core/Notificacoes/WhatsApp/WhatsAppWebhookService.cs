@@ -250,7 +250,10 @@ public sealed class WhatsAppWebhookService(
             ocorridoEm: msg.OcorridoEm, ct);
     }
 
-    private const int MaxTentativasGravacao = 3;
+    // Subido de 3 para 5 em 21/10/2026: sob surto (ex.: backfill grande) a contenção de xmin
+    // chega a esgotar 3 tentativas e o efeito cai no catch genérico (diálogo uma etapa atrás).
+    // 5 cobre os picos sem risco — cada tentativa só relê e regrava, não reenvia.
+    private const int MaxTentativasGravacao = 5;
     private const string IndiceConversaVivaDoTelefone = "IX_conversa_telefone_canonical_canal";
     private const string IndiceWamid = "IX_whatsapp_mensagem_wa_message_id";
 
