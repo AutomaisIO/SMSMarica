@@ -35,7 +35,12 @@ public sealed record ExameAssociacaoDto(
     string? UnidadeSolicitanteNome = null,
     /// <summary>Nº da solicitação no SISREG, quando veio de lá. A listagem mostra abaixo do
     /// nº SMS, como a tela de Solicitações — é por ele que a regulação se acha.</summary>
-    string? CodigoSolicitacao = null);
+    string? CodigoSolicitacao = null,
+    /// <summary>O aparelho do exame lauda pela plataforma (ADR-0075). False = laudo feito fora ou
+    /// que chega junto com o exame: a lista não oferece "Laudar".</summary>
+    bool LaudoNaPlataforma = true,
+    /// <summary>O aparelho usa anamnese (ADR-0075). False = o laudo não a cobra.</summary>
+    bool UsaAnamnese = true);
 
 /// <summary>Vínculo mínimo (solicitação + paciente) usado pelo gate de laudar.</summary>
 public sealed record VinculoExame(Guid SolicitacaoExameId, Guid PacienteId);

@@ -281,7 +281,8 @@ public sealed class RegulacaoElegibilidadeService(
             if (pdf is not null) nome = $"Laudo - {nome}";
         }
 
-        conteudo ??= await clinico.ObterImagensPdfAsync(s.PacienteId, exameId, ct);
+        // Do lado de dentro: o exame retido até o laudo também serve de comprovação (ADR-0075).
+        conteudo ??= await clinico.ObterImagensPdfAsync(s.PacienteId, exameId, visaoDaEquipe: true, ct);
 
         if (conteudo is null || conteudo.Length == 0)
         {
@@ -353,7 +354,7 @@ public sealed class RegulacaoElegibilidadeService(
     /// </summary>
     private async Task<IReadOnlyList<ExameParaRegras>> ExamesAsync(Guid pacienteId, CancellationToken ct)
     {
-        var resumos = await clinico.ListarExamesAsync(pacienteId, ct);
+        var resumos = await clinico.ListarExamesAsync(pacienteId, visaoDaEquipe: true, ct);
         if (resumos.Count == 0) return [];
 
         var ids = resumos.Select(e => e.Id).ToArray();

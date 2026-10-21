@@ -11,6 +11,7 @@ import {
 } from '@/features/equipamentos/api/queries';
 import { ModalEquipamento } from '@/features/equipamentos/components/ModalEquipamento';
 import { SelosWorklist } from '@/features/equipamentos/components/SelosWorklist';
+import { SelosRegraDoExame } from '@/features/equipamentos/components/SelosRegraDoExame';
 import { rotuloModalidade, type EquipamentoListItem } from '@/features/equipamentos/types';
 
 export function EquipamentosPage() {
@@ -53,6 +54,7 @@ export function EquipamentosPage() {
           <span className="text-xs text-gray-400">—</span>
         ),
     },
+    { chave: 'depois', cabecalho: 'Depois do exame', render: (e) => <SelosRegraDoExame equipamento={e} /> },
     { chave: 'status', cabecalho: 'Status', render: (e) => <StatusBadge ativo={e.ativo} /> },
     {
       chave: 'acoes',

@@ -44,5 +44,15 @@ public sealed class AtualizarEquipamentoValidator : AbstractValidator<AtualizarE
             .Must(e => RegrasCamposWorklist.Repetida(e.CodigoProcedimentoTag, e.EnviarMedicoSolicitante == true, e.MedicoSolicitanteTag, e.EnviarUnidade == true, e.UnidadeOrigem ?? OrigemUnidadeWorklist.Executante, e.UnidadeTag) is null)
             .WithMessage(e => RegrasCamposWorklist.Repetida(e.CodigoProcedimentoTag, e.EnviarMedicoSolicitante == true, e.MedicoSolicitanteTag, e.EnviarUnidade == true, e.UnidadeOrigem ?? OrigemUnidadeWorklist.Executante, e.UnidadeTag))
             .WithName("CamposWorklist");
+
+        // Laudo e liberação ao paciente (ADR-0075). Com um dos dois omitido, quem confere a
+        // combinação é o serviço, que conhece o valor gravado.
+        RuleFor(e => e.Laudo).IsInEnum().When(e => e.Laudo.HasValue);
+        RuleFor(e => e.LiberacaoPaciente).IsInEnum().When(e => e.LiberacaoPaciente.HasValue);
+        RuleFor(e => e)
+            .Must(e => EquipamentosMapper.CombinacaoLiberacaoValida(e.Laudo!.Value, e.LiberacaoPaciente!.Value))
+            .WithMessage(EquipamentosMapper.MensagemCombinacaoLiberacao)
+            .WithName("LiberacaoPaciente")
+            .When(e => e.Laudo.HasValue && e.LiberacaoPaciente.HasValue);
     }
 }

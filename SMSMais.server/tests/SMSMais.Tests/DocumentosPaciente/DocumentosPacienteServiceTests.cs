@@ -61,7 +61,7 @@ public class DocumentosPacienteServiceTests(PostgresFixture fixture)
     private static DocumentosPacienteService Servico(SmsMaisDbContext db, IArmazenamentoArquivos armazenamento)
     {
         var clinico = Substitute.For<ICidadaoClinicoService>();
-        clinico.ListarExamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        clinico.ListarExamesAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ExameResumoDto>>([]));
         clinico.ListarLaudosAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<LaudoResumoDto>>([]));

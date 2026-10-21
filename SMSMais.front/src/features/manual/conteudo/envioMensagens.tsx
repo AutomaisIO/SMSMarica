@@ -245,7 +245,7 @@ export const artigoEnvioMensagens: Artigo = {
   grupo: 'atendimento',
   icone: Send,
   publico: 'Gestão e equipe técnica — quem configura o automático e quem investiga por que uma mensagem não chegou',
-  atualizadoEm: '2026-10-19',
+  atualizadoEm: '2026-10-20',
   palavrasChave: [
     'envio',
     'mensagem',
@@ -391,7 +391,11 @@ export const artigoEnvioMensagens: Artigo = {
                 </tr>
                 <tr>
                   <td className="px-3 py-2 font-medium">Exame liberado / Laudo pronto</td>
-                  <td className="px-3 py-2">Exame realizado / laudo assinado. Só para número verificado.</td>
+                  <td className="px-3 py-2">
+                    Exame realizado, se o aparelho libera ao chegar (ultrassom) / laudo assinado. No aparelho
+                    que só libera com o laudo (mamografia, densitometria, raio-X), sai só o Laudo pronto, com
+                    imagem e laudo. Só para número verificado.
+                  </td>
                   <td className="px-3 py-2">
                     <code>exame_liberado</code> / <code>laudo_disponivel</code>
                   </td>

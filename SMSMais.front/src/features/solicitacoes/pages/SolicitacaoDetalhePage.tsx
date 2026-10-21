@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   Edit2,
   Loader2,
+  Lock,
   RotateCw,
   ScanLine,
   Send,
@@ -1039,6 +1040,10 @@ function CardEnvioManual({ s }: { s: Solicitacao }) {
   const podeEditar = usePermissao('Solicitacoes', 'Edicao');
   const enviar = useEnviarComunicacaoManual();
   const [confirmarRisco, setConfirmarRisco] = useState<FinalidadeEnvioManual | null>(null);
+  // Liberar antes do laudo (ADR-0075): o desfecho fica NO modal — ato que não se desfaz não
+  // se confirma num aviso no canto da tela.
+  const [liberarAberto, setLiberarAberto] = useState(false);
+  const [liberacao, setLiberacao] = useState<{ ok: boolean; mensagem: string } | null>(null);
 
   const exameRealizado = s.status === 'Realizada' || s.status === 'Laudada';
   const laudoPronto = s.status === 'Laudada';
@@ -1061,6 +1066,22 @@ function CardEnvioManual({ s }: { s: Solicitacao }) {
     else setConfirmarRisco(finalidade); // telefone não verificado → confirma o risco antes
   }
 
+  async function liberarAntesDoLaudo() {
+    try {
+      await enviar.mutateAsync({ id: s.id, finalidade: 'ExameLiberado', assumirRisco: !verificado });
+      setLiberacao({ ok: true, mensagem: 'Exame liberado ao paciente. O aviso "Exame liberado" foi enviado agora.' });
+    } catch (e) {
+      setLiberacao({ ok: false, mensagem: extrairMensagemDeErro(e) });
+    }
+  }
+
+  function fecharLiberacao() {
+    setLiberarAberto(false);
+    setLiberacao(null);
+  }
+
+  const aparelho = s.aparelhoRegraNome ? `o aparelho ${s.aparelhoRegraNome}` : 'o aparelho deste exame';
+
   return (
     <section className="lg:col-span-2 rounded-lg border border-sky-200 bg-sky-50/40 p-4 shadow-sm">
       <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-500">
@@ -1075,8 +1096,25 @@ function CardEnvioManual({ s }: { s: Solicitacao }) {
           ? ` Verificação dispensada: ${s.pacienteContatoDispensaMotivo}.`
           : ''}
       </p>
+      {s.retidoAteLaudo ? (
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            <strong>Retido até o laudo.</strong> {aparelho[0].toUpperCase() + aparelho.slice(1)} só libera o exame ao
+            paciente com o laudo assinado: a médica ainda pode rever a imagem. Quando o laudo for aprovado, imagem e
+            laudo vão juntos no aviso &quot;Laudo pronto&quot; — não é preciso fazer nada.
+          </span>
+        </div>
+      ) : s.liberadoPacienteEm ? (
+        <p className="mb-3 text-xs text-gray-500">Liberado ao paciente em {formatarInstante(s.liberadoPacienteEm)}.</p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
-        {exameRealizado ? (
+        {exameRealizado && s.retidoAteLaudo ? (
+          <Button variante="secundaria" onClick={() => setLiberarAberto(true)} disabled={enviar.isPending}>
+            <Lock className="mr-1 h-4 w-4" />
+            Liberar antes do laudo
+          </Button>
+        ) : exameRealizado ? (
           <Button variante="secundaria" onClick={() => clicar('ExameLiberado')} disabled={enviar.isPending}>
             {enviar.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
             Enviar exame
@@ -1123,6 +1161,58 @@ function CardEnvioManual({ s }: { s: Solicitacao }) {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        aberto={liberarAberto}
+        aoFechar={fecharLiberacao}
+        titulo="Liberar antes do laudo"
+        descricao={`Pela regra do cadastro, ${aparelho} só libera o exame ao paciente com o laudo assinado.`}
+      >
+        {liberacao ? (
+          <div className="space-y-3">
+            <div
+              className={`rounded-md border px-3 py-2 text-sm ${
+                liberacao.ok ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-800'
+              }`}
+            >
+              {liberacao.ok ? <CheckCircle2 className="mr-1 inline h-4 w-4" /> : <XCircle className="mr-1 inline h-4 w-4" />}
+              {liberacao.mensagem}
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={fecharLiberacao}>Fechar</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700">
+              Liberando agora, o paciente passa a ver a imagem no app e recebe o aviso &quot;Exame liberado&quot; —
+              antes de a médica revisar, e a imagem ainda pode mudar. Não dá para desfazer, e fica registrado quem
+              liberou. O laudo, quando for aprovado, sai no aviso &quot;Laudo pronto&quot; como sempre.
+            </p>
+            {!verificado ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                O telefone deste paciente <strong>não está verificado</strong>: liberar também é assumir o risco de
+                mandar o resultado para um número errado.
+              </div>
+            ) : null}
+            {s.pacienteContatoDispensado && !s.pacienteContatoDispensaPermiteEnvio ? (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                A recepção registrou <strong>{s.pacienteContatoDispensaMotivo}</strong> — este paciente não tem canal
+                de WhatsApp. O resultado deve ser entregue presencialmente.
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Button variante="outline" onClick={fecharLiberacao}>
+                Cancelar
+              </Button>
+              <Button variante="danger" disabled={enviar.isPending} onClick={liberarAntesDoLaudo}>
+                {enviar.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                {verificado ? 'Liberar e enviar' : 'Assumo o risco e liberar'}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </section>
   );

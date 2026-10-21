@@ -11,13 +11,25 @@ namespace SMSMais.Core.Cidadao;
 /// </summary>
 public interface ICidadaoClinicoService
 {
-    Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(Guid pacienteId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Exames realizados do paciente. Por padrão, só os <b>liberados</b> a ele (ADR-0075): o exame de
+    /// aparelho que só libera com o laudo fica fora até o laudo ser aprovado.
+    /// <paramref name="visaoDaEquipe"/> inclui os retidos — para quem usa esta lista do lado de dentro
+    /// (regulação, acervo visto pela equipe), nunca para o que o paciente vê.
+    /// </summary>
+    Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(
+        Guid pacienteId, bool visaoDaEquipe = false, CancellationToken cancellationToken = default);
 
     /// <summary>Conteúdo de um documento escaneado, se pertencer a um exame do paciente (senão <c>null</c>).</summary>
     Task<AnexoConteudo?> ObterAnexoAsync(Guid pacienteId, Guid anexoId, CancellationToken cancellationToken = default);
 
-    /// <summary>PDF consolidado das imagens do exame (gera/cacheia), se o exame for do paciente.</summary>
-    Task<byte[]?> ObterImagensPdfAsync(Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// PDF consolidado das imagens do exame (gera/cacheia), se o exame for do paciente — e, para o
+    /// paciente, se já tiver sido liberado a ele (ADR-0075). <paramref name="visaoDaEquipe"/> dispensa a
+    /// liberação e não marca o aviso como visualizado (quem abriu foi a equipe, não o paciente).
+    /// </summary>
+    Task<byte[]?> ObterImagensPdfAsync(
+        Guid pacienteId, Guid solicitacaoExameId, bool visaoDaEquipe = false, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<LaudoResumoDto>> ListarLaudosAsync(Guid pacienteId, CancellationToken cancellationToken = default);
 

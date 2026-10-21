@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   ListOrdered,
   Loader2,
+  Lock,
   Plus,
   RotateCw,
   Siren,
@@ -455,6 +456,15 @@ export function SolicitacoesPage() {
             <ChecksComunicacao chip={s.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
             <ChecksComunicacao chip={s.chipExameLiberado} finalidade="ExameLiberado" />
             <ChecksComunicacao chip={s.chipLaudoPronto} finalidade="LaudoPronto" />
+            {/* Regra do aparelho (ADR-0075): o paciente ainda não vê este exame. */}
+            {s.retidoAteLaudo ? (
+              <span
+                title="Retido até o laudo: o aparelho só libera o exame ao paciente com o laudo assinado. Imagem e laudo vão juntos."
+                className="inline-flex"
+              >
+                <Lock className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              </span>
+            ) : null}
           </span>
         );
       },
@@ -470,13 +480,16 @@ export function SolicitacoesPage() {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
           <div className="flex items-center justify-end gap-2">
-            <BotaoAnamnese
-              solicitacaoExameId={s.id}
-              accessionNumber={s.accessionNumber}
-              temAnamnese={s.temAnamnese}
-              siscanProtocolo={s.siscanProtocolo}
-              iconeApenas
-            />
+            {/* O aparelho que não usa anamnese (MAPA, Holter) não oferece o botão (ADR-0075). */}
+            {s.usaAnamnese !== false ? (
+              <BotaoAnamnese
+                solicitacaoExameId={s.id}
+                accessionNumber={s.accessionNumber}
+                temAnamnese={s.temAnamnese}
+                siscanProtocolo={s.siscanProtocolo}
+                iconeApenas
+              />
+            ) : null}
             {realizadaOuLaudada ? (
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />

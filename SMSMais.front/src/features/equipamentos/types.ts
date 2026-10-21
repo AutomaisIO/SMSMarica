@@ -28,7 +28,8 @@ export type Equipamento = {
   ativo: boolean;
   criadoEm: string;
 } & CodigoProcedimentoConfig &
-  CamposWorklistConfig;
+  CamposWorklistConfig &
+  RegraDoExameConfig;
 
 export type EquipamentoListItem = {
   id: string;
@@ -40,7 +41,8 @@ export type EquipamentoListItem = {
   descricaoMaxCaracteres: number;
   ativo: boolean;
 } & CodigoProcedimentoConfig &
-  CamposWorklistConfig;
+  CamposWorklistConfig &
+  RegraDoExameConfig;
 
 /**
  * Código do procedimento no item de worklist (ADR-0074): o código interno do SISREG vai em
@@ -71,7 +73,64 @@ export type SalvarEquipamentoPayload = {
     enviarUnidade?: boolean;
     unidadeOrigem?: OrigemUnidadeWorklist;
     unidadeTag?: string | null;
-  };
+  } & Partial<RegraDoExameConfig>;
+
+/** Onde nasce o laudo dos exames do aparelho (ADR-0075). */
+export type OrigemLaudo = 'Plataforma' | 'JuntoComExame' | 'ForaDaPlataforma';
+
+/** Quando o exame do aparelho chega ao paciente — app do cidadão e WhatsApp (ADR-0075). */
+export type LiberacaoExamePaciente = 'ComLaudoAssinado' | 'AoChegar';
+
+/**
+ * O que acontece com o exame depois que chega (ADR-0075). É do aparelho, não do tipo de exame: quem
+ * decide se a imagem pode ir antes do laudo é quem lauda.
+ */
+export type RegraDoExameConfig = {
+  laudo: OrigemLaudo;
+  liberacaoPaciente: LiberacaoExamePaciente;
+  usaAnamnese: boolean;
+};
+
+export const ORIGENS_LAUDO: { id: OrigemLaudo; rotulo: string; dica: string }[] = [
+  {
+    id: 'Plataforma',
+    rotulo: 'Laudado na plataforma',
+    dica: 'O médico lauda e assina aqui (mamografia, densitometria, raio-X). O exame entra na fila de laudo.',
+  },
+  {
+    id: 'JuntoComExame',
+    rotulo: 'Laudo vem junto com o exame',
+    dica: 'O exame já chega com o laudo pronto, assinado fora, no mesmo PDF (MAPA, Holter). Sem laudo nem assinatura nossa.',
+  },
+  {
+    id: 'ForaDaPlataforma',
+    rotulo: 'Laudado fora da plataforma',
+    dica: 'O laudo é feito em outro sistema e não passa por aqui (ultrassom). O exame não entra na fila de laudo.',
+  },
+];
+
+export const LIBERACOES_PACIENTE: { id: LiberacaoExamePaciente; rotulo: string; dica: string }[] = [
+  {
+    id: 'ComLaudoAssinado',
+    rotulo: 'Só com o laudo assinado',
+    dica: 'A imagem fica retida e chega ao paciente junto com o laudo, numa mensagem só ("Laudo pronto"). Para quando a médica revê a imagem depois e ela ainda pode mudar.',
+  },
+  {
+    id: 'AoChegar',
+    rotulo: 'Assim que chegar',
+    dica: 'A imagem aparece no app do cidadão e sai o aviso "Exame liberado" assim que o estudo chega ao PACS.',
+  },
+];
+
+/**
+ * A regra que um aparelho novo recebe pela modalidade, a mesma da implantação de 20/10/2026:
+ * ultrassom é laudado fora e libera ao chegar; o resto é laudado aqui e retém até o laudo.
+ */
+export function regraPadraoDaModalidade(m: ModalidadeDicom): RegraDoExameConfig {
+  return m === 'US'
+    ? { laudo: 'ForaDaPlataforma', liberacaoPaciente: 'AoChegar', usaAnamnese: true }
+    : { laudo: 'Plataforma', liberacaoPaciente: 'ComLaudoAssinado', usaAnamnese: true };
+}
 
 /** De qual unidade do pedido sai o nome que vai no campo "unidade/clínica" do aparelho. */
 export type OrigemUnidadeWorklist = 'Executante' | 'Solicitante';

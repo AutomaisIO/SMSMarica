@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0075 — O aparelho decide o que acontece com o exame depois que chega: onde é laudado, quando o paciente recebe e se usa anamnese</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0075 — O aparelho decide o que acontece com o exame depois que chega: onde é laudado, quando o paciente recebe e se usa anamnese</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-20 · <strong>Implementação:</strong> branch <code>feat/envio-exame-por-equipamento</code> <strong>Relacionado:</strong> <a href="./0056-escopo-de-exame-por-unidade.md">ADR-0056</a> (tipo × unidade e aparelho de destino) · <a href="./0061-modos-assinatura-e-selo-do-laudo.md">ADR-0061</a> (assinar, conferir e aprovar o laudo) · <a href="./0066-acervo-do-paciente-e-midia-do-whatsapp.md">ADR-0066</a> (acervo do paciente) · <a href="./0074-pedido-varios-procedimentos-um-exame-por-codigo.md">ADR-0074</a> (campos da worklist por aparelho)</p>
+<h2>Contexto</h2>
+<p>Até aqui, todo exame realizado ia ao paciente <strong>assim que o estudo chegava ao PACS</strong>: aparecia no app do cidadão, com o PDF das imagens, e saía o WhatsApp "Exame liberado". Laudo assinado gerava, depois, o "Laudo pronto". Não havia regra por aparelho: todo exame entrava na fila de laudo e na estatística "aguardando laudo", e a anamnese aparecia para todos.</p>
+<p>Isso não serve a três situações reais (pedido do Bernardo em 20/10/2026):</p>
+<ul>
+<li><strong>Mamografia e densitometria</strong> são laudadas aqui, e a médica avalia a imagem <strong>depois</strong> do exame — a</li>
+</ul>
+<p>  imagem pode mudar (estudo refeito, imagem rejeitada; ver o ticket #169). Mandar a imagem antes é   entregar ao paciente o que ainda não está fechado. Imagem e laudo têm de ir <strong>juntos</strong>.</p>
+<ul>
+<li><strong>Ultrassom</strong> é laudado na hora, <strong>em outra plataforma</strong>: não há laudo nosso, e a imagem pode ir já.</li>
+<li><strong>MAPA e Holter</strong> (CardioNet) voltam com <strong>imagem e laudo no mesmo PDF</strong>, assinado fora: não há laudo</li>
+</ul>
+<p>  nem assinatura nossa, nem anamnese.</p>
+<p>O que foi medido na produção em 20/10/2026, por aparelho (exames realizados):</p>
+<div class="tw"><table><thead><tr><th>Aparelho</th><th>Exames</th><th>Com laudo aqui</th><th>Assinados</th></tr></thead><tbody>
+<tr><td>Mamógrafo (MG)</td><td>1.439</td><td>1.224</td><td>1.217</td></tr>
+<tr><td>Densitometria (OT)</td><td>483</td><td>419</td><td>376</td></tr>
+<tr><td>Raio-X (DX)</td><td>173</td><td>153</td><td>147</td></tr>
+<tr><td>4 ultrassons (US)</td><td>1.359</td><td><strong>0</strong></td><td>0</td></tr>
+<tr><td>CardioNet Holter/ECG, MAPAS</td><td>0</td><td>—</td><td>—</td></tr>
+</tbody></table></div>
+<p>O raio-X também é laudado e assinado aqui. Nenhum ultrassom jamais teve laudo na plataforma. O CardioNet ainda não devolveu estudo nenhum ao PACS (é só MWL SCU, sem C-STORE). 78 exames não tinham aparelho gravado — todos de ultrassom, em unidades com dois ultrassons.</p>
+<h2>Decisão</h2>
+<h3>1. Três campos no <strong>equipamento</strong>, e não no tipo de exame</h3>
+<p>O mesmo procedimento pode ser laudado aqui num aparelho e fora em outro; quem decide se a imagem pode ir antes do laudo é quem lauda. Os campos:</p>
+<ul>
+<li><strong><code>origem_laudo</code></strong> (<code>OrigemLaudo</code>) — escolha única: <code>Plataforma</code> (1), <code>JuntoComExame</code> (2),</li>
+</ul>
+<p>  <code>ForaDaPlataforma</code> (3). Duas caixas ("habilitar laudo" + "laudo vem com a imagem") deixariam marcar as   duas, e isso não existe.</p>
+<ul>
+<li><strong><code>liberacao_paciente</code></strong> (<code>LiberacaoExamePaciente</code>) — <code>ComLaudoAssinado</code> (1) ou <code>AoChegar</code> (2).</li>
+<li><strong><code>usa_anamnese</code></strong> (bool).</li>
+</ul>
+<p><strong>Trava:</strong> <code>ComLaudoAssinado</code> só com <code>Plataforma</code> (<code>ck_equipamento_liberacao_com_laudo</code>, validador e serviço). Com o laudo feito fora, não haveria laudo nosso para soltar a imagem — o exame ficaria retido para sempre.</p>
+<h3>2. A liberação é gravada no exame, no momento em que acontece</h3>
+<p><code>exame_imagem.liberado_paciente_em</code> (null = retido) e <code>liberado_paciente_por</code> (null = automático). Mudar a regra do aparelho depois <strong>não esconde nem solta</strong> exame antigo. Três pontos gravam:</p>
+<ol>
+<li><strong>Chegada</strong> (<code>SolicitacoesService.MarcarComoRealizadaAsync</code>, o único caminho para "Realizada"):</li>
+</ol>
+<p>   <code>AoChegar</code> libera e enfileira o "Exame liberado"; <code>ComLaudoAssinado</code> grava null e <strong>não</strong> enfileira.    A decisão é refeita a cada realização — o estudo que chega depois de uma correção de identidade não    herda a liberação do anterior.</p>
+<ol>
+<li><strong>Laudo aprovado</strong> (<code>LaudoAssinaturaService</code>, ao enfileirar o "Laudo pronto"): libera, e o "Exame</li>
+</ol>
+<p>   liberado" automático que ainda não saiu fica <code>Dispensada</code> — <strong>uma mensagem só</strong>, o "Laudo pronto",    cujo link abre o exame com imagem e laudo.</p>
+<ol>
+<li><strong>Pessoa</strong> ("Enviar exame" no detalhe, que no exame retido vira <strong>"Liberar antes do laudo"</strong>):</li>
+</ol>
+<p>   libera e grava quem. O "Reenviar" do histórico <strong>não</strong> libera: recusa explicando o caminho.</p>
+<h3>3. O que o paciente vê segue a liberação</h3>
+<p>App do cidadão (<code>/cidadao/exames</code>, PDF das imagens, acervo em "Documentos") mostra só o exame liberado <strong>ou</strong> com laudo assinado — o laudo assinado também libera na leitura, para cobrir a aprovação cuja gravação falhou (ela é best-effort). Os usos de dentro (regulação, acervo visto pela equipe) continuam vendo tudo, e cada chamada declara para quem é (<code>visaoDaEquipe</code>, <code>ListarParaPacienteAsync</code>).</p>
+<p>A fila do WhatsApp confere na hora do envio: "Exame liberado" automático de exame não liberado vira <code>Dispensada</code> ("Retido até o laudo…"). É isso que segura o que já estava na fila antes da regra.</p>
+<h3>4. Qual aparelho, quando o exame não gravou</h3>
+<p><code>RegrasDoExameService</code>, numa ordem só para todo o sistema: o aparelho do exame → o aparelho fixo do escopo (tipo × unidade) → os aparelhos ativos da unidade na modalidade. Vários candidatos: se concordam, vale a regra deles; se discordam, <strong>retém</strong> (soltar antes da hora não tem volta), e laudo e anamnese valem se algum usa. Sem candidato: retém, laudo na plataforma, com anamnese.</p>
+<h3>5. Laudo e anamnese</h3>
+<ul>
+<li><code>OrigemLaudo != Plataforma</code>: o PACS não oferece "Criar laudo" e o servidor recusa</li>
+</ul>
+<p>  (<code>laudo.fora_da_plataforma</code>); "aguardando laudo" e "% laudados" nos relatórios só contam aparelho que   lauda aqui.</p>
+<ul>
+<li><code>usa_anamnese = false</code>: some o botão (Solicitações e PACS) e o laudo não a cobra.</li>
+</ul>
+<h3>6. Implantação (migration <code>LiberacaoExamePorEquipamento</code>)</h3>
+<ul>
+<li>Aparelhos existentes: <code>Plataforma + ComLaudoAssinado + anamnese</code>; <strong>ultrassom</strong> (modalidade 4) vira</li>
+</ul>
+<p>  <code>ForaDaPlataforma + AoChegar</code>. Instância nova não tem aparelho quando a migration roda.</p>
+<ul>
+<li>Exames já realizados: liberados se o "Exame liberado" já tinha saído (não se tira do app o que foi</li>
+</ul>
+<p>  mandado), se têm laudo assinado ou se o aparelho libera ao chegar. <strong>O resto fica retido</strong> — decisão de   20/10/2026: reter também o que ainda não tinha sido avisado. Prévia na produção: de 3.456 realizados,   <strong>69 retidos</strong> (53 MG, 13 DO, 3 DX), todos sem laudo e sem aviso enviado.</p>
+<ul>
+<li>"Exame liberado" ainda na fila de solicitação que já tem "Laudo pronto": <code>Dispensada</code>.</li>
+<li>MAPA e Holter (<code>JuntoComExame + AoChegar</code>, sem anamnese) se configuram <strong>pela tela</strong>, depois do</li>
+</ul>
+<p>  deploy: são cadastros de Maricá e não entram em migration (CLAUDE.md, regra 9c).</p>
+<ul>
+<li>Os defaults ficam só na migration, não no modelo: com default no banco o EF omite do INSERT o valor</li>
+</ul>
+<p>  igual ao default do CLR — o <code>false</code> de <code>usa_anamnese</code> — e o aparelho cadastrado sem anamnese   nasceria com ela.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Mamografia, densitometria e raio-X deixam de aparecer no app antes do laudo; quem recebe é avisado uma</li>
+</ul>
+<p>  vez só, com tudo.</p>
+<ul>
+<li>Ultrassom segue como era, e sai da fila de laudo e da estatística, onde nunca deveria ter entrado.</li>
+<li>Cadastro de aparelho novo exige pensar nos três campos — a tela sugere pela modalidade (ultrassom: fora</li>
+</ul>
+<p>  e ao chegar; o resto: aqui e com o laudo).</p>
+<h2>Pendências</h2>
+<ul>
+<li><strong>"Laudo vem junto" ainda não lê o PDF de dentro do estudo.</strong> O PDF das imagens rasteriza instâncias</li>
+</ul>
+<p>  por WADO <code>/rendered</code>; um PDF encapsulado (SOP 1.2.840.10008.5.1.4.1.1.104.1) não vira página. Só dá   para fazer com um resultado real do CardioNet chegando ao PACS — hoje ele não devolve estudo.</p>
+<ul>
+<li>O app do cidadão (PWA e Flutter) simplesmente não lista o exame retido. Um card "aguardando laudo",</li>
+</ul>
+<p>  sem imagem, seria mais claro para o paciente — fica para quando o Bernardo quiser.</p>
+<h2>Alternativas descartadas</h2>
+<ul>
+<li><strong>Flag no tipo de exame.</strong> Foi o primeiro pedido; descartado pelo próprio Bernardo — a regra é de</li>
+</ul>
+<p>  quem lauda, e o tipo é do município inteiro (o mesmo problema que o ADR-0056 resolveu para a worklist).</p>
+<ul>
+<li><strong>Liberação calculada na leitura, sem gravar.</strong> Menos pontos de escrita, mas mudar a regra do aparelho</li>
+</ul>
+<p>  esconderia exames já entregues (ou soltaria retidos sem aviso). Gravar fixa a decisão no momento.</p>
+<ul>
+<li><strong>Card do exame retido sem imagem no app.</strong> Mais informativo, mas muda o PWA e o app nativo; o pedido</li>
+</ul>
+<p>  era segurar imagem e laudo.</p>
+</main>
+</body>
+</html>

@@ -99,8 +99,12 @@ public sealed class ComunicacaoPacienteService(
     Telefones.IDispensaContatoService dispensasContato,
     IContatoComprometidoService contatosComprometidos,
     Confirmacoes.IConfirmacaoConfiguracaoService regrasConfirmacao,
-    ILogger<ComunicacaoPacienteService> logger) : IComunicacaoPacienteService
+    ILogger<ComunicacaoPacienteService> logger,
+    // Opcional: só precisa do banco, e os testes que montam o serviço à mão seguem compilando.
+    Equipamentos.IRegrasDoExameService? regrasDoExame = null) : IComunicacaoPacienteService
 {
+    private Equipamentos.IRegrasDoExameService RegrasDoExame => regrasDoExame ??= new Equipamentos.RegrasDoExameService(db);
+
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
 
     /// <summary>Códigos de erro do WhatsApp que não adianta retentar (número inexistente/não autorizado).</summary>
@@ -464,6 +468,15 @@ public sealed class ComunicacaoPacienteService(
                 Terminal(n, StatusComunicacao.Falha,
                     "Aviso retroativo: entrou na fila antes de o aviso de cancelamento ser ligado.");
             }
+            else if (n.Finalidade == FinalidadeComunicacao.ExameLiberado
+                     && n.Origem != OrigemComunicacao.Manual
+                     && await MotivoExameRetidoAsync(s!, ct) is { } retido)
+            {
+                // ADR-0075: o aparelho só libera com o laudo assinado e o exame ainda não foi liberado.
+                // Não é falha: a imagem vai junto com o laudo, no "Laudo pronto". Vale também para o
+                // que já estava na fila antes da regra existir — é ela que segura esses.
+                Terminal(n, StatusComunicacao.Dispensada, retido);
+            }
             else if (await PrimeiraVezParaHojeAsync(n, s!, ct))
             {
                 // A confirmação de PRIMEIRA VEZ manda retirar a guia no posto antes do dia: no
@@ -750,6 +763,13 @@ public sealed class ComunicacaoPacienteService(
                     "reenvio.ja_respondida", "O paciente já respondeu esta confirmação — nada a reenviar.");
         }
 
+        // Reenviar não é liberar (ADR-0075): o "Exame liberado" de um exame retido até o laudo sairia
+        // de novo dispensado, calado. Liberar antes do laudo é decisão à parte — "Enviar exame".
+        if (n.Finalidade == FinalidadeComunicacao.ExameLiberado
+            && await MotivoExameRetidoAsync(s, ct) is { } retido)
+            throw new Common.Excecoes.ConflitoException(
+                "reenvio.exame_retido", $"{retido} Para liberar antes do laudo, use \"Enviar exame\".");
+
         // 1-2. Revoga links ativos e derruba sessões de quem já clicou.
         var linksAtivos = await RevogarAcessosAsync(solicitacaoId, agora, ct);
 
@@ -813,6 +833,17 @@ public sealed class ComunicacaoPacienteService(
 
         var agora = DateTime.UtcNow;
 
+        // Mandar o exame (ou o laudo) é liberá-lo ao paciente (ADR-0075): o app passa a mostrá-lo
+        // mesmo que o aparelho só libere com o laudo. Quem clicou decidiu, e fica registrado quem.
+        var exame = await db.ExamesImagem
+            .FirstOrDefaultAsync(e => e.Id == solicitacaoExameId && e.ExcluidoEm == null, ct);
+        var liberadoAgora = exame is { LiberadoPacienteEm: null };
+        if (liberadoAgora)
+        {
+            exame!.LiberadoPacienteEm = agora;
+            exame.LiberadoPacientePor = usuarioAtual.UsuarioId;
+        }
+
         // Revoga links de acesso ainda ativos da solicitação (e derruba sessões de quem já usou um
         // link — proteção contra número errado); o envio reconstrói com o contato ATUAL.
         var linksAtivos = await RevogarAcessosAsync(solicitacaoId, agora, ct);
@@ -860,6 +891,7 @@ public sealed class ComunicacaoPacienteService(
             Meio = MeioContato.WhatsApp,
             Resultado = ResultadoContato.Outro,
             Observacao = $"Envio manual — {RotuloFinalidade(finalidade)}."
+                + (liberadoAgora ? " O exame estava retido até o laudo e foi liberado ao paciente agora." : "")
                 + (assumirRisco ? " Telefone NÃO verificado: risco assumido pelo operador." : "")
                 + (linksAtivos.Count > 0 ? $" {linksAtivos.Count} link(s) anterior(es) revogado(s)." : ""),
             CriadoEm = agora,
@@ -1934,6 +1966,26 @@ public sealed class ComunicacaoPacienteService(
         }
         // Backoff exponencial: 5min, 10min, 20min, 40min...
         n.ProximaTentativaEm = DateTime.UtcNow.AddMinutes(5 * Math.Pow(2, n.Tentativas - 1));
+    }
+
+    /// <summary>
+    /// Por que o "Exame liberado" desta solicitação não pode sair agora (ADR-0075): nenhum dos seus
+    /// exames foi liberado ao paciente — o aparelho só libera com o laudo assinado e o laudo ainda não
+    /// foi aprovado. Null = pode sair.
+    /// </summary>
+    private async Task<string?> MotivoExameRetidoAsync(Solicitacao s, CancellationToken ct)
+    {
+        var exames = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.SolicitacaoId == s.Id && e.ExcluidoEm == null)
+            .OrderBy(e => e.Ordem)
+            .Select(e => new { e.Id, e.LiberadoPacienteEm })
+            .ToListAsync(ct);
+        if (exames.Count == 0 || exames.Any(e => e.LiberadoPacienteEm != null)) return null;
+
+        var regra = await RegrasDoExame.ResolverAsync(exames[0].Id, ct);
+        var aparelho = regra.EquipamentoNome is { Length: > 0 } nome ? $"o aparelho {nome}" : "o exame";
+        return $"Retido até o laudo: {aparelho} só libera o exame ao paciente com o laudo assinado — "
+               + "imagem e laudo vão juntos no aviso \"Laudo pronto\".";
     }
 
     private static void Terminal(ComunicacaoPaciente n, StatusComunicacao status, string? motivo)

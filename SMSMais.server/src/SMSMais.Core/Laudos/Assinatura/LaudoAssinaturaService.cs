@@ -544,8 +544,34 @@ public sealed class LaudoAssinaturaService(
         }
         if (solicitacao?.Solicitacao is null) return;
 
+        // Laudo aprovado = exame liberado ao paciente (ADR-0075). No aparelho que só libera com o
+        // laudo, é aqui que a imagem aparece no app — junto com o laudo.
+        var agora = DateTime.UtcNow;
+        solicitacao.LiberadoPacienteEm ??= agora;
+
         await comunicacoes.Value.EnfileirarAsync(
             solicitacao.Solicitacao, FinalidadeComunicacao.LaudoPronto, ct);
+
+        // Uma mensagem só: o "Laudo pronto" leva imagem e laudo — o link abre o exame com os dois.
+        // O "Exame liberado" automático que ainda não saiu (de antes da regra, ou parado à espera do
+        // telefone verificado) sairia logo atrás, falando da mesma coisa.
+        var cobertas = await db.ComunicacoesPaciente
+            .Where(c => c.SolicitacaoId == solicitacao.SolicitacaoId
+                && c.Finalidade == FinalidadeComunicacao.ExameLiberado
+                && c.Origem == OrigemComunicacao.Automatico
+                && c.EnviadoEm == null
+                && (c.Status == StatusComunicacao.Pendente
+                    || c.Status == StatusComunicacao.AguardandoTelefoneVerificado
+                    || c.Status == StatusComunicacao.AguardandoVerificacaoCadastral
+                    || c.Status == StatusComunicacao.AguardandoCorrecaoContato))
+            .ToListAsync(ct);
+        foreach (var c in cobertas)
+        {
+            c.Status = StatusComunicacao.Dispensada;
+            c.MotivoFalha = "Coberto pelo \"Laudo pronto\": imagem e laudo vão juntos numa mensagem só.";
+            c.ProximaTentativaEm = null;
+            c.AtualizadoEm = agora;
+        }
     }
 
     // ---------------- Fluxo em nuvem (IntegraICP, ADR-0061) ----------------
