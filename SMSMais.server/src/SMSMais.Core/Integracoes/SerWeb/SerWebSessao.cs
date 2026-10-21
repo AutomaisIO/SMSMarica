@@ -111,7 +111,7 @@ public sealed partial class SerWebSessao(
     ILogger<SerWebSessao> logger) : ISerWebSessao, IDisposable
 {
     public const string Provedor = "ser";
-    private const string BaseUrlPadrao = "https://ser.saude.rj.gov.br";
+    public const string BaseUrlPadrao = "https://ser.saude.rj.gov.br";
     private const string CaminhoLogin = "/ser/login";
     private const string CaminhoHome = "/ser/home.seam";
 

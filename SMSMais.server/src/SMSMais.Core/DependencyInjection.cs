@@ -632,6 +632,8 @@ public static class DependencyInjection
         // (Conde/UPA/Santa Rita são servers distintos), singleton com cookies próprios por provedor.
         // O dry-run/paridade são sob demanda; o periódico tem scheduler (abaixo), INERTE por padrão.
         services.AddSingleton<Integracoes.KlinikosWeb.IKlinikosWebSessao, Integracoes.KlinikosWeb.KlinikosWebSessao>();
+        // Cadência/escrita do conector por base, editadas em Importar Prontuários (ADR-0076).
+        services.AddScoped<Integracoes.KlinikosWeb.IKlinikosWebUsoService, Integracoes.KlinikosWeb.KlinikosWebUsoService>();
         // Resolve a instância (URL/usuário/senha/params) a partir da IaFonte (Tipo=KlinikosWeb) —
         // o conector é uma FONTE DE PRONTUÁRIO, não uma credencial de integração de serviço.
         services.AddScoped<
@@ -946,6 +948,8 @@ public static class DependencyInjection
         services.AddScoped<Inteligencia.IIaService, Inteligencia.IaService>();
         services.AddScoped<Inteligencia.Configuracao.IIaConfiguracaoService, Inteligencia.Configuracao.IaConfiguracaoService>();
         services.AddScoped<Inteligencia.Configuracao.IIaFonteService, Inteligencia.Configuracao.IaFonteService>();
+        // Fontes de dados (ADR-0076): cadastro único sobre ia_fonte, integracao_credencial e sisreg_configuracao.
+        services.AddScoped<Fontes.IFontesDadosService, Fontes.FontesDadosService>();
         services.AddScoped<Inteligencia.Governanca.IIaGovernancaService, Inteligencia.Governanca.IaGovernancaService>();
 
         // ---- Módulo TFD: configuração de integrações + geocodificação (FT0/FT1) — ADR-0017 ----

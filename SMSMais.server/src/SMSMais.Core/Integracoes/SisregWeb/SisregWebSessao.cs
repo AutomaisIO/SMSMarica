@@ -65,7 +65,7 @@ public sealed class SisregWebSessao(
     ILogger<SisregWebSessao> logger) : ISisregWebSessao, IDisposable
 {
     public const string Provedor = "sisreg";
-    private const string BaseUrlPadrao = "https://sisregiii.saude.gov.br";
+    public const string BaseUrlPadrao = "https://sisregiii.saude.gov.br";
 
     /// <summary>
     /// Campo da <see cref="ValidacaoException"/> lançada quando o SISREG passa a exigir CAPTCHA.

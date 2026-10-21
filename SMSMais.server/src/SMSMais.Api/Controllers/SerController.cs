@@ -343,23 +343,6 @@ public sealed class SerConfiguracaoController(
     }
 
     /// <summary>
-    /// Grava a credencial do SER (cifrada no store de integrações). Autentica antes de
-    /// persistir — só salva o que o SER aceitou.
-    /// </summary>
-    [HttpPut("credencial")]
-    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SalvarCredencial(
-        [FromBody] SerTestarCredencialRequest requisicao, CancellationToken cancellationToken)
-    {
-        await motor.SalvarCredencialAsync(requisicao.Usuario, requisicao.Senha, cancellationToken);
-        return NoContent();
-    }
-
-    /// <summary>Testa uma credencial contra o SER sem gravá-la. Só autentica e confere se o
-    /// módulo Ambulatório abre — nenhuma escrita no SER.</summary>
-    /// <summary>
     /// Formulário de NOVA solicitação, lido ao vivo da aba Editar do SER.
     ///
     /// <para><b>Somente leitura.</b> Abrir a aba e trocar combos apenas re-renderiza a view do
@@ -570,22 +553,7 @@ public sealed class SerConfiguracaoController(
         [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias,
         CancellationToken cancellationToken) =>
         guias.SalvarAsync(SistemaRegulacao.Ser, corpo, cancellationToken);
-
-    [HttpPost("testar-credencial")]
-    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> TestarCredencial(
-        [FromBody] SerTestarCredencialRequest requisicao, CancellationToken cancellationToken)
-    {
-        await motor.TestarCredencialAsync(requisicao.Usuario, requisicao.Senha, cancellationToken);
-        return NoContent();
-    }
 }
-
-/// <summary>Credencial avulsa para teste (não é gravada aqui).</summary>
-public sealed record SerTestarCredencialRequest(string Usuario, string Senha);
-
 
 /// <summary>
 /// <b>Regulação → Nova solicitação</b>: catálogo espelhado e rascunhos.

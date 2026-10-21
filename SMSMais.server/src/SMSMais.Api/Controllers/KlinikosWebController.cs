@@ -19,8 +19,27 @@ namespace SMSMais.Api.Controllers;
 public sealed class KlinikosWebController(
     IKlinikosWebSincronizacaoService sincronizacao,
     IKlinikosWebParidadeService paridade,
-    IKlinikosWebEscritaService escrita) : ControllerBase
+    IKlinikosWebEscritaService escrita,
+    IKlinikosWebUsoService uso) : ControllerBase
 {
+    /// <summary>Cadência e escrita de cada fonte Klinikos Web (o uso; a conexão é em Fontes de dados).</summary>
+    [HttpGet("uso")]
+    [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<KlinikosWebUsoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<KlinikosWebUsoDto>> ListarUso(CancellationToken ct) =>
+        await uso.ListarAsync(ct);
+
+    [HttpPut("uso/{fonteId:guid}")]
+    [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SalvarUso(Guid fonteId, [FromBody] SalvarKlinikosWebUsoRequest request, CancellationToken ct)
+    {
+        await uso.SalvarAsync(fonteId, request, ct);
+        return NoContent();
+    }
+
     /// <summary>Contagens da espinha de um dia (407+667), sem gravar. Para conferir os números.</summary>
     [HttpGet("dry-run")]
     [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Consulta)]

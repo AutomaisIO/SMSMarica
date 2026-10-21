@@ -302,30 +302,6 @@ public sealed class SernitConfiguracaoController(
         return Accepted();
     }
 
-    /// <summary>Grava a credencial do SERNIT (cifrada). Autentica antes de persistir.</summary>
-    [HttpPut("credencial")]
-    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SalvarCredencial(
-        [FromBody] SernitTestarCredencialRequest requisicao, CancellationToken cancellationToken)
-    {
-        await motor.SalvarCredencialAsync(requisicao.Usuario, requisicao.Senha, cancellationToken);
-        return NoContent();
-    }
-
-    /// <summary>Testa uma credencial contra o SERNIT sem gravá-la.</summary>
-    [HttpPost("testar-credencial")]
-    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> TestarCredencial(
-        [FromBody] SernitTestarCredencialRequest requisicao, CancellationToken cancellationToken)
-    {
-        await motor.TestarCredencialAsync(requisicao.Usuario, requisicao.Senha, cancellationToken);
-        return NoContent();
-    }
-
     /// <summary>Configuração do disparo diário (ligado/desligado + hora de Brasília).</summary>
     [HttpGet("varredura-automatica")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]

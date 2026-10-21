@@ -32,18 +32,37 @@ public sealed class SisregConfiguracaoService(
     {
         var config = await ObterOuCriarAsync(cancellationToken);
 
-        config.BaseUrl = request.BaseUrl.Trim();
+        // Só o USO da API. A conexão (URL, autenticação, login, senha, token, ativo) é editada em
+        // Sistema → Fontes de dados — ver AtualizarCredencialAsync e ADR-0076.
         config.Escopo = request.Escopo;
         config.Uf = request.Uf.Trim();
         config.Municipio = request.Municipio.Trim();
         config.CentraisReguladoras = request.CentraisReguladoras.Trim();
-        config.TipoAutenticacao = request.TipoAutenticacao;
-        config.Login = string.IsNullOrWhiteSpace(request.Login) ? null : request.Login.Trim();
-        config.Ativo = request.Ativo;
         config.FonteCadastroPaciente = request.FonteCadastroPaciente;
         // Teto de 8 no serviço também, não só na tela: a API é pública e um número absurdo aqui
         // viraria carga desnecessária num sistema do Estado.
         config.ConsultasSimultaneasSer = Math.Clamp(request.ConsultasSimultaneasSer, 1, 8);
+
+        config.AtualizadoEm = DateTime.UtcNow;
+        config.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task AtualizarCredencialAsync(
+        AtualizarCredencialSisregApiRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.BaseUrl))
+        {
+            throw new ValidacaoException("sisreg.base_url", "Informe a URL da API do SISREG.");
+        }
+
+        var config = await ObterOuCriarAsync(cancellationToken);
+
+        config.BaseUrl = request.BaseUrl.Trim();
+        config.TipoAutenticacao = request.TipoAutenticacao;
+        config.Login = string.IsNullOrWhiteSpace(request.Login) ? null : request.Login.Trim();
+        config.Ativo = request.Ativo;
 
         // Senha/token vazios = mantém o atual; preenchidos = cifra e substitui.
         if (!string.IsNullOrWhiteSpace(request.Senha))
