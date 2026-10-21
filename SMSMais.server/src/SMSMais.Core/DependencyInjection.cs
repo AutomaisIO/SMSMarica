@@ -942,6 +942,8 @@ public static class DependencyInjection
         services.AddScoped<Exames.IExamePacsImagensReader, Exames.ExamePacsImagensReader>();
         services.AddScoped<Exames.IExameImagensPdfService, Exames.ExameImagensPdfService>();
         services.AddScoped<Exames.IExameCompletoPdfService, Exames.ExameCompletoPdfService>();
+        // Imagens que a médica retira do que vai ao paciente (soft delete só da entrega).
+        services.AddScoped<Exames.ImagensInvalidadas.IImagensInvalidadasService, Exames.ImagensInvalidadas.ImagensInvalidadasService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
         services.AddScoped<Integracoes.ElevenLabs.IElevenLabsConfigService, Integracoes.ElevenLabs.ElevenLabsConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();

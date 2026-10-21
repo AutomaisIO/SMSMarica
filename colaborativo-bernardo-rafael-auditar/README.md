@@ -17,3 +17,4 @@ como registro, a critério do Bernardo).
 | Item | Situação |
 |---|---|
 | [`2026-10-20-holter-mapa-satelite`](./2026-10-20-holter-mapa-satelite/README.md) | Aguardando auditoria |
+| [`2026-10-21-apaga-imagem-invalidada`](./2026-10-21-apaga-imagem-invalidada/README.md) | Aguardando auditoria — **código no branch `APAGA-IMAGEM-INVALIDADA`**, não em patch; falta gerar a migration |
