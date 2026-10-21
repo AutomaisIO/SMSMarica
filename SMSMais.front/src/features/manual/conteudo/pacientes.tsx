@@ -577,7 +577,8 @@ export const artigoPacientes: Artigo = {
               },
               {
                 termo: 'Imagens de exame',
-                descricao: 'Um PDF com as imagens de cada exame de imagem do paciente, montado pelo sistema.',
+                descricao:
+                  'Um PDF com as imagens de cada exame de imagem do paciente, montado pelo sistema — sem as imagens que quem lauda retirou no visualizador.',
               },
               {
                 termo: 'Anamnese',
