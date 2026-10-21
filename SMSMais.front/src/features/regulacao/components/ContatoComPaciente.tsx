@@ -9,19 +9,21 @@ import {
   CheckCheck,
   CheckCircle2,
   Clock3,
+  FileText,
   ShieldCheck,
   XCircle,
 } from 'lucide-react';
 
 import { rotuloCanal, rotuloFinalidade } from '@/features/mensageria/lib/rotulos';
 import { ChecksComunicacao } from '@/features/solicitacoes/components/ChecksComunicacao';
+import { VisualizadorArquivo } from '@/shared/acervo/VisualizadorArquivo';
 import { formatarInstante, formatarInstanteData } from '@/shared/lib/datas';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { formatarTelefoneBR } from '@/shared/ui/TelefoneCopiavel';
 
-import type { SistemaEspelho } from '../api/solicitacoesApi';
+import { caminhoGuiaAgendamento, type SistemaEspelho } from '../api/solicitacoesApi';
 import { useContatoPaciente, useContatoPacienteEspelho } from '../api/solicitacoesQueries';
-import type { ContatoPacienteRegulacao, MensagemAoPaciente } from '../tiposSolicitacao';
+import type { ContatoPacienteRegulacao, GuiaDoAgendamento, MensagemAoPaciente } from '../tiposSolicitacao';
 import { ROTULO_SISTEMA_REGULACAO } from '../types';
 
 /** O teto do servidor (`RegulacaoContatoPacienteService.MaxMensagens`). */
@@ -65,13 +67,29 @@ type Props = {
  */
 export function ContatoComPaciente({ solicitacaoId, artigoManual }: Props) {
   const q = useContatoPaciente(solicitacaoId);
-  return <Quadro carregando={q.isLoading} c={q.data} artigo={artigoManual} secao="contato-paciente" />;
+  return (
+    <Quadro
+      carregando={q.isLoading}
+      c={q.data}
+      artigo={artigoManual}
+      secao="contato-paciente"
+      caminhoGuia={caminhoGuiaAgendamento({ solicitacaoId })}
+    />
+  );
 }
 
 /** O mesmo quadro na tela de detalhe do pedido do SER, do SERNIT ou do ESUS (o espelho). */
 export function ContatoComPacienteEspelho({ sistema, espelhoId }: { sistema: SistemaEspelho; espelhoId: string }) {
   const q = useContatoPacienteEspelho(sistema, espelhoId);
-  return <Quadro carregando={q.isLoading} c={q.data} artigo="mensageria" secao="agendamentos-externos" />;
+  return (
+    <Quadro
+      carregando={q.isLoading}
+      c={q.data}
+      artigo="mensageria"
+      secao="agendamentos-externos"
+      caminhoGuia={caminhoGuiaAgendamento({ sistema, espelhoId })}
+    />
+  );
 }
 
 function Quadro({
@@ -79,11 +97,13 @@ function Quadro({
   c,
   artigo,
   secao,
+  caminhoGuia,
 }: {
   carregando: boolean;
   c: ContatoPacienteRegulacao | undefined;
   artigo: string;
   secao: string;
+  caminhoGuia: string;
 }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -99,6 +119,7 @@ function Quadro({
       ) : (
         <div className="space-y-3">
           <Agendamento c={c} />
+          {c.guia ? <Guia guia={c.guia} caminho={caminhoGuia} /> : null}
           <AvisoDoAgendamento c={c} />
           <Telefone confirmado={c.telefoneConfirmado} />
           <Mensagens mensagens={c.mensagens} />
@@ -137,6 +158,56 @@ function Agendamento({ c }: { c: ContatoPacienteRegulacao }) {
         Agendado no {ROTULO_SISTEMA_REGULACAO[a.sistema] ?? a.sistema} para <b>{quando}</b>
         {a.local ? <> — {a.local}</> : null}.
       </span>
+    </p>
+  );
+}
+
+/**
+ * A guia do agendamento (ADR-0076): o sincronismo a busca uma vez no SER/SERNIT/ESUS e guarda no
+ * acervo do paciente. Aqui só se abre — nada é emitido no sistema de destino por este botão.
+ */
+function Guia({ guia, caminho }: { guia: GuiaDoAgendamento; caminho: string }) {
+  const [vendo, setVendo] = useState(false);
+  const dia = guia.dataAgendamento.split('-').reverse().join('/');
+
+  if (guia.situacao === 'Obtida') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-slate-800">
+        <FileText className="size-4 shrink-0 text-primary-600" />
+        <span>Guia do agendamento de {dia} no cadastro do paciente.</span>
+        <button
+          type="button"
+          onClick={() => setVendo(true)}
+          className="rounded-md border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Ver guia
+        </button>
+        {vendo ? (
+          <VisualizadorArquivo
+            caminho={caminho}
+            titulo={`Guia do agendamento de ${dia}`}
+            nomeArquivo="guia.pdf"
+            aoFechar={() => setVendo(false)}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <p className="flex items-start gap-2 text-sm text-slate-600">
+      <FileText className="mt-0.5 size-4 shrink-0 text-slate-400" />
+      {guia.situacao === 'Falhou' ? (
+        <span>
+          Não foi possível trazer a guia do agendamento de {dia} ({guia.tentativas} tentativas).
+          {guia.ultimoErro ? <span className="text-slate-500"> {guia.ultimoErro}</span> : null}
+        </span>
+      ) : (
+        <span>
+          A guia do agendamento de {dia} ainda não veio do sistema de destino
+          {guia.proximaTentativaEm ? <> — nova tentativa {formatarInstante(guia.proximaTentativaEm)}</> : null}.
+        </span>
+      )}
     </p>
   );
 }

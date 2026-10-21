@@ -648,7 +648,8 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
         var acessor = new UsuarioAtualAccessorFake();
         var quadro = new SMSMais.Core.Regulacao.ContatoPaciente.RegulacaoContatoPacienteService(
             db, new SMSMais.Core.Regulacao.Comum.RegulacaoEscopo(db, acessor, Substitute.For<SMSMais.Core.Identidade.IIdentidadeService>()),
-            new SMSMais.Core.Solicitacoes.SolicitacaoHistoricoService(db, acessor), pacientes, Regras());
+            new SMSMais.Core.Solicitacoes.SolicitacaoHistoricoService(db, acessor), pacientes, Regras(),
+            Substitute.For<SMSMais.Core.GuiasAgendamento.IFilaGuiasService>());
 
         var dto = await quadro.ObterPorEspelhoAsync(SistemaRegulacao.Ser, ser.Id, CancellationToken.None);
 

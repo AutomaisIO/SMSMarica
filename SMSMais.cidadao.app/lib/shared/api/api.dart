@@ -252,6 +252,9 @@ abstract final class UrlsConteudo {
   static String anexo(String anexoId) => '/auth/paciente/anexos/$anexoId/conteudo';
   static String exameImagens(String solicitacaoId) => '/auth/paciente/exames/$solicitacaoId/imagens-pdf';
 
+  /// A guia do agendamento é um documento do acervo: mesma URL de Documentos, mesmo cache local.
+  static String guia(String documentoId) => '/auth/paciente/documentos/Documento/$documentoId/conteudo';
+
   /// Laudo, imagens e anexos da anamnese usam as MESMAS URLs da tela Exames (mesmos ids, mesmo
   /// arquivo): assim reaproveitam o que a sincronização já deixou no aparelho e não geram de novo
   /// o PDF de imagens, que é pesado. Só o documento do cadastro tem endpoint próprio.

@@ -653,7 +653,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'contato-paciente',
       titulo: 'Contato com o paciente: ele foi avisado?',
       busca:
-        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu motivo telefone confirmado sisreg ser sernit esus local outro pedido equipe avisou à mão conversas',
+        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu motivo telefone confirmado sisreg ser sernit esus local outro pedido equipe avisou à mão conversas guia ver guia',
       conteudo: (
         <>
           <P>
@@ -664,6 +664,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             <Item>
               <strong>O agendamento</strong> — a data e o local como o sistema de destino mostra (o SER e o
               SERNIT escrevem a data do jeito deles).
+            </Item>
+            <Item>
+              <strong>A guia do agendamento</strong> — buscada sozinha no sistema de destino e guardada no
+              cadastro do paciente; o botão <BotaoRef variante="outline">Ver guia</BotaoRef> abre o PDF. Enquanto
+              não veio, a linha diz que está na fila (artigo <strong>Guias dos agendamentos</strong>).
             </Item>
             <Item>
               <strong>O aviso automático</strong> — do SISREG, do SER, do SERNIT e do ESUS. Aparece com os

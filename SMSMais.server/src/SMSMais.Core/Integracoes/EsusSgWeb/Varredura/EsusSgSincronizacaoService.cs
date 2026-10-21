@@ -596,6 +596,7 @@ public sealed class EsusSgSincronizacaoService(
         a.Local = Truncar(l.Local, 200);
         a.DataAgendada = l.DataAgendada;
         a.DataHoraAgendadaTexto = Truncar(l.DataHoraAgendadaTexto, 40);
+        a.AgendamentoIdEsus = Truncar(l.AgendamentoIdEsus, 20);
         a.UsuarioAgendamento = Truncar(l.UsuarioAgendamento, 200);
         a.AgendamentoCadastradoEm = l.AgendamentoCadastradoEm;
         a.DataSaidaFila = l.DataSaidaFila;
@@ -614,6 +615,7 @@ public sealed class EsusSgSincronizacaoService(
         a.Local = null;
         a.DataAgendada = null;
         a.DataHoraAgendadaTexto = null;
+        a.AgendamentoIdEsus = null;
         a.UsuarioAgendamento = null;
         a.AgendamentoCadastradoEm = null;
         a.DataSaidaFila = null;

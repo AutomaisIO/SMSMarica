@@ -15,6 +15,7 @@ using SMSMais.Core.Pacientes.Agendamentos;
 using SMSMais.Core.Pacientes.Agendamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMais.Core.Cidadao;
 
@@ -265,6 +266,41 @@ public sealed class CidadaoClinicoService(
                     s.ExameImagem != null && s.ExameImagem.TipoExame != null ? s.ExameImagem.TipoExame.Nome : null))
                 .ToDictionaryAsync(s => s.Id, cancellationToken);
 
+        // A guia que a fila trouxe para o agendamento (ADR-0076). SER, SERNIT e ESUS: o id da linha da
+        // agenda é o da linha do espelho, o OrigemId do agendamento externo vigente. SISREG: o id é o
+        // da solicitação, e a guia é a da data em que ela está agendada.
+        var idsEspelho = agenda
+            .Where(a => a.Item.Origem != OrigemAgendamentoPaciente.Sisreg)
+            .Select(a => a.Item.Id)
+            .ToList();
+        var guias = idsEspelho.Count == 0
+            ? []
+            : await (
+                from a in db.AgendamentosExternos.AsNoTracking()
+                join g in db.GuiasAgendamento.AsNoTracking() on a.Id equals g.AgendamentoExternoId
+                where idsEspelho.Contains(a.OrigemId)
+                    && a.PacienteId == pacienteId
+                    && a.Situacao == SituacaoAgendamentoExterno.Ativo
+                    && g.Situacao == SituacaoGuiaAgendamento.Obtida
+                    && g.DocumentoPacienteId != null
+                select new { a.OrigemId, Documento = g.DocumentoPacienteId!.Value })
+                .ToDictionaryAsync(x => x.OrigemId, x => x.Documento, cancellationToken);
+        if (idsSisreg.Count > 0)
+        {
+            var guiasSisreg = await db.GuiasAgendamento.AsNoTracking()
+                .Where(g => g.SolicitacaoId != null && idsSisreg.Contains(g.SolicitacaoId.Value)
+                            && g.PacienteId == pacienteId
+                            && g.Situacao == SituacaoGuiaAgendamento.Obtida && g.DocumentoPacienteId != null)
+                .Select(g => new { SolicitacaoId = g.SolicitacaoId!.Value, g.DataAtendimento, Documento = g.DocumentoPacienteId!.Value })
+                .ToListAsync(cancellationToken);
+            foreach (var (item, _) in agenda.Where(a => a.Item.Origem == OrigemAgendamentoPaciente.Sisreg && a.Item.DataHora is not null))
+            {
+                var dia = DateOnly.FromDateTime(item.DataHora!.Value);
+                var guia = guiasSisreg.FirstOrDefault(g => g.SolicitacaoId == item.Id && g.DataAtendimento == dia);
+                if (guia is not null) guias[item.Id] = guia.Documento;
+            }
+        }
+
         var linhas = new List<(AgendamentoResumoDto Dto, MomentoAgendamentoPaciente Momento, DateOnly? Pedido)>();
         foreach (var (item, momentoDaFonte) in agenda)
         {
@@ -319,7 +355,10 @@ public sealed class CidadaoClinicoService(
                 Origem: AgendamentosPacienteService.DescreverRegulacaoParaPaciente(item.Origem),
                 NaFila: naFila,
                 Momento: momento.ToString(),
-                TemHora: item.TemHora), momento, item.DataSolicitacao));
+                TemHora: item.TemHora,
+                // Só no próximo: o passado continua em Documentos.
+                GuiaDocumentoId: momento == MomentoAgendamentoPaciente.Proximo
+                    && guias.TryGetValue(item.Id, out var guia) ? guia : null), momento, item.DataSolicitacao));
         }
 
         // Próximos (o mais perto primeiro) → na fila (quem pediu antes primeiro) → passados (o mais

@@ -155,6 +155,7 @@ Por isso a leitura passou a ser **sempre por arquivo**, nas duas telas.
 | Situação | Itens |
 |---|---|
 | Em fila | Visualizar, Editar, **Histórico**, Cancelar, Registrar FollowUP |
+| **Agendada** | Visualizar, **Emitir CHAVE DE AUTORIZAÇÃO DO AGENDAMENTO - Nª via** (a guia, §13), **Histórico**, Registrar FollowUP |
 | Cancelada | Visualizar, **Histórico**, Registrar FollowUP |
 | **Alta** | **nenhuma ação — não tem Histórico** |
 
@@ -580,3 +581,45 @@ da home são `oncologia`, `neonatal` e `ostomizados`. Telas úteis:
 
 Armadilha de laboratório: no Git Bash, `/ser/pages/...` passado como argumento vira caminho do
 Windows e o balanceador responde **503 "No server is available"** — usar `MSYS_NO_PATHCONV=1`.
+
+## 13. A guia do agendamento — "Chave de Autorização" (sondado 21/10/2026)
+
+Solicitação **Agendada** tem a guia que o paciente leva à unidade executante. No SER ela se chama
+**"AUTORIZAÇÃO DE CONSULTA/EXAME RESUMIDA"** e sai pelo menu *Opções* da linha, no item
+**"Emitir CHAVE DE AUTORIZAÇÃO DO AGENDAMENTO - Nª via"**. Laboratório: `Automais.SER/probe_guia.py`.
+
+**Achar a solicitação.** Tela de Solicitação (§4), Situação `AGENDADA` + `form0:idSolicitacao`, ou,
+para pegar agendamentos futuros, o par **Data da Consulta/Exame**
+(`form0:dt{Inicial,Final}ConsultaExameInputDate`). Cuidado com o vizinho: **Data de Agendamento da
+Regulação** (`…AgendamentoInputDate`) é o dia em que o regulador agendou, não o dia do atendimento —
+filtrar o futuro por ele volta zero.
+
+**Baixar.** O item é `jsfcljs` (Mojarra): **POST comum do `form0`, sem `AJAXREQUEST`**, no `action`
+do form, com os campos do form + `form0:listagem:<i>:j_idNN=<o mesmo id>` (lido do `onclick` do
+item, nunca fixo; `<i>` é a linha na página corrente) e o ViewState da página de resultado. A
+resposta é o PDF direto: `application/pdf`,
+`attachment; filename="relatorioAutorizacaoConsultaExameResumido.pdf"`, 1 página, ~35 KB.
+
+**O que a guia traz:** unidade solicitante + CNES, tipo/recurso, unidade executante (endereço,
+CNES, telefone), **data/hora do atendimento**, **chave de autorização** (6 caracteres
+alfanuméricos), profissional executante, observação da unidade (orientações ao paciente), dados do
+paciente (nome, CNS, nascimento, sexo, mãe, telefone — CPF mascarado), médico solicitante e
+especialidade, recurso solicitado × agendado, login do autorizador, data da autorização e Nº da
+solicitação. No rodapé: **"Nª via"** à esquerda e a data/hora da emissão à direita.
+
+**A via é um contador do SER, e emitir conta.** O número no rótulo do menu é o da **próxima** via:
+o menu dizia "2ª via", o PDF saiu "2ª via" e, relida a linha, o menu passou a "3ª via". Daí:
+
+- **ler quantas vias já saíram não custa emissão** — basta o rótulo do menu (N − 1 já emitidas);
+- **baixar a guia gasta uma via** e ela fica contada no SER para sempre. Não emitir em lote nem
+  "para testar";
+- a emissão **não entra no Histórico da Solicitação** (a trilha seguiu só com Solicitar/Cancelar/
+  Agendar) — o contador é o único rastro visível.
+
+Na solicitação sondada (agendada em 19/10 pela central) o rótulo já dizia "2ª" antes do nosso
+primeiro clique: a 1ª via saiu antes, por alguém — provavelmente na hora do agendamento, **não
+confirmado** (a trilha não mostra).
+
+**No SERNIT é igual, com um item a mais** — *Emitir Autorização Completa*, que **não** conta via e
+traz CID, avaliação clínica e endereço do paciente, mas não a chave nem o preparo
+(`Automais.SERNIT/docs/APRENDIZADOS.md §10`).

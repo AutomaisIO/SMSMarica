@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0076 — Guia de todo agendamento regulado, numa fila por sistema, guardada uma vez no acervo do paciente</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0076 — Guia de todo agendamento regulado, numa fila por sistema, guardada uma vez no acervo do paciente</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-21 <strong>Relacionado:</strong> <a href="./0072-aviso-agendamentos-ser-sernit-esus.md">ADR-0072</a> (<code>agendamento_externo</code>) · <a href="./0066-acervo-do-paciente-e-midia-do-whatsapp.md">ADR-0066</a> (acervo do paciente) · <a href="./0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> (SER) · <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a> (ESUS de São Gonçalo, espelho só leitura)</p>
+<h2>Contexto</h2>
+<p>Quem é agendado pelo SISREG, pelo SER, pelo SERNIT ou pelo ESUS de São Gonçalo precisa levar a guia ao local do atendimento. Ela só existia no sistema de destino: alguém da equipe entrava, emitia e imprimia.</p>
+<p>Sondado em produção em 21/10/2026 (laboratórios <code>Automais.SER/probe_guia.py</code>, <code>Automais.SERNIT/probe_guia.py</code>, <code>Automais.esus_saocongalo/probe_comprovante.py</code>; protocolo em <code>docs/ser.md §13</code>, <code>Automais.SERNIT/docs/APRENDIZADOS.md §10</code>, <code>Automais.esus_saocongalo/docs/APRENDIZADOS.md §5.4</code>):</p>
+<div class="tw"><table><thead><tr><th></th><th>Como sai</th><th>Efeito no sistema de destino</th></tr></thead><tbody>
+<tr><td><strong>SER</strong></td><td>Menu da linha <em>Emitir CHAVE DE AUTORIZAÇÃO DO AGENDAMENTO - Nª via</em> → POST comum do <code>form0</code> → <strong>PDF</strong> "Autorização de Consulta/Exame Resumida"</td><td><strong>gasta uma via</strong> (o rótulo passa de 2ª a 3ª); não entra na trilha</td></tr>
+<tr><td><strong>SERNIT</strong></td><td>O mesmo item → mesmo PDF. Há também <em>Emitir Autorização Completa</em>, que não conta via, mas não traz a chave nem o preparo e traz CID</td><td><strong>gasta uma via</strong>; não entra na trilha</td></tr>
+<tr><td><strong>ESUS SG</strong></td><td><code>obter-comprovante-exame-agendamento-em-lote-com-preparo-subprocedimentos</code> devolve <strong>JSON</strong>; o front deles monta um cupom no navegador</td><td>nenhum — o "impresso = SIM" é outra chamada (<code>cadastrar-comprovante-impressao-lote</code>), que <strong>não</strong> fazemos</td></tr>
+<tr><td><strong>SISREG</strong></td><td>O "Imprimir" da ficha (<code>cons_marcados_reg</code> EXIBIR_FICHA, ou <code>gerenciador_solicitacao</code> VISUALIZAR_FICHA) imprime no navegador a <code>div.fichaAmbulatorial</code> da mesma página onde se lê a chave de confirmação</td><td>nenhum; custa 1–2 requisições do orçamento anti-robô</td></tr>
+</tbody></table></div>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Uma tabela que é a fila: <code>guia_agendamento</code>.</strong> Uma linha por agendamento, criada **vazia, sem</li>
+</ol>
+<p>   arquivo**, assim que o agendamento aparece; "quantas faltam" é contar as pendentes. Âncora por    sistema, exatamente uma (CHECK): <code>agendamento_externo_id</code> no SER/SERNIT/ESUS (o agendamento já é    pedido × data, ADR-0072) ou <code>solicitacao_id</code> + <code>data_atendimento</code> no SISREG (a remarcação muda a    data da mesma solicitação). Situação <code>Pendente</code> → <code>Obtida</code> | <code>Falhou</code> (5 tentativas, espera    crescente) | <code>Descartada</code> (o agendamento deixou de valer, ou o atendimento passou, antes de a guia    vir — no SER/SERNIT isso evita gastar via à toa).</p>
+<ol>
+<li><strong>Um arquivo só, no acervo do paciente.</strong> O PDF entra em <code>documento_paciente</code> com a origem</li>
+</ol>
+<p>   <code>GuiaAgendamento</code> (5), já aceito. A tela do pedido (quadro <em>Contato com o paciente</em>), o cartão do    agendamento no app e a lista de documentos (painel e app) apontam para o mesmo documento. A equipe    <strong>não edita nem exclui</strong> a guia.</p>
+<ol>
+<li><strong>Ritmo por sistema, configurável e no mesmo formato para os quatro</strong> (<code>guia_fila_configuracao</code>, uma</li>
+</ol>
+<p>   linha por sistema): ligada, <strong>guias por hora</strong>, <strong>janela do dia</strong> (Brasília; início = fim é o dia    inteiro; janela que vira o dia vale) e uma <strong>pausa</strong> (<code>pausada_ate</code> + motivo) que o próprio sistema    aciona. O mesmo quadro aparece na tela de configuração de cada sistema (SISREG, SER, SERNIT, ESUS),    com quantas faltam, quantas vieram hoje, quantas falharam e, se a fila não anda, <strong>por quê</strong>.    Padrão: o dia inteiro; 60/h no SER/SERNIT/ESUS, 30/h no SISREG. Salvar tira a pausa.    - Mora em tabela própria, e não no <code>ParametrosJson</code> da credencial de cada provedor: aquele JSON é      regravado inteiro ao salvar a credencial (achado em 21/10/2026 — salvar a credencial do SER/SERNIT      apaga <code>varreduraAtiva</code>/<code>varreduraHoraLocal</code>; o cartão do SISREG apaga fila/escalas/lote/indicadores).</p>
+<ol>
+<li><strong>Um processo, uma linha por sistema</strong> (<code>FilaGuiasScheduler</code>): uma linha enfileira a cada 10 min (só</li>
+</ol>
+<p>   banco) e cada sistema busca uma guia por vez, esperando <code>3600 / guias por hora</code> entre uma e outra —    o SISREG devagar não segura o SER. Sistema novo é mais um <code>IBaixadorGuia</code> registrado. Antes de cada    busca vale a mesma régua que a tela mostra: desligada, pausada, fora da janela, ou o <strong>impedimento</strong>    do baixador — a varredura do sistema rodando (sessão única no SER/SERNIT/ESUS); no SISREG, a    chave-mestra do sincronismo automático desligada, outro motor do SISREG vivo ou o orçamento automático    com menos de 40 de folga.</p>
+<ol>
+<li><strong>Uma vez, sem contar vias.</strong> A busca é idempotente pelo acervo (`origem_referencia =</li>
+</ol>
+<p>   guia-agendamento:{id}`): se a emissão deu certo e a marcação da linha falhou, a próxima vez <strong>liga</strong> o    documento existente em vez de emitir de novo. O número da via impresso na guia é o que o sistema deu.</p>
+<ol>
+<li><strong>Por sistema:</strong></li>
+</ol>
+<ul>
+<li><strong>SER e SERNIT:</strong> o PDF da chave de autorização, como o sistema entrega, pela porta de escrita</li>
+</ul>
+<p>     nomeada da sessão (gasta via). A "Autorização Completa" do SERNIT fica de fora.    - <strong>ESUS SG:</strong> só leitura, por uma porta nomeada da sessão — a trava geral continua recusando      "comprovante". O PDF é montado aqui (QuestPDF) com os campos do cupom e diz que foi montado a partir      do ESUS. O <code>eap_id</code> do agendamento passa a ser guardado no espelho (<code>esussg_solicitacao.agendamento_id_esus</code>).    - <strong>SISREG:</strong> a ficha, lida pelo <strong>mesmo comando da chave de confirmação</strong> (<code>LerFichaAsync</code>, que      também guarda a chave se ela ainda não estava), vira PDF aqui com as seções da tela e a chave em      destaque. Auditoria própria (<code>FichaSisregLidaParaGuia</code>). A credencial é a dedicada do sincronismo;      <strong>CAPTCHA pausa a fila do SISREG por 24 horas</strong> (o CAPTCHA é do usuário, não da guia).</p>
+<ol>
+<li><strong>A guia vai com a chave, e o paciente a vê no app antes do dia</strong> (decisão do dono, 21/10/2026). A</li>
+</ol>
+<p>   regra "chave só no dia do atendimento" do botão <em>Visualizar chave de acesso</em> do app continua valendo    para aquele botão; a guia, que é o papel que o paciente receberia no balcão, não segue essa regra.</p>
+<h2>Consequências</h2>
+<ul>
+<li>O primeiro deploy enfileira a guia de todos os agendamentos futuros (cerca de 165 do SER/SERNIT/ESUS em</li>
+</ul>
+<p>  10/10/2026, mais os do SISREG). Cada uma do SER e do SERNIT gasta uma via lá; aceito pelo dono.</p>
+<ul>
+<li>Quando a unidade imprimir no balcão depois disso, sai a via seguinte: o contador do SER/SERNIT deixa de</li>
+</ul>
+<p>  dizer quantas vezes o paciente pediu cópia.</p>
+<ul>
+<li>O SISREG ganha um consumidor a mais do orçamento anti-robô — o menos urgente, que cede a todos.</li>
+<li>Banco: tabelas <code>guia_agendamento</code> e <code>guia_fila_configuracao</code>; coluna <code>esussg_solicitacao.agendamento_id_esus</code>;</li>
+</ul>
+<p>  valor novo no enum persistido <code>OrigemDocumentoPaciente</code>.</p>
+<ul>
+<li>Desligável inteiro por configuração do servidor (<code>GuiasAgendamento:Habilitado=false</code>).</li>
+</ul>
+</main>
+</body>
+</html>

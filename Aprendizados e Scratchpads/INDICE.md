@@ -163,6 +163,13 @@ credencial funcionam** — é a base da pré-carga paralela)
 **Outras:** `probe_historico.py`, `probe_historico_por_id.py`, `probe_solicitante.py`,
 `probe_export_solicitacao.py`, `probe_ambulatorio_estadual.py`, `probe_sisreg_detalhe.py`
 
+**Guia do agendamento (21/10/2026):** `probe_guia.py` — passos `menu` (sorteia uma AGENDADA com
+atendimento futuro e lista o menu Opções, sem clicar), `guia` (baixa o PDF "Autorização de
+Consulta/Exame Resumida" pelo item *Emitir CHAVE DE AUTORIZAÇÃO DO AGENDAMENTO - Nª via*) e
+`historico`. Respondeu: é POST comum do `form0` que devolve o PDF direto; **cada emissão gasta uma
+via** (o menu mostra a próxima: 2ª → 3ª) e **não entra na trilha**. Ler a via pelo rótulo não
+emite. `--saida` fora do repo (PDF com dado de paciente). `docs/ser.md §13`.
+
 **Pesquisa da fila por CPF (09/10/2026, só leitura):** `probe_pesquisa_cpf.py <cpf> <cns> <id>` —
 compara `form0:cpf` só dígitos × com máscara × CNS × ID. Respondeu: **CPF só dígitos devolve 0
 linhas sem erro**; com a máscara `999.999.999-99` (como o navegador manda), pelo CNS e pelo ID acha.
@@ -199,7 +206,10 @@ situação para conferir o espelho `sernit_solicitacao`; não rodar com a varred
 `probe_diag_varredura.py` (13, paginação × data final — levou ao achado da página 1 perdida, §9 do APRENDIZADOS) →
 `probe_medico_modal.py` (14, 09/10/2026, só leitura: aba Nova → combo "Médico responsável" filtrado por
 termos → clica `form0:addMedico` como o navegador e lê o modal. Respondeu: modal igual ao do SER —
-`txtNome`, tipo de documento com CRM, `txtDocumento`, especialidade; Gravar e ícone com `_viewRoot`)
+`txtNome`, tipo de documento com CRM, `txtDocumento`, especialidade; Gravar e ícone com `_viewRoot`) →
+`probe_guia.py` (15, 21/10/2026: guias de uma AGENDADA — *Chave de Autorização* conta via (2ª → 3ª) e
+*Autorização Completa* não; PDF direto por POST comum, também com `X-Requested-With`; emissão não entra
+na trilha. §10 do APRENDIZADOS)
 
 **Diagnóstico:** `probe_diag_editar.py`, `probe_diag_xrw.py` (o `X-Requested-With` num submit
 não-ajax faz o A4J devolver a tela errada), `probe_busca_id.py`, `probe_carry.py`, `probe_fix.py`,
@@ -226,6 +236,7 @@ paginar: o total conta únicos, o offset conta linhas brutas); mapa de endpoints
 | `probe_agendados.py` | quando/onde vão ser atendidos? 2019 inteiro: **1.352 agendamentos em 1.289 pedidos** (um pedido tem várias sessões); o SG quase não notifica (4 de 64 num período) |
 | `catalogar_endpoints.py` | o que o front sabe chamar? 736 ações do legado, 312 queries, 108 mutations — regex com barra **opcional** (sem ela achava só 164) |
 | `probe_historico_paciente.py` | o ESUS sabe se o paciente **compareceu**? **Sim** (01/10/2026): o detalhe do exame no histórico do paciente traz `efl_id_exames_efetivacao` 2 = EFETIVADO / 3 = NÃO EFETIVADO (`motivo_nao_efetivacao` "Não Compareceu") / 1 = EM ABERTO, com `data_efetivacao`. 1 req por paciente + 1 por exame. A lista de agendados NÃO traz |
+| `probe_comprovante.py` | como sai a **guia** (comprovante de agendamento de exame)? (21/10/2026) O front chama `cadastrar-comprovante-impressao-lote` (**escrita**: Impresso=SIM) e depois `obter-comprovante-exame-agendamento-em-lote-com-preparo-subprocedimentos` `{ids:[eap_id]}`, que devolve JSON; o cupom HTML de 7 cm é montado **no navegador** (sem PDF do servidor). **Não há via nem contador**, só o booleano `comprovanteImpresso`; o `obter` sozinho não o muda. A sonda chama só o `obter` (porta própria) e imprime em PDF pelo Chrome headless. `--saida` fora do repo |
 
 ---
 

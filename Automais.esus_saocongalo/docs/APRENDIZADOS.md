@@ -147,6 +147,9 @@ Payloads exatos em `esus/telas.py`. Todas no legado (`:9001`), `POST {"arrFormDa
    O catálogo que só procurava `"/…"` achou 164 ações; com a barra opcional, **736**.
 8. **`obter-comprovante-*` não é leitura inocente.** A tela de agendados filtra por
    "comprovante impresso" — gerar o comprovante pode carimbar esse flag no SG. A trava recusa.
+   *Medido em 21/10/2026 (§5.3):* quem carimba é `cadastrar-comprovante-impressao-lote`, que o front
+   chama ANTES; o `obter-…-com-preparo-subprocedimentos` sozinho não mudou o flag. A trava continua
+   recusando os dois (a sonda tem porta própria para o `obter`).
 
 ### 5.1 Medido depois (30/09/2026, tarde) — muda como se pagina e se modela
 
@@ -212,6 +215,44 @@ casamento é pela data do agendamento + o `fil_id` que a TRILHA traz (às vezes 
     **Regra:** cancelamento só é desligamento quando o token do serviço foi cancelado. Tempo
     esgotado é erro, e a rodada diária é refeita uma hora depois, até 4 vezes no dia.
 
+### 5.4 O comprovante de agendamento de exame — a "guia" do ESUS (21/10/2026)
+
+O equivalente à "Chave de Autorização" do SER (`../../docs/ser.md §13`). `probe_comprovante.py`.
+
+**O que o front faz** (tela Exame → Regulação → Agendados pela Fila, ícone Imprimir da linha —
+`ExamSearchPatientSchedule.actScheduleVoucherHTML` no bundle 2.8.4), nesta ordem:
+
+1. `POST :9001/exames2/controller-exame-agendamento-procedimento/cadastrar-comprovante-impressao-lote`
+   `{"arrEap_id": [eap_id]}` — **escrita**: é o que põe "Impresso = SIM" na linha.
+2. `POST :9001/exames2/controller-exame-agendamento-procedimento/obter-comprovante-exame-agendamento-em-lote-com-preparo-subprocedimentos`
+   `{"ids": [eap_id]}` (sem `arrFormData`) — devolve `dados = [ {…} ]`.
+3. O front junta `{...dados[0], ...linhaDaGrade}`, monta **no navegador** um cupom HTML de 7 cm
+   (impressora térmica) e manda imprimir; depois refaz a busca da grade.
+
+**Não existe PDF do servidor** — o comprovante é HTML montado pelo front a partir do JSON. A sonda
+porta o template (`X2a` no bundle) e imprime em PDF pelo Chrome headless, como o operador faria.
+Variantes no bundle que nenhuma tela chama: `obter-comprovante-exame-agendamento-html`/`-normal`/
+`-em-lote` (actions `GET_PRINT_SCHEDULE_THERMAL/NORMAL/BATCH`).
+
+**O que o comprovante traz:** município (`cli_nome`), unidade executante com CNES no nome, endereço,
+"Comparecer ao exame" + data/hora, paciente, nome social, prontuário, prontuário único, CNS, setor,
+local, procedimento, subprocedimentos, profissional executante e ocupação, observação da unidade,
+data/hora da marcação e quem marcou (`usu_nome`), "Paciente agendado pela fila", profissional
+regulador (veio vazio), **senha de efetivação** (`eap_senha_efetivacao` — veio vazia no caso medido)
+e a recomendação de preparo.
+
+**Não há via nem contador.** O único estado é o booleano **`comprovanteImpresso` (SIM/NÃO)** da linha
+(filtro `fil_comprovante_impresso` na busca: 2 = todos). Os botões "Impressora Térmica 1 via / 2
+vias" do bundle são **número de cópias** na hora de imprimir, não contador de reemissão.
+
+**Medido:** um agendamento de retina de 13/10/2026, Impresso = NÃO → chamado só o passo
+2 → relida a grade, **continuou NÃO**. O `obter` é leitura; o flag sai só do passo 1.
+
+**Não havia agendamento futuro** de Maricá no SG em 21/10/2026: 327 agendamentos de exame em 2026,
+o último em **19/10/2026**; de 22/10 em diante, zero. (Em 30/09 o "64 no período 31/08–29/11" era a
+janela da busca, não datas de atendimento.) O período da busca de agendados é a **data do
+atendimento** (`data_agendada` = `eha_data_exame`), confirmado de novo. Flag em 2026: 324 SIM, 3 NÃO.
+
 ## 6. Trava de somente-leitura
 
 Três portas, três regras (código em `esus/client.py`):
@@ -237,6 +278,7 @@ Três portas, três regras (código em `esus/client.py`):
 | `probe_agendados.py` | sonda 2 — agendados pela fila (`--de/--ate`, `--consulta`); agendamentos únicos = declarado, e quantos pedidos; agregados + lista em `capturas/` |
 | `catalogar_endpoints.py` | lê o bundle público e gera `docs/ENDPOINTS.md` (736 ações do legado, REST, 312 queries, 108 mutations); `--filtro <regex>` para procurar |
 | `probe_historico_paciente.py` | sonda 3 — comparecimento pelo histórico do paciente (§5.2); `--pes <json>` com `[{pes_id, unidade, data}]`, senão amostra da captura de 2019 |
+| `probe_comprovante.py` | sonda 4 — comprovante de agendamento de exame (§5.3): sem `--baixar` sorteia e mostra o flag; `--baixar` faz só o `obter` (porta própria, nunca o `cadastrar-comprovante-impressao`), monta o cupom, imprime em PDF pelo Chrome e relê o flag. `--saida` obrigatório (PII) |
 
 As listas nominais (nome, CPF, CNS, telefone) vão para `capturas/` (gitignored) ou para `--saida`
 fora da árvore — **nunca** para o repositório.

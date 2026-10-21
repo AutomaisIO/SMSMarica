@@ -48,6 +48,7 @@ internal sealed class EsusSgSolicitacaoConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.Local).HasColumnName("local").HasMaxLength(200);
         builder.Property(x => x.DataAgendada).HasColumnName("data_agendada");
         builder.Property(x => x.DataHoraAgendadaTexto).HasColumnName("data_hora_agendada_texto").HasMaxLength(40);
+        builder.Property(x => x.AgendamentoIdEsus).HasColumnName("agendamento_id_esus").HasMaxLength(20);
         builder.Property(x => x.UsuarioAgendamento).HasColumnName("usuario_agendamento").HasMaxLength(200);
         builder.Property(x => x.AgendamentoCadastradoEm).HasColumnName("agendamento_cadastrado_em");
         builder.Property(x => x.DataSaidaFila).HasColumnName("data_saida_fila");

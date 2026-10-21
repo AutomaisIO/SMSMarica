@@ -547,7 +547,7 @@ export const artigoPacientes: Artigo = {
       id: 'exames-anexados',
       titulo: 'A aba Exames anexados: o que fica guardado do paciente',
       busca:
-        'exames anexados documentos acervo laudo assinado imagens do exame pdf das imagens anamnese origem cadastro solicitação whatsapp enviado pelo paciente filtro todos documentos laudos imagens de exame visualizar abrir zoom baixar',
+        'exames anexados documentos acervo laudo assinado imagens do exame pdf das imagens anamnese origem cadastro solicitação whatsapp enviado pelo paciente guia do agendamento filtro todos documentos laudos imagens de exame visualizar abrir zoom baixar',
       conteudo: (
         <>
           <P>
@@ -564,7 +564,9 @@ export const artigoPacientes: Artigo = {
                     Arquivos anexados por alguém. A linha diz a origem: <strong>Cadastro</strong>{' '}
                     (anexado aqui mesmo), <strong>Solicitação</strong> (anexado num pedido de
                     regulação), <strong>WhatsApp</strong> (o paciente mandou na conversa e alguém da
-                    equipe guardou) ou <strong>Enviado pelo paciente</strong> (pelo app do cidadão).
+                    equipe guardou) ou <strong>Enviado pelo paciente</strong> (pelo app do cidadão). A{' '}
+                    <strong>Guia do agendamento</strong> vem sozinha do SISREG, do SER, do SERNIT ou do ESUS
+                    e não se edita nem se exclui — o pedido e o app apontam para ela.
                   </>
                 ),
               },

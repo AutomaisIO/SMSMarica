@@ -15,6 +15,7 @@ using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.EsusSg;
+using SMSMais.Data.Entities.Notificacoes;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
@@ -205,6 +206,52 @@ public class AgendaDoPacienteTests(PostgresFixture fixture)
 
         // Filtro de consulta não traz exame.
         Assert.Empty(await Servico(leitura).ListarAgendamentosAsync(paciente, "consulta"));
+    }
+
+    [Fact]
+    public async Task Cartao_do_proximo_agendamento_do_SER_traz_a_guia_do_acervo()
+    {
+        var paciente = Guid.NewGuid();
+        var futuro = FusoBrasilia.HojeEmBrasilia().AddDays(15);
+        var agora = DateTime.UtcNow;
+        var espelho = new SerSolicitacao
+        {
+            Id = Guid.NewGuid(), IdSer = N(), Tipo = TipoRecursoSer.Exame, Recurso = "RESSONANCIA MAGNETICA",
+            PacienteNome = "PACIENTE TESTE", PacienteId = paciente, Situacao = SituacaoSer.Agendada,
+            AgendadoParaTexto = $"{futuro:dd/MM/yyyy} 07:00 - HOSPITAL X", SincronizadoEm = agora, CriadoEm = agora,
+        };
+        var documento = new DocumentoPaciente
+        {
+            Id = Guid.CreateVersion7(), PacienteId = paciente, Titulo = "Guia", NomeArquivo = "guia.pdf",
+            MimeType = "application/pdf", TamanhoBytes = 10, HashSha256 = new string('a', 64),
+            ChaveArmazenamento = "teste/guia.pdf", Origem = OrigemDocumentoPaciente.GuiaAgendamento,
+            Situacao = SituacaoDocumentoPaciente.Aceito, CriadoEm = agora,
+        };
+        var agendamento = new AgendamentoExterno
+        {
+            Id = Guid.CreateVersion7(), Sistema = SistemaRegulacao.Ser, OrigemId = espelho.Id, NumeroExterno = espelho.IdSer,
+            PacienteId = paciente, Tipo = TipoAgendamento.Exame, Procedimento = espelho.Recurso, Data = futuro,
+            Situacao = SituacaoAgendamentoExterno.Ativo, CriadoEm = agora,
+        };
+        await using (var db = fixture.CriarDbContext())
+        {
+            db.SerSolicitacoes.Add(espelho);
+            db.DocumentosPaciente.Add(documento);
+            db.AgendamentosExternos.Add(agendamento);
+            db.GuiasAgendamento.Add(new GuiaAgendamento
+            {
+                Id = Guid.CreateVersion7(), Sistema = SistemaRegulacao.Ser, AgendamentoExternoId = agendamento.Id,
+                PacienteId = paciente, DataAtendimento = futuro,
+                Situacao = SituacaoGuiaAgendamento.Obtida, DocumentoPacienteId = documento.Id, CriadoEm = agora,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await using var leitura = fixture.CriarDbContext();
+        var cartao = Assert.Single(await Servico(leitura).ListarAgendamentosAsync(paciente, null));
+
+        Assert.Equal("Proximo", cartao.Momento);
+        Assert.Equal(documento.Id, cartao.GuiaDocumentoId);
     }
 
     private static CidadaoClinicoService Servico(SmsMaisDbContext db)

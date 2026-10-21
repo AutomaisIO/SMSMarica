@@ -14,6 +14,7 @@ import { artigoSerConfiguracao, artigoSernitConfiguracao } from '@/features/manu
 import { artigoExtensaoChrome } from '@/features/manual/conteudo/extensaoChrome';
 import { artigoExtensaoChromeGerenciar } from '@/features/manual/conteudo/extensaoChromeGerenciar';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
+import { artigoGuiasAgendamento } from '@/features/manual/conteudo/guiasAgendamento';
 import { artigoIndicadoresRegulacao } from '@/features/manual/conteudo/indicadoresRegulacao';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
@@ -110,6 +111,7 @@ export const ARTIGOS: Artigo[] = [
   artigoExtensaoChrome,
   artigoExtensaoChromeGerenciar,
   artigoFluxoAtendimentoWhatsApp,
+  artigoGuiasAgendamento,
   artigoEnvioMensagens,
   artigoEquipamentos,
   artigoIndicadoresRegulacao,

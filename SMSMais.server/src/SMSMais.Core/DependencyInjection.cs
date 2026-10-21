@@ -257,6 +257,16 @@ public static class DependencyInjection
             Notificacoes.AgendamentosExternos.AvisoRegulacaoConfiguracaoService>();
         services.AddScoped<Notificacoes.AgendamentosExternos.ILembreteAgendamentoExternoService,
             Notificacoes.AgendamentosExternos.LembreteAgendamentoExternoService>();
+
+        // Fila de guias dos agendamentos regulados (ADR-0076): enfileira vazia, um baixador por
+        // sistema, cada um no ritmo e na janela configurados; a guia fica UMA vez no acervo.
+        services.AddScoped<GuiasAgendamento.IFilaGuiasService, GuiasAgendamento.FilaGuiasService>();
+        services.AddScoped<GuiasAgendamento.IFilaGuiasConfiguracaoService, GuiasAgendamento.FilaGuiasConfiguracaoService>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaSer>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaSernit>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaEsusSg>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaSisreg>();
+        services.AddHostedService<GuiasAgendamento.FilaGuiasScheduler>();
         services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
             Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
         // Aba Equipe (produção por atendente, lida da trilha) — módulo ConfirmacoesEquipe.

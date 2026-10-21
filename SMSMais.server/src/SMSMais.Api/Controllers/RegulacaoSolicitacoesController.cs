@@ -71,6 +71,19 @@ public sealed class RegulacaoSolicitacoesController(
         Guid id, [FromServices] IRegulacaoContatoPacienteService contato, CancellationToken cancellationToken) =>
         contato.ObterAsync(id, cancellationToken);
 
+    /// <summary>A guia do agendamento no SER/SERNIT/ESUS (ADR-0076) — o mesmo PDF do acervo do
+    /// paciente. Mesmo escopo do detalhe. Só lê.</summary>
+    [HttpGet("{id:guid}/contato-paciente/guia")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GuiaDoAgendamento(
+        Guid id, [FromServices] IRegulacaoContatoPacienteService contato, CancellationToken cancellationToken)
+    {
+        var c = await contato.ObterGuiaAsync(id, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
     [HttpPost]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Inclusao)]
     [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]

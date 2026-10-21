@@ -41,6 +41,10 @@ public interface IEsusSgLeitorService
 
     /// <summary>Trilha de um exame — é onde está a efetivação (1 requisição).</summary>
     Task<IReadOnlyList<EsusSgEventoExame>> LerTrilhaExameAsync(long idExame, CancellationToken cancellationToken);
+
+    /// <summary>Dados do comprovante de um agendamento de exame (<c>eap_id</c>) — 1 requisição, só
+    /// leitura: NÃO marca "comprovante impresso" no ESUS (ADR-0076).</summary>
+    Task<EsusSgComprovanteExame> LerComprovanteExameAsync(string agendamentoIdEsus, CancellationToken cancellationToken);
 }
 
 public sealed class EsusSgLeitorService(IEsusSgSessao sessao, ILogger<EsusSgLeitorService> logger)
@@ -120,6 +124,18 @@ public sealed class EsusSgLeitorService(IEsusSgSessao sessao, ILogger<EsusSgLeit
             CaminhoHistoricoPaciente, FormHistorico(pessoaIdEsus, ate), cancellationToken);
         var (linhas, _) = LinhasETotal(dados, CaminhoHistoricoPaciente);
         return linhas.Select(EsusSgHistoricoExame.De).Where(h => h is not null).Select(h => h!).ToList();
+    }
+
+    public async Task<EsusSgComprovanteExame> LerComprovanteExameAsync(
+        string agendamentoIdEsus, CancellationToken cancellationToken)
+    {
+        var dados = await sessao.ObterComprovanteExameAsync(agendamentoIdEsus, cancellationToken);
+        if (dados.ValueKind != JsonValueKind.Array || dados.GetArrayLength() == 0)
+        {
+            throw new FormatException(
+                $"ESUS SG: o comprovante do agendamento {agendamentoIdEsus} veio vazio ({dados.ValueKind}).");
+        }
+        return EsusSgComprovanteExame.De(dados[0]);
     }
 
     public async Task<IReadOnlyList<EsusSgEventoExame>> LerTrilhaExameAsync(long idExame, CancellationToken cancellationToken)

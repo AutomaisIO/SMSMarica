@@ -423,6 +423,25 @@ export const artigoEsusSaoGoncalo: Artigo = {
       ),
     },
     {
+      id: 'guias',
+      titulo: 'Guias dos agendamentos',
+      busca: 'guias guia comprovante comprovante impresso fila guias por hora janela pausa',
+      conteudo: (
+        <>
+          <P>
+            Na aba de configuração, o quadro <strong>Guias dos agendamentos</strong> controla a fila que lê o
+            comprovante de cada agendamento do ESUS e o guarda como PDF no cadastro do paciente (o ESUS não tem
+            PDF: ele monta um cupom na hora de imprimir, e a plataforma monta o PDF com os mesmos dados). Liga e
+            desliga, quantas por hora e em que janela do dia; a fila espera a varredura do ESUS terminar.
+          </P>
+          <P>
+            A leitura <strong>não marca "comprovante impresso"</strong> no ESUS. Tudo sobre a guia no artigo{' '}
+            <strong>Guias dos agendamentos</strong>.
+          </P>
+        </>
+      ),
+    },
+    {
       id: 'parcial',
       titulo: 'Por que existe a rodada “Parcial”',
       busca: 'parcial concluída cobertura incompleta fatias incompletas lido declarado contagem não fechou fila não lida rodar de novo',

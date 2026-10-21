@@ -442,4 +442,18 @@ export type ContatoPacienteRegulacao = {
   contatos: HistoricoContato[];
   mensagens: MensagemAoPaciente[];
   telefoneConfirmado: string | null;
+  /** A guia do agendamento no SER/SERNIT/ESUS, buscada pelo sincronismo (ADR-0076). Nula no SISREG,
+   *  sem agendamento, ou antes da primeira busca. */
+  guia?: GuiaDoAgendamento | null;
+};
+
+/** Em que pé está a guia do agendamento vigente do pedido. */
+export type GuiaDoAgendamento = {
+  situacao: 'Pendente' | 'Obtida' | 'Falhou';
+  /** O dia do agendamento a que a guia pertence (`yyyy-MM-dd`). */
+  dataAgendamento: string;
+  obtidaEm: string | null;
+  tentativas: number;
+  ultimoErro: string | null;
+  proximaTentativaEm: string | null;
 };

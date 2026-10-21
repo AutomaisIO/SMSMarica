@@ -102,6 +102,7 @@ location: /ser/pages/principal.seam?cid=16273</code></pre>
 <h3>4.2 O menu <em>Opções</em> muda conforme a situação</h3>
 <div class="tw"><table><thead><tr><th>Situação</th><th>Itens</th></tr></thead><tbody>
 <tr><td>Em fila</td><td>Visualizar, Editar, <strong>Histórico</strong>, Cancelar, Registrar FollowUP</td></tr>
+<tr><td><strong>Agendada</strong></td><td>Visualizar, <strong>Emitir CHAVE DE AUTORIZAÇÃO DO AGENDAMENTO - Nª via</strong> (a guia, §13), <strong>Histórico</strong>, Registrar FollowUP</td></tr>
 <tr><td>Cancelada</td><td>Visualizar, <strong>Histórico</strong>, Registrar FollowUP</td></tr>
 <tr><td><strong>Alta</strong></td><td><strong>nenhuma ação — não tem Histórico</strong></td></tr>
 </tbody></table></div>
@@ -307,6 +308,23 @@ BERNARDO DOS SANTOS LEITE ALMEIDA · Gestor: GESTOR SMS MARICA · &lt;IP&gt;
 </ul>
 <p>  contrato, mas os combos vêm só com "-- TODOS --" e a pesquisa volta vazia: Maricá não é   contratante no SER.</p>
 <p>Armadilha de laboratório: no Git Bash, <code>/ser/pages/...</code> passado como argumento vira caminho do Windows e o balanceador responde <strong>503 "No server is available"</strong> — usar <code>MSYS_NO_PATHCONV=1</code>.</p>
+<h2>13. A guia do agendamento — "Chave de Autorização" (sondado 21/10/2026)</h2>
+<p>Solicitação <strong>Agendada</strong> tem a guia que o paciente leva à unidade executante. No SER ela se chama <strong>"AUTORIZAÇÃO DE CONSULTA/EXAME RESUMIDA"</strong> e sai pelo menu <em>Opções</em> da linha, no item <strong>"Emitir CHAVE DE AUTORIZAÇÃO DO AGENDAMENTO - Nª via"</strong>. Laboratório: <code>Automais.SER/probe_guia.py</code>.</p>
+<p><strong>Achar a solicitação.</strong> Tela de Solicitação (§4), Situação <code>AGENDADA</code> + <code>form0:idSolicitacao</code>, ou, para pegar agendamentos futuros, o par <strong>Data da Consulta/Exame</strong> (<code>form0:dt{Inicial,Final}ConsultaExameInputDate</code>). Cuidado com o vizinho: <strong>Data de Agendamento da Regulação</strong> (<code>…AgendamentoInputDate</code>) é o dia em que o regulador agendou, não o dia do atendimento — filtrar o futuro por ele volta zero.</p>
+<p><strong>Baixar.</strong> O item é <code>jsfcljs</code> (Mojarra): <strong>POST comum do <code>form0</code>, sem <code>AJAXREQUEST</code></strong>, no <code>action</code> do form, com os campos do form + <code>form0:listagem:&lt;i&gt;:j_idNN=&lt;o mesmo id&gt;</code> (lido do <code>onclick</code> do item, nunca fixo; <code>&lt;i&gt;</code> é a linha na página corrente) e o ViewState da página de resultado. A resposta é o PDF direto: <code>application/pdf</code>, <code>attachment; filename="relatorioAutorizacaoConsultaExameResumido.pdf"</code>, 1 página, ~35 KB.</p>
+<p><strong>O que a guia traz:</strong> unidade solicitante + CNES, tipo/recurso, unidade executante (endereço, CNES, telefone), <strong>data/hora do atendimento</strong>, <strong>chave de autorização</strong> (6 caracteres alfanuméricos), profissional executante, observação da unidade (orientações ao paciente), dados do paciente (nome, CNS, nascimento, sexo, mãe, telefone — CPF mascarado), médico solicitante e especialidade, recurso solicitado × agendado, login do autorizador, data da autorização e Nº da solicitação. No rodapé: <strong>"Nª via"</strong> à esquerda e a data/hora da emissão à direita.</p>
+<p><strong>A via é um contador do SER, e emitir conta.</strong> O número no rótulo do menu é o da <strong>próxima</strong> via: o menu dizia "2ª via", o PDF saiu "2ª via" e, relida a linha, o menu passou a "3ª via". Daí:</p>
+<ul>
+<li><strong>ler quantas vias já saíram não custa emissão</strong> — basta o rótulo do menu (N − 1 já emitidas);</li>
+<li><strong>baixar a guia gasta uma via</strong> e ela fica contada no SER para sempre. Não emitir em lote nem</li>
+</ul>
+<p>  "para testar";</p>
+<ul>
+<li>a emissão <strong>não entra no Histórico da Solicitação</strong> (a trilha seguiu só com Solicitar/Cancelar/</li>
+</ul>
+<p>  Agendar) — o contador é o único rastro visível.</p>
+<p>Na solicitação sondada (agendada em 19/10 pela central) o rótulo já dizia "2ª" antes do nosso primeiro clique: a 1ª via saiu antes, por alguém — provavelmente na hora do agendamento, <strong>não confirmado</strong> (a trilha não mostra).</p>
+<p><strong>No SERNIT é igual, com um item a mais</strong> — <em>Emitir Autorização Completa</em>, que <strong>não</strong> conta via e traz CID, avaliação clínica e endereço do paciente, mas não a chave nem o preparo (<code>Automais.SERNIT/docs/APRENDIZADOS.md §10</code>).</p>
 </main>
 </body>
 </html>

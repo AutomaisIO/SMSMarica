@@ -159,6 +159,16 @@ export async function obterContatoPacienteEspelho(
   return data;
 }
 
+/**
+ * Caminho do PDF da guia do agendamento (ADR-0076) — o mesmo documento do acervo do paciente, aberto
+ * com a permissão da tela onde o quadro está. Vai para o `VisualizadorArquivo`.
+ */
+export function caminhoGuiaAgendamento(origem: { solicitacaoId: string } | { sistema: SistemaEspelho; espelhoId: string }) {
+  return 'solicitacaoId' in origem
+    ? `${base}/${origem.solicitacaoId}/contato-paciente/guia`
+    : `/regulacao/${origem.sistema}/${origem.espelhoId}/contato-paciente/guia`;
+}
+
 // ---------------------------------------------------------------- ações do agente (módulo 48)
 
 export async function assumirSolicitacao(id: string): Promise<SolicitacaoRegulacao> {

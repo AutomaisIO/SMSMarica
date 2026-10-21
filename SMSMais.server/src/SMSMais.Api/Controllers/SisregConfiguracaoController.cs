@@ -78,6 +78,25 @@ public sealed class SisregConfiguracaoController(
         CancellationToken cancellationToken) =>
         await _configuracaoService.AlternarSincronismoAutomaticoAsync(request.Ativo, cancellationToken);
 
+    /// <summary>A fila de guias do SISREG (ADR-0076): ritmo, janela, quanto falta e por que parou
+    /// (outro motor rodando, orçamento curto, CAPTCHA).</summary>
+    [HttpGet("guias")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> ObterFilaGuias(
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias, CancellationToken cancellationToken) =>
+        guias.ResumoAsync(SistemaRegulacao.Sisreg, cancellationToken);
+
+    [HttpPut("guias")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> SalvarFilaGuias(
+        [FromBody] SMSMais.Core.GuiasAgendamento.SalvarFilaGuiasRequest corpo,
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias,
+        CancellationToken cancellationToken) =>
+        guias.SalvarAsync(SistemaRegulacao.Sisreg, corpo, cancellationToken);
+
     /// <summary>
     /// Completa as solicitações já importadas com o profissional EXECUTANTE, relendo a linha crua do
     /// SISREG que ficou guardada. <b>Não fala com o SISREG</b> — é reprocessamento do próprio banco,

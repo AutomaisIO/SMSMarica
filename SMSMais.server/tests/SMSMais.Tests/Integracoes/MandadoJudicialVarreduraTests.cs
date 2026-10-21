@@ -312,6 +312,9 @@ public class MandadoJudicialVarreduraTests
             string idSernit, SituacaoSernit situacao, IReadOnlyDictionary<string, string> novos,
             CancellationToken cancellationToken) =>
             throw new NotSupportedException("a fase Judicial só lê");
+
+        public Task<byte[]> EmitirGuiaAsync(string idSernit, CancellationToken cancellationToken) =>
+            throw new NotSupportedException("a fase Judicial só lê");
     }
 
     private sealed class SessaoSerFalsa(string tela, params string[] respostas) : ISerWebSessao

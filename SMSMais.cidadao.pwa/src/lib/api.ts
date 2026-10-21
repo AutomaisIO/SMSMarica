@@ -121,6 +121,8 @@ export type Agendamento = {
   momento?: MomentoAgendamento;
   // false: a fonte só deu o dia — não mostrar "00:00".
   temHora?: boolean;
+  // SER/SERNIT/ESUS: a guia do agendamento no acervo (a mesma de Documentos). Servidor antigo não manda.
+  guiaDocumentoId?: string | null;
 };
 
 export type AgendamentoExameDetalhe = {
@@ -309,6 +311,8 @@ export function urlConteudoAcervo(item: Pick<ItemAcervo, 'tipo' | 'id'>): string
 
 // URLs de PDF protegido (abertas/baixadas via blob — ver lib/pdf.ts).
 export const pdfUrls = {
+  // A guia do agendamento é um documento do acervo: mesma URL de Documentos, mesmo cache local.
+  guia: (documentoId: string) => urlConteudoAcervo({ tipo: 'Documento', id: documentoId }),
   laudo: (laudoId: string) => `/auth/paciente/laudos/${laudoId}/pdf`,
   anexo: (anexoId: string) => `/auth/paciente/anexos/${anexoId}/conteudo`,
   exameImagens: (solicitacaoId: string) => `/auth/paciente/exames/${solicitacaoId}/imagens-pdf`,

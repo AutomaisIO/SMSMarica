@@ -70,6 +70,9 @@ public class EsusSgSincronizacaoTests(PostgresFixture fixture)
 
         public Task<IReadOnlyList<EsusSgEventoExame>> LerTrilhaExameAsync(long idExame, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<EsusSgEventoExame>>(Trilhas.TryGetValue(idExame, out var t) ? t : []);
+
+        public Task<EsusSgComprovanteExame> LerComprovanteExameAsync(string agendamentoIdEsus, CancellationToken ct) =>
+            throw new NotSupportedException("a sincronização não lê comprovante");
     }
 
     private sealed class CatalogoFake : IEsusSgCatalogoSyncService

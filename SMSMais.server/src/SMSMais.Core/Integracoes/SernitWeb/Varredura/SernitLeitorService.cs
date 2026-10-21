@@ -45,7 +45,20 @@ public interface ISernitLeitorService
     Task<SernitContatosDaTela> AlterarContatosAsync(
         string idSernit, SituacaoSernit situacao, IReadOnlyDictionary<string, string> novos,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Emite a guia do agendamento — o PDF do item "Emitir Chave de Autorização - Nª via"
+    /// (Automais.SERNIT/docs/APRENDIZADOS.md §10, ADR-0076). A "Autorização Completa" fica de fora:
+    /// tem CID e não tem a chave que o paciente apresenta.
+    ///
+    /// <para><b>Gasta uma via no SERNIT.</b> Sai pela porta de escrita; quem chama emite UMA vez por
+    /// agendamento.</para>
+    /// </summary>
+    Task<byte[]> EmitirGuiaAsync(string idSernit, CancellationToken cancellationToken);
 }
+
+/// <summary>A solicitação não está agendada ou a linha não oferece a chave de autorização.</summary>
+public sealed class GuiaSernitIndisponivelException(string mensagem) : Exception(mensagem);
 
 /// <summary>A linha não oferece "Editar" (situações terminais, como Cancelada e Alta).</summary>
 public sealed class EdicaoSernitIndisponivelException(string mensagem) : Exception(mensagem);
@@ -269,6 +282,52 @@ public sealed class SernitLeitorService(
 
         logger.LogDebug("SERNIT: histórico de {Id} lido com {Eventos} eventos.", idSernit, historico.Eventos.Count);
         return historico;
+    }
+
+    public async Task<byte[]> EmitirGuiaAsync(string idSernit, CancellationToken cancellationToken)
+    {
+        var pagina = await PesquisarAsync(
+            new SernitFiltroPesquisa { Situacao = SituacaoSernit.Agendada, IdSolicitacao = idSernit }, cancellationToken);
+
+        if (pagina.Linhas.Count != 1 || !string.Equals(pagina.Linhas[0].IdSernit, idSernit, StringComparison.Ordinal))
+        {
+            throw new GuiaSernitIndisponivelException(
+                $"A busca pelo ID {idSernit} em Agendada devolveu {pagina.Linhas.Count} linha(s) — "
+                + "esperava exatamente ela. Nenhuma guia foi emitida.");
+        }
+
+        var dados = SernitHtmlParser.Documento(_htmlDados);
+        var item = SernitHtmlParser.ItemGuia(dados, 0);
+        if (item is null)
+        {
+            var disponiveis = string.Join(", ", SernitHtmlParser.ItensDeOpcoes(dados, 0).Keys);
+            throw new GuiaSernitIndisponivelException(
+                $"A solicitação {idSernit} não oferece a chave de autorização no menu Ação. "
+                + $"Itens disponíveis: [{disponiveis}]");
+        }
+
+        // POST comum (commandLink `jsfcljs`), sem AJAXREQUEST. Medido em 21/10/2026: com o
+        // X-Requested-With que a sessão sempre manda, o SERNIT devolve o PDF do mesmo jeito.
+        var resposta = await sessao.SubmeterEscritaAsync(
+            _htmlForm,
+            SernitHtmlParser.FormPesquisa,
+            new Dictionary<string, string>(StringComparer.Ordinal) { [item] = item },
+            _ultimoViewState,
+            $"emitir a guia (chave de autorização) da solicitação {idSernit} — gasta uma via",
+            cancellationToken);
+
+        _htmlForm = string.Empty;
+
+        var corpo = resposta.Corpo;
+        if (corpo.Length <= 4 || corpo[0] != '%' || corpo[1] != 'P' || corpo[2] != 'D' || corpo[3] != 'F')
+        {
+            throw new InvalidOperationException(
+                $"O SERNIT não devolveu PDF na guia da solicitação {idSernit} "
+                + $"({resposta.ContentType ?? "sem content-type"}, {corpo.Length} bytes).");
+        }
+
+        logger.LogInformation("SERNIT: guia da solicitação {IdSernit} emitida ({Bytes} bytes).", idSernit, corpo.Length);
+        return corpo;
     }
 
     public async Task<string> RegistrarFollowUpAsync(

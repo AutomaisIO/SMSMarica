@@ -622,13 +622,19 @@ export const artigoMensageria: Artigo = {
       id: 'agendamentos-externos',
       titulo: 'Agendamentos do SER, do SERNIT e do ESUS',
       busca:
-        'ser sernit esus são gonçalo regulação estadual agendado aviso automático fora do município nome do local hospital quero mais informações cpf nascimento confirmo não poderei ir motivo não desmarca hora do agendamento histórico amanhã remarcado desmarcado contato com o paciente devolvido para a fila voltou para a fila reagendado de novo lembrete dias antes aviso de cancelamento cancelado carência 30 minutos avisos ao paciente',
+        'ser sernit esus são gonçalo regulação estadual agendado aviso automático fora do município nome do local hospital quero mais informações cpf nascimento confirmo não poderei ir motivo não desmarca hora do agendamento histórico amanhã remarcado desmarcado contato com o paciente devolvido para a fila voltou para a fila reagendado de novo lembrete dias antes aviso de cancelamento guia do agendamento cancelado carência 30 minutos avisos ao paciente',
       conteudo: (
         <div className="space-y-4">
           <P>
             Até 10/10/2026 só o agendamento do SISREG avisava o paciente. O paciente encaminhado pelo SER, pelo
             SERNIT ou pelo ESUS só sabia da data se alguém da equipe mandasse a mensagem à mão. Agora a plataforma
             avisa sozinha, pela mesma conversa da confirmação do SISREG:
+          </P>
+          <P>
+            O quadro <strong>Contato com o paciente</strong>, na tela do pedido, também traz a{' '}
+            <strong>guia do agendamento</strong>: a plataforma a busca sozinha no sistema e guarda no cadastro do
+            paciente, e o botão <BotaoRef variante="outline">Ver guia</BotaoRef> abre o PDF. Detalhes no artigo{' '}
+            <strong>Guias dos agendamentos</strong>.
           </P>
           <Passos
             itens={[

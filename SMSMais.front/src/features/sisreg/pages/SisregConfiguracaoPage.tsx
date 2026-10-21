@@ -15,6 +15,7 @@ import {
   useConfiguracaoSisreg,
 } from '@/features/sisreg/api/queries';
 import { FilaEsperaSecao } from '@/features/sisreg/components/FilaEsperaSecao';
+import { FilaGuiasSecao } from '@/shared/guias/FilaGuiasSecao';
 import { IndicadoresColetaSecao } from '@/features/sisreg/components/IndicadoresColetaSecao';
 import { SincronismoAutomaticoSecao } from '@/features/sisreg/components/SincronismoAutomaticoSecao';
 import { SincronismoEscalasSecao } from '@/features/sisreg/components/SincronismoEscalasSecao';
@@ -328,6 +329,9 @@ export function SisregConfiguracaoPage() {
       <SincronismoEscalasSecao />
 
       <FilaEsperaSecao />
+
+      {/* Fila de guias dos agendamentos (ADR-0076) — o mesmo quadro do SER, do SERNIT e do ESUS. */}
+      <FilaGuiasSecao sistema="Sisreg" podeEditar={podeEditarAvisos} />
 
       <IndicadoresColetaSecao />
 

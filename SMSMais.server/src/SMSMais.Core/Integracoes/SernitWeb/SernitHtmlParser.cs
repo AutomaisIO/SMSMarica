@@ -358,6 +358,27 @@ public static partial class SernitHtmlParser
                               || a.TextContent.Contains("Histórico da Solicita", StringComparison.OrdinalIgnoreCase))
             ?.Id;
     }
+    /// <summary>
+    /// Parâmetro do item "Emitir Chave de Autorização - Nª via" da linha — a guia do agendamento
+    /// (Automais.SERNIT/docs/APRENDIZADOS.md §10), ou <c>null</c> quando a linha não o oferece (só Agendada e Chegada têm).
+    ///
+    /// <para>É um <c>h:commandLink</c> (<c>jsfcljs</c>), não A4J: o <c>&lt;a&gt;</c> <b>não tem id</b>
+    /// — o id do item é o da <c>div</c> do menu, que não serve de parâmetro. O que vai no POST é o
+    /// par que o próprio <c>onclick</c> monta: <c>{'form0:listagem:i:j_idNN':'form0:listagem:i:j_idNN'}</c>.
+    /// O prefixo da linha no parâmetro é a garantia de que o item é desta linha.</para>
+    /// </summary>
+    public static string? ItemGuia(IHtmlDocument doc, int indiceNaPagina)
+    {
+        var prefixo = $"form0:listagem:{indiceNaPagina}:";
+        foreach (var a in doc.QuerySelectorAll("a[onclick*='jsfcljs']"))
+        {
+            if (!a.TextContent.Contains("CHAVE DE AUTORIZA", StringComparison.OrdinalIgnoreCase)) continue;
+            var m = Regex.Match(a.GetAttribute("onclick") ?? string.Empty, @"\{'([^']+)':'\1'\}");
+            if (m.Success && m.Groups[1].Value.StartsWith(prefixo, StringComparison.Ordinal)) return m.Groups[1].Value;
+        }
+        return null;
+    }
+
 
     /// <summary>Itens do menu Opções de uma linha (rótulo → id). Diagnóstico e mensagem de erro.</summary>
     public static IReadOnlyDictionary<string, string> ItensDeOpcoes(IHtmlDocument doc, int indiceNaPagina)

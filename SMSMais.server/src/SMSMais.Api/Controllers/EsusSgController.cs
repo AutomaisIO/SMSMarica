@@ -53,6 +53,21 @@ public sealed class EsusSgController(IEsusSgConsultaService consulta) : Controll
         CancellationToken cancellationToken) =>
         contato.ObterPorEspelhoAsync(SistemaRegulacao.EsusSg, id, cancellationToken);
 
+    /// <summary>A guia do agendamento vigente deste pedido (ADR-0076) — montada dos dados do
+    /// comprovante do ESUS e guardada no acervo do paciente. Só lê.</summary>
+    [HttpGet("{id:guid}/contato-paciente/guia")]
+    [RequerPermissao(ModuloPermissao.RegulacaoEsusSg, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GuiaDoAgendamento(
+        Guid id,
+        [FromServices] SMSMais.Core.Regulacao.ContatoPaciente.IRegulacaoContatoPacienteService contato,
+        CancellationToken cancellationToken)
+    {
+        var c = await contato.ObterGuiaPorEspelhoAsync(SistemaRegulacao.EsusSg, id, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
     /// <summary>Refaz agora a análise de regras deste pedido (ADR-0063 §4). Só recalcula o NOSSO
     /// parecer — não escreve nada no ESUS.</summary>
     [HttpPost("{id:guid}/analise/reanalisar")]
@@ -196,6 +211,24 @@ public sealed class EsusSgConfiguracaoController(
         [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
         CancellationToken cancellationToken) =>
         avisos.SalvarAsync(SistemaRegulacao.EsusSg, corpo, cancellationToken);
+
+    /// <summary>A fila de guias do ESUS (ADR-0076): ritmo, janela, quanto falta e por que parou.</summary>
+    [HttpGet("guias")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> ObterFilaGuias(
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias, CancellationToken cancellationToken) =>
+        guias.ResumoAsync(SistemaRegulacao.EsusSg, cancellationToken);
+
+    [HttpPut("guias")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> SalvarFilaGuias(
+        [FromBody] SMSMais.Core.GuiasAgendamento.SalvarFilaGuiasRequest corpo,
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias,
+        CancellationToken cancellationToken) =>
+        guias.SalvarAsync(SistemaRegulacao.EsusSg, corpo, cancellationToken);
 
     /// <summary>Relê o catálogo do ESUS agora (1 requisição) e, se mudou, leva ao catálogo canônico.</summary>
     [HttpPost("catalogo/sincronizar")]

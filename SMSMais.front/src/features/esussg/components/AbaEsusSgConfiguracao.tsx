@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { FilaGuiasSecao } from '@/shared/guias/FilaGuiasSecao';
 import { usePermissao } from '@/shared/auth/authStore';
 import { formatarInstante, formatarWallClock } from '@/shared/lib/datas';
 import { Button } from '@/shared/ui/Button';
@@ -495,6 +496,9 @@ export function AbaEsusSgConfiguracao() {
       </section>
 
       <AvisosPacienteSecao sistema="esussg" podeEditar={podeEditar} />
+
+      {/* Fila de guias dos agendamentos (ADR-0076) — o mesmo quadro nos quatro sistemas. */}
+      <FilaGuiasSecao sistema="EsusSg" podeEditar={podeEditar} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">

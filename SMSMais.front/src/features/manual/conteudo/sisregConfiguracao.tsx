@@ -66,6 +66,9 @@ export const artigoSisregConfiguracao: Artigo = {
     'sessão do operador',
     'cadsus',
     'parcial',
+    'guias',
+    'guia do agendamento',
+    'ficha',
   ],
   secoes: () => [
     {
@@ -362,6 +365,27 @@ export const artigoSisregConfiguracao: Artigo = {
             <Item>Ligar o aviso de cancelamento vale daqui para frente: o que foi cancelado antes não é avisado.</Item>
           </Lista>
           <P>SER, SERNIT e ESUS têm o mesmo bloco, com chaves próprias, na Configuração de cada regulação.</P>
+        </>
+      ),
+    },
+    {
+      id: 'guias',
+      titulo: 'Guias dos agendamentos',
+      busca: 'guias guia do agendamento ficha chave de confirmação fila guias por hora janela pausa captcha imprimir',
+      conteudo: (
+        <>
+          <P>
+            O quadro <strong>Guias dos agendamentos</strong> controla a fila que lê a ficha de cada solicitação
+            agendada — a mesma página que o botão Imprimir do SISREG imprime, com a chave de confirmação — e a
+            guarda como PDF no cadastro do paciente. Liga e desliga, quantas por hora (começa em 30) e em que
+            janela do dia (começa no dia inteiro).
+          </P>
+          <P>
+            É o motor menos urgente: espera os outros processos do SISREG, para quando o limite de consultas da
+            hora está no fim e, se o SISREG pedir CAPTCHA, para por 24 horas — salvar o quadro tira a pausa. O
+            quadro diz quantas faltam e, quando a fila não anda, por quê. Tudo sobre a guia no artigo{' '}
+            <strong>Guias dos agendamentos</strong>.
+          </P>
         </>
       ),
     },

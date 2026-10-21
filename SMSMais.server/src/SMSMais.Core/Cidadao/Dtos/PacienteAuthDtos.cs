@@ -150,7 +150,9 @@ public sealed record ChaveAcessoCidadaoDto(string Chave, string CodigoSolicitaca
 /// Confirmar/Não poderei ir (<c>PodeResponder</c>).</para>
 /// <para>Na fila é só "na fila": nunca motivo de pendência, posição ou previsão. <c>Origem</c> diz,
 /// em linguagem do cidadão, quem regula ("regulação estadual (SER)").</para>
-/// <para><c>TemHora</c> = false: a fonte só deu o dia — a tela não inventa "00:00".</para></summary>
+/// <para><c>TemHora</c> = false: a fonte só deu o dia — a tela não inventa "00:00".</para>
+/// <para><c>GuiaDocumentoId</c>: a guia do agendamento do SER/SERNIT/ESUS no acervo do paciente
+/// (ADR-0076) — abre pela mesma URL de Documentos (<c>documentos/Documento/{id}/conteudo</c>).</para></summary>
 public sealed record AgendamentoResumoDto(
     Guid Id,
     DateTime? InicioEm,
@@ -166,4 +168,5 @@ public sealed record AgendamentoResumoDto(
     string? Origem = null,
     bool NaFila = false,
     string Momento = "Proximo",
-    bool TemHora = true);
+    bool TemHora = true,
+    Guid? GuiaDocumentoId = null);

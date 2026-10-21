@@ -61,6 +61,21 @@ public sealed class SernitController(ISernitConsultaService consulta) : Controll
         CancellationToken cancellationToken) =>
         contato.ObterPorEspelhoAsync(SistemaRegulacao.Sernit, id, cancellationToken);
 
+    /// <summary>A guia do agendamento vigente deste pedido (ADR-0076) — o mesmo PDF do acervo do
+    /// paciente, buscado pelo sincronismo. Só lê: não emite nada no SERNIT.</summary>
+    [HttpGet("{id:guid}/contato-paciente/guia")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GuiaDoAgendamento(
+        Guid id,
+        [FromServices] SMSMais.Core.Regulacao.ContatoPaciente.IRegulacaoContatoPacienteService contato,
+        CancellationToken cancellationToken)
+    {
+        var c = await contato.ObterGuiaPorEspelhoAsync(SistemaRegulacao.Sernit, id, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
     /// <summary>Refaz agora a análise de regras deste pedido (ADR-0063 §4). Só recalcula o NOSSO
     /// parecer — não escreve nada no SERNIT.</summary>
     [HttpPost("{id:guid}/analise/reanalisar")]
@@ -366,6 +381,24 @@ public sealed class SernitConfiguracaoController(
         [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
         CancellationToken cancellationToken) =>
         avisos.SalvarAsync(SistemaRegulacao.Sernit, corpo, cancellationToken);
+
+    /// <summary>A fila de guias do SERNIT (ADR-0076): ritmo, janela, quanto falta e por que parou.</summary>
+    [HttpGet("guias")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> ObterFilaGuias(
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias, CancellationToken cancellationToken) =>
+        guias.ResumoAsync(SistemaRegulacao.Sernit, cancellationToken);
+
+    [HttpPut("guias")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> SalvarFilaGuias(
+        [FromBody] SMSMais.Core.GuiasAgendamento.SalvarFilaGuiasRequest corpo,
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias,
+        CancellationToken cancellationToken) =>
+        guias.SalvarAsync(SistemaRegulacao.Sernit, corpo, cancellationToken);
 
     /// <summary>Copia o catálogo do SERNIT para a nossa base (leitura longa, retomável, background).</summary>
     [HttpPost("catalogo/sincronizar")]

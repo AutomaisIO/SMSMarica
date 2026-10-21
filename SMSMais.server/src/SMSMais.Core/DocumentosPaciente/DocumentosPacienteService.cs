@@ -376,6 +376,7 @@ public sealed class DocumentosPacienteService(
         Guid pacienteId, Guid documentoId, EditarDocumentoPacienteRequest req, CancellationToken ct = default)
     {
         var doc = await ExigirAsync(pacienteId, documentoId, ct);
+        ExigirEditavel(doc);
         AplicarTexto(doc, req);
         doc.AtualizadoEm = DateTime.UtcNow;
         doc.AtualizadoPor = usuarioAtual.UsuarioId;
@@ -404,6 +405,7 @@ public sealed class DocumentosPacienteService(
     public async Task ExcluirAsync(Guid pacienteId, Guid documentoId, CancellationToken ct = default)
     {
         var doc = await ExigirAsync(pacienteId, documentoId, ct);
+        ExigirEditavel(doc);
 
         // O registro fica (auditoria); o arquivo sai do armazenamento — é dado de paciente, e as
         // solicitações que usaram este documento guardaram a própria cópia.
@@ -424,6 +426,17 @@ public sealed class DocumentosPacienteService(
         await armazenamento.ExcluirAsync(doc.ChaveArmazenamento, ct);
         doc.ExcluidoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A guia do agendamento é do sincronismo: o pedido e o app apontam para ela (ADR-0076).</summary>
+    private static void ExigirEditavel(DocumentoPaciente doc)
+    {
+        if (doc.Origem == OrigemDocumentoPaciente.GuiaAgendamento)
+        {
+            throw new ConflitoException(
+                "documento.guia_agendamento",
+                "A guia do agendamento vem do sistema de regulação e não se edita nem se exclui.");
+        }
     }
 
     public Task<int> ContarPendentesAsync(Guid pacienteId, CancellationToken ct = default) =>
@@ -551,7 +564,9 @@ public sealed class DocumentosPacienteService(
     private static ItemAcervoDto Mapear(DocumentoPaciente d) => new(
         Chave(TipoItemAcervo.Documento, d.Id), TipoItemAcervo.Documento, d.Id,
         d.Titulo, d.Descricao, d.MimeType, d.TamanhoBytes, null, d.CriadoEm,
-        RotuloOrigem(d.Origem), d.Situacao, Editavel: true);
+        RotuloOrigem(d.Origem), d.Situacao,
+        // A guia é do sincronismo: o pedido e o app apontam para ela (ADR-0076).
+        Editavel: d.Origem != OrigemDocumentoPaciente.GuiaAgendamento);
 
     private static string RotuloOrigem(OrigemDocumentoPaciente o) => o switch
     {
@@ -559,6 +574,7 @@ public sealed class DocumentosPacienteService(
         OrigemDocumentoPaciente.Solicitacao => "Solicitação",
         OrigemDocumentoPaciente.WhatsApp => "WhatsApp",
         OrigemDocumentoPaciente.AppCidadao => "Enviado pelo paciente",
+        OrigemDocumentoPaciente.GuiaAgendamento => "Guia do agendamento",
         _ => "—",
     };
 }
