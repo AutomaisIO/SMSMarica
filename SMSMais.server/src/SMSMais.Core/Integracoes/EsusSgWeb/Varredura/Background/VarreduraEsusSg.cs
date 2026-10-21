@@ -125,15 +125,27 @@ public sealed class VarreduraEsusSgRunner(
                 .ToListAsync(cancellationToken);
             if (pendentes.Count == 0) return;
 
+            // Só UMA é retomada (a fila tem uma vaga). As demais eram deixadas como Interrompida — e
+            // Interrompida segura o disparo diário para sempre. A que não volta é encerrada.
+            var primeira = pendentes[0];
             foreach (var e in pendentes)
             {
-                e.Status = StatusVarreduraEsusSg.Interrompida;
-                e.MensagemErro = $"Interrompida pelo desligamento do serviço na fase {e.Fase}. "
-                    + "Retomada automática a partir do ponteiro.";
+                if (e.Id == primeira.Id)
+                {
+                    e.Status = StatusVarreduraEsusSg.Interrompida;
+                    e.MensagemErro = $"Interrompida pelo desligamento do serviço na fase "
+                        + $"{EsusSgSincronizacaoService.NomeDaFase(e.Fase)}. Retomada automática.";
+                }
+                else
+                {
+                    e.Status = StatusVarreduraEsusSg.Erro;
+                    e.MensagemErro = "Interrompida pelo desligamento do serviço e não retomada: "
+                        + "outra rodada interrompida foi retomada no lugar.";
+                    e.FinalizadoEm = DateTime.UtcNow;
+                }
             }
             await db.SaveChangesAsync(cancellationToken);
 
-            var primeira = pendentes[0];
             var ok = fila.TentarEnfileirar(new PedidoVarreduraEsusSg(
                 primeira.Modo, primeira.Disparo, primeira.JanelaInicio, primeira.JanelaFim,
                 primeira.CriadoPor, primeira.CriadoPorNome, primeira.Id));
@@ -207,10 +219,20 @@ public sealed class VarreduraEsusSgScheduler(
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var inicioDoDiaUtc = FusoBrasilia.InicioDoDiaAtualEmUtc();
 
-        if (await db.EsusSgVarreduraExecucoes.AnyAsync(
-                x => x.Disparo == DisparoSincronizacao.Agendado && x.IniciadoEm >= inicioDoDiaUtc, cancellationToken))
+        var deHoje = await db.EsusSgVarreduraExecucoes.AsNoTracking()
+            .Where(x => x.Disparo == DisparoSincronizacao.Agendado && x.IniciadoEm >= inicioDoDiaUtc)
+            .OrderByDescending(x => x.IniciadoEm)
+            .Select(x => new { x.Status, x.FinalizadoEm })
+            .ToListAsync(cancellationToken);
+        if (deHoje.Count > 0)
         {
-            return;
+            // A rodada de hoje já saiu. Só se repete quando a última deu ERRO (o ESUS não respondeu a
+            // tempo, sessão recusada…): a de 03h que cai deixava o espelho do ESUS um dia inteiro sem
+            // ler — e é dele que sai o aviso de agendamento ao paciente.
+            if (!EsusSgJanelas.RefazerRodadaDiaria(
+                    deHoje.Count, deHoje[0].Status, deHoje[0].FinalizadoEm, DateTime.UtcNow)) return;
+            logger.LogInformation(
+                "ESUS SG: a rodada diária falhou; tentativa {N} de {Max}.", deHoje.Count + 1, EsusSgJanelas.TentativasPorDia);
         }
 
         if (await db.EsusSgVarreduraExecucoes.AnyAsync(
@@ -245,6 +267,23 @@ public static class EsusSgJanelas
     /// <summary>Quanto para trás na rodada diária: pega reagendamento para o passado recente e a
     /// resposta do paciente que chega depois do atendimento.</summary>
     public const int DiasParaTras = 45;
+
+    /// <summary>Quantas rodadas diárias por dia, no máximo, quando a anterior deu erro (a primeira
+    /// conta). Com a espera de uma hora, cobrem a madrugada em que o ESUS fica lento (03h–06h, medido
+    /// em outubro/2026) sem martelar quem está fora.</summary>
+    public const int TentativasPorDia = 4;
+
+    /// <summary>Quanto esperar, depois de uma rodada diária com erro, antes da próxima.</summary>
+    public static readonly TimeSpan EsperaAntesDeRefazer = TimeSpan.FromHours(1);
+
+    /// <summary>A rodada diária de hoje já saiu; refaz? Só se a ÚLTIMA deu erro, terminou há pelo menos
+    /// <see cref="EsperaAntesDeRefazer"/> e não se gastaram as <see cref="TentativasPorDia"/>.</summary>
+    public static bool RefazerRodadaDiaria(
+        int rodadasHoje, StatusVarreduraEsusSg statusDaUltima, DateTime? ultimaTerminouEm, DateTime agoraUtc) =>
+        statusDaUltima == StatusVarreduraEsusSg.Erro
+        && rodadasHoje < TentativasPorDia
+        && ultimaTerminouEm is { } terminouEm
+        && agoraUtc - terminouEm >= EsperaAntesDeRefazer;
 
     public static (DateOnly Inicio, DateOnly Fim) Diaria(DateOnly hoje) =>
         (hoje.AddDays(-DiasParaTras), hoje.AddDays(DiasAFrente));
