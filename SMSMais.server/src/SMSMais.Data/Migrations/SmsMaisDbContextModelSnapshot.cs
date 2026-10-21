@@ -5849,6 +5849,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("motivo_cancelamento_paciente");
 
+                    b.Property<int?>("MotivoDesmarque")
+                        .HasColumnType("integer")
+                        .HasColumnName("motivo_desmarque");
+
                     b.Property<string>("NumeroExterno")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -6007,6 +6011,48 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("AtendimentoId", "OcorridoEm");
 
                     b.ToTable("atendimento_confirmacao_evento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.AvisoRegulacaoConfiguracao", b =>
+                {
+                    b.Property<int>("Sistema")
+                        .HasColumnType("integer")
+                        .HasColumnName("sistema");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<bool>("AvisoCancelamentoHabilitado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("aviso_cancelamento_habilitado");
+
+                    b.Property<DateTime?>("AvisoCancelamentoLigadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("aviso_cancelamento_ligado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<int>("LembreteDiasAntes")
+                        .HasColumnType("integer")
+                        .HasColumnName("lembrete_dias_antes");
+
+                    b.Property<bool>("LembreteHabilitado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("lembrete_habilitado");
+
+                    b.HasKey("Sistema");
+
+                    b.ToTable("aviso_regulacao_configuracao", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_aviso_regulacao_configuracao_dias", "lembrete_dias_antes BETWEEN 1 AND 30");
+                        });
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.Campanha", b =>

@@ -16,7 +16,7 @@ namespace SMSMais.Core.Notificacoes.AgendamentosExternos;
 
 /// <summary>O que uma passada da varredura fez — vai para o log.</summary>
 public sealed record ResultadoVarreduraAgendamentosExternos(
-    int Lidos, int Novos, int Reagendados, int Desmarcados, int AguardandoHora);
+    int Lidos, int Novos, int Reagendados, int Desmarcados, int AguardandoHora, int AvisosDeCancelamento = 0);
 
 public interface IAgendamentoExternoService
 {
@@ -45,8 +45,17 @@ public sealed class AgendamentoExternoService(
     SmsMaisDbContext db,
     IComunicacaoPacienteService comunicacoes,
     Confirmacoes.IConfirmacaoConfiguracaoService regras,
+    IAvisoRegulacaoConfiguracaoService avisosRegulacao,
     ILogger<AgendamentoExternoService> logger) : IAgendamentoExternoService
 {
+    /// <summary>
+    /// O aviso de cancelamento espera um pouco antes de poder sair. Uma leitura do espelho pode
+    /// pegar o pedido no meio da rodada (o ESUS lê a fila antes dos agendados) ou a regulação pode
+    /// devolver e marcar de novo o mesmo dia: a passada seguinte (10 min) acha o agendamento de volta
+    /// e o aviso é dispensado antes de sair. Dizer "foi cancelado" a quem segue marcado é o pior erro.
+    /// </summary>
+    internal static readonly TimeSpan CarenciaDoCancelamento = TimeSpan.FromMinutes(30);
+
     /// <summary>
     /// O SER dá a hora só no evento "Agendar" do histórico, que é lido depois da grade (às vezes horas
     /// depois, na mesma madrugada). Espera-se por ele até aqui; passado isso, o aviso sai só com o dia
@@ -113,7 +122,14 @@ public sealed class AgendamentoExternoService(
 
             // Só se avisa de amanhã em diante — e com a chave ligada (desligada, nada novo nasce;
             // ao religar, os agendamentos futuros são achados na passada seguinte).
-            if (l.Data <= hoje || !avisar) continue;
+            if (l.Data <= hoje) continue;
+
+            // Voltou para "Agendada" com o MESMO dia de um desmarque recente: o aviso de cancelamento
+            // que ainda espera a carência não sai mais. Antes da chave e da espera pela hora do SER
+            // — as duas pulam a reativação, e o aviso sairia sobre um atendimento que voltou a valer.
+            await DispensarCancelamentoQueNaoValeMaisAsync(l, agora, ct);
+
+            if (!avisar) continue;
             if (l.EsperandoHora) { aguardandoHora++; continue; }
 
             var agendamento = await ReativarOuCriarAsync(l, agora, ct);
@@ -122,26 +138,109 @@ public sealed class AgendamentoExternoService(
         }
 
         // Saiu de "Agendada" no sistema de destino (cancelado, voltou à fila, saiu da fila).
-        foreach (var a in vigentes.Where(a => !vistos.Contains((a.Sistema, a.OrigemId))))
+        // O que já passou fica como está: é o histórico do que foi avisado. Só se desmarca o que
+        // ainda ia acontecer.
+        var saidos = vigentes.Where(a => !vistos.Contains((a.Sistema, a.OrigemId)) && a.Data >= hoje).ToList();
+        var motivos = await MotivosDoDesmarqueAsync(saidos, ct);
+        var regrasExternas = saidos.Count == 0 ? null : await avisosRegulacao.RegrasExternasAsync(ct);
+        var avisosCancelamento = 0;
+        foreach (var a in saidos)
         {
-            // O que já passou fica como está: é o histórico do que foi avisado. Só se desmarca o que
-            // ainda ia acontecer.
-            if (a.Data < hoje) continue;
-            await EncerrarAsync(a, SituacaoAgendamentoExterno.Desmarcado,
-                $"O pedido saiu de \"Agendada\" no {Rotulo(a.Sistema)}.", agora, ct);
+            var motivo = motivos.GetValueOrDefault(a.Id, MotivoDesmarqueExterno.Outro);
+            await EncerrarAsync(a, SituacaoAgendamentoExterno.Desmarcado, TextoDoDesmarque(motivo, a.Sistema), agora, ct);
+            a.MotivoDesmarque = motivo;
             desmarcados++;
+
+            // Aviso de cancelamento (21/10/2026): só quando o sistema DIZ que o atendimento caiu
+            // (cancelado ou devolvido à fila), com a chave da regulação ligada — e ligar vale
+            // daqui para frente.
+            if (motivo is MotivoDesmarqueExterno.Cancelado or MotivoDesmarqueExterno.VoltouParaFila
+                && regrasExternas!.TryGetValue(a.Sistema, out var r)
+                && r.AvisoCancelamentoHabilitado
+                && r.AvisoCancelamentoLigadoEm is { } ligadoEm && ligadoEm <= agora)
+            {
+                await comunicacoes.EnfileirarExternoAsync(
+                    a, FinalidadeComunicacao.CancelamentoAgendamento, agora + CarenciaDoCancelamento, ct);
+                avisosCancelamento++;
+            }
         }
 
         await db.SaveChangesAsync(ct);
 
-        var resultado = new ResultadoVarreduraAgendamentosExternos(lidos.Count, novos, reagendados, desmarcados, aguardandoHora);
+        var resultado = new ResultadoVarreduraAgendamentosExternos(
+            lidos.Count, novos, reagendados, desmarcados, aguardandoHora, avisosCancelamento);
         if (novos + reagendados + desmarcados > 0)
             logger.LogInformation(
                 "Agendamentos do SER/SERNIT/ESUS SG: {Lidos} lidos, {Novos} avisos novos na fila, {Reagendados} "
-                + "remarcados, {Desmarcados} desmarcados, {AguardandoHora} esperando a hora do SER.",
-                resultado.Lidos, novos, reagendados, desmarcados, aguardandoHora);
+                + "remarcados, {Desmarcados} desmarcados ({Cancelamentos} com aviso de cancelamento), "
+                + "{AguardandoHora} esperando a hora do SER.",
+                resultado.Lidos, novos, reagendados, desmarcados, avisosCancelamento, aguardandoHora);
         return resultado;
     }
+
+    /// <summary>
+    /// Por que cada agendamento saiu de "Agendada", pelo que o espelho mostra AGORA. Só "Cancelada"
+    /// (SER/SERNIT) e "Em fila" (os três) dizem que o atendimento caiu. Pendência fica de fora: o SER
+    /// às vezes pendencia e reagenda o mesmo dia. A saída da fila do ESUS também: o ESUS não diz por
+    /// quê (ADR-0063 — "saiu da fila" não é cancelado).
+    /// </summary>
+    private async Task<Dictionary<Guid, MotivoDesmarqueExterno>> MotivosDoDesmarqueAsync(
+        List<AgendamentoExterno> saidos, CancellationToken ct)
+    {
+        var resultado = new Dictionary<Guid, MotivoDesmarqueExterno>();
+        if (saidos.Count == 0) return resultado;
+
+        List<Guid> Origens(SistemaRegulacao s) => saidos.Where(a => a.Sistema == s).Select(a => a.OrigemId).ToList();
+
+        var ser = Origens(SistemaRegulacao.Ser);
+        var situacoesSer = ser.Count == 0 ? [] : await db.SerSolicitacoes.AsNoTracking()
+            .Where(s => ser.Contains(s.Id) && s.ExcluidoEm == null)
+            .Select(s => new { s.Id, s.Situacao })
+            .ToDictionaryAsync(s => s.Id, s => s.Situacao switch
+            {
+                SituacaoSer.Cancelada => MotivoDesmarqueExterno.Cancelado,
+                SituacaoSer.EmFila => MotivoDesmarqueExterno.VoltouParaFila,
+                _ => MotivoDesmarqueExterno.Outro,
+            }, ct);
+
+        var sernit = Origens(SistemaRegulacao.Sernit);
+        var situacoesSernit = sernit.Count == 0 ? [] : await db.SernitSolicitacoes.AsNoTracking()
+            .Where(s => sernit.Contains(s.Id) && s.ExcluidoEm == null)
+            .Select(s => new { s.Id, s.Situacao })
+            .ToDictionaryAsync(s => s.Id, s => s.Situacao switch
+            {
+                SituacaoSernit.Cancelada => MotivoDesmarqueExterno.Cancelado,
+                SituacaoSernit.EmFila => MotivoDesmarqueExterno.VoltouParaFila,
+                _ => MotivoDesmarqueExterno.Outro,
+            }, ct);
+
+        var esus = Origens(SistemaRegulacao.EsusSg);
+        var situacoesEsus = esus.Count == 0 ? [] : await db.EsusSgSolicitacoes.AsNoTracking()
+            .Where(s => esus.Contains(s.Id) && s.ExcluidoEm == null)
+            .Select(s => new { s.Id, s.Situacao })
+            .ToDictionaryAsync(s => s.Id, s => s.Situacao == SituacaoEsusSg.EmFila
+                ? MotivoDesmarqueExterno.VoltouParaFila
+                : MotivoDesmarqueExterno.Outro, ct);
+
+        foreach (var a in saidos)
+        {
+            var doSistema = a.Sistema switch
+            {
+                SistemaRegulacao.Ser => situacoesSer,
+                SistemaRegulacao.Sernit => situacoesSernit,
+                _ => situacoesEsus,
+            };
+            resultado[a.Id] = doSistema.GetValueOrDefault(a.OrigemId, MotivoDesmarqueExterno.Outro);
+        }
+        return resultado;
+    }
+
+    private static string TextoDoDesmarque(MotivoDesmarqueExterno motivo, SistemaRegulacao sistema) => motivo switch
+    {
+        MotivoDesmarqueExterno.Cancelado => $"O pedido foi cancelado no {Rotulo(sistema)}.",
+        MotivoDesmarqueExterno.VoltouParaFila => $"O pedido voltou para a fila no {Rotulo(sistema)}.",
+        _ => $"O pedido saiu de \"Agendada\" no {Rotulo(sistema)}.",
+    };
 
     /// <summary>Hora, local e procedimento podem chegar (ou mudar) depois — o dia é o que define o
     /// agendamento; o resto se corrige em silêncio, antes de o paciente pedir os dados.</summary>
@@ -162,15 +261,22 @@ public sealed class AgendamentoExternoService(
     /// </summary>
     private async Task<AgendamentoExterno> ReativarOuCriarAsync(Lido l, DateTime agora, CancellationToken ct)
     {
+        // Quem já recebeu "foi cancelado" deste agendamento não é reativado em silêncio: nasce linha
+        // nova, e o aviso do agendamento sai de novo — senão a pessoa ficaria com o cancelamento
+        // como última palavra sobre um atendimento que voltou a valer.
         var anterior = await db.AgendamentosExternos
             .Where(a => a.Sistema == l.Sistema && a.OrigemId == l.OrigemId && a.Data == l.Data
-                        && a.PacienteId == l.PacienteId && a.Situacao != SituacaoAgendamentoExterno.Ativo)
+                        && a.PacienteId == l.PacienteId && a.Situacao != SituacaoAgendamentoExterno.Ativo
+                        && !db.ComunicacoesPaciente.Any(c => c.AgendamentoExternoId == a.Id
+                            && c.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento
+                            && c.EnviadoEm != null))
             .OrderByDescending(a => a.CriadoEm)
             .FirstOrDefaultAsync(ct);
         if (anterior is not null)
         {
             anterior.Situacao = SituacaoAgendamentoExterno.Ativo;
             anterior.EncerradoEm = null;
+            anterior.MotivoDesmarque = null;
             AtualizarDetalhes(anterior, l, agora);
             anterior.AtualizadoEm = agora;
             return anterior;
@@ -193,6 +299,25 @@ public sealed class AgendamentoExternoService(
         };
         db.AgendamentosExternos.Add(novo);
         return novo;
+    }
+
+    private async Task DispensarCancelamentoQueNaoValeMaisAsync(Lido l, DateTime agora, CancellationToken ct)
+    {
+        var emEspera = await db.ComunicacoesPaciente
+            .Where(c => c.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento
+                && AindaNaoSaiu.Contains(c.Status)
+                && c.AgendamentoExterno != null
+                && c.AgendamentoExterno.Sistema == l.Sistema
+                && c.AgendamentoExterno.OrigemId == l.OrigemId
+                && c.AgendamentoExterno.Data == l.Data)
+            .ToListAsync(ct);
+        foreach (var c in emEspera)
+        {
+            c.Status = StatusComunicacao.Dispensada;
+            c.MotivoFalha = $"O agendamento voltou a valer no {Rotulo(l.Sistema)} antes de o aviso sair.";
+            c.ProximaTentativaEm = null;
+            c.AtualizadoEm = agora;
+        }
     }
 
     private async Task EncerrarAsync(

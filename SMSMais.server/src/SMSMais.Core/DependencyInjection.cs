@@ -251,6 +251,12 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.AgendamentosExternos.IAgendamentoExternoService,
             Notificacoes.AgendamentosExternos.AgendamentoExternoService>();
         services.AddHostedService<Notificacoes.AgendamentosExternos.AgendamentoExternoWorker>();
+        // Lembrete e aviso de cancelamento de cada regulação externa (21/10/2026): as chaves moram na
+        // tela de Configuração dela; o lembrete roda no mesmo worker do SISREG.
+        services.AddScoped<Notificacoes.AgendamentosExternos.IAvisoRegulacaoConfiguracaoService,
+            Notificacoes.AgendamentosExternos.AvisoRegulacaoConfiguracaoService>();
+        services.AddScoped<Notificacoes.AgendamentosExternos.ILembreteAgendamentoExternoService,
+            Notificacoes.AgendamentosExternos.LembreteAgendamentoExternoService>();
         services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
             Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
         // Aba Equipe (produção por atendente, lida da trilha) — módulo ConfirmacoesEquipe.

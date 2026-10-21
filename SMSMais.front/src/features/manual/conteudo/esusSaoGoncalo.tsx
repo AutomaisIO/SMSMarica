@@ -24,9 +24,15 @@ export const artigoEsusSaoGoncalo: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/esussg',
   publico: 'Quem acompanha os pedidos de exame da PPI encaminhados ao ESUS de São Gonçalo',
-  atualizadoEm: '2026-10-11',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'contato com o paciente',
+    'avisos ao paciente',
+    'lembrete',
+    'aviso de cancelamento',
+    'voltou para a fila',
+    'não respondeu a tempo',
+    'erro na rodada',
     'aviso pelo WhatsApp',
     'ESUS',
     'ESUS SG',
@@ -233,7 +239,8 @@ export const artigoEsusSaoGoncalo: Artigo = {
             o aviso (enviado, entregue, lido), a resposta do paciente
             (confirmou ou avisou que não vai, com o motivo) e as mensagens trocadas desde o pedido. A
             resposta fica só na plataforma: nada é escrito no ESUS. Como o aviso funciona está no artigo
-            da Mensageria, seção “Agendamentos do SER, do SERNIT e do ESUS”.
+            da Mensageria, seção “Agendamentos do SER, do SERNIT e do ESUS”. O lembrete antes do dia e o
+            aviso de cancelamento se ligam na Configuração, no bloco “Avisos ao paciente”.
           </P>
         </>
       ),
@@ -318,7 +325,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
       id: 'configuracao',
       titulo: 'Configuração: credencial e motor',
       busca:
-        'configuração credencial usuário senha cliente sgo testar salvar rodar agora modo sincronizar catálogo rodada diária automática horário últimas rodadas',
+        'configuração credencial usuário senha cliente sgo testar salvar rodar agora modo sincronizar catálogo rodada diária automática horário últimas rodadas avisos ao paciente lembrete dias antes aviso de cancelamento voltou para a fila',
       conteudo: (
         <>
           <P>
@@ -355,6 +362,11 @@ export const artigoEsusSaoGoncalo: Artigo = {
                 titulo: 'Ligue a rodada diária automática e escolha o horário (Brasília).',
                 detalhe: 'A automática é sempre no modo Diária. A carga inicial é sempre manual.',
               },
+              {
+                titulo: 'Em “Avisos ao paciente”, ligue o lembrete e o aviso de cancelamento, se quiser.',
+                detalhe:
+                  'O lembrete sai os dias antes que você escolher: quem confirmou recebe o dia e a hora; quem não respondeu, a primeira mensagem de novo. O aviso de cancelamento sai quando o pedido volta para a fila do ESUS com a data ainda pela frente, e diz que o agendamento foi desmarcado e o pedido voltou para a fila. Saída da fila não avisa, porque o ESUS não diz por quê. As duas chaves nascem desligadas; o aviso de que foi agendado continua em Mensageria → Regras.',
+              },
             ]}
           />
         </>
@@ -364,7 +376,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
       id: 'varredura',
       titulo: 'Como a varredura funciona (carga inicial × diária)',
       busca:
-        'varredura carga inicial todo histórico fatias de um ano 2015 alguns minutos diária janela 45 dias atrás 400 dias frente só a fila detecta saída retomável cursor retomada interrompida sinal',
+        'varredura carga inicial todo histórico fatias de um ano 2015 alguns minutos diária janela 45 dias atrás 400 dias frente só a fila detecta saída retomável cursor retomada interrompida sinal erro não respondeu a tempo 5 minutos refeita sozinha uma hora tentativas',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -393,8 +405,20 @@ export const artigoEsusSaoGoncalo: Artigo = {
             Se o serviço reiniciar no meio (um deploy, por exemplo), a rodada fica{' '}
             <strong>Interrompida</strong> e <strong>retoma sozinha</strong> de onde parou — a coluna
             Progresso mostra a fase (fila ou agendados), o mês em leitura, há quanto tempo veio o último
-            sinal e quantas vezes ela foi retomada.
+            sinal e quantas vezes ela foi retomada. A rodada retomada conta de novo o que leu: os números
+            dela são os da leitura que terminou.
           </P>
+          <P>
+            Se o <strong>ESUS não responde</strong> a uma consulta em 5 minutos, a rodada termina como{' '}
+            <SeloRef cor="erro">Erro</SeloRef>, com o motivo “o ESUS não respondeu a tempo na fase …”. A
+            rodada diária que dá erro é <strong>refeita sozinha</strong> uma hora depois, até 4 vezes no dia.
+          </P>
+          <Callout tipo="atencao" titulo="Rodadas antigas com “Interrompida pelo desligamento” em cinza">
+            Até 21/10/2026, quando o ESUS demorava, a rodada aparecia como interrompida pelo desligamento do
+            serviço e ficava parada até o próximo deploy — houve dia sem leitura nenhuma. Essas rodadas
+            aparecem como Concluída com a frase em cinza embaixo, e os números de leitura delas (na fila,
+            agendados) estão somados duas vezes.
+          </Callout>
         </>
       ),
     },

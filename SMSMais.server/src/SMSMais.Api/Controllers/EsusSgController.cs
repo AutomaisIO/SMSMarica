@@ -3,6 +3,7 @@ using SMSMais.Api.Auth;
 using SMSMais.Core.EsusSg;
 using SMSMais.Core.EsusSg.Dtos;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
 using SMSMais.Core.Regulacao.AnaliseRegras;
 using SMSMais.Core.Regulacao.AnaliseRegras.Dtos;
 using SMSMais.Core.Regulacao.Estatisticas;
@@ -177,6 +178,24 @@ public sealed class EsusSgConfiguracaoController(
         [FromServices] IEsusSgVarreduraConfigService config,
         CancellationToken cancellationToken) =>
         config.SalvarAsync(corpo, cancellationToken);
+
+    /// <summary>Avisos ao paciente do ESUS SG: lembrete X dias antes e aviso de cancelamento (21/10/2026).</summary>
+    [HttpGet("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<AvisosPacienteRegulacaoDto> ObterAvisosPaciente(
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos, CancellationToken cancellationToken) =>
+        avisos.ObterAsync(SistemaRegulacao.EsusSg, cancellationToken);
+
+    [HttpPut("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<AvisosPacienteRegulacaoDto> SalvarAvisosPaciente(
+        [FromBody] SalvarAvisosPacienteRegulacaoRequest corpo,
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
+        CancellationToken cancellationToken) =>
+        avisos.SalvarAsync(SistemaRegulacao.EsusSg, corpo, cancellationToken);
 
     /// <summary>Relê o catálogo do ESUS agora (1 requisição) e, se mudou, leva ao catálogo canônico.</summary>
     [HttpPost("catalogo/sincronizar")]

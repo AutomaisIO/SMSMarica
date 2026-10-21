@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
 using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Ser;
@@ -518,6 +519,24 @@ public sealed class SerConfiguracaoController(
         [FromServices] IRegrasAnexoDestinoService regras,
         CancellationToken cancellationToken) =>
         regras.SalvarAsync(SistemaRegulacao.Ser, corpo.TamanhoMaximoMb, cancellationToken);
+
+    /// <summary>Avisos ao paciente do SER: lembrete X dias antes e aviso de cancelamento (21/10/2026).</summary>
+    [HttpGet("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<AvisosPacienteRegulacaoDto> ObterAvisosPaciente(
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos, CancellationToken cancellationToken) =>
+        avisos.ObterAsync(SistemaRegulacao.Ser, cancellationToken);
+
+    [HttpPut("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<AvisosPacienteRegulacaoDto> SalvarAvisosPaciente(
+        [FromBody] SalvarAvisosPacienteRegulacaoRequest corpo,
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
+        CancellationToken cancellationToken) =>
+        avisos.SalvarAsync(SistemaRegulacao.Ser, corpo, cancellationToken);
 
     [HttpPost("testar-credencial")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]

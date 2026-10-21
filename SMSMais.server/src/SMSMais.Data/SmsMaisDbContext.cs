@@ -329,6 +329,8 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // desses sistemas) e os nomes com que as unidades de atendimento aparecem neles (endereço).
     public DbSet<Entities.Notificacoes.AgendamentoExterno> AgendamentosExternos => Set<Entities.Notificacoes.AgendamentoExterno>();
     public DbSet<UnidadeAtendimentoNomeExterno> UnidadeAtendimentoNomesExternos => Set<UnidadeAtendimentoNomeExterno>();
+    // Lembrete e aviso de cancelamento de cada regulação externa (tela de Configuração dela).
+    public DbSet<Entities.Notificacoes.AvisoRegulacaoConfiguracao> AvisosRegulacaoConfiguracao => Set<Entities.Notificacoes.AvisoRegulacaoConfiguracao>();
     public DbSet<Entities.Notificacoes.VerificacaoCadastralEstado> VerificacoesCadastraisEstado => Set<Entities.Notificacoes.VerificacaoCadastralEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();
 

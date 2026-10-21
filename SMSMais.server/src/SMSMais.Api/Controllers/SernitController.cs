@@ -5,6 +5,7 @@ using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
 using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Sernit;
@@ -347,6 +348,24 @@ public sealed class SernitConfiguracaoController(
         [FromServices] IRegrasAnexoDestinoService regras,
         CancellationToken cancellationToken) =>
         regras.SalvarAsync(SistemaRegulacao.Sernit, corpo.TamanhoMaximoMb, cancellationToken);
+
+    /// <summary>Avisos ao paciente do SERNIT: lembrete X dias antes e aviso de cancelamento (21/10/2026).</summary>
+    [HttpGet("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<AvisosPacienteRegulacaoDto> ObterAvisosPaciente(
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos, CancellationToken cancellationToken) =>
+        avisos.ObterAsync(SistemaRegulacao.Sernit, cancellationToken);
+
+    [HttpPut("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<AvisosPacienteRegulacaoDto> SalvarAvisosPaciente(
+        [FromBody] SalvarAvisosPacienteRegulacaoRequest corpo,
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
+        CancellationToken cancellationToken) =>
+        avisos.SalvarAsync(SistemaRegulacao.Sernit, corpo, cancellationToken);
 
     /// <summary>Copia o catálogo do SERNIT para a nossa base (leitura longa, retomável, background).</summary>
     [HttpPost("catalogo/sincronizar")]

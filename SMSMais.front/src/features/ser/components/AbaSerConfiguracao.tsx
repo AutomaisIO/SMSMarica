@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Clock, HardDriveDownload, KeyRound, Loader2, Play, RefreshCw, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -18,6 +19,7 @@ import {
   useStatusMotorSer,
   useTestarCredencialSer,
 } from '@/features/ser/api/queries';
+import { AvisosPacienteSecao } from '@/features/regulacao/components/configuracao/AvisosPacienteSecao';
 import type { ExecucaoSer, ModoVarreduraSer, StatusVarreduraSer } from '@/features/ser/types';
 
 const CLASSE_STATUS: Record<StatusVarreduraSer, string> = {
@@ -92,6 +94,7 @@ function duracao(seg: number | null): string {
 }
 
 export function AbaSerConfiguracao() {
+  const podeEditar = usePermissao('RegulacaoConfiguracao', 'Edicao');
   const { data: status, isLoading } = useStatusMotorSer();
   // A lista segue o mesmo ritmo do status: é nela que ficam fase, cursor e pendentes da rodada.
   const { data: execucoes } = useExecucoesSer(20, status?.varreduraEmAndamento ?? false);
@@ -463,6 +466,8 @@ export function AbaSerConfiguracao() {
       </section>
 
       <RegrasAnexoEnvio destino="ser" nome="SER" />
+
+      <AvisosPacienteSecao sistema="ser" podeEditar={podeEditar} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">

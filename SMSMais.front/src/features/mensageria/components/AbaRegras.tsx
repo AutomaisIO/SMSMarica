@@ -254,6 +254,10 @@ export function AbaRegras() {
             para lembrar) e outro para quem <strong>ainda não respondeu</strong> (que continua
             oferecendo confirmar ou avisar que não vai). Vale para a rede toda — não é por unidade.
           </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Estas chaves (lembrete e aviso de cancelamento) são as do <strong>SISREG</strong> e aparecem também em SISREG →
+            Configuração. SER, SERNIT e ESUS têm as suas na Configuração de cada regulação.
+          </p>
           <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-4">
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-medium text-gray-700">Dias antes do agendamento</span>
@@ -481,6 +485,11 @@ export function AbaRegras() {
                   pessoa pede mais informações (e confirma o CPF e o nascimento, se o número não é confirmado), recebe o
                   procedimento, o dia, a hora e o nome do local — sem a guia do posto, que não existe para esses
                   atendimentos. Só agendamentos de amanhã em diante. Desligar segura os avisos na fila.
+                </span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  O <strong>lembrete</strong> antes do dia e o <strong>aviso de cancelamento</strong> desses agendamentos
+                  têm chave própria em cada regulação: Regulação → SER / SERNIT / ESUS → Configuração, bloco “Avisos ao
+                  paciente”.
                 </span>
               </span>
             </label>
