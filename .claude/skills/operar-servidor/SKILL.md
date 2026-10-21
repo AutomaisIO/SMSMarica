@@ -176,9 +176,14 @@ LEITURA ao banco, `curl` contra `127.0.0.1:5080/health` (e 5081/5085). Nada diss
    IA) e preserva o resto. Deploy desta VM = GitHub Environment **`automais`** (SSH pela WAN da
    EVEO, porta em `vars.DEPLOY_PORT`), que **não** tem `DB_CONNECTION` — a connection string desta
    VM (banco pela rede interna) é mantida como está no env.
-   **Só o server e o front publicam nesta VM.** Os workflows de `fhir`, `assinador`, `aiengine`,
-   `app`, `arquivos` e `secretario` ainda usam o secret `HOST_SMSMARICA` (o droplet desligado) e
-   não rodaram desde a virada (conferido em 21/10/2026). Até serem repontados para o environment
-   `automais`, uma mudança nessas partes **não chega à produção**: o job falha no droplet.
+   **Todos os deploys publicam nesta VM pelo environment `automais`** (DEPLOY_HOST/USER/KEY +
+   `vars.DEPLOY_PORT`). Os de `fhir`, `assinador`, `aiengine`, `app`, `arquivos` e `secretario`
+   foram repontados em 21/10/2026: até então usavam os secrets `HOST/USER/PASS_SMSMARICA` do
+   droplet e não rodavam desde a virada. Na mesma mudança, o `deploy-fhir` e o `deploy-aiengine`
+   deixaram de **regravar o env inteiro** (o do FHIR vinha do secret `DB_CONNECTION_SMSMARICA`, que
+   apontava para o caminho antigo do banco): agora preservam o env e só acertam as linhas que
+   controlam. Os secrets do repositório `HOST/USER/PASS_SMSMARICA`, `DB_CONNECTION_SMSMARICA` e
+   `VITE_API_BASE_URL_SMSMARICA` ficaram sem uso. Cuidado: o `[skip ci]` só vale para o commit da
+   ponta do push, e os filtros `paths:` olham todos os commits.
 5. **Reiniciar serviço** em horário de atendimento: explicar impacto e pedir confirmação antes,
    mesmo sendo o admin.

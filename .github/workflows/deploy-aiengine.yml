@@ -14,6 +14,10 @@ concurrency:
 
 jobs:
   deploy:
+    # Publica na VM SMSMAIS-01 (EVEO) pelo GitHub Environment `automais`, o mesmo do
+    # deploy-server: DEPLOY_HOST/USER/KEY + var DEPLOY_PORT (SSH pela WAN). Até 21/10/2026 usava
+    # os secrets HOST/USER/PASS_SMSMARICA do droplet, desligado na virada de 14/10.
+    environment: automais
     runs-on: ubuntu-latest
 
     steps:
@@ -31,10 +35,10 @@ jobs:
       - name: Copy artifact to server (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
-          port: 22
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           source: smsmarica-aiengine.tar.gz
           target: /tmp/
 
@@ -44,10 +48,10 @@ jobs:
           AIENGINE_KEY: ${{ secrets.AIENGINE_INTERNAL_KEY }}
           CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
-          port: 22
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ vars.DEPLOY_PORT || 22 }}
           envs: AIENGINE_KEY,CLAUDE_TOKEN
           command_timeout: 15m
           script: |
@@ -94,24 +98,44 @@ jobs:
             fi
 
             # --- 3. Arquivo de ambiente ---
-            # Reescrito a cada deploy a partir dos Secrets (padrão da casa). O SQLite fica
-            # em $DATA_DIR, FORA de $APP_DIR, porque o passo 5 apaga o app inteiro.
-            {
-              printf 'AIENGINE_INTERNAL_KEY=%s\n' "${AIENGINE_KEY:-}"
-              printf 'CLAUDE_CODE_OAUTH_TOKEN=%s\n' "${CLAUDE_TOKEN:-}"
-              printf 'AIENGINE_DB_PATH=%s/aiengine.db\n' "$DATA_DIR"
-              printf 'AIENGINE_REPO_DIR=/srv/smsmarica-repo\n'
-              printf 'AIENGINE_DADOS_CWD=%s/dados-sandbox\n' "$DATA_DIR"
-              printf 'AIENGINE_PROXYSQL_URL=http://127.0.0.1:5091/proxy-sql\n'
-              printf 'AIENGINE_PROXYSQL_TOKEN=%s\n' "$PROXY_TOKEN"
-            } | $SUDO tee "$ENV_FILE" >/dev/null
+            # O env do servidor é a FONTE DA VERDADE (21/10/2026, como no deploy-server): o deploy
+            # só acerta as linhas que ele controla e preserva o resto. Antes o tee recriava o
+            # arquivo inteiro a partir dos Secrets — um token da assinatura renovado à mão no
+            # servidor voltaria ao do secret e derrubaria o Agente IA. O SQLite fica em $DATA_DIR,
+            # FORA de $APP_DIR, porque o passo 5 apaga o app inteiro.
+            definir_env() {
+              local tmp
+              tmp=$(mktemp)
+              $SUDO touch "$ENV_FILE"
+              $SUDO cp -p "$ENV_FILE" "$ENV_FILE.bak-deploy"
+              $SUDO grep -v "^$1=" "$ENV_FILE" > "$tmp" || true
+              printf '%s=%s\n' "$1" "$2" >> "$tmp"
+              $SUDO tee "$ENV_FILE" < "$tmp" >/dev/null
+              rm -f "$tmp"
+            }
+            # Só acrescenta quando a linha não existe: o valor que está no servidor manda.
+            se_faltar_env() {
+              $SUDO touch "$ENV_FILE"
+              if ! $SUDO grep -q "^$1=" "$ENV_FILE"; then
+                printf '%s=%s\n' "$1" "$2" | $SUDO tee -a "$ENV_FILE" >/dev/null
+              fi
+            }
+            # A chave interna tem de ser a MESMA do lado da API, e o deploy-server grava lá a do
+            # secret a cada deploy — por isso esta vem do secret (iguais em 21/10/2026).
+            if [ -n "${AIENGINE_KEY:-}" ]; then definir_env AIENGINE_INTERNAL_KEY "$AIENGINE_KEY"; fi
+            se_faltar_env CLAUDE_CODE_OAUTH_TOKEN "${CLAUDE_TOKEN:-}"
+            definir_env AIENGINE_DB_PATH "$DATA_DIR/aiengine.db"
+            definir_env AIENGINE_REPO_DIR /srv/smsmarica-repo
+            definir_env AIENGINE_DADOS_CWD "$DATA_DIR/dados-sandbox"
+            definir_env AIENGINE_PROXYSQL_URL http://127.0.0.1:5091/proxy-sql
+            if [ -n "$PROXY_TOKEN" ]; then definir_env AIENGINE_PROXYSQL_TOKEN "$PROXY_TOKEN"; fi
             $SUDO chmod 600 "$ENV_FILE"
 
             if [ -z "${AIENGINE_KEY:-}" ]; then
               echo "AVISO: secret AIENGINE_INTERNAL_KEY vazio — o serviço não vai subir." >&2
             fi
-            if [ -z "${CLAUDE_TOKEN:-}" ]; then
-              echo "AVISO: secret CLAUDE_CODE_OAUTH_TOKEN vazio — sem credencial da assinatura." >&2
+            if ! $SUDO grep -q '^CLAUDE_CODE_OAUTH_TOKEN=.' "$ENV_FILE"; then
+              echo "AVISO: CLAUDE_CODE_OAUTH_TOKEN vazio no $ENV_FILE — sem credencial da assinatura." >&2
             fi
 
             # --- 4. Backup do que está no ar (rollback) ---
@@ -157,6 +181,12 @@ jobs:
             # --- 8. Subir e validar, com rollback ---
             log "Iniciando $SERVICE..."
             $SUDO systemctl start "$SERVICE"
+            # Instância TRAVADA (ConditionPathExists=/etc/smsmais/liberado da virada não satisfeita):
+            # o artefato foi atualizado, mas o serviço não deve subir — não é falha (como no deploy-server).
+            if [ "$($SUDO systemctl show -p ConditionResult --value "$SERVICE")" = "no" ]; then
+              log "Instância TRAVADA (condição da unit não satisfeita): artefato atualizado, serviço não iniciado."
+              exit 0
+            fi
             sleep 5
             if ! $SUDO systemctl is-active --quiet "$SERVICE"; then
               echo "FALHA: serviço não subiu. Journal:" >&2
