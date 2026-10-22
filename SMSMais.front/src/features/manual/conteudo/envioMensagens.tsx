@@ -613,7 +613,7 @@ export const artigoEnvioMensagens: Artigo = {
               },
               {
                 termo: 'Modelo com imagem sem arte',
-                descricao: 'Recusado antes da Meta: a arte do cabeçalho se define em Mensageria → Modelos.',
+                descricao: 'Recusado antes da Meta: a arte do cabeçalho se escolhe no painel do Automais.Zap, em Templates.',
               },
             ]}
           />

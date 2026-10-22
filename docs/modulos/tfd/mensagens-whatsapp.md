@@ -7,14 +7,14 @@ documento é a referência do que foi cadastrado, para a implementação.
 
 ## Situação na Meta
 
-| Modelo | Status | Arte cadastrada | Rodapé |
-|---|---|---|---|
-| `transporte_agendado_anonimo` | aprovado | vermelha | sim |
-| `transporte_agendado` | aprovado | branca | sim |
-| `transporte_horario_anonimo` | aprovado | vermelha | não |
-| `transporte_horario` | aprovado | branca | sim |
-| `transporte_cancelado_anonimo` | aprovado | branca | sim |
-| `transporte_cancelado` | aprovado | vermelha | sim |
+| Modelo | Status | Arte cadastrada (amostra) | Arte que vai no envio | Rodapé |
+|---|---|---|---|---|
+| `transporte_agendado_anonimo` | aprovado | vermelha | vermelha | sim |
+| `transporte_agendado` | aprovado | branca | vermelha | sim |
+| `transporte_horario_anonimo` | aprovado | vermelha | vermelha | não |
+| `transporte_horario` | aprovado | branca | vermelha | sim |
+| `transporte_cancelado_anonimo` | aprovado | branca | branca | sim |
+| `transporte_cancelado` | aprovado | vermelha | branca | sim |
 
 Todos: categoria **Utilidade**, idioma **Português (BR)**, cabeçalho de **imagem**, botões de
 **resposta rápida**. Rodapé (quando há): `Para mais informações acesse: https://app.smsmarica.online`.
@@ -37,7 +37,7 @@ Todos: categoria **Utilidade**, idioma **Português (BR)**, cabeçalho de **imag
 
 Quando o transporte é marcado e o número **não** é verificado. **Aprovado.**
 
-**Cabeçalho (imagem):** `transporte-agendado-vermelho.jpg`
+**Cabeçalho (imagem):** amostra cadastrada `transporte-agendado-vermelho.jpg` · no envio vai `transporte-agendado-vermelho.jpg` (escolhida no Automais.Zap)
 
 **Corpo:**
 
@@ -65,7 +65,7 @@ Para ver os detalhes e confirmar se você vai utilizar o transporte, toque em *Q
 
 Quando o transporte é marcado e o número **é** verificado (ou logo depois que a pessoa se verifica). **Aprovado.**
 
-**Cabeçalho (imagem):** `transporte-agendado-branco.jpg`
+**Cabeçalho (imagem):** amostra cadastrada `transporte-agendado-branco.jpg` · no envio vai `transporte-agendado-vermelho.jpg` (escolhida no Automais.Zap)
 
 **Corpo:**
 
@@ -97,7 +97,7 @@ Você vai utilizar o transporte? Toque em um dos botões abaixo.
 
 Um dia antes, com a rota gerada, quando o número **ainda não** é verificado. **Aprovado.**
 
-**Cabeçalho (imagem):** `transporte-horario-vermelho.jpg`
+**Cabeçalho (imagem):** amostra cadastrada `transporte-horario-vermelho.jpg` · no envio vai `transporte-horario-vermelho.jpg` (escolhida no Automais.Zap)
 
 **Corpo:**
 
@@ -123,7 +123,7 @@ Para ver a previsão de busca e de retorno e confirmar se você vai utilizar o t
 
 Um dia antes, com a rota gerada, para número verificado. **Aprovado.**
 
-**Cabeçalho (imagem):** `transporte-horario-branco.jpg`
+**Cabeçalho (imagem):** amostra cadastrada `transporte-horario-branco.jpg` · no envio vai `transporte-horario-vermelho.jpg` (escolhida no Automais.Zap)
 
 **Corpo:**
 
@@ -166,7 +166,7 @@ Você vai utilizar o transporte? Toque em um dos botões abaixo.
 
 Quando a Secretaria cancela o transporte e o número **não** é verificado. **Aprovado.**
 
-**Cabeçalho (imagem):** `transporte-cancelado-branco.jpg`
+**Cabeçalho (imagem):** amostra cadastrada `transporte-cancelado-branco.jpg` · no envio vai `transporte-cancelado-branco.jpg` (escolhida no Automais.Zap)
 
 **Corpo:**
 
@@ -192,7 +192,7 @@ Para ver os detalhes, toque em *Quero mais informações*.
 
 Quando a Secretaria cancela o transporte e o número **é** verificado. **Aprovado.**
 
-**Cabeçalho (imagem):** `transporte-cancelado-vermelho.jpg`
+**Cabeçalho (imagem):** amostra cadastrada `transporte-cancelado-vermelho.jpg` · no envio vai `transporte-cancelado-branco.jpg` (escolhida no Automais.Zap)
 
 **Corpo:**
 
@@ -218,28 +218,30 @@ Comunicamos que o seu transporte de *{{2}}* para realizar *{{3}}* na unidade *{{
 
 ## Artes do cabeçalho
 
-Ficam em `SMSMais.cidadao.pwa/public/mensagens/`, junto das artes das consultas e exames (mesma
-personagem, mesma logo, mesma fonte). JPEG, 90–100 KB cada. Cada momento tem versão vermelha e
-branca; a tabela do início diz qual foi usada no cadastro de cada modelo.
+Desde 22/10/2026 as artes são da personagem **Maria**, as mesmas das consultas e exames. São
+JPEG de 1125×628 com até 100 KB. Ficou **uma cor por momento**, e as duas versões de cada modelo
+(completa e sem dados) usam a mesma arte: agendado e véspera na vermelha, cancelado na branca.
+
+**Quem manda é o painel do Automais.Zap** (Templates): os seis modelos já estão com a arte
+escolhida lá. Uma cópia de cada arte fica em `SMSMais.cidadao.pwa/public/mensagens/`, como reserva
+para quando o catálogo do Zap não responde. As versões na outra cor, também já com a Maria, saíram
+do app. Hoje elas ficam só na cópia local de trabalho de `docs/comunicacao/`, que não está no git.
 
 ⚠️ **A arte do cadastro é só amostra.** Modelo com foto no cabeçalho exige a imagem em **cada
 envio** (sem ela a Meta recusa com `(#132012)`), e o paciente vê a imagem que foi **enviada**, não a
-do cadastro. A cor que chega ao celular é decidida no envio — dá para padronizar sem recadastrar.
+do cadastro. Por isso a cor que chega ao celular é a do Zap, e trocar não exige recadastrar.
 
-**Transporte agendado** — `transporte-agendado-vermelho.jpg` · `transporte-agendado-branco.jpg`
+**Transporte agendado** (`transporte_agendado` e `transporte_agendado_anonimo`): `transporte-agendado-vermelho.jpg`
 
-![Transporte agendado, vermelho](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-agendado-vermelho.jpg)
-![Transporte agendado, branco](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-agendado-branco.jpg)
+![Transporte agendado](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-agendado-vermelho.jpg)
 
-**Véspera — horário** — `transporte-horario-vermelho.jpg` · `transporte-horario-branco.jpg`
+**Véspera, com horário** (`transporte_horario` e `transporte_horario_anonimo`): `transporte-horario-vermelho.jpg`
 
-![Horário do transporte, vermelho](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-horario-vermelho.jpg)
-![Horário do transporte, branco](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-horario-branco.jpg)
+![Horário do transporte](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-horario-vermelho.jpg)
 
-**Transporte cancelado** — `transporte-cancelado-vermelho.jpg` · `transporte-cancelado-branco.jpg`
+**Transporte cancelado** (`transporte_cancelado` e `transporte_cancelado_anonimo`): `transporte-cancelado-branco.jpg`
 
-![Transporte cancelado, vermelho](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-cancelado-vermelho.jpg)
-![Transporte cancelado, branco](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-cancelado-branco.jpg)
+![Transporte cancelado](../../../SMSMais.cidadao.pwa/public/mensagens/transporte-cancelado-branco.jpg)
 
 ## Escolhas de texto
 
@@ -250,7 +252,7 @@ do cadastro. A cor que chega ao celular é decidida no envio — dá para padron
 
 ## Para a implementação
 
-- **A imagem de cada modelo tem de estar no mapa `ComunicacaoPaciente:ImagensCabecalho`** (appsettings). O catálogo do relay (`GET /comunicacoes-paciente/modelos`) não informa o cabeçalho de nenhum modelo hoje — os de consulta e exame só funcionam porque estão nesse mapa. Sem a entrada, o envio volta `(#132012)`.
+- **A arte já está resolvida.** O catálogo do Automais.Zap informa o cabeçalho de cada modelo e entrega a arte escolhida no painel. Os seis modelos do transporte estão com arte lá desde 22/10/2026. O mapa `ComunicacaoPaciente:ImagensCabecalho` é só reserva, para quando o catálogo não responde. Modelo que exige foto e não tem arte em lugar nenhum tem o envio recusado antes da Meta, com o motivo registrado.
 - **De onde vem cada dado:** busca = `SessaoDeTratamento.HoraPrevistaBusca` / `Alocacao.EtaPrevisto` (o atendimento não tem horário: vem do arranjo do carro); trajeto = duração da rota até a unidade; retorno = chegada + `TipoTratamento.TempoMedioMinutos` (o tempo médio é do tipo) + trajeto de volta; unidade e cidade = `UnidadeAtendimento`; veículo = `Veiculo` (modelo, cor, placa); motorista = `RotaDiaria.Motorista`; acompanhantes = `SessaoDeTratamento.Acompanhantes` (lista do paciente).
 - **Botões chegam como TEXTO** (resposta rápida sem payload), casados pelo contexto da mensagem respondida:
   - *Sim! Confirmo a utilização* (agendado) e *Sim! Quero o transporte* (véspera) → confirma o transporte;

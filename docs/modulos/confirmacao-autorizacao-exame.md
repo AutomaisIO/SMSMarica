@@ -83,11 +83,14 @@ Tela `/app/confirmacoes` (módulo **65 `Confirmacoes`**; API `confirmacoes/*`), 
 > ⚠️ **Modelo com FOTO no cabeçalho exige o componente de imagem em CADA envio.** A imagem que
 > aparece no modelo aprovado é só exemplo: mandar apenas o corpo faz a Meta recusar com
 > `(#132012) Parameter format does not match format in the created template`. Foi o que derrubou
-> os três modelos novos em 20/09/2026. O catálogo do relay **não** informa o formato do cabeçalho
-> (devolve nome, idioma, categoria, corpo e exemplos), então o mapa *modelo → URL pública da arte*
-> é explícito em `ComunicacaoPaciente:ImagensCabecalho`. As artes são servidas pelo app do cidadão
-> (`/mensagens/*.jpg`, JPEG ≤ 1125 px — a imagem é baixada a cada envio, pela Meta e pelo aparelho
-> do paciente). **Criou modelo novo com foto? Acrescente no mapa, senão ele falha em silêncio na fila.**
+> os três modelos novos em 20/09/2026. **Desde 22/10/2026 a arte de cada modelo é escolhida no
+> painel do Automais.Zap** (`https://smsmais.automais.com/admin/templates`, cliente Secretaria de
+> Saúde de Maricá). O catálogo do Zap informa o formato do cabeçalho e entrega a arte, num endereço
+> fixo por arquivo. O mapa `ComunicacaoPaciente:ImagensCabecalho`, que aponta para as cópias do app
+> do cidadão (`/mensagens/*.jpg`), fica como reserva para quando o catálogo não responde. As artes
+> são JPEG de 1125×628 com até 100 KB, porque a imagem é baixada a cada envio, pela Meta e pelo
+> aparelho do paciente. **Criou modelo novo com foto? Escolha a arte dele no Zap.** Sem arte em
+> lugar nenhum, o envio é recusado antes da Meta e o motivo fica registrado.
 
 > **Primeira mensagem trocada em 20/09/2026.** Era `validacao_cadastro`, que pedia os 4 dígitos do
 > CPF logo de cara e oferecia "falar com atendente" como única alternativa — e era nele que as
