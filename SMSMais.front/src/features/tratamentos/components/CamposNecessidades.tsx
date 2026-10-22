@@ -8,8 +8,8 @@ type Props = {
 };
 
 /**
- * Condição do paciente para a viagem. Por enquanto é registro para quem monta a rota — o gerador
- * automático ainda não escolhe veículo por ela.
+ * Condição do paciente para a viagem. O gerador automático escolhe veículo e assento por ela
+ * (cadeirante na cadeira, maca, isolamento, veículo alto) — `AcomodacaoNoVeiculo` no servidor.
  */
 export function CamposNecessidades({ valor, aoMudar }: Props) {
   const marcar = (campo: keyof Necessidades, v: boolean) => aoMudar({ ...valor, [campo]: v });
