@@ -69,6 +69,10 @@ public static class ProvedoresIntegracao
         // parametrosJson={baseUrl, acessoId, janelaInicio, janelaFim}. Credencial CEDIDA por uma
         // servidora e o PEC é sessão única: só se usa na janela da madrugada, para não derrubá-la.
         ["esuspec"] = "e-SUS APS PEC (cadastro do cidadão)",
+        // Push do app do cidadão (FCM HTTP v1). clientId não usado; clientSecret = JSON inteiro da
+        // conta de serviço (conferido ao gravar); parametrosJson = {projectId}, tirado do próprio JSON
+        // só para exibição. Ativo liga/desliga o envio.
+        ["fcm"] = "Firebase Cloud Messaging (notificações do app do cidadão)",
         // NB: sisreg, ser, sernit, esussg e esuspec são FONTES DE DADOS (ADR-0077): moram nesta
         // tabela, mas se editam em Sistema → Fontes de dados, e a tela de Integrações os esconde.
         // O conector web do Klinikos é uma IaFonte (Tipo=KlinikosWeb), editada no mesmo lugar.

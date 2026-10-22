@@ -29,6 +29,15 @@ export type TesteSpacesResultado = {
   endpoint: string | null;
 };
 
+// Resultado do teste da credencial do Firebase (FCM): autentica e faz um envio de validação
+// (validate_only), que o Firebase confere e não entrega a ninguém.
+// Sempre vem em HTTP 200 — o sucesso/falha do teste está em `ok`.
+export type TesteFcmResultado = {
+  ok: boolean;
+  projectId: string | null;
+  mensagem: string;
+};
+
 // Google Maps (TFD) — chave cifrada.
 export type TfdGoogle = { baseUrl: string; chaveConfigurada: boolean; ativo: boolean };
 export type AtualizarTfdGoogle = { baseUrl: string; apiKey?: string; ativo: boolean };

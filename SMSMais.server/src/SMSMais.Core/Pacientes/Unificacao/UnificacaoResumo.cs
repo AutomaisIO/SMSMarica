@@ -36,6 +36,7 @@ internal static class UnificacaoResumo
             ["ouvidoria_manifestacao"] = "Ouvidoria",
             ["cidadao_acesso"] = "App do cidadão",
             ["cidadao_login_link"] = "App do cidadão",
+            ["cidadao_notificacao"] = "App do cidadão",
             ["anexo_upload_token"] = "App do cidadão",
             ["personificacao_paciente"] = "App do cidadão",
             ["pesquisa_satisfacao"] = "Pesquisas de satisfação",

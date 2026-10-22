@@ -17,6 +17,7 @@ import { artigoFontesDados } from '@/features/manual/conteudo/fontesDados';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoGuiasAgendamento } from '@/features/manual/conteudo/guiasAgendamento';
 import { artigoIndicadoresRegulacao } from '@/features/manual/conteudo/indicadoresRegulacao';
+import { artigoIntegracoes } from '@/features/manual/conteudo/integracoes';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
 import { artigoNotificacoesRegulacao } from '@/features/manual/conteudo/notificacoesRegulacao';
@@ -117,6 +118,7 @@ export const ARTIGOS: Artigo[] = [
   artigoEnvioMensagens,
   artigoEquipamentos,
   artigoIndicadoresRegulacao,
+  artigoIntegracoes,
   artigoMensageria,
   artigoMotoristas,
   artigoNotificacoesRegulacao,

@@ -15,6 +15,7 @@ import type {
   ProxyTesteCepResultado,
   ProxyTesteCpfResultado,
   ServicoProxy,
+  TesteFcmResultado,
   TesteSpacesResultado,
   TfdGoogle,
   TfdWhatsApp,
@@ -67,6 +68,19 @@ export async function testarSpaces(): Promise<TesteSpacesResultado> {
 
 export function useTestarSpaces() {
   return useMutation({ mutationFn: testarSpaces });
+}
+
+// ---- Firebase (FCM) — notificações do app do cidadão ----
+
+// Obtém um token de acesso do Google com a conta de serviço gravada e faz um envio de validação
+// (validate_only: confere API ligada e permissão de envio); nenhuma notificação é entregue.
+// Sempre retorna 200; o resultado do teste vem no corpo (`ok`/`mensagem`).
+export async function testarFcm(): Promise<TesteFcmResultado> {
+  return (await http.post<TesteFcmResultado>('/integracoes/credenciais/fcm/testar')).data;
+}
+
+export function useTestarFcm() {
+  return useMutation({ mutationFn: testarFcm });
 }
 
 // ---- Google Maps (TFD) ----

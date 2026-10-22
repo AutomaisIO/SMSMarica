@@ -152,6 +152,12 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string; grupo: GrupoPermiss
   { id: 'RespostasRapidas', grupo: 'atendimento', rotulo: 'Mensagens prontas', ajuda: 'Cadastro das mensagens prontas do chat.' },
   { id: 'RoboAtendimento', grupo: 'atendimento', rotulo: 'Robô de atendimento', ajuda: 'Assuntos e comandos do robô.' },
   { id: 'PesquisaSatisfacao', grupo: 'atendimento', rotulo: 'Pesquisa de satisfação', ajuda: 'Enviar a pesquisa ao paciente pelo histórico.' },
+  {
+    id: 'NotificacaoAppCidadao',
+    grupo: 'atendimento',
+    rotulo: 'Notificações no app do cidadão',
+    ajuda: 'Na ficha do paciente: ver os aparelhos com notificação ativa e o histórico (Consulta) e enviar uma notificação ao celular (Edição).',
+  },
 
   // ---- Transporte
   { id: 'Tratamentos', grupo: 'transporte', rotulo: 'Atendimentos', ajuda: 'Atendimentos do transporte, com os acompanhantes do paciente.' },
@@ -235,6 +241,12 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // inofensivo — o que ela libera é MANDAR MENSAGEM para o cidadão.
   PesquisaSatisfacao: {
     Edicao: 'Enviar pesquisa de satisfação ao paciente (WhatsApp)',
+  },
+  // Só Consulta e Edição valem, e as duas vivem na ficha do paciente (aba Histórico de Acesso).
+  // "Edição" aqui é MANDAR MENSAGEM para o celular do cidadão, que aparece até com a tela bloqueada.
+  NotificacaoAppCidadao: {
+    Consulta: 'Ver os aparelhos e o histórico de notificações',
+    Edicao: 'Enviar notificação ao celular do paciente',
   },
   // O que se edita aqui aparece na tela de login, no PDF de laudo e na página pública de
   // verificação — inclusive para quem NÃO está autenticado. Não é configuração operacional.

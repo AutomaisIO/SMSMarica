@@ -96,6 +96,10 @@ export type ModuloPermissao =
   // Extensão do Chrome distribuída pela plataforma (80, ADR-0064): computadores autorizados e
   // versões publicadas. Baixar o instalador e autorizar o próprio computador NÃO pedem módulo.
   | 'ExtensaoNavegador'
+  // Notificações no app do cidadão (81): ver os aparelhos e o histórico (Consulta) e enviar
+  // (Edição). Separado de Pacientes: consultar a ficha não dá, por isso, o direito de mandar
+  // mensagem ao celular da pessoa.
+  | 'NotificacaoAppCidadao'
   // Fontes de dados (82, ADR-0077): cadastro único de toda fonte de onde se lê dado (Sistema).
   | 'FontesDados';
 

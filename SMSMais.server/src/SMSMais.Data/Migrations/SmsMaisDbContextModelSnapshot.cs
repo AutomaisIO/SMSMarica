@@ -1056,6 +1056,69 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("cidadao_login_link", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.CidadaoNotificacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Aparelhos")
+                        .HasColumnType("integer")
+                        .HasColumnName("aparelhos");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<int>("Entregues")
+                        .HasColumnType("integer")
+                        .HasColumnName("entregues");
+
+                    b.Property<Guid?>("EnviadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("enviado_por");
+
+                    b.Property<string>("Falha")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("falha");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("mensagem");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("origem");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<string>("Rota")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("rota");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(65)
+                        .HasColumnType("character varying(65)")
+                        .HasColumnName("titulo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PacienteId", "CriadoEm")
+                        .HasDatabaseName("ix_cidadao_notificacao_paciente");
+
+                    b.ToTable("cidadao_notificacao", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.CidadaoSessao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1095,6 +1158,20 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("personificacao_id");
 
+                    b.Property<string>("PushPlataforma")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("push_plataforma");
+
+                    b.Property<DateTime?>("PushRegistradoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("push_registrado_em");
+
+                    b.Property<string>("PushToken")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("push_token");
+
                     b.Property<DateTime?>("RevogadaEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("revogada_em");
@@ -1104,6 +1181,11 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("PersonificacaoId")
                         .HasDatabaseName("ix_cidadao_sessao_personificacao")
                         .HasFilter("personificacao_id IS NOT NULL");
+
+                    b.HasIndex("PushToken")
+                        .HasDatabaseName("ix_cidadao_sessao_push_token");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("PushToken"), "hash");
 
                     b.HasIndex("CidadaoAcessoId", "RevogadaEm")
                         .HasDatabaseName("ix_cidadao_sessao_acesso_ativa");
