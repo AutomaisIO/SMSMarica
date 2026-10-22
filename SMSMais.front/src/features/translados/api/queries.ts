@@ -10,6 +10,8 @@ import {
   listarRotas,
   listarSessoesElegiveis,
   listarViagem,
+  listarAguardandoRetorno,
+  puxarParaRota,
   listarEnderecosParaRevisar,
   fixarPontoDoEndereco,
   obterRotaPorId,
@@ -173,5 +175,28 @@ export function useFixarPontoDoEndereco() {
     mutationFn: (v: { id: string; latitude: number; longitude: number }) =>
       fixarPontoDoEndereco(v.id, v.latitude, v.longitude),
     onSuccess: () => client.invalidateQueries({ queryKey: chaveRevisao }),
+  });
+}
+
+const chaveAguardando = ['rastreamento', 'aguardando'] as const;
+
+/** Fila de quem aguarda a volta; atualiza a cada minuto. */
+export function useAguardandoRetorno(ativo: boolean) {
+  return useQuery({
+    queryKey: chaveAguardando,
+    queryFn: listarAguardandoRetorno,
+    enabled: ativo,
+    refetchInterval: ativo ? 60_000 : false,
+  });
+}
+
+export function usePuxarParaRota() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { rotaId: string; sessaoId: string }) => puxarParaRota(v.rotaId, v.sessaoId),
+    onSuccess: (_, v) => {
+      client.invalidateQueries({ queryKey: chaveAguardando });
+      client.invalidateQueries({ queryKey: transladosKeys.detalhe(v.rotaId) });
+    },
   });
 }

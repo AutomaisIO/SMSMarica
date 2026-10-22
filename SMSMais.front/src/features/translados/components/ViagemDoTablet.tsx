@@ -22,6 +22,11 @@ function quem(e: EventoViagem): string {
 }
 
 function descrever(e: EventoViagem): string {
+  if (e.volta) {
+    if (e.tipo === 'Embarque') return `Embarcou na volta: ${quem(e)}`;
+    if (e.tipo === 'Ausencia') return `Não estava na unidade na hora da volta: ${quem(e)}`;
+    if (e.tipo === 'Desembarque') return `Chegou em casa: ${quem(e)}`;
+  }
   switch (e.tipo) {
     case 'Inicio':
       return e.motoristaNome ? `Viagem começou · ${e.motoristaNome} ao volante` : 'Viagem começou';
@@ -46,6 +51,15 @@ function situacaoDoPaciente(eventos: EventoViagem[], a: AlocacaoDto): { texto: s
   const doPaciente = eventos.filter((e) => e.sessaoId === a.sessaoId && e.pessoa === 'Paciente' && e.aplicado);
   const ultima = doPaciente[doPaciente.length - 1];
   if (!ultima) return { texto: 'Sem marcação do tablet', cor: 'text-gray-500' };
+  if (ultima.volta) {
+    if (ultima.tipo === 'Desembarque') return { texto: `Voltou para casa às ${hora(ultima.ocorridoEm)}`, cor: 'text-emerald-700' };
+    if (ultima.tipo === 'Ausencia') {
+      return a.statusSessao === 'Realizada'
+        ? { texto: 'Ficou na unidade; voltou por outra rota', cor: 'text-emerald-700' }
+        : { texto: 'Ficou na unidade: aguardando a volta', cor: 'text-amber-700' };
+    }
+    return { texto: `Na volta desde ${hora(ultima.ocorridoEm)}`, cor: 'text-amber-700' };
+  }
   if (ultima.tipo === 'Desembarque') return { texto: `Transporte feito · desceu às ${hora(ultima.ocorridoEm)}`, cor: 'text-emerald-700' };
   if (ultima.tipo === 'Ausencia') return { texto: `Não estava na coleta (${hora(ultima.ocorridoEm)})`, cor: 'text-red-700' };
   return { texto: `A bordo desde ${hora(ultima.ocorridoEm)}`, cor: 'text-amber-700' };
@@ -67,7 +81,9 @@ export function ViagemDoTablet({ rotaId, status, alocacoes }: Props) {
   const viagem = useViagemDaRota(rotaId, status === 'EmAndamento');
   const podeCorrigir = usePermissao('Tratamentos', 'Edicao');
   const eventos = viagem.data ?? [];
-  const pacientes = alocacoes.filter((a) => a.tipo === 'Paciente');
+  // Uma linha por paciente (quem foi puxado para a volta também tem alocação nesta rota).
+  const pacientes = alocacoes.filter((a, i, todas) => a.tipo === 'Paciente'
+    && todas.findIndex((b) => b.tipo === 'Paciente' && b.sessaoId === a.sessaoId) === i);
 
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">

@@ -162,6 +162,8 @@ export type EventoViagem = {
   longitude: number | null;
   aplicado: boolean;
   motivoNaoAplicado: string | null;
+  /** Marcação da volta (embarque na unidade, chegada em casa). */
+  volta: boolean;
 };
 
 // ---- Endereços que o Google não localizou (revisão de geocódigos) ----
@@ -177,4 +179,25 @@ export type EnderecoParaRevisar = {
   precisao: string | null;
   revisaoPendente: boolean;
   geocodificadoEm: string;
+};
+
+// ---- Volta: quem aguarda retorno e "puxar" para uma rota (etapa 3) ----
+
+/** Paciente que terminou (ou deve estar terminando) o atendimento e espera a volta. Em Maricá a van
+ * não espera: entra quem desceu hoje; fora do município, só quem ficou na unidade quando ela saiu. */
+export type PacienteAguardando = {
+  sessaoId: string;
+  tratamentoId: string;
+  pacienteId: string;
+  pacienteNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
+  latitude: number | null;
+  longitude: number | null;
+  distanciaMetros: number | null;
+  acompanhanteEsperado: boolean;
+  dataPrevista: string;
+  foraDoMunicipio: boolean;
+  /** "HH:mm:ss": o marcado na sessão, ou chegada + tempo médio do tratamento. */
+  prontoPrevisto: string | null;
 };

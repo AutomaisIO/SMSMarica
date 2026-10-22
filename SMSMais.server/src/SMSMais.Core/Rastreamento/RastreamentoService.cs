@@ -249,14 +249,25 @@ public sealed class RastreamentoService(
 
     // ---------------- FT5: pacientes aguardando + "puxar" ----------------
 
+    // Volta (decisão de 16/10: depende do destino). Fora do município a van espera e traz de volta quem
+    // levou: aqui só entra quem ficou na unidade quando ela saiu. Em Maricá a van não espera: entra quem
+    // já desceu na unidade hoje e ainda não voltou nem foi puxado, com a hora em que deve estar pronto
+    // (chegada + tempo médio do tratamento).
     public async Task<IReadOnlyList<PacienteAguardandoDto>> ListarAguardandoAsync(
         Guid? motoristaId, CancellationToken cancellationToken = default)
     {
+        var hoje = Common.Tempo.FusoBrasilia.HojeEmBrasilia();
         var dados = await (
             from s in _db.Sessoes.AsNoTracking()
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
             join u in _db.UnidadesAtendimento.AsNoTracking() on t.UnidadeAtendimentoId equals u.Id
-            where s.Status == StatusSessao.AguardandoRetorno && u.Externa
+            join tt in _db.TiposTratamento.AsNoTracking() on t.TipoTratamentoId equals (Guid?)tt.Id into tts
+            from tt in tts.DefaultIfEmpty()
+            where (s.Status == StatusSessao.AguardandoRetorno
+                    || (!u.Externa && s.DataPrevista == hoje && s.Status == StatusSessao.Realizada
+                        && s.HoraChegadaUnidade != null && s.HoraSaidaUnidade == null && s.HoraChegadaResidencia == null))
+                && !_db.Alocacoes.Any(a => a.SessaoId == s.Id && a.Parada == TipoParada.Retorno
+                    && _db.Rotas.Any(r => r.Id == a.RotaDiariaId && r.Status != StatusRota.Cancelada))
             orderby s.DataPrevista
             select new
             {
@@ -269,6 +280,10 @@ public sealed class RastreamentoService(
                 Lng = (double?)u.Gps!.Longitude,
                 Acomp = s.AcompanhanteEsperado,
                 s.DataPrevista,
+                u.Externa,
+                s.HoraPrevistaRetorno,
+                s.HoraChegadaUnidade,
+                Tempo = tt == null ? null : tt.TempoMedioMinutos,
             }).ToListAsync(cancellationToken);
 
         (double Lat, double Lng)? origem = null;
@@ -291,8 +306,11 @@ public sealed class RastreamentoService(
                 origem is not null && d.Lat is not null && d.Lng is not null
                     ? (int)DistanciaMetros(origem.Value.Lat, origem.Value.Lng, d.Lat.Value, d.Lng.Value)
                     : null,
-                d.Acomp == true, d.DataPrevista))
-            .OrderBy(x => x.DistanciaMetros ?? int.MaxValue)];
+                d.Acomp == true, d.DataPrevista,
+                ForaDoMunicipio: d.Externa,
+                ProntoPrevisto: Dispositivos.RotaTabletService.RetornoPrevisto(d.HoraPrevistaRetorno, d.HoraChegadaUnidade, d.Tempo)))
+            .OrderBy(x => x.ProntoPrevisto ?? TimeOnly.MaxValue)
+            .ThenBy(x => x.DistanciaMetros ?? int.MaxValue)];
     }
 
     public async Task MarcarAguardandoRetornoAsync(Guid sessaoId, CancellationToken cancellationToken = default)
@@ -304,6 +322,9 @@ public sealed class RastreamentoService(
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>Põe na rota a volta de quem aguarda: busca na unidade e entrega em casa (o tablet mostra
+    /// as duas paradas). Os lugares seguem a condição do paciente e os acompanhantes da viagem, como na
+    /// geração (AcomodacaoNoVeiculo).</summary>
     public async Task<Guid> PuxarAsync(PuxarPacienteRequest request, CancellationToken cancellationToken = default)
     {
         var rota = await _db.Rotas.FirstOrDefaultAsync(r => r.Id == request.RotaId, cancellationToken)
@@ -314,66 +335,60 @@ public sealed class RastreamentoService(
             throw new ConflitoException("rota.estado_invalido", $"Rota no estado {rota.Status} não aceita puxar pacientes.");
         }
 
-        var sessao = await _db.Sessoes.FirstOrDefaultAsync(s => s.Id == request.SessaoId, cancellationToken)
+        var sessao = await _db.Sessoes.Include(s => s.Tratamento).Include(s => s.Acompanhantes)
+            .FirstOrDefaultAsync(s => s.Id == request.SessaoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SessaoDeTratamento), request.SessaoId);
+        if (sessao.Status is not (StatusSessao.Realizada or StatusSessao.AguardandoRetorno))
+        {
+            throw new ConflitoException("sessao.sem_ida", "Só entra na volta quem já foi levado à unidade (ida feita).");
+        }
+        if (await _db.Alocacoes.AnyAsync(a => a.RotaDiariaId == rota.Id && a.SessaoId == sessao.Id && a.Parada == TipoParada.Retorno, cancellationToken))
+        {
+            throw new ConflitoException("rota.ja_puxado", "Este paciente já está na volta desta rota.");
+        }
 
-        var assentos = await (
-            from a in _db.Assentos.AsNoTracking()
-            join f in _db.Fileiras.AsNoTracking() on a.FileiraId equals f.Id
-            where f.VeiculoId == rota.VeiculoId && !a.Excluido && !a.Bloqueado && a.Tipo != TipoAssento.Motorista
-            orderby f.Ordem, a.Numero
-            select new { a.Id, a.Tipo }).ToListAsync(cancellationToken);
-
+        var veiculo = await _db.Veiculos.AsNoTracking()
+            .Include(v => v.Fileiras).ThenInclude(f => f.Assentos)
+            .FirstAsync(v => v.Id == rota.VeiculoId, cancellationToken);
         var ocupados = await _db.Alocacoes.AsNoTracking()
             .Where(a => a.RotaDiariaId == request.RotaId)
             .Select(a => a.AssentoId)
             .ToListAsync(cancellationToken);
+        var livres = veiculo.Fileiras.OrderBy(f => f.Ordem)
+            .SelectMany(f => f.Assentos.Where(a => !a.Excluido && !a.Bloqueado && a.Tipo != TipoAssento.Motorista).OrderBy(a => a.Numero))
+            .Where(a => !ocupados.Contains(a.Id))
+            .ToList();
 
-        var livres = assentos.Where(a => !ocupados.Contains(a.Id)).ToList();
-        var assentoPaciente = livres.FirstOrDefault(a => a.Tipo == TipoAssento.Passageiro) ?? livres.FirstOrDefault();
-        if (assentoPaciente is null)
-        {
-            throw new ConflitoException("rota.sem_assento", "Não há assento livre nesta rota para puxar o paciente.");
-        }
+        var t = sessao.Tratamento!;
+        var necessidade = new Translado.Geracao.NecessidadeViagem(
+            sessao.Id, t.Mobilidade, t.Isolamento, t.DificuldadeVeiculoAlto,
+            Translado.Geracao.AcomodacaoNoVeiculo.AcompanhantesDaViagem(
+                sessao.AcompanhanteEsperado, sessao.Acompanhantes.Count, t.QuantidadeAcompanhantes));
+        var lugar = Translado.Geracao.AcomodacaoNoVeiculo.Acomodar(veiculo, livres, [necessidade])?[sessao.Id]
+            ?? throw new ConflitoException("rota.sem_assento",
+                "Não há lugar livre nesta rota para o paciente (e os acompanhantes, na condição dele). " +
+                "Puxe para outra rota ou crie uma rota de volta para o veículo.");
 
         var maxOrdem = await _db.Alocacoes
             .Where(a => a.RotaDiariaId == request.RotaId)
             .MaxAsync(a => (int?)a.OrdemParada, cancellationToken) ?? 0;
         var ordem = maxOrdem + 1;
         var agora = DateTime.UtcNow;
-
-        var alocPaciente = new Alocacao
+        Alocacao Alocar(Guid assentoId, TipoAlocacao tipo) => new()
         {
             Id = Guid.CreateVersion7(),
             RotaDiariaId = request.RotaId,
             SessaoId = sessao.Id,
-            AssentoId = assentoPaciente.Id,
-            Tipo = TipoAlocacao.Paciente,
+            AssentoId = assentoId,
+            Tipo = tipo,
             Parada = TipoParada.Retorno,
             OrdemParada = ordem,
             CriadoEm = agora,
         };
-        _db.Alocacoes.Add(alocPaciente);
 
-        if (sessao.AcompanhanteEsperado == true)
-        {
-            var assentoAcomp = livres.FirstOrDefault(a => a.Id != assentoPaciente.Id && a.Tipo == TipoAssento.Acompanhante)
-                ?? livres.FirstOrDefault(a => a.Id != assentoPaciente.Id);
-            if (assentoAcomp is not null)
-            {
-                _db.Alocacoes.Add(new Alocacao
-                {
-                    Id = Guid.CreateVersion7(),
-                    RotaDiariaId = request.RotaId,
-                    SessaoId = sessao.Id,
-                    AssentoId = assentoAcomp.Id,
-                    Tipo = TipoAlocacao.Acompanhante,
-                    Parada = TipoParada.Retorno,
-                    OrdemParada = ordem,
-                    CriadoEm = agora,
-                });
-            }
-        }
+        var alocPaciente = Alocar(lugar.Paciente.Id, TipoAlocacao.Paciente);
+        _db.Alocacoes.Add(alocPaciente);
+        foreach (var a in lugar.Acompanhantes) _db.Alocacoes.Add(Alocar(a.Id, TipoAlocacao.Acompanhante));
 
         await _db.SaveChangesAsync(cancellationToken);
         await notificador.RotaAtualizadaAsync(request.RotaId, cancellationToken);
