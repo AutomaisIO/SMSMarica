@@ -264,6 +264,7 @@ public class AgendaDoPacienteTests(PostgresFixture fixture)
             db, Substitute.For<IAnexosService>(), Substitute.For<ILaudosService>(),
             Substitute.For<ILaudoAssinaturaService>(), Substitute.For<IExameImagensPdfService>(),
             Substitute.For<IChaveConfirmacaoSisregService>(), new AgendamentosPacienteService(db), pacientes,
+            Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
             NullLogger<CidadaoClinicoService>.Instance);
     }
 }

@@ -30,6 +30,7 @@ public sealed class CidadaoClinicoService(
     IChaveConfirmacaoSisregService chaves,
     IAgendamentosPacienteService agendamentosPaciente,
     IPacientesService pacientes,
+    SMSMais.Core.Auditoria.IAuditoriaService auditoria,
     ILogger<CidadaoClinicoService> logger) : ICidadaoClinicoService
 {
     public async Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(
@@ -519,11 +520,15 @@ public sealed class CidadaoClinicoService(
             throw new Common.Excecoes.ConflitoException(
                 "confirmacao.ja_respondida", "Este agendamento já foi respondido.");
 
+        var statusAnterior = s.StatusConfirmacao;
         s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
         s.ConfirmadoEm = DateTime.UtcNow;
         s.ConfirmadoCanal = canal;
         s.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
+
+        await AuditarAcaoDoCidadaoAsync(s.Id, $"Confirmação de agendamento pelo cidadão (canal: {canal})",
+            statusAnterior.ToString(), StatusConfirmacaoAgendamento.Confirmada.ToString(), cancellationToken);
     }
 
     public async Task CancelarExameAsync(
@@ -539,12 +544,38 @@ public sealed class CidadaoClinicoService(
                 "confirmacao.ja_respondida", "Este agendamento já foi respondido.");
 
         var texto = motivo.Trim();
+        var statusAnterior = s.StatusConfirmacao;
         s.StatusConfirmacao = StatusConfirmacaoAgendamento.Cancelada;
         s.ConfirmacaoCanceladaEm = DateTime.UtcNow;
         s.ConfirmadoCanal = canal;
         s.MotivoCancelamentoPaciente = texto.Length <= 500 ? texto : texto[..500];
         s.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
+
+        await AuditarAcaoDoCidadaoAsync(s.Id, $"Cancelamento de agendamento pelo cidadão (canal: {canal})",
+            statusAnterior.ToString(),
+            $"{StatusConfirmacaoAgendamento.Cancelada} — Motivo: {s.MotivoCancelamentoPaciente}", cancellationToken);
+    }
+
+    // Trilha de auditoria de ação sensível do cidadão (confirmar/cancelar). O ator (pacienteId,
+    // via sub do token) e o IP são preenchidos pelo AuditoriaService a partir do IUsuarioAtualAccessor;
+    // a tela de auditoria classifica o ator como Paciente. Protegida: uma falha ao auditar NUNCA
+    // desfaz nem derruba a ação do cidadão, que já foi persistida acima. 22/10/2026.
+    private async Task AuditarAcaoDoCidadaoAsync(
+        Guid solicitacaoId, string acao, string? valorAnterior, string? valorNovo, CancellationToken ct)
+    {
+        try
+        {
+            await auditoria.RegistrarAsync(
+                "Solicitacao", solicitacaoId.ToString(), acao, valorAnterior, valorNovo, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex,
+                "Falha ao gravar a trilha de auditoria da ação '{Acao}' do cidadão na solicitação {Id} "
+                + "— a ação do paciente foi concluída; só o registro de auditoria não gravou.",
+                acao, solicitacaoId);
+        }
     }
 
     // Retorna a ESPINHA (Solicitacao) do exame do paciente. O id recebido é o público (exame);

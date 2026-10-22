@@ -359,7 +359,8 @@ public class LiberacaoExamePacienteTests(PostgresFixture fixture)
         return new CidadaoClinicoService(
             db, Substitute.For<IAnexosService>(), laudos, assinatura, Substitute.For<IExameImagensPdfService>(),
             Substitute.For<IChaveConfirmacaoSisregService>(), Substitute.For<IAgendamentosPacienteService>(),
-            Substitute.For<IPacientesService>(), NullLogger<CidadaoClinicoService>.Instance);
+            Substitute.For<IPacientesService>(), Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
+            NullLogger<CidadaoClinicoService>.Instance);
     }
 
     private static ComunicacaoPacienteService Comunicacoes(SmsMaisDbContext db, IWhatsAppCliente whats) =>
