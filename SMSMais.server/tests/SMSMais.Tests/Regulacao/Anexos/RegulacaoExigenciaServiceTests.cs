@@ -85,7 +85,12 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
             .Returns(new PermissoesResolvidasDto(
                 Herdadas: [],
                 Overrides: [],
-                Resolvidas: [new PermissaoModuloDto(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]));
+                Resolvidas: [
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao),
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaNar, AcoesPermissao.Consulta),
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaInterna, AcoesPermissao.Consulta),
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaIntermunicipal, AcoesPermissao.Consulta),
+                ]));
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
         var eventos = new RegulacaoEventoService(db, acessor);
         return new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo, eventos);

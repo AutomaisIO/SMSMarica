@@ -72,6 +72,8 @@ export type SolicitacaoRegulacao = {
   /** NAR: em nome de quem o pedido entra no SISREG — e o CNES que o técnico usa lá. */
   unidadeEmNomeDeNome: string | null;
   unidadeEmNomeDeCnes: string | null;
+  /** Outras filas da Gestão de fila em que o pedido também aparece. */
+  filasCompartilhadas: FluxoRegulacao[];
 };
 
 /** Por que a solicitação ainda não pode ir para a fila. Lista vazia = pode enviar. */
@@ -135,7 +137,8 @@ export type TipoEventoRegulacao =
   | 'OkInterno'
   | 'TrocaProcedimento'
   | 'DocumentoAcessado'
-  | 'ConferenciaExterna';
+  | 'ConferenciaExterna'
+  | 'Compartilhamento';
 
 export type ResultadoItemConferencia = 'Igual' | 'Diferente' | 'SoNoSistema' | 'Informativo';
 
@@ -193,6 +196,7 @@ export type SolicitacaoRegulacaoLista = {
   criadoEm: string;
   atualizadoEm: string | null;
   pacienteId: string;
+  filasCompartilhadas: FluxoRegulacao[];
 };
 
 export type PaginaSolicitacoesRegulacao = {

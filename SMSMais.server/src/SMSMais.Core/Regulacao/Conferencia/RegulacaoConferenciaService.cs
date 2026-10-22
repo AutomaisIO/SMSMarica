@@ -68,6 +68,7 @@ public sealed class RegulacaoConferenciaService(
             .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct)
             ?? throw new NaoEncontradoException("Solicitação da regulação", solicitacaoId);
         await escopo.ExigirAlcanceAsync(s, ct);
+        await escopo.ExigirAgenteDoCasoAsync(s, ct);
 
         if (s.NumeroExterno is not { Length: > 0 } numero || s.SistemaDestino is not { } sistema)
         {

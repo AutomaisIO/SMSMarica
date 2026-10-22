@@ -48,6 +48,15 @@ export const ROTULO_FLUXO: Record<FluxoRegulacao, string> = {
   Nar: 'NAR',
 };
 
+/** As filas da Gestão de fila. "Intermunicipal" é o fluxo Externo (SER, SERNIT, ESUS). */
+export const ROTULO_FILA: Record<FluxoRegulacao, string> = {
+  Nar: 'NAR',
+  Interno: 'Interna',
+  Externo: 'Intermunicipal',
+};
+
+export const FILAS: FluxoRegulacao[] = ['Nar', 'Interno', 'Externo'];
+
 export function StatusRegulacaoBadge({ status }: { status: StatusRegulacao }) {
   return (
     <span className={`inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${CORES[status]}`}>

@@ -97,6 +97,12 @@ export const artigoRegulacaoGestaoFila: Artigo = {
     'conferir de novo',
     'divergência',
     'número digitado errado',
+    'fila NAR',
+    'fila interna',
+    'fila intermunicipal',
+    'compartilhar',
+    'compartilhada',
+    'parar de compartilhar',
     'número do sistema',
     'devolver',
     'devolver à unidade',
@@ -148,7 +154,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'fila',
       titulo: 'A fila: o que chegou e em que pé está',
       busca:
-        'fila abas recebidas em análise devolvidas enviadas no sistema encerradas filtro fluxo destino busca nome cpf número coluna agente unidade topo todas município ordem mais antiga nar selo violeta em nome de',
+        'fila abas recebidas em análise devolvidas enviadas no sistema encerradas filtro fila fluxo destino busca nome cpf número coluna agente unidade topo todas município ordem mais antiga nar selo violeta em nome de interna intermunicipal perfil',
       conteudo: (
         <>
           <P>
@@ -217,7 +223,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
           <P>
             A fila segue a <strong>unidade escolhida no topo da tela</strong>: com uma unidade
             escolhida, mostra só os pedidos dela; com “todas”, o município inteiro — e aparece a coluna{' '}
-            <strong>Unidade</strong>. Dá para filtrar por <strong>Fluxo</strong> (Interno, Externo, NAR) e
+            <strong>Unidade</strong>. Dá para filtrar por <strong>Fila</strong> (só as do seu perfil — ver “Filas e compartilhamento”) e
             por <strong>Destino</strong> (SISREG, SER, SERNIT, ESUS São Gonçalo), e buscar por nome do
             paciente, CPF ou número.
           </P>
@@ -452,6 +458,34 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             <BotaoRef variante="outline">Conferir de novo</BotaoRef> mais tarde. O pedido muda lá fora com o
             tempo — a conferência é uma foto daquele momento.
           </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'filas',
+      titulo: 'Filas e compartilhamento',
+      busca:
+        'fila nar interna intermunicipal perfil permissão compartilhar compartilhada também na fila parar de compartilhar desligar interruptor não vejo o pedido',
+      conteudo: (
+        <>
+          <P>
+            A Gestão de fila tem três filas — <strong>NAR</strong>, <strong>Interna</strong> (SISREG) e{' '}
+            <strong>Intermunicipal</strong> (SER, SERNIT, ESUS) — e cada uma é liberada no perfil. Você vê,
+            abre e regula só os pedidos das filas que tem.
+          </P>
+          <Passos
+            itens={[
+              {
+                titulo: <BotaoRef variante="outline">Compartilhar</BotaoRef>,
+                detalhe: 'Na análise do pedido. Ligue a fila com que quer compartilhar; vale na hora.',
+              },
+              {
+                titulo: 'Também na fila …',
+                detalhe:
+                  'A etiqueta azul abaixo do cabeçalho mostra com quem o pedido está compartilhado. Clique nela para parar de compartilhar.',
+              },
+            ]}
+          />
         </>
       ),
     },
@@ -748,13 +782,18 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'quem-pode',
       titulo: 'Quem vê e quem pode',
       busca:
-        'permissão perfil módulo gestão de fila agente regulador 48 rascunho não aparece cancelar unidade minha fila abrir na gestão de fila notificações todas as unidades',
+        'permissão perfil módulo gestão de fila agente regulador 48 fila nar interna intermunicipal rascunho não aparece cancelar unidade minha fila abrir na gestão de fila notificações todas as unidades',
       conteudo: (
         <>
           <Lista>
             <Item>
               A tela aparece para quem tem, no perfil, o módulo{' '}
               <strong>Regulação — Gestão de fila</strong>. Quem só abre solicitações não a vê.
+            </Item>
+            <Item>
+              Os pedidos que aparecem dependem das filas do perfil: <strong>fila NAR</strong>,{' '}
+              <strong>fila Interna</strong> e <strong>fila Intermunicipal</strong>. Sem nenhuma, a tela fica
+              vazia.
             </Item>
             <Item>
               <strong>Rascunho não aparece aqui</strong> — é só de quem o abriu, e passa a existir para a

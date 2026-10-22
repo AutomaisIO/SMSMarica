@@ -81,3 +81,23 @@ public sealed class RegulacaoSolicitacaoDestino
 
     public DateTime AvaliadoEm { get; set; }
 }
+
+/// <summary>
+/// O pedido compartilhado com outra fila da Gestão de fila (pedido do Bernardo, 22/10/2026).
+///
+/// <para>Cada fila é uma permissão do perfil (NAR, Internas, Intermunicipais). Compartilhar põe o
+/// pedido também na fila de quem não tem a da origem — o NAR compartilhado com a Interna aparece para
+/// o técnico só da Interna. Desligar apaga a linha; quem compartilhou, quando e quem desligou ficam
+/// na trilha (<c>Compartilhamento</c>).</para>
+/// </summary>
+public sealed class RegulacaoSolicitacaoCompartilhamento
+{
+    public Guid SolicitacaoId { get; set; }
+    public RegulacaoSolicitacao? Solicitacao { get; set; }
+
+    /// <summary>A fila com que o pedido foi compartilhado — nunca a da origem (o próprio fluxo).</summary>
+    public FluxoRegulacao Fila { get; set; }
+
+    public DateTime CompartilhadoEm { get; set; }
+    public Guid? CompartilhadoPor { get; set; }
+}

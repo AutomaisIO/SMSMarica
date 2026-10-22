@@ -16,6 +16,7 @@ import {
   listarSolicitacoes,
   listarUnidadesEmNomeDe,
   conferirNoSistema,
+  compartilharSolicitacao,
   obterConferencia,
   confirmarOkInterno,
   type AutorizoCadastroMedico,
@@ -261,6 +262,15 @@ export function useConferirNoSistema() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => conferirNoSistema(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
+  });
+}
+
+export function useCompartilhar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fila, compartilhar }: { id: string; fila: FluxoRegulacao; compartilhar: boolean }) =>
+      compartilharSolicitacao(id, fila, compartilhar),
     onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
   });
 }

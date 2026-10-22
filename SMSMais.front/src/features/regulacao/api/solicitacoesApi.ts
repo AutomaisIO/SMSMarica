@@ -208,6 +208,25 @@ export async function registrarEnvioSolicitacao(
   return data;
 }
 
+export type CompartilhamentoResultado = {
+  filasCompartilhadas: FluxoRegulacao[];
+  /** Falso quando quem desligou só via o pedido por aquela fila. */
+  continuaVisivel: boolean;
+};
+
+/** Liga ou desliga o pedido em outra fila da Gestão de fila. */
+export async function compartilharSolicitacao(
+  id: string,
+  fila: FluxoRegulacao,
+  compartilhar: boolean,
+): Promise<CompartilhamentoResultado> {
+  const { data } = await http.put<CompartilhamentoResultado>(`${base}/${id}/compartilhamento`, {
+    fila,
+    compartilhar,
+  });
+  return data;
+}
+
 /** Lê o pedido no sistema pelo número registrado (credencial da integração) e compara com o nosso. */
 export async function conferirNoSistema(id: string): Promise<ConferenciaExterna> {
   const { data } = await http.post<ConferenciaExterna>(`${base}/${id}/conferir-no-sistema`);

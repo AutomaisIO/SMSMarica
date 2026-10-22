@@ -209,6 +209,10 @@ public enum TipoEventoRegulacao
     /// detalhe guarda cada campo e se bateu.
     /// </summary>
     ConferenciaExterna = 23,
+
+    /// <summary>O pedido foi compartilhado com outra fila da Gestão de fila, ou o compartilhamento
+    /// foi desligado. O detalhe diz qual fila e se ligou ou desligou.</summary>
+    Compartilhamento = 24,
 }
 
 /// <summary>

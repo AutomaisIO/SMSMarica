@@ -36,115 +36,169 @@ export function deMatriz(matriz: MatrizEdicao): PermissaoModuloApi[] {
   return out;
 }
 
-/** Lista oficial dos módulos, com rótulo humano. Mantém a mesma ordem do
- *  Sidebar para a edição de Perfis ficar previsível. */
-export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
-  { id: 'Pacientes', rotulo: 'Pacientes' },
-  { id: 'Medicos', rotulo: 'Médicos' },
-  { id: 'Unidades', rotulo: 'Unidades' },
-  { id: 'Usuarios', rotulo: 'Usuários' },
-  { id: 'Perfis', rotulo: 'Perfis' },
-  { id: 'Tratamentos', rotulo: 'Atendimentos do transporte (inclui os acompanhantes do paciente)' },
-  { id: 'UnidadesAtendimento', rotulo: 'Unidades de atendimento — destinos do transporte (endereço e ponto no mapa)' },
-  { id: 'TiposTratamento', rotulo: 'Tipos de tratamento (e o tempo médio de cada um)' },
-  { id: 'Translados', rotulo: 'Translados' },
-  { id: 'Rastreamento', rotulo: 'Rastreamento' },
-  { id: 'Veiculos', rotulo: 'Veículos' },
-  { id: 'Motoristas', rotulo: 'Motoristas' },
-  { id: 'Avaliacoes', rotulo: 'Avaliações' },
-  { id: 'Solicitacoes', rotulo: 'Exames e consultas (solicitações)' },
-  { id: 'SolicitacaoExameManual', rotulo: 'Solicitação manual de exame (botão "Nova solicitação")' },
-  { id: 'TiposExame', rotulo: 'Tipos de exame' },
-  { id: 'ProcedimentosSigtap', rotulo: 'Catálogo SIGTAP' },
-  { id: 'Pacs', rotulo: 'PACS' },
-  { id: 'Laudos', rotulo: 'Laudos' },
-  { id: 'LaudosTemplates', rotulo: 'Templates de laudo' },
-  { id: 'ConfiguracaoLaudo', rotulo: 'Configuração de laudo (cabeçalho/rodapé)' },
-  { id: 'Inteligencia', rotulo: 'Consulta Inteligente' },
-  { id: 'InteligenciaConsultaDev', rotulo: 'Consulta Inteligente — modo desenvolvedor (mostra o raciocínio)' },
+/** As abas da tela de permissões, por assunto. A ordem é a das abas. */
+export const GRUPOS_PERMISSAO: { id: GrupoPermissao; rotulo: string }[] = [
+  { id: 'cadastros', rotulo: 'Cadastros' },
+  { id: 'regulacao', rotulo: 'Regulação' },
+  { id: 'sisreg', rotulo: 'SISREG e agenda' },
+  { id: 'exames', rotulo: 'Exames e laudos' },
+  { id: 'atendimento', rotulo: 'Atendimento' },
+  { id: 'transporte', rotulo: 'Transporte' },
+  { id: 'ouvidoria', rotulo: 'Ouvidoria' },
+  { id: 'estatisticas', rotulo: 'Estatísticas' },
+  { id: 'ia', rotulo: 'Inteligência' },
+  { id: 'sistema', rotulo: 'Sistema' },
+];
+
+export type GrupoPermissao =
+  | 'cadastros'
+  | 'regulacao'
+  | 'sisreg'
+  | 'exames'
+  | 'atendimento'
+  | 'transporte'
+  | 'ouvidoria'
+  | 'estatisticas'
+  | 'ia'
+  | 'sistema';
+
+/**
+ * Os módulos da matriz de permissões. `rotulo` é o nome curto que aparece na linha; `ajuda` é a
+ * explicação, que só abre no "?" — junto com o que cada ação faz (`APELIDOS_ACOES_POR_MODULO`).
+ * Módulo do enum que não está aqui não aparece na tela de propósito (reservado ou sem uso).
+ */
+export const MODULOS: { id: ModuloPermissao; rotulo: string; grupo: GrupoPermissao; ajuda?: string }[] = [
+  // ---- Cadastros
+  { id: 'Pacientes', grupo: 'cadastros', rotulo: 'Pacientes', ajuda: 'Cadastro do cidadão: busca, ficha, contatos e documentos.' },
+  { id: 'Medicos', grupo: 'cadastros', rotulo: 'Médicos' },
+  { id: 'Unidades', grupo: 'cadastros', rotulo: 'Unidades', ajuda: 'Unidades de saúde do município.' },
+  { id: 'Usuarios', grupo: 'cadastros', rotulo: 'Usuários', ajuda: 'Contas de acesso ao painel.' },
+  { id: 'Perfis', grupo: 'cadastros', rotulo: 'Perfis', ajuda: 'Perfis de acesso e as permissões de cada um.' },
   {
-    id: 'InteligenciaAtendimento',
-    rotulo: 'Consulta Inteligente — base Atendimento (lê as conversas com pacientes da rede toda)',
+    id: 'Instituicao',
+    grupo: 'cadastros',
+    rotulo: 'Instituição',
+    ajuda: 'Identidade, marca e contatos legais desta instância. Aparece na tela de login, no PDF do laudo e na página pública de verificação.',
   },
-  { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
-  { id: 'Confirmacoes', rotulo: 'Confirmações — atendimento das confirmações de agendamento (as filas das atendentes)' },
-  { id: 'ConfirmacoesEquipe', rotulo: 'Confirmações — equipe (produção de cada atendente: quem confirmou, cancelou, resolveu telefone; exige Confirmações)' },
-  { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
-  { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
-  { id: 'Indicadores', rotulo: 'Indicadores contratuais do HMCML' },
-  { id: 'Equipamentos', rotulo: 'Equipamentos' },
-  { id: 'Sisreg', rotulo: 'SISREG (consulta)' },
-  { id: 'SisregConfiguracao', rotulo: 'Configuração SISREG' },
-  { id: 'SisregMapeamento', rotulo: 'Mapeamento SISREG (profissionais e procedimentos da unidade)' },
-  { id: 'SincronizacaoPep', rotulo: 'Sincronização PEP (Salux)' },
-  { id: 'ApiTokens', rotulo: 'API Tokens' },
-  { id: 'IntegracoesConfig', rotulo: 'Integrações (credenciais)' },
-  { id: 'Faturamento', rotulo: 'Faturamento (TFD/SUS)' },
-  { id: 'Auditoria', rotulo: 'Auditoria (trilha do sistema)' },
-  { id: 'Erros', rotulo: 'Erros do sistema (diagnóstico)' },
-  // Extensão do Chrome (80, ADR-0064): só a ADMINISTRAÇÃO pede módulo. Baixar o instalador e
-  // autorizar o próprio computador ficam abertos a qualquer usuário logado.
-  { id: 'ExtensaoNavegador', rotulo: 'Extensão Chrome — computadores autorizados e versões publicadas' },
-  // Fontes de dados (82, ADR-0077): o cadastro único de bancos, agentes e logins de sistemas de
-  // onde a plataforma lê dado. Mostra conexões de produção — dar com critério.
-  { id: 'FontesDados', rotulo: 'Fontes de dados — bancos, agentes e logins (SISREG, SER, SERNIT…)' },
-  { id: 'Conversas', rotulo: 'Central de Atendimento (chat)' },
-  { id: 'ConversasSupervisao', rotulo: 'Atendimento — supervisão (ver todas as unidades)' },
-  { id: 'Ticket', rotulo: 'Suporte — gestão de tickets (ver/responder todos)' },
-  // Ouvidoria (71–74, ADR-0060). Sigilo e ponto de resposta são eixos ORTOGONAIS ao trabalho da
-  // ouvidoria (quem vê identidade × quem responde pela unidade) — por isso módulos próprios.
-  { id: 'Ouvidoria', rotulo: 'Ouvidoria — fila e tratamento das manifestações (triar, encaminhar, responder, prorrogar)' },
-  { id: 'OuvidoriaGestao', rotulo: 'Ouvidoria — gestão (painel, configuração, pontos de resposta, assuntos, escalonar)' },
-  { id: 'OuvidoriaSigilo', rotulo: 'Ouvidoria — sigilo (ver denúncias, revelar identidade com justificativa registrada, habilitar denúncia)' },
-  { id: 'OuvidoriaPontoResposta', rotulo: 'Ouvidoria — ponto de resposta (responder pela unidade/área, sem ver o manifestante)' },
-  { id: 'NotificacoesAgendamento', rotulo: 'Mensageria — gestão dos envios de WhatsApp (resumo diário, falhas, lote, regras)' },
-  { id: 'RespostasRapidas', rotulo: 'Mensagens prontas do chat (cadastro)' },
-  { id: 'Estatistica', rotulo: 'Estatísticas de atendimento (retrato WhatsApp)' },
-  { id: 'EstatisticaCustos', rotulo: 'Estatísticas — custos (tokens/USD do robô e estimativa Meta; exige Estatísticas)' },
-  // Um módulo por sistema de regulação: cada um tem a sua equipe, e ver o ranking de um não dá
-  // o do outro. Nascem desligados em todo perfil que não seja o Admin.
-  { id: 'EstatisticaSisreg', rotulo: 'Estatísticas — SISREG (operadores autorizadores: equipe, individual e rankings)' },
-  { id: 'EstatisticaSer', rotulo: 'Estatísticas — SER (operadores da fila do Estado: equipe, individual e rankings)' },
-  { id: 'EstatisticaSernit', rotulo: 'Estatísticas — SERNIT (operadores da fila de Niterói: equipe, individual e rankings)' },
-  { id: 'EstatisticaEsusSg', rotulo: 'Estatísticas — ESUS São Gonçalo (quem incluiu na fila e quem agendou: equipe, individual e rankings)' },
-  // Um módulo só para os quatro sistemas (79): é o retrato da regulação, não a produção de ninguém.
-  { id: 'IndicadoresRegulacao', rotulo: 'Indicadores de Regulação (SISREG, SER, SERNIT, ESUS SG)' },
-  { id: 'Sandbox', rotulo: 'Sandbox de testes (QA)' },
-  { id: 'MapeamentoSigtap', rotulo: 'Mapeamento SIGTAP → tipo de exame' },
-  // Do Processo Regulatório, entram na matriz só os que hoje concedem alguma coisa de fato: os
-  // TRÊS de visão global (lente "Município" do painel de início, ADR-0033 §5) e, desde o
-  // ADR-0042, SER e Configuração — que passaram a ter endpoint e tela.
-  // `Regulacao` (47) entrou em 06/09/2026 (ADR-0052): ganhou endpoints e a tela de abertura de
-  // solicitação, então deixou de ser um enum sem uso. É a permissão da UNIDADE SOLICITANTE —
-  // quem abre o pedido; ver o SER/SERNIT é outra coisa e continua em módulo próprio.
-  { id: 'Regulacao', rotulo: 'Regulação — Solicitações (unidade solicitante: abre, anexa e envia à pré-regulação)' },
-  { id: 'RegulacaoTriagem', rotulo: 'Regulação — Gestão de fila (agente regulador: vê todas as unidades, assume, aceita, devolve e recusa)' },
-  { id: 'RegulacaoMedica', rotulo: 'Regulação — médico regulador (visão do município no painel)' },
-  { id: 'RegulacaoAgendamento', rotulo: 'Regulação — agendamento (visão do município no painel)' },
-  { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (Edição = registrar FollowUP no SER)' },
-  { id: 'RegulacaoSernit', rotulo: 'Regulação — SERNIT: fila de Niterói (Edição = FollowUP/telefones no SERNIT)' },
-  // ESUS de São Gonçalo (77, ADR-0063): só leitura nesta entrega — só a Consulta vale. Edição fica
-  // reservada para quando a escrita no ESUS for mapeada e autorizada.
-  { id: 'RegulacaoEsusSg', rotulo: 'Regulação — ESUS São Gonçalo: fila e agendados da PPI (só Consulta; a integração é só leitura)' },
-  { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais, motor do SER/SERNIT/ESUS São Gonçalo, catálogo e regras)' },
-  { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
-  { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },
-  { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },
-  { id: 'RoboAtendimento', rotulo: 'Robô de atendimento — cadastro de assuntos e comandos do bot' },
-  { id: 'AjusteCadastro', rotulo: 'Pendências de cadastro (números errados) — ver e resolver' },
-  { id: 'Agenda', rotulo: 'Agenda — oferta de vagas do SISREG, ocupação e análise' },
+  { id: 'AjusteCadastro', grupo: 'cadastros', rotulo: 'Pendências de cadastro', ajuda: 'Números de telefone errados: ver e resolver.' },
+
+  // ---- Regulação
+  { id: 'Regulacao', grupo: 'regulacao', rotulo: 'Solicitações', ajuda: 'Lado da unidade solicitante: abre o pedido, anexa e envia à pré-regulação.' },
   {
-    id: 'EstrategiasFila',
-    rotulo: 'Estratégias de fila — simular mudanças na oferta e pedir estratégia ao agente (só planejamento)',
+    id: 'RegulacaoTriagem',
+    grupo: 'regulacao',
+    rotulo: 'Gestão de fila',
+    ajuda: 'Lado do regulador: assume, aceita, devolve e recusa. Os pedidos que aparecem dependem das filas (NAR, Interna, Intermunicipal).',
   },
+  { id: 'RegulacaoFilaNar', grupo: 'regulacao', rotulo: 'Fila NAR', ajuda: 'Pedidos NAR — agendamento indireto, em nome de outra unidade. Vale junto com a Gestão de fila.' },
+  { id: 'RegulacaoFilaInterna', grupo: 'regulacao', rotulo: 'Fila Interna', ajuda: 'Pedidos internos, para o SISREG do município. Vale junto com a Gestão de fila.' },
   {
-    id: 'AlteracoesAgenda',
-    rotulo: 'Alterações de agenda do SISREG — ver a fila, tratar e avisar o paciente',
+    id: 'RegulacaoFilaIntermunicipal',
+    grupo: 'regulacao',
+    rotulo: 'Fila Intermunicipal',
+    ajuda: 'Pedidos para SER, SERNIT e ESUS de São Gonçalo. Vale junto com a Gestão de fila.',
   },
+  { id: 'RegulacaoSer', grupo: 'regulacao', rotulo: 'SER', ajuda: 'Fila do Estado (SES-RJ).' },
+  { id: 'RegulacaoSernit', grupo: 'regulacao', rotulo: 'SERNIT', ajuda: 'Fila de Niterói.' },
+  { id: 'RegulacaoEsusSg', grupo: 'regulacao', rotulo: 'ESUS São Gonçalo', ajuda: 'Fila e agendados da PPI. A integração é só leitura.' },
+  { id: 'RegulacaoMedica', grupo: 'regulacao', rotulo: 'Médico regulador', ajuda: 'Visão do município no painel de início.' },
+  { id: 'RegulacaoAgendamento', grupo: 'regulacao', rotulo: 'Agendamento', ajuda: 'Visão do município no painel de início.' },
+  { id: 'IndicadoresRegulacao', grupo: 'regulacao', rotulo: 'Indicadores de regulação', ajuda: 'SISREG, SER, SERNIT e ESUS SG, com exportação em PDF.' },
+  {
+    id: 'RegulacaoConfiguracao',
+    grupo: 'regulacao',
+    rotulo: 'Configuração da regulação',
+    ajuda: 'Credenciais, motor do SER/SERNIT/ESUS São Gonçalo, catálogo de procedimentos e regras.',
+  },
+
+  // ---- SISREG e agenda
+  { id: 'Sisreg', grupo: 'sisreg', rotulo: 'SISREG', ajuda: 'Consulta das solicitações e agendamentos do SISREG.' },
   {
     id: 'RevelarChaveSisreg',
-    rotulo: 'Revelar chave de confirmação do SISREG (seção SISREG do exame/consulta)',
+    grupo: 'sisreg',
+    rotulo: 'Chave de confirmação',
+    ajuda: 'Mostra a chave de confirmação do SISREG — a prova de comparecimento. Cada revelação fica na auditoria.',
   },
+  { id: 'Agenda', grupo: 'sisreg', rotulo: 'Agenda', ajuda: 'Oferta de vagas do SISREG, ocupação e análise.' },
+  { id: 'AlteracoesAgenda', grupo: 'sisreg', rotulo: 'Alterações de agenda', ajuda: 'Fila das alterações de agenda do SISREG: tratar e avisar o paciente.' },
+  {
+    id: 'EstrategiasFila',
+    grupo: 'sisreg',
+    rotulo: 'Estratégias de fila',
+    ajuda: 'Simular mudanças na oferta e pedir estratégia ao agente. Só planejamento: nada escreve no SISREG.',
+  },
+  { id: 'SisregMapeamento', grupo: 'sisreg', rotulo: 'Mapeamento do SISREG', ajuda: 'Profissionais e procedimentos da unidade.' },
+  { id: 'SisregConfiguracao', grupo: 'sisreg', rotulo: 'Configuração do SISREG' },
+
+  // ---- Exames e laudos
+  { id: 'Solicitacoes', grupo: 'exames', rotulo: 'Exames e consultas', ajuda: 'As solicitações de exame e consulta.' },
+  { id: 'SolicitacaoExameManual', grupo: 'exames', rotulo: 'Solicitação manual', ajuda: 'O botão "Nova solicitação" de exame.' },
+  { id: 'Pacs', grupo: 'exames', rotulo: 'PACS', ajuda: 'Servidor de imagens.' },
+  { id: 'Laudos', grupo: 'exames', rotulo: 'Laudos' },
+  { id: 'LaudosTemplates', grupo: 'exames', rotulo: 'Modelos de laudo' },
+  { id: 'ConfiguracaoLaudo', grupo: 'exames', rotulo: 'Configuração de laudo', ajuda: 'Cabeçalho e rodapé do laudo.' },
+  { id: 'Equipamentos', grupo: 'exames', rotulo: 'Equipamentos' },
+  { id: 'TiposExame', grupo: 'exames', rotulo: 'Tipos de exame' },
+  { id: 'ProcedimentosSigtap', grupo: 'exames', rotulo: 'Catálogo SIGTAP' },
+  { id: 'MapeamentoSigtap', grupo: 'exames', rotulo: 'SIGTAP → tipo de exame', ajuda: 'Mapeamento dos procedimentos SIGTAP para os tipos de exame.' },
+  { id: 'CorrecaoIdentidadeExame', grupo: 'exames', rotulo: 'Correção de identidade', ajuda: 'Corrige o paciente de um exame reescrevendo o DICOM no PACS.' },
+
+  // ---- Atendimento
+  { id: 'Conversas', grupo: 'atendimento', rotulo: 'Central de Atendimento', ajuda: 'O chat com os pacientes.' },
+  { id: 'ConversasSupervisao', grupo: 'atendimento', rotulo: 'Supervisão', ajuda: 'Ver as conversas de todas as unidades.' },
+  { id: 'Confirmacoes', grupo: 'atendimento', rotulo: 'Confirmações', ajuda: 'Atendimento das confirmações de agendamento — as filas das atendentes.' },
+  { id: 'ConfirmacoesEquipe', grupo: 'atendimento', rotulo: 'Confirmações — equipe', ajuda: 'Produção de cada atendente. Exige Confirmações.' },
+  { id: 'NotificacoesAgendamento', grupo: 'atendimento', rotulo: 'Mensageria', ajuda: 'Gestão dos envios de WhatsApp: resumo diário, falhas, lote e regras.' },
+  { id: 'RespostasRapidas', grupo: 'atendimento', rotulo: 'Mensagens prontas', ajuda: 'Cadastro das mensagens prontas do chat.' },
+  { id: 'RoboAtendimento', grupo: 'atendimento', rotulo: 'Robô de atendimento', ajuda: 'Assuntos e comandos do robô.' },
+  { id: 'PesquisaSatisfacao', grupo: 'atendimento', rotulo: 'Pesquisa de satisfação', ajuda: 'Enviar a pesquisa ao paciente pelo histórico.' },
+
+  // ---- Transporte
+  { id: 'Tratamentos', grupo: 'transporte', rotulo: 'Atendimentos', ajuda: 'Atendimentos do transporte, com os acompanhantes do paciente.' },
+  { id: 'UnidadesAtendimento', grupo: 'transporte', rotulo: 'Destinos', ajuda: 'Unidades de atendimento: endereço e ponto no mapa.' },
+  { id: 'TiposTratamento', grupo: 'transporte', rotulo: 'Tipos de tratamento', ajuda: 'E o tempo médio de cada um.' },
+  { id: 'Translados', grupo: 'transporte', rotulo: 'Translados' },
+  { id: 'Rastreamento', grupo: 'transporte', rotulo: 'Rastreamento' },
+  { id: 'Veiculos', grupo: 'transporte', rotulo: 'Veículos' },
+  { id: 'Motoristas', grupo: 'transporte', rotulo: 'Motoristas' },
+  { id: 'Avaliacoes', grupo: 'transporte', rotulo: 'Avaliações' },
+  { id: 'Faturamento', grupo: 'transporte', rotulo: 'Faturamento', ajuda: 'Faturamento do TFD/SUS.' },
+
+  // ---- Ouvidoria (sigilo e ponto de resposta são eixos à parte do trabalho da ouvidoria)
+  { id: 'Ouvidoria', grupo: 'ouvidoria', rotulo: 'Ouvidoria', ajuda: 'Fila e tratamento das manifestações.' },
+  { id: 'OuvidoriaGestao', grupo: 'ouvidoria', rotulo: 'Gestão', ajuda: 'Painel, configuração, pontos de resposta, assuntos e escalonamento.' },
+  { id: 'OuvidoriaSigilo', grupo: 'ouvidoria', rotulo: 'Sigilo', ajuda: 'Denúncias e identidade dos manifestantes sigilosos.' },
+  { id: 'OuvidoriaPontoResposta', grupo: 'ouvidoria', rotulo: 'Ponto de resposta', ajuda: 'Responder pela unidade ou área, sem ver o manifestante.' },
+
+  // ---- Estatísticas (um módulo por sistema: ver a equipe de um não dá a do outro)
+  { id: 'Estatistica', grupo: 'estatisticas', rotulo: 'Atendimento (WhatsApp)' },
+  { id: 'EstatisticaCustos', grupo: 'estatisticas', rotulo: 'Custos', ajuda: 'Custo do robô e estimativa da Meta. Exige Estatísticas.' },
+  { id: 'EstatisticaSisreg', grupo: 'estatisticas', rotulo: 'Operadores do SISREG' },
+  { id: 'EstatisticaSer', grupo: 'estatisticas', rotulo: 'Operadores do SER' },
+  { id: 'EstatisticaSernit', grupo: 'estatisticas', rotulo: 'Operadores do SERNIT' },
+  { id: 'EstatisticaEsusSg', grupo: 'estatisticas', rotulo: 'Operadores do ESUS SG' },
+  { id: 'Indicadores', grupo: 'estatisticas', rotulo: 'Indicadores do HMCML', ajuda: 'Indicadores contratuais do hospital.' },
+
+  // ---- Inteligência
+  { id: 'Inteligencia', grupo: 'ia', rotulo: 'Consulta Inteligente' },
+  { id: 'InteligenciaAtendimento', grupo: 'ia', rotulo: 'Base Atendimento', ajuda: 'A Consulta Inteligente lê as conversas com pacientes da rede toda.' },
+  { id: 'InteligenciaConsultaDev', grupo: 'ia', rotulo: 'Modo desenvolvedor', ajuda: 'Mostra o raciocínio da Consulta Inteligente.' },
+  { id: 'InteligenciaConfiguracao', grupo: 'ia', rotulo: 'Configuração da IA' },
+  { id: 'InteligenciaAprendizado', grupo: 'ia', rotulo: 'Aprendizado da IA' },
+  { id: 'AgenteIa', grupo: 'ia', rotulo: 'Agente IA', ajuda: 'Terminal no servidor (administrativo).' },
+
+  // ---- Sistema
+  { id: 'Ticket', grupo: 'sistema', rotulo: 'Suporte', ajuda: 'Gestão de tickets: ver e responder todos.' },
+  { id: 'Auditoria', grupo: 'sistema', rotulo: 'Auditoria', ajuda: 'Trilha do sistema.' },
+  { id: 'Erros', grupo: 'sistema', rotulo: 'Erros do sistema' },
+  // Fontes de dados (ADR-0077) mostra conexões de produção — dar com critério.
+  { id: 'FontesDados', grupo: 'sistema', rotulo: 'Fontes de dados', ajuda: 'Bancos, agentes e logins dos sistemas de onde a plataforma lê dado. Mostra conexões de produção.' },
+  { id: 'IntegracoesConfig', grupo: 'sistema', rotulo: 'Integrações', ajuda: 'Credenciais das integrações.' },
+  { id: 'ApiTokens', grupo: 'sistema', rotulo: 'Tokens de API' },
+  { id: 'SincronizacaoPep', grupo: 'sistema', rotulo: 'Sincronização PEP', ajuda: 'Importação do Salux.' },
+  // Extensão do Chrome (ADR-0064): só a administração pede módulo; baixar e autorizar o próprio PC, não.
+  { id: 'ExtensaoNavegador', grupo: 'sistema', rotulo: 'Extensão Chrome', ajuda: 'Computadores autorizados e versões publicadas.' },
+  { id: 'Sandbox', grupo: 'sistema', rotulo: 'Sandbox', ajuda: 'Testes (QA).' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
@@ -208,6 +262,10 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
     Edicao: 'Atender, assumir, transferir, confirmar, enviar para pendente e marcar contato errado',
     Exclusao: 'Cancelar agendamento — cancela no SISREG primeiro, com o login da própria atendente, e só então aqui',
   },
+  // As filas valem junto com a Gestão de fila: dizem quais pedidos o regulador vê e em quais age.
+  RegulacaoFilaNar: { Consulta: 'Ver e regular os pedidos NAR' },
+  RegulacaoFilaInterna: { Consulta: 'Ver e regular os pedidos internos (SISREG)' },
+  RegulacaoFilaIntermunicipal: { Consulta: 'Ver e regular os pedidos intermunicipais' },
   ConfirmacoesEquipe: {
     Consulta: 'Ver a aba Equipe: o que cada atendente fez, tempos e ritmo',
   },
@@ -243,6 +301,14 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // Só a Consulta vale: a tela é leitura, e o PDF é a mesma leitura em outro formato.
   IndicadoresRegulacao: {
     Consulta: 'Ver os indicadores e exportar o PDF',
+  },
+  RegulacaoSer: {
+    Consulta: 'Ver a fila do Estado',
+    Edicao: 'Registrar FollowUP no SER',
+  },
+  RegulacaoSernit: {
+    Consulta: 'Ver a fila de Niterói',
+    Edicao: 'Registrar FollowUP e telefones no SERNIT',
   },
   // Só a Consulta vale: a integração com o ESUS é só leitura. "Visto" nas notificações é marca
   // nossa e também usa a Consulta.

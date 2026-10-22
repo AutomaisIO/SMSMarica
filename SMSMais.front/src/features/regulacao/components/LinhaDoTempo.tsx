@@ -8,6 +8,7 @@ import {
   Paperclip,
   ScanSearch,
   Send,
+  Share2,
   Undo2,
   XCircle,
 } from 'lucide-react';
@@ -15,8 +16,8 @@ import type { LucideIcon } from 'lucide-react';
 
 import { formatarInstante } from '@/shared/lib/datas';
 
-import { ROTULO_STATUS } from './StatusRegulacaoBadge';
-import type { EventoRegulacao, TipoEventoRegulacao } from '../tiposSolicitacao';
+import { ROTULO_FILA, ROTULO_STATUS } from './StatusRegulacaoBadge';
+import type { EventoRegulacao, FluxoRegulacao, TipoEventoRegulacao } from '../tiposSolicitacao';
 
 /**
  * A história do caso, em ordem.
@@ -31,6 +32,7 @@ const ICONES: Partial<Record<TipoEventoRegulacao, LucideIcon>> = {
   Edicao: FileEdit,
   Ajuste: FileEdit,
   ConferenciaExterna: ScanSearch,
+  Compartilhamento: Share2,
   Anexo: Paperclip,
   EnvioFila: Send,
   Assumida: CheckCircle2,
@@ -69,6 +71,7 @@ const ROTULOS: Record<TipoEventoRegulacao, string> = {
   TrocaProcedimento: 'Procedimento trocado',
   DocumentoAcessado: 'Documento aberto/baixado',
   ConferenciaExterna: 'Conferida no sistema de regulação',
+  Compartilhamento: 'Compartilhamento',
 };
 
 /**
@@ -135,6 +138,10 @@ export function LinhaDoTempo({
 
               {motivo && <p className="mt-1 text-sm text-slate-700">“{motivo}”</p>}
 
+              {e.tipo === 'Compartilhamento' && (
+                <p className="mt-1 text-sm text-slate-700">{resumoCompartilhamento(e.detalhe)}</p>
+              )}
+
               {e.tipo === 'ConferenciaExterna' && (
                 <p className="mt-1 text-sm text-slate-700">{resumoConferencia(e.detalhe)}</p>
               )}
@@ -174,4 +181,9 @@ function resumoConferencia(detalhe: Record<string, unknown> | null | undefined):
   return n === 0
     ? `Número ${numero}: sem divergência com o pedido.`
     : `Número ${numero}: ${n} divergência${n > 1 ? 's' : ''} com o pedido.`;
+}
+
+function resumoCompartilhamento(detalhe: Record<string, unknown> | null | undefined): string {
+  const fila = typeof detalhe?.fila === 'string' ? (ROTULO_FILA[detalhe.fila as FluxoRegulacao] ?? detalhe.fila) : '';
+  return detalhe?.ligado ? `Compartilhada com a fila ${fila}` : `Deixou de ser compartilhada com a fila ${fila}`;
 }

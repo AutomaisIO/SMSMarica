@@ -272,6 +272,17 @@ public sealed class RegulacaoSolicitacoesController(
         Guid id, [FromServices] IRegulacaoConferenciaService conferencia, CancellationToken cancellationToken) =>
         await conferencia.UltimaAsync(id, cancellationToken) is { } dto ? Ok(dto) : NoContent();
 
+    /// <summary>
+    /// Liga ou desliga o compartilhamento do pedido com outra fila da Gestão de fila (NAR, Internas,
+    /// Intermunicipais): compartilhado, ele aparece também para quem tem só aquela fila no perfil.
+    /// </summary>
+    [HttpPut("{id:guid}/compartilhamento")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<CompartilhamentoResultadoDto>(StatusCodes.Status200OK)]
+    public Task<CompartilhamentoResultadoDto> Compartilhar(
+        Guid id, [FromBody] CompartilharRequest req, CancellationToken cancellationToken) =>
+        servico.CompartilharAsync(id, req, cancellationToken);
+
     /// <summary>D-8: confere a solicitação interna que o solicitante já incluiu no SISREG.</summary>
     [HttpPost("{id:guid}/ok-interno")]
     [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]

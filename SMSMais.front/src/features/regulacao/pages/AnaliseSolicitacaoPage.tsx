@@ -19,6 +19,7 @@ import { ModalRegistrarEnvio } from '../components/ModalRegistrarEnvio';
 import { ParaLancarNoSistema } from '../components/ParaLancarNoSistema';
 import { ConferenciaNoSistema } from '../components/ConferenciaNoSistema';
 import { UnidadeEmNomeDeNar } from '../components/UnidadeEmNomeDeNar';
+import { CompartilharFilas } from '../components/CompartilharFilas';
 import { RespostasRegras } from '../components/RespostasRegras';
 import {
   useAssumirSolicitacao,
@@ -129,6 +130,8 @@ export function AnaliseSolicitacaoPage() {
       </div>
 
       <CabecalhoSolicitacao s={s} />
+
+      <CompartilharFilas s={s} podeAlterar />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">Decisão da regulação</h2>

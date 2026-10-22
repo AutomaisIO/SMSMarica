@@ -122,4 +122,7 @@ public sealed class RegulacaoSolicitacao
 
     /// <summary>Veredito de elegibilidade por sistema de destino.</summary>
     public ICollection<RegulacaoSolicitacaoDestino> Destinos { get; set; } = [];
+
+    /// <summary>Outras filas da Gestão de fila em que o pedido também aparece.</summary>
+    public ICollection<RegulacaoSolicitacaoCompartilhamento> Compartilhamentos { get; set; } = [];
 }

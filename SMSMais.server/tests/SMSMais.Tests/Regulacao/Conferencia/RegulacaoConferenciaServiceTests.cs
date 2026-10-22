@@ -37,7 +37,12 @@ public class RegulacaoConferenciaServiceTests(PostgresFixture fixture)
         identidade.ObterPermissoesResolvidasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new PermissoesResolvidasDto(
                 Herdadas: [], Overrides: [],
-                Resolvidas: [new PermissaoModuloDto(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]));
+                Resolvidas: [
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao),
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaNar, AcoesPermissao.Consulta),
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaInterna, AcoesPermissao.Consulta),
+                    new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaIntermunicipal, AcoesPermissao.Consulta),
+                ]));
         return new RegulacaoConferenciaService(
             db, new RegulacaoEscopo(db, acessor, identidade), new RegulacaoEventoService(db, acessor),
             [leitor], NullLogger<RegulacaoConferenciaService>.Instance);
