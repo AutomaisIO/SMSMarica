@@ -333,7 +333,6 @@ const INTENCOES: {
 export function PepSincronizacaoPage() {
   const bases = useBasesPep();
   const status = useStatusPep();
-  const execucoes = useExecucoesPep();
   const iniciar = useIniciarImportacaoPep();
   const cancelar = useCancelarImportacaoPep();
   const podeImportar = usePermissao('SincronizacaoPep', 'Edicao');
@@ -354,6 +353,7 @@ export function PepSincronizacaoPage() {
   }, [bases.data, fonteId]);
 
   const baseSel = useMemo(() => bases.data?.find((b) => b.id === fonteId), [bases.data, fonteId]);
+  const execucoes = useExecucoesPep(fonteId);
   const emExecucao = status.data?.emExecucao ?? false;
 
   function aoIniciar(e: React.FormEvent) {
@@ -572,19 +572,23 @@ export function PepSincronizacaoPage() {
         </section>
       ) : null}
 
-      {/* ---- Histórico ---- */}
+      {/* ---- Histórico (da base selecionada acima — misturado, uma base escondia a outra) ---- */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Histórico de importações</h2>
-        {execucoes.isPending ? (
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">
+          Histórico de importações
+          {baseSel ? <span className="font-normal text-gray-500"> — {baseSel.nome}</span> : null}
+        </h2>
+        {!fonteId ? (
+          <p className="text-sm text-gray-500">Selecione uma base acima.</p>
+        ) : execucoes.isPending ? (
           <p className="text-sm text-gray-500">Carregando…</p>
         ) : !execucoes.data?.length ? (
-          <p className="text-sm text-gray-500">Nenhuma importação ainda.</p>
+          <p className="text-sm text-gray-500">Nenhuma importação desta base ainda.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
-                  <th className="py-2 pr-3">Base</th>
                   <th className="py-2 pr-3">Modo</th>
                   <th className="py-2 pr-3">Disparo</th>
                   <th className="py-2 pr-3">Status</th>
@@ -600,7 +604,6 @@ export function PepSincronizacaoPage() {
               <tbody>
                 {execucoes.data.map((e) => (
                   <tr key={e.id} className="border-b border-gray-100">
-                    <td className="py-2 pr-3">{e.fonteNome}</td>
                     <td className="py-2 pr-3">{e.modo} / {e.escopo}</td>
                     <td className="py-2 pr-3 text-xs text-gray-600">{e.disparo === 'Agendado' ? '⏱ Agendado' : 'Manual'}</td>
                     <td className="py-2 pr-3"><Badge status={e.status} /></td>
