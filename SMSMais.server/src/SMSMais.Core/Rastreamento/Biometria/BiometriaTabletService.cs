@@ -378,14 +378,8 @@ public sealed class BiometriaTabletService(
 
     /// <summary>Rotas do veículo hoje (fuso de Brasília), sem as canceladas, mais a de ontem que
     /// ainda está em andamento (volta que passa da meia-noite).</summary>
-    private IQueryable<RotaDiaria> RotasDoDia(Guid veiculoId)
-    {
-        var hoje = FusoBrasilia.HojeEmBrasilia();
-        var ontem = hoje.AddDays(-1);
-        return db.Rotas.AsNoTracking().Where(r =>
-            r.VeiculoId == veiculoId && r.Status != StatusRota.Cancelada
-            && (r.Data == hoje || (r.Data == ontem && r.Status == StatusRota.EmAndamento)));
-    }
+    private IQueryable<RotaDiaria> RotasDoDia(Guid veiculoId) =>
+        Dispositivos.RotasDoVeiculo.DoDia(db, veiculoId).AsNoTracking();
 
     private IQueryable<Motorista> MotoristasAtivos() =>
         db.Motoristas.AsNoTracking().Where(m =>

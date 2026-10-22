@@ -16,7 +16,8 @@ namespace SMSMais.Api.Controllers;
 [ApiController]
 public sealed class DispositivosVeiculoController(
     IDispositivoVeiculoService service,
-    IOcorrenciaVeiculoService ocorrencias) : ControllerBase
+    IOcorrenciaVeiculoService ocorrencias,
+    IRotaTabletService rotasTablet) : ControllerBase
 {
     public const string PoliticaDeLimite = "tablet-veiculo";
     private const string CabecalhoToken = "X-Dispositivo-Token";
@@ -76,6 +77,20 @@ public sealed class DispositivosVeiculoController(
         if (d is null) return Unauthorized();
         await service.RegistrarPosicoesAsync(d, request, ct);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Rotas de hoje do veículo do tablet, prontas para a navegação: paradas na ordem (coleta na casa
+    /// de cada paciente, destino em cada unidade de atendimento), ponto no mapa, passageiros com os
+    /// acompanhantes e assentos, condição do paciente e tempo médio do tratamento.
+    /// </summary>
+    [HttpGet("rastreamento/dispositivos/rotas-do-dia")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> RotasDoDia(CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        return d is null ? Unauthorized() : Ok(await rotasTablet.RotasDoDiaAsync(d, ct));
     }
 
     /// <summary>
