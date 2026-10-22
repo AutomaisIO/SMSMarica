@@ -15,7 +15,9 @@ internal static class UnificacaoResumo
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["laudo"] = "Laudos",
-            ["solicitacao"] = "Solicitações de exame",
+            ["solicitacao"] = "Solicitações e agendamentos (SISREG)",
+            ["agendamento_externo"] = "Agendamentos (SER/SERNIT/ESUS)",
+            ["guia_agendamento"] = "Guias de agendamento",
             ["regulacao_solicitacao"] = "Regulação",
             ["regulacao_analise_espelho"] = "Regulação",
             ["ser_solicitacao"] = "Regulação (SER)",
@@ -35,6 +37,7 @@ internal static class UnificacaoResumo
             ["cidadao_acesso"] = "App do cidadão",
             ["cidadao_login_link"] = "App do cidadão",
             ["anexo_upload_token"] = "App do cidadão",
+            ["personificacao_paciente"] = "App do cidadão",
             ["pesquisa_satisfacao"] = "Pesquisas de satisfação",
             ["acompanhante"] = "Acompanhantes",
             ["robo_tarefa"] = "Atendimento automático",

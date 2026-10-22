@@ -21,7 +21,6 @@ import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
 import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
-import { UnificarPacientePage } from '@/features/pacientes/pages/UnificarPacientePage';
 import { LaudoEditorPage } from '@/features/laudos/pages/LaudoEditorPage';
 import { LaudosListagemPage } from '@/features/laudos/pages/LaudosListagemPage';
 import { LaudoTemplateEditorPage } from '@/features/laudo-templates/pages/LaudoTemplateEditorPage';
@@ -176,7 +175,8 @@ export function AppRouter() {
           <Route path="menu/:secaoId" element={<MenuHubPage />} />
           <Route path="pacientes" element={<PacientesPage />} />
           <Route path="pacientes/novo" element={<PacienteFormPage />} />
-          <Route path="pacientes/unificar" element={<UnificarPacientePage />} />
+          {/* A unificação mora na própria lista (modo com checkbox); o endereço antigo leva para lá. */}
+          <Route path="pacientes/unificar" element={<Navigate to="/app/pacientes?unificar=1" replace />} />
           <Route path="pacientes/:id" element={<PacienteDetalhePage />} />
           <Route path="pacientes/:id/editar" element={<PacienteFormPage />} />
           <Route path="unidades" element={<UnidadesPage />} />

@@ -214,6 +214,15 @@ export type UnificarPacientesPayload = {
   nomeFinal?: string | null;
   /** Confirmação explícita quando CPF/CNS divergem (risco de fundir pessoas diferentes). */
   confirmaChavesDivergentes: boolean;
+  /** CNS que vira o oficial (de um dos dois cadastros). Nulo = mantém o do sobrevivente. */
+  cnsFinal?: string | null;
+  /** Nascimento escolhido (yyyy-MM-dd, de um dos dois cadastros). Nulo = mantém o do sobrevivente. */
+  nascimentoFinal?: string | null;
+  /**
+   * Telefones (dígitos) DESLIGADOS na tela: o do outro cadastro não entra; o do que fica vira
+   * histórico. O verificado nunca sai. O resto dos telefones dos dois fica.
+   */
+  telefonesDescartados?: string[] | null;
 };
 
 /** Resultado da unificação concluída. */
@@ -223,6 +232,10 @@ export type ResultadoUnificacao = {
   referenciasRepontadas: number;
   clinicoRepontado: number;
   identificadoresAbsorvidos: number;
+  /** Telefones/e-mails do outro cadastro que entraram no unificado. */
+  contatosSomados: number;
+  /** Telefones desligados na tela que ficaram só no histórico. */
+  telefonesRetirados: number;
 };
 
 /** Diagnóstico (CID-10) de um atendimento. */

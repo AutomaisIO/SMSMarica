@@ -9,7 +9,7 @@ type Props = {
   titulo: string;
   descricao?: string;
   children: ReactNode;
-  largura?: 'sm' | 'md' | 'lg';
+  largura?: 'sm' | 'md' | 'lg' | 'xl';
   /** Abre por cima de uma tela cheia (ex.: o visualizador de arquivo, que fica em z-60). */
   porCima?: boolean;
 };
@@ -18,6 +18,7 @@ const larguras: Record<NonNullable<Props['largura']>, string> = {
   sm: 'max-w-md',
   md: 'max-w-xl',
   lg: 'max-w-3xl',
+  xl: 'max-w-5xl',
 };
 
 /**
