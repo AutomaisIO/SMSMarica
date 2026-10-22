@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sms_mais_cidadao/shared/api/demo_adapter.dart';
+import 'package:sms_mais_cidadao/shared/api/demonstracao.dart';
 import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
 
 /// Endereço da API. Produção por padrão (como o build do PWA); troca com
@@ -9,7 +10,8 @@ import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
 const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://api.smsmarica.online');
 
 /// Modo demonstração: `--dart-define=DEMO=true` responde tudo com dados fictícios, sem rede —
-/// para conferir telas e para os testes. Nunca ligado num build de loja.
+/// para conferir telas e para os testes. No build de loja, a demonstração só liga pela entrada de
+/// demonstração (`demonstracao.dart`), para a revisão das lojas.
 const modoDemo = bool.fromEnvironment('DEMO');
 
 /// Com o modo demonstração: abre já logado e com o termo aceito (`--dart-define=DEMO_LOGADO=true`),
@@ -38,8 +40,14 @@ final dioProvider = Provider<Dio>((ref) {
       },
     ),
   );
-  // ignore: avoid_redundant_argument_values — `demoLogado` só é false no build sem a flag.
-  if (modoDemo) dio.httpClientAdapter = DemoAdapter(jaConsentiu: demoLogado);
+  // A demonstração pode ligar no meio do caminho (entrada de demonstração): o adaptador decide a
+  // cada requisição, sem refazer o cliente.
+  dio.httpClientAdapter = _AdaptadorComDemonstracao(
+    dio.httpClientAdapter,
+    // ignore: avoid_redundant_argument_values — `demoLogado` só é false no build sem a flag.
+    DemoAdapter(jaConsentiu: demoLogado),
+    () => ref.read(demonstracaoProvider),
+  );
 
   dio.interceptors.add(
     InterceptorsWrapper(
@@ -69,6 +77,27 @@ final dioProvider = Provider<Dio>((ref) {
   }
   return dio;
 });
+
+/// Manda a requisição ao [DemoAdapter] enquanto o app está em demonstração; senão, à rede.
+class _AdaptadorComDemonstracao implements HttpClientAdapter {
+  _AdaptadorComDemonstracao(this._rede, this._demo, this._emDemonstracao);
+
+  final HttpClientAdapter _rede;
+  final DemoAdapter _demo;
+  final bool Function() _emDemonstracao;
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) =>
+      _emDemonstracao()
+          ? _demo.fetch(options, requestStream, cancelFuture)
+          : _rede.fetch(options, requestStream, cancelFuture);
+
+  @override
+  void close({bool force = false}) {
+    _rede.close(force: force);
+    _demo.close(force: force);
+  }
+}
 
 /// Status HTTP + código de negócio (o `type` do ProblemDetails, ex.:
 /// "confirmacao.ja_respondida"). Serve para a tela escolher um texto AMIGÁVEL — nunca exibimos

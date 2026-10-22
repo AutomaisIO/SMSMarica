@@ -71,6 +71,12 @@ solicitação** e um WhatsApp **digitado**, que recebia o código e virava o ver
 6. **O app diz o canal** no cabeçalho `X-App-Canal` (`pwa` | `nativo`); sem cabeçalho vale `pwa`. É
    preferência de produto, não fronteira de segurança: as travas acima valem nos dois canais.
 
+7. **Revisão das lojas (Google Play, App Store) sem porta na produção.** O revisor entra pela
+   **entrada de demonstração do app nativo**: CPF `111.111.111-11` + nascimento `01/01/2000` ligam o
+   modo demonstração local (dados fictícios embutidos, sem rede). Foi descartada uma "conta de revisão"
+   no servidor (código na tela para um CPF configurado): seria uma porta de entrada sem a prova pelo
+   WhatsApp, e com ela o revisor mexeria no chat e nos envios da equipe de verdade.
+
 ## Contrato (`/auth/paciente`, anônimo, limite `login-cidadao`)
 
 | Rota | Corpo | Resposta |

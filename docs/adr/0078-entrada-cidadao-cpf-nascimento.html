@@ -78,6 +78,10 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li><strong>O app diz o canal</strong> no cabeçalho <code>X-App-Canal</code> (<code>pwa</code> | <code>nativo</code>); sem cabeçalho vale <code>pwa</code>. É</li>
 </ol>
 <p>   preferência de produto, não fronteira de segurança: as travas acima valem nos dois canais.</p>
+<ol>
+<li><strong>Revisão das lojas (Google Play, App Store) sem porta na produção.</strong> O revisor entra pela</li>
+</ol>
+<p>   <strong>entrada de demonstração do app nativo</strong>: CPF <code>111.111.111-11</code> + nascimento <code>01/01/2000</code> ligam o    modo demonstração local (dados fictícios embutidos, sem rede). Foi descartada uma "conta de revisão"    no servidor (código na tela para um CPF configurado): seria uma porta de entrada sem a prova pelo    WhatsApp, e com ela o revisor mexeria no chat e nos envios da equipe de verdade.</p>
 <h2>Contrato (<code>/auth/paciente</code>, anônimo, limite <code>login-cidadao</code>)</h2>
 <div class="tw"><table><thead><tr><th>Rota</th><th>Corpo</th><th>Resposta</th></tr></thead><tbody>
 <tr><td><code>POST entrada</code></td><td><code>{ cpf, dataNascimento: "aaaa-mm-dd" }</code></td><td><code>EntradaCidadaoDto</code></td></tr>

@@ -24,7 +24,7 @@ Future<void> main() async {
   // A sessão salva é lida antes do 1º quadro: o app já abre no Início ou no login, sem piscar.
   final sessao = demoLogado
       ? SessaoCidadao(
-          token: 'demo',
+          token: DemoAdapter.tokenDemo,
           paciente: PacienteSessao(
             id: DemoAdapter.sessaoDemo.id,
             nome: DemoAdapter.sessaoDemo.nome,

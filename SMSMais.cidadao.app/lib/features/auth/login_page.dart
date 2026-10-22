@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:sms_mais_cidadao/features/auth/auth_shell.dart';
 import 'package:sms_mais_cidadao/features/auth/entrada_erros.dart';
 import 'package:sms_mais_cidadao/shared/api/api.dart';
+import 'package:sms_mais_cidadao/shared/api/demonstracao.dart';
 import 'package:sms_mais_cidadao/shared/theme/cores_marica.dart';
 import 'package:sms_mais_cidadao/shared/theme/tipografia.dart';
 import 'package:sms_mais_cidadao/shared/util/documentos_br.dart';
@@ -32,7 +33,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool get _cpfErrado => _cpfLimpo.length == 11 && !cpfValido(_cpfLimpo);
   String? get _iso => dataParaIso(_nascimento.text);
   bool get _dataErrada => _nascimento.text.length == 10 && _iso == null;
-  bool get _valido => _cpfLimpo.length == 11 && !_cpfErrado && _iso != null;
+  // A entrada de demonstração (revisão das lojas) tem um CPF inválido de propósito: passa direto.
+  bool get _demonstracao => ehEntradaDeDemonstracao(_cpfLimpo, _iso);
+  bool get _valido => _demonstracao || (_cpfLimpo.length == 11 && !_cpfErrado && _iso != null);
 
   @override
   void dispose() {
@@ -50,6 +53,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _erro = null;
       _enviando = true;
     });
+    // Liga a demonstração ANTES da chamada (ela já vai ao DemoAdapter); qualquer outro CPF desliga,
+    // para quem voltou da demonstração entrar de verdade.
+    final demonstracao = ref.read(demonstracaoProvider.notifier);
+    if (_demonstracao) {
+      demonstracao.ligar();
+    } else {
+      demonstracao.desligar();
+    }
     try {
       final entrada = await ref.read(apiProvider).entrada(_cpfLimpo, iso);
       if (!mounted) return;
