@@ -21,9 +21,12 @@ internal sealed class AvaliacaoConfiguration : IEntityTypeConfiguration<Avaliaca
         builder.Property(a => a.MotoristaId).HasColumnName("motorista_id");
         builder.Property(a => a.VeiculoId).HasColumnName("veiculo_id");
         builder.Property(a => a.RotaId).HasColumnName("rota_id");
+        builder.Property(a => a.Trecho).HasColumnName("trecho").HasConversion<int>().IsRequired()
+            .HasDefaultValue(Entities.Enums.TrechoViagem.Ida).HasSentinel((Entities.Enums.TrechoViagem)0);
 
         builder.HasOne(a => a.Sessao).WithMany().HasForeignKey(a => a.SessaoId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasIndex(a => a.SessaoId).IsUnique();
+        // Uma nota por trecho da viagem: a da ida e a do resgate.
+        builder.HasIndex(a => new { a.SessaoId, a.Trecho }).IsUnique();
         builder.HasOne<Motorista>().WithMany().HasForeignKey(a => a.MotoristaId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<Veiculo>().WithMany().HasForeignKey(a => a.VeiculoId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<RotaDiaria>().WithMany().HasForeignKey(a => a.RotaId).OnDelete(DeleteBehavior.SetNull);

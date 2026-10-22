@@ -4,6 +4,7 @@ import { Card } from '@/components/ui';
 import { Lista } from '@/components/Lista';
 import { Etiqueta } from '@/components/Etiqueta';
 import { AvaliarViagens } from '@/components/AvaliarViagens';
+import { AguardarResgate } from '@/components/AguardarResgate';
 import { MeusAcompanhantes } from '@/components/MeusAcompanhantes';
 
 const ROTULO_STATUS: Record<string, string> = {
@@ -24,6 +25,8 @@ function formatarDia(iso: string): string {
 export function Transporte() {
   return (
     <>
+      <AguardarResgate />
+      <AvaliarViagens />
       <Lista<ViagemTransporte>
         eyebrow="Transporte de Pacientes"
         titulo="Minhas viagens"
@@ -61,7 +64,6 @@ export function Transporte() {
           </Card>
         )}
       />
-      <AvaliarViagens />
       <MeusAcompanhantes />
     </>
   );

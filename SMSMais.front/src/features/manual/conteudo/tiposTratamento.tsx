@@ -22,7 +22,7 @@ export const artigoTiposTratamento: Artigo = {
   icone: ClipboardList,
   rota: '/app/tipos-tratamento',
   publico: 'Quem organiza o transporte de pacientes',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-19',
   palavrasChave: [
     'tipo de tratamento',
     'catálogo',
@@ -34,6 +34,8 @@ export const artigoTiposTratamento: Artigo = {
     'fisioterapia',
     'retorno',
     'volta',
+    'resgate',
+    'disponível em',
     'código',
     'não informado',
     'excluir',
@@ -44,7 +46,7 @@ export const artigoTiposTratamento: Artigo = {
     {
       id: 'para-que-serve',
       titulo: 'Para que serve',
-      busca: 'tipo de tratamento catálogo atendimento obrigatório tempo médio volta retorno horário',
+      busca: 'tipo de tratamento catálogo atendimento obrigatório tempo médio volta retorno resgate disponível em horário previsão',
       conteudo: (
         <>
           <P>
@@ -57,9 +59,11 @@ export const artigoTiposTratamento: Artigo = {
             da chegada o paciente vai precisar voltar, e ele vale para todo atendimento daquele tipo
             — o atendimento não tem tempo próprio.
           </P>
-          <Callout tipo="atencao" titulo="A previsão automática da volta ainda está chegando">
-            Por enquanto o sistema guarda o tempo médio e mostra no atendimento; o horário de volta
-            ainda não é calculado sozinho na rota. Quem monta a rota usa o número.
+          <Callout tipo="dica" titulo="É a previsão do resgate">
+            Quando o paciente desce na unidade, ele entra na lista de resgate como “Disponível em XX
+            min”: a chegada mais este tempo médio. Se a central marcou a hora do retorno na viagem, vale
+            a hora marcada. Tipo sem tempo médio deixa o paciente “Sem previsão”, esperando o aviso de
+            que ele está no local. Veja o artigo Translados.
           </Callout>
         </>
       ),

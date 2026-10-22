@@ -177,6 +177,7 @@ function LinhaNotificacao({ notificacao: n }: { notificacao: NotificacaoAppEnvia
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
         <span>{formatarInstante(n.criadaEm)}</span>
         {n.enviadaPor ? <span>· por {n.enviadaPor}</span> : null}
+        {n.origem === 'transporte' ? <span>· aviso automático do Transporte</span> : null}
         <span>· abre em {rotuloDestinoApp(n.rota)}</span>
         <SeloEntrega n={n} />
       </div>

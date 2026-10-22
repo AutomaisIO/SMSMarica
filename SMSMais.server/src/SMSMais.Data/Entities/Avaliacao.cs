@@ -19,5 +19,9 @@ public class Avaliacao
     public Guid? VeiculoId { get; set; }
     public Guid? RotaId { get; set; }
 
+    /// <summary>De qual parte da viagem é a nota: a ida (motorista que levou à unidade) ou o resgate
+    /// (quem buscou e deixou em casa). Uma de cada por viagem.</summary>
+    public TrechoViagem Trecho { get; set; } = TrechoViagem.Ida;
+
     public SessaoDeTratamento? Sessao { get; set; }
 }

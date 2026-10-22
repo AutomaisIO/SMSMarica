@@ -37,8 +37,10 @@ public partial class RotaTabletServiceTests(PostgresFixture fixture)
 
     private sealed record Frota(DispositivoVeiculo Tablet, Guid MotoristaId, List<Assento> Assentos);
 
-    private static async Task<Frota> VeiculoComTabletAsync(SmsMaisDbContext db)
+    /// <summary>Veículo com tablet; sem <paramref name="tipos"/>, 3 bancos de passageiro e 1 de acompanhante.</summary>
+    private static async Task<Frota> VeiculoComTabletAsync(SmsMaisDbContext db, params TipoAssento[] tipos)
     {
+        if (tipos.Length == 0) tipos = [TipoAssento.Passageiro, TipoAssento.Passageiro, TipoAssento.Passageiro, TipoAssento.Acompanhante];
         var agora = DateTime.UtcNow;
         var veiculo = new Veiculo
         {
@@ -46,10 +48,9 @@ public partial class RotaTabletServiceTests(PostgresFixture fixture)
             Modelo = "Spin", Fabricante = "Chevrolet", Cor = "Branca", CriadoEm = agora,
         };
         var fileira = new Fileira { Id = Guid.NewGuid(), VeiculoId = veiculo.Id, Ordem = 1, CriadoEm = agora };
-        var assentos = Enumerable.Range(1, 4).Select(n => new Assento
+        var assentos = tipos.Select((tipo, i) => new Assento
         {
-            Id = Guid.NewGuid(), FileiraId = fileira.Id, Numero = n, CriadoEm = agora,
-            Tipo = n == 4 ? TipoAssento.Acompanhante : TipoAssento.Passageiro,
+            Id = Guid.NewGuid(), FileiraId = fileira.Id, Numero = i + 1, CriadoEm = agora, Tipo = tipo,
         }).ToList();
         var tablet = new DispositivoVeiculo
         {
@@ -199,7 +200,7 @@ public partial class RotaTabletServiceTests(PostgresFixture fixture)
 
         Assert.Equal(rotaId, rota.RotaId);
         Assert.Equal("Motorista Simulado", rota.MotoristaNome);
-        // A ida (a volta da unidade externa está em RotaTabletServiceTests.Volta).
+        // A ida (o resgate está em RotaTabletServiceTests.Resgate).
         Assert.Collection(rota.Paradas.Where(p => p.Trecho == RotaTabletService.Ida),
             beatriz =>
             {

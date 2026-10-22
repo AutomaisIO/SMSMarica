@@ -11,5 +11,5 @@ internal static partial class AvaliacoesMapper
         new(a.Id, a.SessaoId, a.Nota, a.Comentario, a.CriadoEm);
 
     public static AvaliacaoListItemDto ParaListItem(Avaliacao a) =>
-        new(a.Id, a.SessaoId, a.Nota, Canal: a.Canal, Comentario: a.Comentario, CriadoEm: a.CriadoEm);
+        new(a.Id, a.SessaoId, a.Nota, Canal: a.Canal, Comentario: a.Comentario, CriadoEm: a.CriadoEm, Trecho: a.Trecho);
 }

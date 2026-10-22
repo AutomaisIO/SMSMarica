@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { api, type ViagemParaAvaliar } from '@/lib/api';
 import { extrairMensagemDeErro } from '@/lib/httpClient';
 import { Card, PrimaryButton } from '@/components/ui';
@@ -50,7 +50,7 @@ function AvaliarUma({ v, aoAvaliar }: { v: ViagemParaAvaliar; aoAvaliar: () => v
     setErro(null);
     setEnviando(true);
     try {
-      await api.avaliarViagem(v.sessaoId, nota, comentario.trim() || null);
+      await api.avaliarViagem(v.sessaoId, v.trecho, nota, comentario.trim() || null);
       aoAvaliar();
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -82,10 +82,16 @@ function AvaliarUma({ v, aoAvaliar }: { v: ViagemParaAvaliar; aoAvaliar: () => v
   );
 }
 
+/** Hoje, em Brasília, como "aaaa-mm-dd" (o mesmo formato da data da viagem). */
+function hoje(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+}
+
 /**
- * Depois da viagem, o paciente avalia o transporte (nota de 1 a 5 e, se quiser, um comentário). Uma vez
- * por viagem, até 30 dias depois. A nota chega à equipe com o motorista e o veículo daquela viagem.
- * Sem viagem recente, a seção não aparece.
+ * Avaliação do motorista (decisão de 19/10): ao desembarcar na clínica o paciente avalia o motorista da
+ * ida, e ao chegar em casa, o do resgate — até 5 estrelas, cada um uma vez, até 30 dias depois. Fica no
+ * topo do Transporte e atualiza a cada minuto, para o pedido aparecer logo depois do desembarque. A nota
+ * chega à equipe com o motorista e o veículo daquele trecho. Sem nada a avaliar, não aparece.
  */
 export function AvaliarViagens() {
   const [lista, setLista] = useState<ViagemParaAvaliar[] | null>(null);
@@ -97,34 +103,35 @@ export function AvaliarViagens() {
       .catch(() => setLista([])); // avaliação é extra: falha aqui não atrapalha o resto da tela
   }, []);
 
-  useEffect(() => carregar(), [carregar]);
+  useEffect(() => {
+    carregar();
+    const t = window.setInterval(carregar, 60_000);
+    return () => window.clearInterval(t);
+  }, [carregar]);
 
-  if (!lista || lista.length === 0) return null;
+  const pendentes = (lista ?? []).filter((v) => v.nota == null);
+  if (pendentes.length === 0) return null;
+  const dia = hoje();
 
   return (
-    <section className="mt-8">
+    <section className="mb-6">
       <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-semibold text-tinta">
-        <Star className="h-5 w-5 text-marica" /> Avalie suas viagens
+        <Star className="h-5 w-5 text-marica" /> Como foi o motorista?
       </h2>
-      <p className="mb-3 text-sm text-tinta-mute">Conte como foi o transporte. Sua nota ajuda a melhorar o serviço.</p>
+      <p className="mb-3 text-sm text-tinta-mute">Sua nota ajuda a melhorar o transporte.</p>
       <ul className="space-y-2">
-        {lista.map((v) => (
-          <li key={v.sessaoId}>
-            <Card className="p-4">
+        {pendentes.map((v) => (
+          <li key={`${v.sessaoId}:${v.trecho}`}>
+            <Card className={`p-4 ${v.data === dia ? 'border-2 border-lagoa/40' : ''}`}>
               <p className="font-semibold text-tinta">
-                {diaMes(v.data)} · {v.destino}
+                {v.trecho === 'Resgate' ? `Volta para casa · ${v.destino}` : `Ida até ${v.destino}`}
               </p>
-              {v.motorista ? <p className="text-sm text-tinta-mute">Motorista: {v.motorista}</p> : null}
-              {v.nota ? (
-                <div className="mt-3 flex items-center gap-3">
-                  <Estrelas nota={v.nota} />
-                  <span className="inline-flex items-center gap-1 text-sm text-tinta-mute">
-                    <CheckCircle2 className="h-4 w-4 text-lagoa" /> Obrigado!
-                  </span>
-                </div>
-              ) : (
-                <AvaliarUma v={v} aoAvaliar={carregar} />
-              )}
+              <p className="text-sm text-tinta-mute">
+                {v.data === dia ? 'Hoje' : diaMes(v.data)}
+                {v.hora ? `, ${v.trecho === 'Resgate' ? 'chegou em casa' : 'chegou'} às ${v.hora.slice(0, 5)}` : ''}
+                {v.motorista ? ` · Motorista: ${v.motorista}` : ''}
+              </p>
+              <AvaliarUma v={v} aoAvaliar={carregar} />
             </Card>
           </li>
         ))}

@@ -28,7 +28,7 @@ public partial class RotaTabletServiceTests
         new(db, _geo, Substitute.For<IDistanciaService>(), _pacientes, _resolver, NullLogger<FaturamentoService>.Instance);
 
     private ViagemService Viagem(SmsMaisDbContext db) =>
-        new(db, Faturamento(db), _resolver, NullLogger<ViagemService>.Instance);
+        new(db, Faturamento(db), _resolver, _entrega, NullLogger<ViagemService>.Instance);
 
     private static RegistrarEventoViagemRequest Marca(
         Guid rotaId, TipoEventoViagem tipo, Guid? sessaoId = null, PessoaViagem? pessoa = null, int? ordem = null,

@@ -12,8 +12,8 @@ import {
 
 type Props = { modo: 'criar' | 'editar'; idAvaliacao?: string | null; aoConcluir: () => void };
 
-type Valores = { sessaoId: string; nota: string; comentario: string };
-const INICIAL: Valores = { sessaoId: '', nota: '5', comentario: '' };
+type Valores = { sessaoId: string; nota: string; comentario: string; trecho: 'Ida' | 'Resgate' };
+const INICIAL: Valores = { sessaoId: '', nota: '5', comentario: '', trecho: 'Ida' };
 type Erros = Partial<Record<keyof Valores, string>>;
 
 export function FormularioAvaliacao({ modo, idAvaliacao, aoConcluir }: Props) {
@@ -30,6 +30,7 @@ export function FormularioAvaliacao({ modo, idAvaliacao, aoConcluir }: Props) {
         sessaoId: detalhe.data.sessaoId,
         nota: String(detalhe.data.nota),
         comentario: detalhe.data.comentario ?? '',
+        trecho: 'Ida',
       });
     }
   }, [modo, detalhe.data]);
@@ -58,6 +59,7 @@ export function FormularioAvaliacao({ modo, idAvaliacao, aoConcluir }: Props) {
           sessaoId: valores.sessaoId.trim(),
           nota,
           comentario: valores.comentario.trim() || undefined,
+          trecho: valores.trecho,
         });
       } else {
         if (!idAvaliacao) throw new Error('ID ausente.');
@@ -99,6 +101,23 @@ export function FormularioAvaliacao({ modo, idAvaliacao, aoConcluir }: Props) {
           disabled={modo === 'editar'}
         />
       </Campo>
+
+      {modo === 'criar' ? (
+        <Campo
+          label="Trecho"
+          htmlFor="trecho"
+          dica="Cada viagem tem duas notas: a do motorista da ida e a do motorista do resgate."
+        >
+          <Select
+            id="trecho"
+            value={valores.trecho}
+            onChange={(e) => setValores((p) => ({ ...p, trecho: e.target.value === 'Resgate' ? 'Resgate' : 'Ida' }))}
+          >
+            <option value="Ida">Ida (até a unidade)</option>
+            <option value="Resgate">Resgate (de volta para casa)</option>
+          </Select>
+        </Campo>
+      ) : null}
 
       <Campo label="Nota" htmlFor="nota" erro={erros.nota}>
         <Select id="nota" value={valores.nota} onChange={(e) => set('nota', e.target.value)}>

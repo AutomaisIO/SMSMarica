@@ -11,8 +11,8 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.Translado.Viagem;
 
 /// <summary>O que o tablet manda a cada marcação da viagem. <paramref name="AcompanhanteOrdem"/> é a
-/// posição do acompanhante na lista da sessão (1 ou 2), como o tablet recebeu. <paramref name="Volta"/>:
-/// marcação da volta (embarque na unidade, chegada em casa).</summary>
+/// posição do acompanhante na lista da sessão (1 ou 2), como o tablet recebeu. <paramref name="Resgate"/>:
+/// marcação do resgate (embarque na unidade, chegada em casa).</summary>
 public sealed record RegistrarEventoViagemRequest(
     Guid IdLocal,
     Guid RotaId,
@@ -26,7 +26,7 @@ public sealed record RegistrarEventoViagemRequest(
     double? Latitude,
     double? Longitude,
     double? PrecisaoM,
-    bool Volta = false);
+    bool Resgate = false);
 
 public sealed record EventoViagemRegistradoDto(Guid Id, bool Aplicado, string? MotivoNaoAplicado, DateTime RecebidoEm);
 
@@ -45,7 +45,7 @@ public sealed record EventoViagemDto(
     double? Longitude,
     bool Aplicado,
     string? MotivoNaoAplicado,
-    bool Volta = false);
+    bool Resgate = false);
 
 public interface IViagemService
 {
@@ -63,9 +63,12 @@ public sealed class ViagemService(
     SmsMaisDbContext db,
     IFaturamentoService faturamento,
     IPacienteResolver pacienteResolver,
+    IAvisoAoPacienteTransporte aviso,
     ILogger<ViagemService> logger) : IViagemService
 {
     public const string MotivoAusencia = "Paciente não estava na coleta (registrado no tablet).";
+    public const string ResgateDesmarcado =
+        "O resgate deste paciente não está mais nesta rota (foi desmarcado ou ficou com outro carro).";
 
     public async Task<EventoViagemRegistradoDto> RegistrarDoTabletAsync(
         DispositivoVeiculo dispositivo, RegistrarEventoViagemRequest request, CancellationToken ct = default)
@@ -85,13 +88,21 @@ public sealed class ViagemService(
         SessaoDeTratamento? sessao = null;
         PessoaViagem? pessoa = null;
         Guid? acompanhanteId = null;
+        var semResgate = false;
         if (EhDePessoa(request.Tipo))
         {
+            // O tablet pode marcar um resgate que já foi desmarcado (estava sem rede, ou a central tirou):
+            // fica o registro, sem mudar a sessão. Quem nunca esteve na rota é erro.
             if (request.SessaoId is not { } sessaoId
-                || !await db.Alocacoes.AnyAsync(a => a.RotaDiariaId == rota.Id && a.SessaoId == sessaoId, ct))
+                || (!await db.Alocacoes.AnyAsync(a => a.RotaDiariaId == rota.Id && a.SessaoId == sessaoId, ct)
+                    && !(request.Resgate && await db.EventosViagem.AnyAsync(e => e.RotaId == rota.Id && e.SessaoId == sessaoId, ct))))
             {
                 throw new ValidacaoException("sessaoId", "Este paciente não está nesta rota.");
             }
+            // Acompanhante não muda a sessão: a marca dele fica como veio.
+            semResgate = request.Resgate && (request.Pessoa ?? PessoaViagem.Paciente) == PessoaViagem.Paciente
+                && !await db.Alocacoes.AnyAsync(
+                a => a.RotaDiariaId == rota.Id && a.SessaoId == sessaoId && a.Parada == TipoParada.Retorno, ct);
             sessao = await db.Sessoes.FirstAsync(s => s.Id == sessaoId, ct);
             pessoa = request.Pessoa is { } p && Enum.IsDefined(p) ? p : PessoaViagem.Paciente;
             if (pessoa == PessoaViagem.Acompanhante && request.AcompanhanteId is { } a
@@ -117,7 +128,7 @@ public sealed class ViagemService(
             AcompanhanteOrdem = pessoa == PessoaViagem.Acompanhante && request.AcompanhanteOrdem is >= 1 and <= 2
                 ? request.AcompanhanteOrdem : null,
             AcompanhanteId = acompanhanteId,
-            Volta = request.Volta && sessao is not null,
+            Resgate = request.Resgate && sessao is not null,
             Latitude = lat,
             Longitude = lon,
             PrecisaoM = lat is not null && request.PrecisaoM is >= 0 ? request.PrecisaoM : null,
@@ -125,10 +136,15 @@ public sealed class ViagemService(
             RecebidoEm = agora,
         };
 
-        var efeito = Aplicar(rota, sessao, evento, agora);
+        var efeito = semResgate ? Efeito.Nao(ResgateDesmarcado) : Aplicar(rota, sessao, evento, agora);
         evento.Aplicado = efeito.Aplicado;
         evento.MotivoNaoAplicado = efeito.Motivo;
         db.EventosViagem.Add(evento);
+
+        // Quem não estava no local volta para a lista de resgate, e a rota encerrada devolve quem ela
+        // marcou e não buscou.
+        if (efeito.Liberar is { } liberar)
+            await Resgate.ResgateService.LiberarAsync(db, rota.Id, liberar == Guid.Empty ? null : liberar, ct);
         dispositivo.UltimoContatoEm = agora;
 
         try
@@ -157,7 +173,36 @@ public sealed class ViagemService(
                 logger.LogWarning(ex, "Viagem: faturamento da sessão {Sessao} não atualizado.", sessao.Id);
             }
         }
+
+        // Desceu na unidade ou chegou em casa: o paciente avalia o motorista daquele trecho (até 5
+        // estrelas). Sem push ligado, o pedido aparece no app/PWA.
+        if (sessao is not null && evento.Aplicado && evento.Tipo == TipoEventoViagem.Desembarque
+            && evento.Pessoa == PessoaViagem.Paciente)
+        {
+            await PedirAvaliacaoAsync(sessao, evento.Resgate ? TrechoViagem.Resgate : TrechoViagem.Ida, ct);
+        }
         return Registrado(evento);
+    }
+
+    private async Task PedirAvaliacaoAsync(SessaoDeTratamento s, TrechoViagem trecho, CancellationToken ct)
+    {
+        try
+        {
+            var pacienteId = await db.Tratamentos.AsNoTracking()
+                .Where(t => t.Id == s.TratamentoId).Select(t => t.PacienteId).FirstAsync(ct);
+            var motoristaId = trecho == TrechoViagem.Resgate ? s.MotoristaVoltaId : s.MotoristaIdaId;
+            var motorista = motoristaId is { } m
+                ? await db.Motoristas.AsNoTracking().Where(x => x.Id == m).Select(x => x.Usuario.NomeCompleto).FirstOrDefaultAsync(ct)
+                : null;
+            var nomes = await pacienteResolver.ResolverManyAsync([pacienteId], ct);
+            await aviso.PedirAvaliacaoAsync(
+                pacienteId, NomeNoAviso.PrimeiroNome(nomes.TryGetValue(pacienteId, out var r) ? r.Nome : null),
+                s.Id, trecho, NomeNoAviso.PrimeiroNome(motorista), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Viagem: pedido de avaliação da sessão {Sessao} não enviado.", s.Id);
+        }
     }
 
     public async Task<IReadOnlyList<EventoViagemDto>> ListarDaRotaAsync(Guid rotaId, CancellationToken ct = default)
@@ -216,13 +261,14 @@ public sealed class ViagemService(
                 ? r.Nome : null,
             e.Pessoa, NomeAcompanhante(e),
             e.MotoristaId is { } mid ? motoristas.GetValueOrDefault(mid) : null,
-            e.Latitude, e.Longitude, e.Aplicado, e.MotivoNaoAplicado, e.Volta))];
+            e.Latitude, e.Longitude, e.Aplicado, e.MotivoNaoAplicado, e.Resgate))];
     }
 
-    /// <summary>A última marcação de cada pessoa nas rotas, na ida e na volta: paciente na ordem 0,
-    /// acompanhantes 1 e 2. É o que o tablet usa para retomar a viagem depois de reiniciar. Vale o que o
-    /// tablet marcou, aplicado ou não (a correção do painel fica na sessão).</summary>
-    internal static async Task<Dictionary<(Guid RotaId, Guid SessaoId, int Ordem, bool Volta), TipoEventoViagem>> UltimasMarcacoesAsync(
+    /// <summary>A última marcação de cada pessoa nas rotas, na ida e no resgate: paciente na ordem 0,
+    /// acompanhantes 1 e 2, com a hora em que chegou ao servidor. É o que o tablet usa para retomar a
+    /// viagem depois de reiniciar. Vale o que o tablet marcou, aplicado ou não (a correção do painel fica
+    /// na sessão).</summary>
+    internal static async Task<Dictionary<(Guid RotaId, Guid SessaoId, int Ordem, bool Resgate), (TipoEventoViagem Tipo, DateTime RecebidoEm)>> UltimasMarcacoesAsync(
         SmsMaisDbContext db, IReadOnlyCollection<Guid> rotaIds, CancellationToken ct)
     {
         var marcacoes = await db.EventosViagem.AsNoTracking()
@@ -230,19 +276,21 @@ public sealed class ViagemService(
                 && (e.Tipo == TipoEventoViagem.Embarque || e.Tipo == TipoEventoViagem.Ausencia
                     || e.Tipo == TipoEventoViagem.Desembarque))
             .OrderBy(e => e.OcorridoEm).ThenBy(e => e.RecebidoEm)
-            .Select(e => new { e.RotaId, e.SessaoId, e.Pessoa, e.AcompanhanteOrdem, e.Tipo, e.Volta })
+            .Select(e => new { e.RotaId, e.SessaoId, e.Pessoa, e.AcompanhanteOrdem, e.Tipo, e.Resgate, e.RecebidoEm })
             .ToListAsync(ct);
 
-        var ultimas = new Dictionary<(Guid, Guid, int, bool), TipoEventoViagem>();
+        var ultimas = new Dictionary<(Guid, Guid, int, bool), (TipoEventoViagem, DateTime)>();
         foreach (var e in marcacoes)
         {
             var ordem = e.Pessoa == PessoaViagem.Acompanhante ? e.AcompanhanteOrdem ?? 1 : 0;
-            ultimas[(e.RotaId, e.SessaoId!.Value, ordem, e.Volta)] = e.Tipo;
+            ultimas[(e.RotaId, e.SessaoId!.Value, ordem, e.Resgate)] = (e.Tipo, e.RecebidoEm);
         }
         return ultimas;
     }
 
-    private sealed record Efeito(bool Aplicado, string? Motivo, int Faturamento = 0)
+    /// <summary><paramref name="Liberar"/>: devolver à lista de resgate quem a rota marcou e não buscou —
+    /// a sessão (quem não estava no local) ou <see cref="Guid.Empty"/> (todos, na conclusão).</summary>
+    private sealed record Efeito(bool Aplicado, string? Motivo, int Faturamento = 0, Guid? Liberar = null)
     {
         public static readonly Efeito Sim = new(true, null);
         public static Efeito Nao(string motivo) => new(false, motivo);
@@ -263,7 +311,7 @@ public sealed class ViagemService(
                 Iniciar(rota, e.OcorridoEm);
                 rota.Status = StatusRota.Concluida;
                 rota.ConcluidaEm = e.OcorridoEm;
-                return Efeito.Sim;
+                return Efeito.Sim with { Liberar = Guid.Empty };
         }
 
         // Marcação de pessoa: a viagem começou, mesmo que o "início" tenha se perdido.
@@ -280,7 +328,7 @@ public sealed class ViagemService(
         var local = FusoBrasilia.ParaExibicao(e.OcorridoEm);
         var hora = new TimeOnly(local.Hour, local.Minute);
         s.AtualizadoEm = agora;
-        if (e.Volta) return AplicarVolta(rota, s, e, hora);
+        if (e.Resgate) return AplicarResgate(rota, s, e, hora);
 
         s.MotoristaIdaId = e.MotoristaId ?? s.MotoristaIdaId ?? rota.MotoristaId;
         s.VeiculoIdaId = rota.VeiculoId;
@@ -303,19 +351,23 @@ public sealed class ViagemService(
         }
     }
 
-    /// <summary>Volta: o translado já foi contado na ida. Embarque na unidade e chegada em casa preenchem
-    /// a volta da sessão; quem não estava na unidade quando o carro saiu fica aguardando retorno (entra
-    /// na fila de puxar do painel).</summary>
-    private static Efeito AplicarVolta(RotaDiaria rota, SessaoDeTratamento s, EventoViagem e, TimeOnly hora)
+    /// <summary>Resgate: o translado já foi contado na ida. Embarque na unidade e chegada em casa preenchem
+    /// a volta da sessão. Quem não estava no local quando o carro chegou volta para a lista de resgate, sem
+    /// o aviso de "está esperando" (o motorista viu que não estava).</summary>
+    private static Efeito AplicarResgate(RotaDiaria rota, SessaoDeTratamento s, EventoViagem e, TimeOnly hora)
     {
         if (s.Status is not (StatusSessao.Realizada or StatusSessao.AguardandoRetorno))
-            return Efeito.Nao("A ida desta viagem não foi feita; a volta não muda a sessão.");
+            return Efeito.Nao("A ida desta viagem não foi feita; o resgate não muda a sessão.");
 
         switch (e.Tipo)
         {
             case TipoEventoViagem.Ausencia:
-                s.Status = StatusSessao.AguardandoRetorno;
-                return Efeito.Sim;
+                // Não estava: o aviso cai e a pergunta "já está disponível?" recomeça.
+                s.ProntoParaResgateEm = null;
+                s.ProntoParaResgateCanal = null;
+                s.AindaEmAtendimentoEm = null;
+                s.PerguntaResgateEnviadaEm = null;
+                return Efeito.Sim with { Liberar = s.Id };
             case TipoEventoViagem.Embarque:
                 s.HoraSaidaUnidade = hora;
                 break;

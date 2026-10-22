@@ -146,12 +146,14 @@ Play Services (`client version: 0`).
   chave, a tela avisa e oferece Voltar / Tentar de novo (antes ficava presa).
 - **Rota não calculada (`networkError`)**: acontece na primeira tentativa depois de
   muito tempo parado; "Tentar de novo" resolve (visto em 15/10, com internet normal).
-- **Confirmação por pessoa**: paciente e acompanhante conferidos separadamente
-  (Embarcou / Ausente); a rota segue para a próxima parada e quem ficou ausente sai do
-  desembarque (`paradasComAndamento`). Cada marcação vai à central
+- **Confirmação por pessoa**: paciente e acompanhante conferidos separadamente — no
+  embarque Embarcou / Ausente; no desembarque só **Desembarcou** (decisão de 19/10: quem faltou
+  no embarque não embarcou e nem aparece). A rota segue para a próxima parada e quem ficou
+  ausente sai do desembarque (`paradasComAndamento`). Cada marcação vai à central
   (`POST /rastreamento/dispositivos/viagem/eventos`, token do veículo) por uma fila cifrada
   que espera a rede: **início** ao abrir a navegação, **embarque/ausência** na coleta,
-  **desembarque** no destino e **conclusão** na última parada. O andamento fica no tablet e
+  **desembarque** no destino e **conclusão** quando o motorista toca em "Encerrar a rota" (não
+  é mais automática: pode haver resgate depois da última parada). O andamento fica no tablet e
   também volta na rota do dia (`situacao` por pessoa, `concluida` por parada): reiniciar o app
   retoma de onde parou.
 - **O que conta é o translado** (decisão de 16/10): o desembarque do paciente marca a sessão
@@ -159,15 +161,41 @@ Play Services (`client version: 0`).
   realizada**. O painel corrige em Atendimentos ▸ Confirmar — e o que a central confirmou o
   tablet não muda mais (`ConfirmadaPorUsuarioId`); o evento atrasado fica registrado como
   "não aplicado". Acompanhante só registra (não muda a sessão nem o faturamento).
-- **Volta depende do destino** (decisão de 16/10, etapa 3): unidade **fora do município** → a
-  van espera; a rota do tablet ganha "Volta — unidade" (`retorno:{unidadeId}`, hora prevista =
-  `HoraPrevistaRetorno` ou chegada + tempo médio) e a entrega em casa (`casa:{sessaoId}`), com
-  `trecho: "Volta"`. **Em Maricá** a van não espera: quem desceu entra em
-  `GET /rastreamento/aguardando` (pronto previsto) e a central puxa (`POST /rastreamento/puxar`,
-  alocação `Parada = Retorno`, lugar pela condição do paciente). Marcações da volta vão com
-  `volta: true`: embarque na unidade → `HoraSaidaUnidade`/motorista e veículo da volta; chegada em
-  casa → `HoraChegadaResidencia`; não estava na unidade → `AguardandoRetorno` (volta para a fila).
-  A volta não muda o faturamento (contado na ida).
+- **Resgate** (decisões de 19/10; substitui a "volta depende do destino" de 16/10): buscar o
+  paciente na unidade e deixá-lo em casa. Ninguém entra sozinho no resgate — nem fora do
+  município. Quem desce na unidade entra na lista **"Pacientes disponíveis para resgate"**
+  (`ResgateService`; tablet `GET /rastreamento/dispositivos/resgates`, painel `GET /resgates`),
+  a mesma para todos os carros: "Disponível em XX min" pela previsão (`HoraPrevistaRetorno` ou
+  chegada + tempo médio do tipo de tratamento) e, no topo, quem já está **aguardando no local**
+  — com o tempo aguardando. Avisam que está no local: o **paciente** pelo app/PWA, a **central**
+  no painel ou um **motorista** no tablet. Ao estourar a previsão, o app do paciente pergunta "você
+  já está disponível para retorno?" (`PerguntaResgateWorker`, a cada minuto): "Sim" = no local;
+  "Não, ainda não terminei" = pergunta de novo em 10 min. A pergunta sai também como push do app
+  do cidadão (`IAvisoAoPacienteTransporte` = `AvisoAoPacientePorPush`, ADR-0070; histórico com origem
+  `transporte`, sem operador); sem app instalado ou sem push configurado, ela espera o paciente abrir
+  o Transporte no app/PWA.
+  Qualquer carro **marca** quem vai buscar (`POST /rastreamento/dispositivos/resgates`; a central
+  em `POST /rotas/{id}/resgates`), mesmo quem não levou; quem marca primeiro fica (trava de linha
+  na rota e nas sessões). A marcação é a alocação `Parada = Retorno` na rota de quem busca, e só
+  passa se couber **naquela hora** (`LotacaoDaRota`: a ida libera o lugar ao descer na unidade; o
+  resgate ocupa até chegar em casa; isolamento e maca contam). O tablet ganha
+  "Resgate — unidade" (`resgate:{unidadeId}:{lote}`) e a entrega em casa (`casa:{sessaoId}:{lote}`),
+  `trecho: "Resgate"`; com o carro já no local da busca, abre a conferência direto. Ao desembarcar
+  na unidade, a lista abre e o carro não segue sozinho para lugar nenhum. Marcações do resgate vão
+  com `resgate: true`: embarque → `HoraSaidaUnidade`/motorista e veículo da volta; chegada em casa →
+  `HoraChegadaResidencia`; não estava no local → sai do resgate da rota e volta para a lista, sem o
+  aviso. Encerrar ou cancelar a rota devolve à lista quem ela marcou e não buscou. O resgate não muda
+  o faturamento (contado na ida).
+- **Avaliação do motorista** (decisão de 19/10): ao desembarcar na clínica o paciente avalia o
+  motorista da **ida**, e ao chegar em casa o do **resgate** — até 5 estrelas, uma vez por trecho
+  (`Avaliacao.Trecho`, único por sessão + trecho), cada nota com o motorista, o veículo e a rota daquele
+  trecho. O pedido sai no desembarque (`ViagemService` → `IAvisoAoPacienteTransporte.PedirAvaliacaoAsync`,
+  também como push do app) e aparece no topo do Transporte no app/PWA ("Como foi o motorista?").
+- **Lotação** (decisão de 19/10): a central nunca põe no carro mais gente do que ele leva. Na
+  alocação manual o paciente vai no assento escolhido e cada acompanhante ganha outro lugar
+  sozinho; sem lugar, não aloca. Trocar acompanhantes de quem já está na rota segue a mesma regra;
+  a confirmação de acompanhante pelo WhatsApp com o carro cheio aparece como "acompanhante sem
+  lugar" na rota.
 - **Quem está dirigindo**: antes de abrir a navegação, o tablet confere de novo o rosto
   do motorista da sessão ([ADR-0073](../../adr/0073-login-facial-motorista-tablet.md)).
 - O contador de distância/tempo do Deslocamento liga sozinho com a sessão de navegação

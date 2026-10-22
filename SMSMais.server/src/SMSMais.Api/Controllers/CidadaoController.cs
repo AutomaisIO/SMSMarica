@@ -42,7 +42,8 @@ public sealed class CidadaoController(
     ITratamentosService transporte,
     IAcompanhantesService acompanhantes,
     IPushCidadaoService push,
-    IAvaliacoesService avaliacoes) : ControllerBase
+    IAvaliacoesService avaliacoes,
+    SMSMais.Core.Translado.Resgate.IResgateService resgates) : ControllerBase
 {
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
     [HttpGet("consentimento")]
@@ -168,6 +169,33 @@ public sealed class CidadaoController(
                 "Para avaliar a viagem, entre no aplicativo com o código enviado por WhatsApp.");
         var id = await avaliacoes.AvaliarPeloPacienteAsync(PacienteId(), sessaoId, req, ct);
         return StatusCode(StatusCodes.Status201Created, id);
+    }
+
+    /// <summary>O resgate de hoje: se já avisou que está esperando, quando fica pronto pela previsão e qual
+    /// carro vai buscar. 204 quando não há (ainda não foi à unidade, ou já voltou para casa).</summary>
+    [HttpGet("resgate")]
+    [ProducesResponseType<SMSMais.Core.Translado.Resgate.ResgateDoPacienteDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Resgate(CancellationToken ct)
+    {
+        var r = await resgates.DoPacienteAsync(PacienteId(), ct);
+        return r is null ? NoContent() : Ok(r);
+    }
+
+    /// <summary>Resposta à pergunta "você já está disponível para retorno?" — ou o "Já terminei" antes dela:
+    /// "Sim, já estou disponível" sobe para o topo da lista dos motoristas; "Não, ainda não terminei o
+    /// procedimento" faz a pergunta voltar em 10 minutos. A equipe entrando como o paciente não responde
+    /// por ele (usa o painel).</summary>
+    [HttpPost("resgate/{sessaoId:guid}/resposta")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ResponderResgate(
+        Guid sessaoId, [FromBody] SMSMais.Core.Translado.Resgate.ResponderResgateRequest req, CancellationToken ct)
+    {
+        GarantirNaoPersonificada("resgate.personificacao", "responder pelo paciente");
+        await resgates.ResponderPeloPacienteAsync(PacienteId(), sessaoId, req.Disponivel, ct);
+        return NoContent();
     }
 
     [HttpGet("me/acompanhantes")]

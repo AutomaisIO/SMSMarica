@@ -472,7 +472,8 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("SessaoId");
 
                     b.HasIndex("RotaDiariaId", "AssentoId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("tipo_parada <> 3");
 
                     b.HasIndex("RotaDiariaId", "OrdemParada");
 
@@ -829,6 +830,12 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("sessao_id");
 
+                    b.Property<int>("Trecho")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("trecho");
+
                     b.Property<Guid?>("VeiculoId")
                         .HasColumnType("uuid")
                         .HasColumnName("veiculo_id");
@@ -839,10 +846,10 @@ namespace SMSMais.Data.Migrations
 
                     b.HasIndex("RotaId");
 
-                    b.HasIndex("SessaoId")
-                        .IsUnique();
-
                     b.HasIndex("VeiculoId");
+
+                    b.HasIndex("SessaoId", "Trecho")
+                        .IsUnique();
 
                     b.ToTable("avaliacao", "smsmarica");
                 });
@@ -3350,6 +3357,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("recebido_em");
 
+                    b.Property<bool>("Resgate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("resgate");
+
                     b.Property<Guid>("RotaId")
                         .HasColumnType("uuid")
                         .HasColumnName("rota_id");
@@ -3365,10 +3376,6 @@ namespace SMSMais.Data.Migrations
                     b.Property<Guid>("VeiculoId")
                         .HasColumnType("uuid")
                         .HasColumnName("veiculo_id");
-
-                    b.Property<bool>("Volta")
-                        .HasColumnType("boolean")
-                        .HasColumnName("volta");
 
                     b.HasKey("Id");
 
@@ -13749,6 +13756,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("acompanhante_esperado");
 
+                    b.Property<DateTime?>("AindaEmAtendimentoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ainda_em_atendimento_em");
+
                     b.Property<DateTime?>("AtualizadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
@@ -13815,6 +13826,18 @@ namespace SMSMais.Data.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)")
                         .HasColumnName("parentesco_acompanhante");
+
+                    b.Property<DateTime?>("PerguntaResgateEnviadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pergunta_resgate_enviada_em");
+
+                    b.Property<int?>("ProntoParaResgateCanal")
+                        .HasColumnType("integer")
+                        .HasColumnName("pronto_resgate_canal");
+
+                    b.Property<DateTime?>("ProntoParaResgateEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pronto_resgate_em");
 
                     b.Property<DateTime?>("RealizadaEm")
                         .HasColumnType("timestamp with time zone")

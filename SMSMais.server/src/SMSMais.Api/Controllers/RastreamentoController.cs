@@ -109,17 +109,10 @@ public sealed class RastreamentoController(IRastreamentoService service) : Contr
         [FromQuery] DateOnly? data, CancellationToken cancellationToken) =>
         await _service.ListarFrotaAsync(data, cancellationToken);
 
-    // --- FT5: pacientes aguardando retorno + "puxar" ---
+    // --- FT5: "terminou o atendimento" (a lista e a marcação do resgate estão em ResgatesController) ---
 
-    /// <summary>Pacientes que terminaram o atendimento fora de Maricá e aguardam o carro; com distância até o motorista.</summary>
-    [HttpGet("aguardando")]
-    [RequerPermissao(ModuloPermissao.Rastreamento, AcoesPermissao.Consulta)]
-    [ProducesResponseType<IReadOnlyList<PacienteAguardandoDto>>(StatusCodes.Status200OK)]
-    public async Task<IReadOnlyList<PacienteAguardandoDto>> Aguardando(
-        [FromQuery] Guid? motoristaId, CancellationToken cancellationToken) =>
-        await _service.ListarAguardandoAsync(motoristaId, cancellationToken);
-
-    /// <summary>Marca uma sessão como "aguardando retorno" (paciente terminou o atendimento).</summary>
+    /// <summary>Marca uma sessão como "aguardando retorno" (paciente terminou o atendimento): entra na
+    /// lista de resgate como já no local.</summary>
     [HttpPost("sessoes/{sessaoId:guid}/aguardando-retorno")]
     [RequerPermissao(ModuloPermissao.Rastreamento, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -129,11 +122,4 @@ public sealed class RastreamentoController(IRastreamentoService service) : Contr
         return NoContent();
     }
 
-    /// <summary>"Puxa" um paciente aguardando para a rota do motorista (insere alocação de retorno + acompanhante).</summary>
-    [HttpPost("puxar")]
-    [RequerPermissao(ModuloPermissao.Rastreamento, AcoesPermissao.Edicao)]
-    [ProducesResponseType<Guid>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<Guid> Puxar([FromBody] PuxarPacienteRequest request, CancellationToken cancellationToken) =>
-        await _service.PuxarAsync(request, cancellationToken);
 }

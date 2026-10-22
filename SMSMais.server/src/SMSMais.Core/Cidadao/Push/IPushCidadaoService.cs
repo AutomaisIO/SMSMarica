@@ -30,6 +30,14 @@ public interface IPushCidadaoService
         Guid pacienteId, EnviarNotificacaoAppRequest request, CancellationToken ct = default);
 
     /// <summary>
+    /// O mesmo envio, para os avisos automáticos do sistema (ex.: a pergunta do resgate do
+    /// transporte): o histórico grava a <paramref name="origem"/> e nenhum operador como remetente.
+    /// Mesmas regras e as mesmas exceções de <see cref="EnviarAsync"/>.
+    /// </summary>
+    Task<EnvioNotificacaoAppDto> EnviarDoSistemaAsync(
+        Guid pacienteId, EnviarNotificacaoAppRequest request, string origem, CancellationToken ct = default);
+
+    /// <summary>
     /// Confere a credencial do Firebase: pede um access token novo e faz um envio de validação
     /// (<c>validate_only</c>, para um tópico — não chega a ninguém). Nunca lança: o desfecho vem no DTO.
     /// </summary>

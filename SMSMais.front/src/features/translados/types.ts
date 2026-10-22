@@ -23,6 +23,11 @@ export type AlocacaoDto = {
   statusSessao: string;
   /** A central confirmou/corrigiu a viagem no painel — vale isso, não o tablet. */
   corrigidaNoPainel: boolean;
+  /** Ida ("Coleta") ou resgate ("Retorno"). No resgate o assento volta a ser usado depois que quem foi
+   * nele desceu — por isso o mapa de assentos mostra só a ida. */
+  parada: 'Coleta' | 'Destino' | 'Retorno';
+  /** No paciente: acompanhantes que vão e estão sem assento no carro. */
+  acompanhantesSemLugar: number;
 };
 
 export type SessaoElegivel = {
@@ -162,8 +167,8 @@ export type EventoViagem = {
   longitude: number | null;
   aplicado: boolean;
   motivoNaoAplicado: string | null;
-  /** Marcação da volta (embarque na unidade, chegada em casa). */
-  volta: boolean;
+  /** Marcação do resgate (embarque na unidade, chegada em casa). */
+  resgate: boolean;
 };
 
 // ---- Endereços que o Google não localizou (revisão de geocódigos) ----
@@ -181,23 +186,71 @@ export type EnderecoParaRevisar = {
   geocodificadoEm: string;
 };
 
-// ---- Volta: quem aguarda retorno e "puxar" para uma rota (etapa 3) ----
+// ---- Resgate: buscar na unidade depois do atendimento e deixar em casa (19/10) ----
 
-/** Paciente que terminou (ou deve estar terminando) o atendimento e espera a volta. Em Maricá a van
- * não espera: entra quem desceu hoje; fora do município, só quem ficou na unidade quando ela saiu. */
-export type PacienteAguardando = {
+/** NoLocal: avisaram que já está esperando. PelaPrevisao: o tempo do procedimento já passou.
+ * EmAtendimento: disponível em `disponivelEmMinutos`. SemPrevisao: só o aviso diz quando. */
+export type DisponibilidadeResgate = 'NoLocal' | 'PelaPrevisao' | 'EmAtendimento' | 'SemPrevisao';
+
+export type CanalAvisoResgate = 'Paciente' | 'Central' | 'Motorista';
+
+/** Um paciente da lista "Pacientes disponíveis para resgate" (a mesma dos tablets). `cabe`: se cabe
+ * agora no carro da rota (nulo sem rota). */
+export type ResgateDisponivel = {
   sessaoId: string;
-  tratamentoId: string;
-  pacienteId: string;
   pacienteNome: string;
-  unidadeAtendimentoId: string;
-  unidadeAtendimentoNome: string;
+  unidadeId: string;
+  unidadeNome: string;
+  unidadeEndereco: string | null;
   latitude: number | null;
   longitude: number | null;
-  distanciaMetros: number | null;
-  acompanhanteEsperado: boolean;
-  dataPrevista: string;
   foraDoMunicipio: boolean;
-  /** "HH:mm:ss": o marcado na sessão, ou chegada + tempo médio do tratamento. */
-  prontoPrevisto: string | null;
+  acompanhantes: number;
+  mobilidade: string;
+  isolamento: boolean;
+  disponibilidade: DisponibilidadeResgate;
+  /** "HH:mm:ss" pela previsão. */
+  disponivelAs: string | null;
+  disponivelEmMinutos: number | null;
+  noLocalDesde: string | null;
+  /** Há quantos minutos espera no local (só quando está no local). */
+  aguardandoMinutos: number | null;
+  avisadoPor: CanalAvisoResgate | null;
+  naoEstavaNoLocalEm: string | null;
+  /** Quando respondeu "Não, ainda não terminei o procedimento" (a pergunta volta em 10 min). */
+  aindaEmAtendimentoEm: string | null;
+  veiculoDaIda: string | null;
+  distanciaMetros: number | null;
+  cabe: boolean | null;
+  motivoNaoCabe: string | null;
+};
+
+export type ResgateMarcado = {
+  sessaoId: string;
+  pacienteNome: string;
+  unidadeId: string;
+  unidadeNome: string;
+  acompanhantes: number;
+  disponibilidade: DisponibilidadeResgate;
+  disponivelAs: string | null;
+  disponivelEmMinutos: number | null;
+};
+
+/** O carro agora, para refazer a conta a cada paciente escolhido (a mesma regra da central). */
+export type CarroAgora = {
+  passageiro: number;
+  acompanhante: number;
+  cadeirante: number;
+  ambulancia: boolean;
+  pacientesABordo: number;
+  isolamentoABordo: boolean;
+  macaABordo: boolean;
+};
+
+export type Resgates = {
+  disponiveis: ResgateDisponivel[];
+  marcados: ResgateMarcado[];
+  lugaresLivres: number | null;
+  lugaresCadeiranteLivres: number | null;
+  carro: CarroAgora | null;
 };

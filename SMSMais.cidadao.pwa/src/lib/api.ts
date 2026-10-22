@@ -37,15 +37,40 @@ export type ViagemTransporte = {
   limiteAcompanhantes: number;
 };
 
-/** Viagem feita nos últimos 30 dias, para avaliar. `nota` nula = ainda não avaliou. */
+/** Um trecho de viagem dos últimos 30 dias, para avaliar o motorista: a ida (até a unidade) e o
+ * resgate (de volta para casa), cada um com o seu motorista. `nota` nula = ainda não avaliou. */
 export type ViagemParaAvaliar = {
   sessaoId: string;
   data: string;
   destino: string;
-  /** Só o primeiro nome de quem levou. */
+  /** Só o primeiro nome de quem dirigiu aquele trecho. */
   motorista: string | null;
   nota: number | null;
   comentario: string | null;
+  trecho: 'Ida' | 'Resgate';
+  /** "HH:mm:ss": quando desceu (na unidade ou em casa). */
+  hora: string | null;
+};
+
+/** O resgate de hoje (buscar na unidade depois do atendimento e levar para casa). */
+export type ResgateDoPaciente = {
+  sessaoId: string;
+  unidade: string;
+  disponibilidade: 'NoLocal' | 'PelaPrevisao' | 'EmAtendimento' | 'SemPrevisao';
+  /** "HH:mm:ss": quando fica pronto pela previsão. */
+  disponivelAs: string | null;
+  /** Desde quando avisaram que está no local esperando. */
+  noLocalDesde: string | null;
+  avisadoPor: 'Paciente' | 'Central' | 'Motorista' | null;
+  /** O carro que vai buscar (nulo = nenhum carro marcou ainda). */
+  veiculoPlaca: string | null;
+  veiculoModelo: string | null;
+  /** Já embarcou: está a caminho de casa. */
+  embarcou: boolean;
+  /** A previsão estourou: hora de responder "você já está disponível para retorno?". */
+  perguntaPendente: boolean;
+  /** Depois de "ainda não terminei": quando a pergunta volta. */
+  proximaPerguntaAs: string | null;
 };
 
 export const PARENTESCOS: { valor: string; rotulo: string }[] = [
@@ -246,9 +271,15 @@ export const api = {
   /** Viagens recentes para avaliar (sem cache: a nota muda na hora). */
   viagensParaAvaliar: () =>
     http.get<ViagemParaAvaliar[]>('/auth/paciente/viagens-para-avaliar').then((r) => r.data),
-  /** Uma vez por viagem, até 30 dias depois. Nota de 1 a 5. */
-  avaliarViagem: (sessaoId: string, nota: number, comentario: string | null) =>
-    http.post(`/auth/paciente/viagens/${sessaoId}/avaliacao`, { nota, comentario }),
+  /** O motorista de cada trecho (ida e resgate), uma vez, até 30 dias depois. Nota de 1 a 5. */
+  avaliarViagem: (sessaoId: string, trecho: 'Ida' | 'Resgate', nota: number, comentario: string | null) =>
+    http.post(`/auth/paciente/viagens/${sessaoId}/avaliacao`, { nota, comentario, trecho }),
+  /** O resgate de hoje; nulo quando não há (ainda não foi à unidade, ou já voltou). Sem cache: muda na hora. */
+  resgate: () =>
+    http.get<ResgateDoPaciente>('/auth/paciente/resgate').then((r) => (r.status === 204 ? null : r.data)),
+  /** Resposta à pergunta: sim = "já estou disponível"; não = "ainda não terminei" (volta em 10 min). */
+  responderResgate: (sessaoId: string, disponivel: boolean) =>
+    http.post(`/auth/paciente/resgate/${sessaoId}/resposta`, { disponivel }),
   atendimentos: () =>
     comCacheLocal('atendimentos', () =>
       http.get<Atendimento[]>('/auth/paciente/atendimentos').then((r) => r.data)),

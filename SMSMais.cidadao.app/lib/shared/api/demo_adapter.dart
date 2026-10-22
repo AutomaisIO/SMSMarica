@@ -14,11 +14,28 @@ class DemoAdapter implements HttpClientAdapter {
   final Duration atraso;
   bool _consentiu;
   final List<Map<String, dynamic>> _enviados = [];
-  /// Viagens já feitas (demonstração): uma para avaliar, outra já avaliada.
+  /// Trechos de viagem já feitos (demonstração): a ida de hoje para avaliar, o resgate de anteontem
+  /// para avaliar e a ida de anteontem já avaliada.
   late final List<Map<String, dynamic>> _viagensParaAvaliar = [
-    {'sessaoId': 'sv1', 'data': _diaRelativo(-2), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': null, 'comentario': null},
-    {'sessaoId': 'sv2', 'data': _diaRelativo(-9), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': 5, 'comentario': null},
+    {'sessaoId': 'sv0', 'data': _diaRelativo(0), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': null, 'comentario': null, 'trecho': 'Ida', 'hora': '07:40:00'},
+    {'sessaoId': 'sv1', 'data': _diaRelativo(-2), 'destino': 'Hospital Demonstração', 'motorista': 'Marta', 'nota': null, 'comentario': null, 'trecho': 'Resgate', 'hora': '12:10:00'},
+    {'sessaoId': 'sv1', 'data': _diaRelativo(-2), 'destino': 'Hospital Demonstração', 'motorista': 'Carlos', 'nota': 5, 'comentario': null, 'trecho': 'Ida', 'hora': '07:35:00'},
   ];
+
+  /// Resgate de hoje (demonstração): na clínica, com a previsão estourada — a pergunta aparece.
+  final Map<String, dynamic> _resgate = {
+    'sessaoId': 'sr1',
+    'unidade': 'Hospital Demonstração',
+    'disponibilidade': 'PelaPrevisao',
+    'disponivelAs': '11:30:00',
+    'noLocalDesde': null,
+    'avisadoPor': null,
+    'veiculoPlaca': null,
+    'veiculoModelo': null,
+    'embarcou': false,
+    'perguntaPendente': true,
+    'proximaPerguntaAs': null,
+  };
 
   static String _diaRelativo(int dias) {
     final h = DateTime.now();
@@ -320,6 +337,20 @@ class DemoAdapter implements HttpClientAdapter {
         return (200, {'cpf': (corpo! as Map)['cpf'], 'nome': 'ANA PAULA EXEMPLO', 'dataNascimento': '1990-01-01', 'jaCadastrado': false});
       case ('GET', '/auth/paciente/viagens-para-avaliar'):
         return (200, _viagensParaAvaliar);
+      case ('GET', '/auth/paciente/resgate'):
+        return (200, _resgate);
+      case ('POST', '/auth/paciente/resgate/sr1/resposta'):
+        final sim = (corpo! as Map)['disponivel'] == true;
+        _resgate['perguntaPendente'] = false;
+        if (sim) {
+          _resgate['disponibilidade'] = 'NoLocal';
+          _resgate['noLocalDesde'] = DateTime.now().toUtc().toIso8601String();
+          _resgate['avisadoPor'] = 'Paciente';
+        } else {
+          _resgate['disponibilidade'] = 'EmAtendimento';
+          _resgate['proximaPerguntaAs'] = DateTime.now().toUtc().add(const Duration(minutes: 10)).toIso8601String();
+        }
+        return (204, null);
       case ('POST', '/auth/paciente/me/acompanhantes'):
         _acompanhantes.add({
           'id': 'a${_acompanhantes.length + 1}',
@@ -335,9 +366,11 @@ class DemoAdapter implements HttpClientAdapter {
 
     final avaliacao = RegExp(r'^/auth/paciente/viagens/([^/]+)/avaliacao$').firstMatch(caminho);
     if (metodo == 'POST' && avaliacao != null) {
-      final v = _viagensParaAvaliar.firstWhere((x) => x['sessaoId'] == avaliacao.group(1));
-      v['nota'] = (corpo! as Map)['nota'];
-      v['comentario'] = (corpo as Map)['comentario'];
+      final dados = corpo! as Map;
+      final trecho = dados['trecho'] ?? 'Ida';
+      final v = _viagensParaAvaliar.firstWhere((x) => x['sessaoId'] == avaliacao.group(1) && x['trecho'] == trecho);
+      v['nota'] = dados['nota'];
+      v['comentario'] = dados['comentario'];
       return (201, 'av-demo');
     }
 

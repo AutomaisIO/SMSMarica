@@ -73,6 +73,8 @@ export type NotificacaoAppEnviada = {
   rota: string | null;
   criadaEm: string;
   enviadaPor: string | null;
+  /** `painel` (alguém da equipe) ou o aviso automático que mandou, ex. `transporte`. */
+  origem: string;
   aparelhos: number;
   entregues: number;
   falha: string | null;

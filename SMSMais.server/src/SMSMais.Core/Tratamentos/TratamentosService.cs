@@ -518,6 +518,14 @@ public sealed class TratamentosService(
             }
         }
 
+        // Na rota, cada acompanhante tem um lugar: a mais, só se couber no carro (decisão de 19/10).
+        if (!await Translado.Lotacao.LugaresDosAcompanhantes.AjustarAsync(_db, sessao, distintos.Count, ct))
+        {
+            throw new ConflitoException("sessao.sem_lugar_acompanhante",
+                "Não há lugar no carro desta viagem para mais um acompanhante. Libere um lugar ou troque o "
+                + "paciente de rota em Translados.");
+        }
+
         // Add/Remove explícitos no DbSet: filho novo com chave preenchida, só pela navegação, o EF
         // pode tomar por existente (UPDATE que não acha linha).
         foreach (var saiu in sessao.Acompanhantes.Where(x => !distintos.Contains(x.AcompanhanteId)).ToList())

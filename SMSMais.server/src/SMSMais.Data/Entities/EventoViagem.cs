@@ -30,8 +30,8 @@ public class EventoViagem
     public int? AcompanhanteOrdem { get; set; }
     public Guid? AcompanhanteId { get; set; }
 
-    /// <summary>Marcação da volta (embarque na unidade, chegada em casa) — e não da ida.</summary>
-    public bool Volta { get; set; }
+    /// <summary>Marcação do resgate (embarque na unidade, chegada em casa) — e não da ida.</summary>
+    public bool Resgate { get; set; }
 
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }

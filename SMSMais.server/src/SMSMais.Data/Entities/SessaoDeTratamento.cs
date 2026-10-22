@@ -40,11 +40,25 @@ public class SessaoDeTratamento
     public TimeOnly? HoraSaidaResidencia { get; set; }
     public TimeOnly? HoraChegadaUnidade { get; set; }
 
-    // Volta
+    // Volta (o resgate: buscar na unidade e deixar em casa)
     public Guid? MotoristaVoltaId { get; set; }
     public Guid? VeiculoVoltaId { get; set; }
     public TimeOnly? HoraSaidaUnidade { get; set; }
     public TimeOnly? HoraChegadaResidencia { get; set; }
+
+    /// <summary>Desde quando o paciente está no local esperando o resgate, e quem avisou. Nulo = ainda
+    /// não avisaram; aí vale a previsão (chegada + tempo do procedimento). O motorista que não o encontra
+    /// no local apaga o aviso.</summary>
+    public DateTime? ProntoParaResgateEm { get; set; }
+    public CanalAvisoResgate? ProntoParaResgateCanal { get; set; }
+
+    /// <summary>Quando o paciente respondeu "Não, ainda não terminei o procedimento": a pergunta volta
+    /// 10 minutos depois, até ele dizer que sim.</summary>
+    public DateTime? AindaEmAtendimentoEm { get; set; }
+
+    /// <summary>Quando a pergunta "você já está disponível para retorno?" foi enviada pela última vez
+    /// (uma vez por rodada: ao estourar a previsão e a cada "não").</summary>
+    public DateTime? PerguntaResgateEnviadaEm { get; set; }
 
     public string? MotivoNaoRealizacao { get; set; }
     public string? Observacoes { get; set; }
