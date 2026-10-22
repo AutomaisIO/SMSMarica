@@ -62,6 +62,8 @@ export const artigoPacientes: Artigo = {
     'entrar como paciente',
     'histórico de agendamentos',
     'próximos agendamentos',
+    'guia do agendamento',
+    'imprimir guia',
     'comparecimento',
     'compareceu',
     'faltou',
@@ -432,7 +434,7 @@ export const artigoPacientes: Artigo = {
     {
       id: 'agendamentos',
       titulo: 'A aba Agendamentos: de onde vem cada linha',
-      busca: 'agendamentos próximos histórico SISREG SER SERNIT ESUS SG São Gonçalo regulação estadual municipal origem fonte detalhe abrir linha',
+      busca: 'agendamentos próximos histórico SISREG SER SERNIT ESUS SG São Gonçalo regulação estadual municipal origem fonte detalhe abrir linha guia do agendamento imprimir baixar pdf',
       conteudo: (
         <>
           <P>
@@ -459,6 +461,14 @@ export const artigoPacientes: Artigo = {
             Clicar numa linha do SER, do SERNIT, do ESUS SG ou de exame de imagem abre o detalhe da
             solicitação — desde que o seu perfil tenha permissão de consulta naquele módulo. Consulta
             no SISREG que não é exame de imagem não tem detalhe.
+          </P>
+          <P>
+            Quando o agendamento já tem guia, aparece um ícone na coluna <strong>Guia</strong>. Ele abre a
+            guia na própria tela, com <BotaoRef variante="outline">Imprimir</BotaoRef> e{' '}
+            <BotaoRef variante="outline">Baixar PDF</BotaoRef> — sem precisar abrir o pedido nem ter
+            permissão no módulo de regulação. Sem ícone, a guia ainda não veio do sistema de regulação
+            (ou ele não emite). É o mesmo arquivo de Exames anexados; veja{' '}
+            <em>Guias dos agendamentos</em>.
           </P>
         </>
       ),

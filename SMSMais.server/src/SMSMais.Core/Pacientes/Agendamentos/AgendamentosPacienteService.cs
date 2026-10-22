@@ -9,6 +9,7 @@ using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.EsusSg;
+using SMSMais.Data.Entities.Notificacoes;
 using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
 
@@ -33,6 +34,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         // A agenda local do municipio foi removida em 05/09/2026 (ver CidadaoClinicoService):
         // tinha 3 linhas de teste e um modelo incompativel com a grade do SISREG. Sobra o que o
         // cidadao realmente tem marcado — o que veio da regulacao.
+        itens = await ComGuiaAsync(pacienteId, itens, cancellationToken);
 
         var proximos = itens.Where(i => !EhHistorico(i, hojeLocal))
             .OrderBy(i => i.DataHora is null ? 1 : 0)
@@ -157,6 +159,69 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         or SituacaoAgendamentoPaciente.SaiuDaFila
         or SituacaoAgendamentoPaciente.SemRegistroDeChegada
         or SituacaoAgendamentoPaciente.EmAberto;
+
+    /// <summary>
+    /// Pendura em cada linha a guia que a fila já trouxe (ADR-0076) — o PDF que mora no acervo do
+    /// paciente, o mesmo que o pedido e o app abrem.
+    ///
+    /// <para>SER, SERNIT e ESUS: a guia do agendamento vigente do pedido (o ativo; sem ativo, o mais
+    /// recente) — a régua do "Ver guia" da tela do pedido. SISREG: só a guia da data em que a linha
+    /// está; a de uma data anterior à remarcação não serve para o atendimento que a linha mostra.</para>
+    /// </summary>
+    private async Task<List<AgendamentoPacienteItemDto>> ComGuiaAsync(
+        Guid pacienteId, List<AgendamentoPacienteItemDto> itens, CancellationToken cancellationToken)
+    {
+        var guias = await db.GuiasAgendamento.AsNoTracking()
+            .Where(g => g.PacienteId == pacienteId
+                        && g.Situacao == SituacaoGuiaAgendamento.Obtida && g.DocumentoPacienteId != null)
+            .Select(g => new { g.AgendamentoExternoId, g.SolicitacaoId, g.DataAtendimento, Documento = g.DocumentoPacienteId!.Value })
+            .ToListAsync(cancellationToken);
+        if (guias.Count == 0) return itens;
+
+        var porAgendamentoExterno = guias
+            .Where(g => g.AgendamentoExternoId is not null)
+            .ToDictionary(g => g.AgendamentoExternoId!.Value, g => g.Documento);
+        var vigentes = porAgendamentoExterno.Count == 0
+            ? []
+            : (await db.AgendamentosExternos.AsNoTracking()
+                    .Where(a => a.PacienteId == pacienteId)
+                    .Select(a => new { a.Id, a.Sistema, a.OrigemId, a.Situacao, a.CriadoEm })
+                    .ToListAsync(cancellationToken))
+                .GroupBy(a => (a.Sistema, a.OrigemId))
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderBy(a => a.Situacao == SituacaoAgendamentoExterno.Ativo ? 0 : 1)
+                        .ThenByDescending(a => a.CriadoEm)
+                        .First().Id);
+
+        return itens.Select(i =>
+        {
+            Guid? documento = null;
+            if (i.Origem == OrigemAgendamentoPaciente.Sisreg)
+            {
+                if (i.DataHora is { } dataHora)
+                {
+                    var dia = DateOnly.FromDateTime(dataHora);
+                    documento = guias.FirstOrDefault(g => g.SolicitacaoId == i.Id && g.DataAtendimento == dia)?.Documento;
+                }
+            }
+            else if (SistemaDoEspelho(i.Origem) is { } sistema
+                     && vigentes.TryGetValue((sistema, i.Id), out var vigente)
+                     && porAgendamentoExterno.TryGetValue(vigente, out var doVigente))
+            {
+                documento = doVigente;
+            }
+            return documento is null ? i : i with { GuiaDocumentoId = documento };
+        }).ToList();
+    }
+
+    private static SistemaRegulacao? SistemaDoEspelho(OrigemAgendamentoPaciente origem) => origem switch
+    {
+        OrigemAgendamentoPaciente.Ser => SistemaRegulacao.Ser,
+        OrigemAgendamentoPaciente.Sernit => SistemaRegulacao.Sernit,
+        OrigemAgendamentoPaciente.EsusSg => SistemaRegulacao.EsusSg,
+        _ => null,
+    };
 
     private static bool EhHistorico(AgendamentoPacienteItemDto i, DateTime hojeLocal)
     {
