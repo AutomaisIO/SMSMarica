@@ -64,9 +64,12 @@ public sealed class PacientesService(
             return [];
         }
 
+        // Cadastro unificado em outro é lápide: fica fora da busca, senão aparece ao lado do que
+        // ficou (sem CPF, sem o telefone verificado) e é ele que a pessoa abre.
         return [.. bundle.Entry
             .Select(e => e.Resource)
             .OfType<Hl7.Fhir.Model.Patient>()
+            .Where(p => PacienteFhirMapper.UnificadoEm(p) is null)
             .Take(LimiteBusca)
             .Select(PacienteFhirMapper.ParaListItem)];
     }
@@ -136,7 +139,11 @@ public sealed class PacientesService(
         try
         {
             var bundle = await fhir.BuscarAsync(telecom: numero, ct: ct);
-            return [.. bundle.Entry.Select(e => e.Resource).OfType<Patient>()];
+            // A lápide de uma unificação guarda os telefones da pessoa; sem este filtro, a mensagem
+            // que chega pelo WhatsApp (que pega o PRIMEIRO paciente do número) podia se pendurar
+            // no cadastro desativado em vez do que ficou.
+            return [.. bundle.Entry.Select(e => e.Resource).OfType<Patient>()
+                .Where(p => PacienteFhirMapper.UnificadoEm(p) is null)];
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
@@ -651,25 +658,12 @@ public sealed class PacientesService(
     private static bool GarantirUnificavel(Patient sobrevivente, Patient absorvido, Guid sobreviventeId)
     {
         const string mensagem = "Um dos dois cadastros já foi unificado com outro e não pode ser unificado de novo.";
-        if (SubstituidoPor(sobrevivente) is not null)
+        if (PacienteFhirMapper.UnificadoEm(sobrevivente) is not null)
             throw new ConflitoException("paciente.ja_unificado", mensagem);
-        var destinoAnterior = SubstituidoPor(absorvido);
+        var destinoAnterior = PacienteFhirMapper.UnificadoEm(absorvido);
         if (destinoAnterior is Guid outro && outro != sobreviventeId)
             throw new ConflitoException("paciente.ja_unificado", mensagem);
         return destinoAnterior == sobreviventeId;
-    }
-
-    /// <summary>
-    /// Para quem este Patient foi unificado (o <c>link replaced-by</c> que o <c>$merge</c> do hub
-    /// grava), ou null se ele nunca foi absorvido.
-    /// </summary>
-    private static Guid? SubstituidoPor(Patient p)
-    {
-        var referencia = p.Link?.FirstOrDefault(l => l.Type == Patient.LinkType.ReplacedBy)?.Other?.Reference;
-        if (referencia is null) return null;
-        var id = referencia[(referencia.LastIndexOf('/') + 1)..];
-        // Link ilegível ainda é unificação: Guid.Empty nunca bate com um sobrevivente e cai na recusa.
-        return Guid.TryParse(id, out var g) ? g : Guid.Empty;
     }
 
     /// <summary>Todo CNS (oficial e antigos) dos dois cadastros, só dígitos.</summary>

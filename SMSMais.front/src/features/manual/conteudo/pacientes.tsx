@@ -277,7 +277,7 @@ export const artigoPacientes: Artigo = {
               {
                 termo: <SeloRef>Inativo</SeloRef>,
                 descricao:
-                  'O prontuário de onde o cadastro veio (o do hospital, por exemplo) o mandou como inativo, ou o cadastro foi unificado com outro e só aponta para ele. Inativo não é excluído: o cadastro e o histórico continuam lá.',
+                  'O prontuário de onde o cadastro veio (o do hospital, por exemplo) o mandou como inativo, ou o cadastro foi unificado com outro — esse sai das buscas e, aberto por link antigo, mostra o botão Abrir o cadastro unificado. Inativo não é excluído: o cadastro e o histórico continuam lá.',
               },
               {
                 termo: <SeloRef cor="escuro">Óbito em 12/03/2024</SeloRef>,
