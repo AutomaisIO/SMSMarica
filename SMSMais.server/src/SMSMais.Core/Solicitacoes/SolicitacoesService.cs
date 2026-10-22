@@ -961,7 +961,15 @@ public sealed class SolicitacoesService(
                 default:
                     // Em execução, realizado, laudado ou cancelado: o item já saiu (ou vai sair) da
                     // estação. A correção fica na anamnese, mas não chega mais ao aparelho.
-                    aviso = $"Anamnese salva. O exame já está {exame.Status} — a correção não chega mais à "
+                    var situacao = exame.Status switch
+                    {
+                        StatusSolicitacaoExame.EmExecucao => "em execução",
+                        StatusSolicitacaoExame.Realizada => "realizado",
+                        StatusSolicitacaoExame.Laudada => "laudado",
+                        StatusSolicitacaoExame.Cancelada => "cancelado",
+                        _ => "fora da worklist",
+                    };
+                    aviso = $"Anamnese salva. O exame já está {situacao} — a correção não chega mais à "
                         + "worklist; se o aparelho já gravou, corrija os dados nele.";
                     continue;
             }

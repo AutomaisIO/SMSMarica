@@ -62,3 +62,31 @@ aparelho.
 - **Holter já autorizado antes do deploy** e ainda em `Solicitada`/`Enviada`: o worker vai
   pará-lo esperando a anamnese. Os que já estão `Recebida` continuam na worklist sem os dados.
 - **"Parou" → `NO`.** Se o CardioNet tiver outro campo para ex-fumante, rever.
+
+## Aplicação (22/10/2026, branch `feat/anamnese-holter`)
+
+O commit do Rafael entrou sem conflito em cima da `main` `7385763` (nenhum arquivo dele tinha mudado
+desde a base `14597d05`). Na aplicação:
+
+- **Build quebrava num teste:** `ExamesPorCodigoInternoTests` monta o `AnamnesesService` à mão e
+  não passava o `ISolicitacoesService` novo. Passa um substituto (o teste é de RX, não chama o
+  Holter).
+- **Pedido com mais de um procedimento:** o contexto decidia o questionário pelo exame clicado e o
+  salvar, pelo exame principal (onde a anamnese mora). Num pedido de MAPA (principal) + Holter
+  (extra), a tela abria o do Holter e o salvar o recusava com "questionário errado". Os dois agora
+  decidem pelo **pedido**: é Holter quando algum exame dele é ECG (`PedidoTemHolterAsync`).
+- **Aviso de exame já fora da worklist** dizia o enum cru (`EmExecucao`); agora diz "em execução",
+  "realizado", "laudado" ou "cancelado".
+- **Testes com banco** (`Worklist/AnamneseHolterFluxoTests.cs`, 8): a autorização segura o Holter
+  sem anamnese; salvar a anamnese de um Holter autorizado o enfileira; o worker leva altura, peso e
+  fumante ao item; o worker não envia Holter sem anamnese; corrigir um `Recebida` volta a
+  `Solicitada`; aparelho ECG com "Usa anamnese" desligado não segura; pedido MAPA + Holter abre e
+  salva o questionário do Holter; fora do Holter o questionário do Holter é recusado.
+- **Manual:** seção nova "Anamnese do Holter" no artigo Anamnese (com o "?" da tela apontando para
+  ela) e correção de Solicitações e Equipamentos, que diziam que o Holter não usa anamnese.
+- Suíte completa verde; `npm run build` verde.
+
+**Continua pendente (roteiro, passos 3 a 5):** ligar "Usa anamnese" no CARDIO-CDT, conferir com
+`findscu` no dcm4chee se as três tags voltam no C-FIND (Smoking Status pode cair no filtro de
+paciente) e testar a importação no CardioNet. Com "Usa anamnese" desligado, o deploy não muda nada
+no Holter.

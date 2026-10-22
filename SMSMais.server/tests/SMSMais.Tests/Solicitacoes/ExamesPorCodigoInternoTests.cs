@@ -144,7 +144,8 @@ public class ExamesPorCodigoInternoTests(PostgresFixture fixture)
         var anamneses = new AnamnesesService(
             db, Resolver(principal.Solicitacao!.PacienteId),
             Substitute.For<SMSMais.Core.Common.Cid.ICidCatalogoService>(),
-            new UsuarioAtualAccessorFake(Guid.NewGuid()));
+            new UsuarioAtualAccessorFake(Guid.NewGuid()),
+            Substitute.For<ISolicitacoesService>());
 
         await anamneses.SalvarAsync(extra.Id, new SalvarAnamneseDto("RX", 1, "{\"queixa\":\"dor\"}", null));
 
