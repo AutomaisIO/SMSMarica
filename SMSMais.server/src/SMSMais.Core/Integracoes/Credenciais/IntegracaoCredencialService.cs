@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using SMSMais.Core.Cidadao.Push;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Integracoes.Credenciais.Dtos;
@@ -48,6 +50,13 @@ public sealed class IntegracaoCredencialService(
         string provedor, AtualizarIntegracaoCredencialRequest request, CancellationToken cancellationToken = default)
     {
         provedor = Normalizar(provedor);
+
+        // Firebase: o segredo é o JSON da conta de serviço — conferido aqui, para o erro aparecer na
+        // tela ao gravar e não no primeiro envio. O projectId exibido sai dele, não do formulário.
+        var contaFcm = provedor == PushCidadaoService.ProvedorFcm && !string.IsNullOrWhiteSpace(request.ClientSecret)
+            ? ContaServicoFcm.Ler(request.ClientSecret)
+            : null;
+
         var c = await ObterOuCriarAsync(provedor, cancellationToken);
 
         c.RedirectUri = string.IsNullOrWhiteSpace(request.RedirectUri) ? null : request.RedirectUri.Trim();
@@ -55,7 +64,12 @@ public sealed class IntegracaoCredencialService(
         // também a agenda dos motores: salvar só o login com nulo apagava fila, escalas e varredura.
         // Não é merge de propósito — quem altera uma parte lê, altera e grava o todo, e a coleta de
         // indicadores retoma REMOVENDO a chave de pausa, o que um merge nunca deixaria sair.
-        if (request.ParametrosJson is not null)
+        // O FCM é a exceção: o parâmetro sai do próprio JSON da conta de serviço (só o projectId).
+        if (contaFcm is not null)
+        {
+            c.ParametrosJson = JsonSerializer.Serialize(new { projectId = contaFcm.ProjectId });
+        }
+        else if (provedor != PushCidadaoService.ProvedorFcm && request.ParametrosJson is not null)
         {
             c.ParametrosJson = string.IsNullOrWhiteSpace(request.ParametrosJson) ? null : request.ParametrosJson.Trim();
         }

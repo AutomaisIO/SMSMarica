@@ -55,6 +55,7 @@ public sealed class RepontadorPacienteService(SmsMaisDbContext db) : IRepontador
         ("cadsus_completude", "paciente_destino_id"),
         ("cidadao_acesso", "patient_id"),
         ("cidadao_login_link", "patient_id"),
+        ("cidadao_notificacao", "paciente_id"),
         ("comunicacao_paciente", "paciente_id"),
         ("contato_comprometido", "paciente_id"),
         ("contato_registro", "paciente_id"),
