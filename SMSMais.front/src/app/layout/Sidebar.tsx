@@ -40,6 +40,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   const { pathname } = useLocation();
   const usuario = useAuth((s) => s.usuario);
   const permissoes = useAuth((s) => s.permissoes);
+  const acessoGlobal = useAuth((s) => s.usuario?.acessoGlobal ?? false);
   const sair = useAuth((s) => s.sair);
   const defaults = useMenuPreferencias((s) => s.defaults);
   const badges = useTicketsBadges();
@@ -77,6 +78,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   }, [secaoAberta]);
 
   function temAcesso(item: ItemMenu): boolean {
+    if (item.somenteAcessoGlobal && !acessoGlobal) return false;
     if (!item.modulo) return true;
     return (permissoes[item.modulo] ?? []).includes('Consulta');
   }

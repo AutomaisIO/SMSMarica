@@ -2,6 +2,7 @@ import { BookOpen, Bus, ClipboardCheck, Folder, LifeBuoy, MessageCircle, Setting
 import { artigoAgenteIa } from '@/features/manual/conteudo/agenteIa';
 import { artigoAnaliseRegrasEspelho } from '@/features/manual/conteudo/analiseRegrasEspelho';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
+import { artigoAppCidadao } from '@/features/manual/conteudo/appCidadao';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendimentosTransporte';
 import { artigoAvaliacoes } from '@/features/manual/conteudo/avaliacoes';
@@ -106,6 +107,7 @@ export const ARTIGOS: Artigo[] = [
   artigoAgenteIa,
   artigoAnaliseRegrasEspelho,
   artigoAnamnese,
+  artigoAppCidadao,
   artigoAssinaturaLaudo,
   artigoAtendimentosTransporte,
   artigoAvaliacoes,

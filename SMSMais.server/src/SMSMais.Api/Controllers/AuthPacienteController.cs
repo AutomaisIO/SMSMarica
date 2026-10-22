@@ -3,12 +3,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SMSMais.Core.Cidadao;
 using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Cidadao.Entrada;
+using SMSMais.Core.Common.Excecoes;
 
 namespace SMSMais.Api.Controllers;
 
 /// <summary>
-/// Login do paciente no PWA: CPF + código (OTP). Anônimo (o paciente ainda não tem token).
-/// Em modo de teste o código volta no corpo para ser exibido na tela.
+/// Entrada do paciente no app (PWA e nativo, ADR-0078): CPF + data de nascimento → número escolhido
+/// → código (OTP). Anônimo (o paciente ainda não tem token). Em modo de teste o código volta no corpo
+/// para ser exibido na tela.
 /// </summary>
 [ApiController]
 [Route("auth/paciente")]
@@ -21,24 +24,41 @@ public sealed class AuthPacienteController(
     private readonly IPacienteAuthService _service = service;
     private readonly ICidadaoLoginLinkService _loginLinks = loginLinks;
 
-    [HttpPost("solicitar-otp")]
-    [ProducesResponseType<OtpEmitidoDto>(StatusCodes.Status200OK)]
+    /// <summary>Passo 1: CPF + data de nascimento → os números possíveis (só o final de cada um).</summary>
+    [HttpPost("entrada")]
+    [ProducesResponseType<EntradaCidadaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<OtpEmitidoDto> SolicitarOtp([FromBody] SolicitarOtpRequest request, CancellationToken cancellationToken) =>
-        await _service.SolicitarOtpAsync(request, cancellationToken);
+    public async Task<EntradaCidadaoDto> IniciarEntrada(
+        [FromBody] IniciarEntradaRequest request, CancellationToken cancellationToken) =>
+        await _service.IniciarEntradaAsync(request, Request.Headers[CanalAppCidadao.Cabecalho].ToString(), cancellationToken);
 
-    /// <summary>
-    /// Passo 2 de quem não tem contato verificado (ou perdeu o número): nascimento + nº da
-    /// solicitação SISREG + telefone que vai receber o código. Sem cadastro, o par CPF/nascimento
-    /// é conferido na Receita e o paciente é criado ao confirmar o código.
-    /// </summary>
-    [HttpPost("solicitar-otp-verificacao")]
+    /// <summary>"Nenhum desses é meu": procura outros celulares no e-SUS, quando o canal permite.</summary>
+    [HttpPost("entrada/{desafioId}/esus")]
+    [ProducesResponseType<EntradaCidadaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<EntradaCidadaoDto> BuscarNoEsus(string desafioId, CancellationToken cancellationToken) =>
+        await _service.BuscarNoEsusAsync(desafioId, cancellationToken);
+
+    /// <summary>Envia o código para o número escolhido.</summary>
+    [HttpPost("entrada/{desafioId}/enviar")]
     [ProducesResponseType<OtpEmitidoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<OtpEmitidoDto> SolicitarOtpVerificacao(
-        [FromBody] SolicitarOtpVerificacaoRequest request, CancellationToken cancellationToken) =>
-        await _service.SolicitarOtpVerificacaoAsync(request, cancellationToken);
+    public async Task<OtpEmitidoDto> EnviarCodigo(
+        string desafioId, [FromBody] EnviarCodigoEntradaRequest request, CancellationToken cancellationToken) =>
+        await _service.EnviarCodigoEntradaAsync(desafioId, request, cancellationToken);
+
+    /// <summary>
+    /// A entrada antiga (CPF, depois nº da solicitação + número digitado) saiu em 22/10/2026 (ADR-0078).
+    /// 410 para o PWA em cache pedir para recarregar.
+    /// </summary>
+    [HttpPost("solicitar-otp")]
+    [HttpPost("solicitar-otp-verificacao")]
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    public IActionResult EntradaAntiga() =>
+        throw new RecursoDescontinuadoException(
+            "entrada.atualizar", "Atualize o aplicativo (ou recarregue a página) para entrar.");
 
     [HttpPost("validar-otp")]
     [ProducesResponseType<RespostaLoginPacienteDto>(StatusCodes.Status200OK)]

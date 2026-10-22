@@ -1,8 +1,8 @@
 # SMSMais.cidadao.pwa
 
 **App do Cidadão** (PWA) do SMS Maricá — a saúde digital do município no bolso do cidadão.
-React + Vite + TypeScript, instalável (vite-plugin-pwa). Login por **CPF + código (OTP) no
-WhatsApp**, sem senha.
+React + Vite + TypeScript, instalável (vite-plugin-pwa). Login por **CPF + data de nascimento +
+código (OTP) no WhatsApp**, sem senha.
 
 > **Escopo:** o app **não** é específico de TFD. O transporte/TFD é apenas **um módulo**.
 > O app do cidadão evolui para reunir os serviços digitais de saúde de Maricá.
@@ -14,7 +14,10 @@ servindo `/var/www/smsmarica-app`, deploy via `.github/workflows/deploy-app.yml`
 
 **Fase 1 (este scaffold) — Transporte / TFD (FT7):**
 
-- **Login** (`/login`) → informa CPF, recebe OTP no WhatsApp.
+- **Login** (`/login`) → informa CPF e data de nascimento ([ADR-0078](../docs/adr/0078-entrada-cidadao-cpf-nascimento.md)).
+- **Telefone** (`/login/telefone`) → escolhe o seu WhatsApp entre os números que a Saúde já
+  conhece (só o final aparece); o código nunca vai para um número digitado. "Nenhum desses é meu"
+  procura no e-SUS (se ligado para o canal, em Sistema → App do cidadão) ou orienta ir ao posto.
 - **Código** (`/login/codigo`) → valida o OTP, recebe o token de sessão.
 - **Agenda** (`/`) → lista os transportes/translados do cidadão.
 - **Translado** (`/translado/:id`) → detalhe, **ETA** (chegada do veículo) e
@@ -39,18 +42,20 @@ dos apps Google / Microsoft / Meta:
 Cobrem dados sensíveis de saúde (laudos, exames, receituário), agendamento e transporte.
 Canal de contato/Encarregado (LGPD): **contato@smsmarica.online**.
 
-## Backend (pendente)
+## Backend
 
-Os endpoints de cidadão/paciente ainda **não existem** no `SMSMais.server` (marcados com
-`TODO(FT7)`):
+Toda chamada leva o cabeçalho `X-App-Canal: pwa` (o app nativo manda `nativo`): é por ele que o
+servidor sabe se a busca do telefone no e-SUS está ligada para este canal.
 
-- `POST /auth/paciente/solicitar-otp` `{ cpf }`
-- `POST /auth/paciente/validar-otp` `{ cpf, codigo }` → `{ token, paciente }`
-- `GET  /auth/paciente/meus-translados`
-- `GET  /auth/paciente/translados/{id}`
-- `POST /auth/paciente/translados/{id}/acompanhante` `{ confirmado }`
+Login (`/auth/paciente`, rotas públicas — ADR-0078):
 
-(Os módulos de agendamento e documentos de saúde terão seus próprios endpoints.)
+- `POST entrada` `{ cpf, dataNascimento: "aaaa-mm-dd" }` → `{ desafioId, opcoes: [{ id, final, origem, verificado }], podeBuscarEsus, validadeSegundos }`
+- `POST entrada/{desafioId}/esus` → a mesma resposta, com os números achados no e-SUS
+- `POST entrada/{desafioId}/enviar` `{ opcaoId }` → `{ codigoTeste, telefoneMascarado, … }`
+- `POST validar-otp` `{ cpf, codigo }` → `{ token, paciente }`
+
+As antigas `solicitar-otp` e `solicitar-otp-verificacao` respondem 410 (`entrada.atualizar`). As
+demais rotas do cidadão estão em `src/lib/api.ts`.
 
 ## Comandos
 

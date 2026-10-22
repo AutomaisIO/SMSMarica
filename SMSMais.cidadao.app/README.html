@@ -32,7 +32,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <p>&gt; <strong>Ainda não está em produção</strong> (nem nas lojas). O PWA continua sendo o canal oficial.</p>
 <h2>O que o app faz (igual ao PWA)</h2>
 <div class="tw"><table><thead><tr><th>Tela</th><th>Rota</th><th>O que mostra</th></tr></thead><tbody>
-<tr><td>Entrar</td><td><code>/login</code> → <code>/login/verificacao</code> → <code>/login/codigo</code></td><td>CPF + código pelo WhatsApp do cadastro; quem não tem WhatsApp verificado confirma nascimento + nº da solicitação</td></tr>
+<tr><td>Entrar</td><td><code>/login</code> → <code>/login/telefone</code> → <code>/login/codigo</code></td><td>CPF + data de nascimento; a pessoa escolhe o seu WhatsApp entre os números que a Saúde já conhece (só o final aparece) e recebe o código nele — nunca num número digitado. "Nenhum desses é meu" procura no e-SUS (se ligado para o canal) ou orienta ir ao posto (ADR-0078)</td></tr>
 <tr><td>Termo LGPD</td><td>(antes de tudo)</td><td>Aceite do consentimento vigente — bloqueante</td></tr>
 <tr><td>Início</td><td><code>/</code></td><td>Cartão do Cidadão + atalhos (com aviso de exames a confirmar)</td></tr>
 <tr><td>Consultas / Exames agendados</td><td><code>/agendados/consultas</code>, <code>/agendados/exames</code></td><td>Agendados e na fila da regulação; confirmar presença / avisar ausência</td></tr>

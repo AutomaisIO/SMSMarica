@@ -28,6 +28,9 @@ final dioProvider = Provider<Dio>((ref) {
       receiveTimeout: const Duration(seconds: 90),
       headers: {
         'Accept': 'application/json',
+        // O servidor separa por canal o que é preferência de produto (ex.: procurar o telefone no
+        // e-SUS na entrada — ADR-0078). O PWA manda `pwa`.
+        'X-App-Canal': 'nativo',
         // O painel mostra este texto na ficha do paciente (Histórico de acesso e aparelhos que
         // recebem notificação); sem ele a sessão do app aparece como "Dart/3.x (dart:io)".
         if (!kIsWeb)
@@ -50,7 +53,8 @@ final dioProvider = Provider<Dio>((ref) {
           // 401 nos endpoints de login (OTP) significa "código inválido" — NÃO deslogar. Em
           // qualquer outro endpoint autenticado, 401 = sessão expirada/revogada (inclusive
           // /consentimento): limpa a sessão e o roteador leva ao login.
-          final ehLogin = erro.requestOptions.path.contains('-otp');
+          final caminho = erro.requestOptions.path;
+          final ehLogin = caminho.contains('-otp') || caminho.contains('/auth/paciente/entrada');
           if (!ehLogin && ref.read(sessaoProvider) != null) {
             ref.read(sessaoProvider.notifier).sair();
           }
@@ -76,6 +80,20 @@ final dioProvider = Provider<Dio>((ref) {
     status: erro.response?.statusCode,
     codigo: dados is Map ? dados['type'] as String? : null,
   );
+}
+
+/// Todos os códigos de negócio de um erro da API: o `type` do ProblemDetails (409/410) e as chaves
+/// de `errors` do ValidationProblem (400, ex.: "entrada.expirada").
+List<String> codigosDoErro(Object erro) {
+  if (erro is! DioException) return const [];
+  final dados = erro.response?.data;
+  if (dados is! Map) return const [];
+  final tipo = dados['type'];
+  final erros = dados['errors'];
+  return [
+    if (tipo is String && tipo.isNotEmpty) tipo,
+    if (erros is Map) ...erros.keys.whereType<String>(),
+  ];
 }
 
 /// Sem resposta do servidor (sem internet, DNS, tempo esgotado).

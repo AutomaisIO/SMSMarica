@@ -299,6 +299,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<PersonificacaoPaciente> PersonificacoesPaciente => Set<PersonificacaoPaciente>();
     // Histórico das notificações (push) mandadas ao app do cidadão.
     public DbSet<CidadaoNotificacao> CidadaoNotificacoes => Set<CidadaoNotificacao>();
+    // Entrada no app do cidadão (ADR-0078): configuração por canal e freio de tentativas por CPF.
+    public DbSet<ConfiguracaoAppCidadao> ConfiguracoesAppCidadao => Set<ConfiguracaoAppCidadao>();
+    public DbSet<CidadaoEntradaBloqueio> CidadaoEntradaBloqueios => Set<CidadaoEntradaBloqueio>();
 
     // Trilha de auditoria de ações de usuário (append-only). Ver RegistroAuditoria.
     public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();

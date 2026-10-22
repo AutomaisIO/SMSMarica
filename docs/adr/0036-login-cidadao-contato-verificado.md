@@ -1,6 +1,7 @@
 # ADR-0036 — Login do cidadão exige contato verificado (e como se prova quem é)
 
-- **Status:** Aceito
+- **Status:** Aceito; o §2 (nº da solicitação como prova) foi **substituído pelo
+  [ADR-0078](./0078-entrada-cidadao-cpf-nascimento.md)** em 22/10/2026
 - **Data:** 2026-07-30
 - **Contexto módulo:** App do Cidadão (PWA) — [`SMSMarica.cidadao.pwa`](../../SMSMarica.cidadao.pwa/)
 - **Relacionado:** [ADR-0018](./0018-identidade-e-sessao-do-cidadao.md) (identidade e sessão do

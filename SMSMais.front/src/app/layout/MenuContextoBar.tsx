@@ -15,12 +15,14 @@ import { useAuth } from '@/shared/auth/authStore';
 export function MenuContextoBar() {
   const { pathname } = useLocation();
   const permissoes = useAuth((s) => s.permissoes);
+  const acessoGlobal = useAuth((s) => s.usuario?.acessoGlobal ?? false);
 
   const secao = encontrarSecaoPorPath(pathname);
   if (!secao || !secao.titulo) return null;
 
   const temAcesso = (item: ItemMenu) =>
-    !item.modulo || (permissoes[item.modulo] ?? []).includes('Consulta');
+    (!item.somenteAcessoGlobal || acessoGlobal) &&
+    (!item.modulo || (permissoes[item.modulo] ?? []).includes('Consulta'));
 
   // Só faz sentido voltar pra um hub quando há mais de uma opção visível.
   const visiveis = secao.itens.filter(temAcesso);

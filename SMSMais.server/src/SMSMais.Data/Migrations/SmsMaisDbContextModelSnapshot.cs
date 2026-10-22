@@ -1013,6 +1013,30 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("cidadao_consentimento", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.CidadaoEntradaBloqueio", b =>
+                {
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
+                    b.Property<DateTime?>("BloqueadoAte")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("bloqueado_ate");
+
+                    b.Property<int>("Falhas")
+                        .HasColumnType("integer")
+                        .HasColumnName("falhas");
+
+                    b.Property<DateTime>("PrimeiraFalhaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("primeira_falha_em");
+
+                    b.HasKey("Cpf");
+
+                    b.ToTable("cidadao_entrada_bloqueio", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.CidadaoLoginLink", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1360,6 +1384,34 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("Status", "ProximaTentativaEm");
 
                     b.ToTable("comunicacao_paciente", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ConfiguracaoAppCidadao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<bool>("NativoConsultarEsus")
+                        .HasColumnType("boolean")
+                        .HasColumnName("nativo_consultar_esus");
+
+                    b.Property<bool>("PwaConsultarEsus")
+                        .HasColumnType("boolean")
+                        .HasColumnName("pwa_consultar_esus");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("configuracao_app_cidadao", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.ConfiguracaoAssinaturaMedico", b =>

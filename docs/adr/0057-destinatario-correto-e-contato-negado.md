@@ -1,6 +1,8 @@
 # ADR-0057 — Destinatário correto: prova de contato, vínculo declarado e contato negado
 
-- **Status:** aceito
+- **Status:** aceito; o §5 continua valendo (troca do verificado só no posto), mas a tela que ele
+  descreve — nascimento + nº da solicitação — saiu com o [ADR-0078](./0078-entrada-cidadao-cpf-nascimento.md)
+  (22/10/2026)
 - **Data:** 2026-09-17
 - **Contexto:** LGPD. Decisões tomadas pelo Bernardo em 17/09/2026, depois do mapeamento de todos
   os envios automáticos e de todos os caminhos em que um número de WhatsApp vira acesso a dado.

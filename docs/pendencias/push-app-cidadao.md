@@ -202,10 +202,9 @@ a trocou na bancada):
   marcar **Envio de notificações ativo** → **Salvar** → **Testar**. Sem a permissão de Exclusão o
   Limpar não aparece; colar por cima e salvar também resolve. O Testar faz um envio de validação
   (não entrega nada): prova a chave, a API ligada e a permissão.
-- Criar um paciente de teste com CPF válido, **data de nascimento** e sem WhatsApp verificado, com
-  uma solicitação que tenha número. No primeiro acesso o app pede nascimento, celular e esse
-  número. Sem nascimento no cadastro, o servidor confere o CPF na Receita (que localmente não tem
-  credencial).
+- Criar um paciente de teste com CPF válido, **data de nascimento** e um **celular** no cadastro.
+  Na entrada (ADR-0078) o app pede CPF + nascimento e oferece esse celular (só o final). Sem
+  nascimento no cadastro, o servidor confere o CPF na Receita (que localmente não tem credencial).
 
 ### 3. Celular
 

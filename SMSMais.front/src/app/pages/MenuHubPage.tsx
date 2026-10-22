@@ -8,6 +8,7 @@ import { cn } from '@/shared/lib/cn';
 export function MenuHubPage() {
   const { secaoId } = useParams<{ secaoId: string }>();
   const permissoes = useAuth((s) => s.permissoes);
+  const acessoGlobal = useAuth((s) => s.usuario?.acessoGlobal ?? false);
   const defaults = useMenuPreferencias((s) => s.defaults);
   const definir = useMenuPreferencias((s) => s.definir);
   const limpar = useMenuPreferencias((s) => s.limpar);
@@ -16,6 +17,7 @@ export function MenuHubPage() {
   if (!secao || !secao.titulo) return <Navigate to="/app" replace />;
 
   function temAcesso(item: ItemMenu): boolean {
+    if (item.somenteAcessoGlobal && !acessoGlobal) return false;
     if (!item.modulo) return true;
     return (permissoes[item.modulo] ?? []).includes('Consulta');
   }

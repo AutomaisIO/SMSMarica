@@ -215,6 +215,35 @@ export type ItemAcervo = {
 /** Rótulo de origem que o servidor dá ao que o próprio paciente mandou pelo app. */
 export const ORIGEM_ENVIADO_PELO_PACIENTE = 'Enviado pelo paciente';
 
+/** Um número para onde o código pode ir. O app só vê o final; o número fica no servidor (ADR-0078). */
+export type OpcaoTelefoneEntrada = {
+  id: string;
+  /** Últimos 4 dígitos. */
+  final: string;
+  /** Do cadastro da Saúde, ou achado no e-SUS PEC na hora ("Nenhum desses é meu"). */
+  origem: 'cadastro' | 'esus';
+  /** É o WhatsApp já confirmado — aí ele é o único da lista (trocar é no posto). */
+  verificado: boolean;
+};
+
+/** Resposta de `POST /auth/paciente/entrada` e de `.../esus` (que devolve a lista inteira). */
+export type EntradaCidadao = {
+  desafioId: string;
+  opcoes: OpcaoTelefoneEntrada[];
+  /** O canal deixa procurar no e-SUS e ainda não se procurou nesta entrada. */
+  podeBuscarEsus: boolean;
+  validadeSegundos: number;
+};
+
+/** Código emitido. `codigoTeste` só vem quando o servidor não está com o WhatsApp configurado. */
+export type OtpEmitido = {
+  enviado: boolean;
+  canal: string;
+  codigoTeste: string | null;
+  validadeSegundos: number;
+  telefoneMascarado: string | null;
+};
+
 export type TelefoneOtpEmitido ={ canal: string; mascara: string | null; expiraEmSegundos: number };
 export type TelefoneValidado = { numero: string; validado: boolean; validadoEm: string | null };
 
@@ -226,6 +255,20 @@ export type ConsentimentoStatus = {
 };
 
 export const api = {
+  // Entrada (rotas públicas, ADR-0078): CPF + nascimento → os números que a Saúde já conhece →
+  // o código vai para o escolhido. Nunca para um número digitado.
+  entrada: (cpf: string, dataNascimento: string) =>
+    http.post<EntradaCidadao>('/auth/paciente/entrada', { cpf, dataNascimento }).then((r) => r.data),
+  /** "Nenhum desses é meu": procura no e-SUS. Pode levar uns 10–20 s. */
+  procurarTelefoneNoEsus: (desafioId: string) =>
+    http
+      .post<EntradaCidadao>(`/auth/paciente/entrada/${encodeURIComponent(desafioId)}/esus`)
+      .then((r) => r.data),
+  enviarCodigo: (desafioId: string, opcaoId: string) =>
+    http
+      .post<OtpEmitido>(`/auth/paciente/entrada/${encodeURIComponent(desafioId)}/enviar`, { opcaoId })
+      .then((r) => r.data),
+
   consentimento: () =>
     http.get<ConsentimentoStatus>('/auth/paciente/consentimento').then((r) => r.data),
   aceitarConsentimento: () => http.post('/auth/paciente/consentimento'),

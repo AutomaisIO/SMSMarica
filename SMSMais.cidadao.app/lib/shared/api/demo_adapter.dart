@@ -102,10 +102,41 @@ class DemoAdapter implements HttpClientAdapter {
     String dia(int dias) => DateTime(hoje.year, hoje.month, hoje.day + dias).toIso8601String().substring(0, 10);
 
     switch ((metodo, caminho)) {
-      case ('POST', '/auth/paciente/solicitar-otp'):
-        return (200, {'situacao': 'otp', 'telefoneMascarado': '(**) *****-4321'});
-      case ('POST', '/auth/paciente/solicitar-otp-verificacao'):
-        return (200, {'telefoneMascarado': '(**) *****-4321'});
+      case ('POST', '/auth/paciente/entrada'):
+        _opcoesEntrada = [..._opcoesDoCadastro];
+        _esusConsultado = false;
+        return (200, _entrada());
+      case ('POST', '/auth/paciente/entrada/demo/esus'):
+        // Uma consulta por entrada, como no servidor: a segunda não acrescenta nada.
+        if (!_esusConsultado) _opcoesEntrada = [..._opcoesEntrada, _opcaoDoEsus];
+        _esusConsultado = true;
+        return (200, _entrada());
+      case ('POST', '/auth/paciente/entrada/demo/enviar'):
+        final id = (corpo as Map?)?['opcaoId'];
+        final opcao = _opcoesEntrada.where((o) => o['id'] == id).firstOrNull;
+        if (opcao == null) {
+          return (
+            400,
+            {
+              'title': 'Validação inválida',
+              'status': 400,
+              'errors': {
+                'entrada.opcao_invalida': ['Escolha um dos números da lista.'],
+              },
+            },
+          );
+        }
+        return (
+          200,
+          {
+            'enviado': true,
+            'canal': 'whatsapp',
+            'codigoTeste': null,
+            'validadeSegundos': 300,
+            'telefoneMascarado': '(**) *****-${opcao['final']}',
+            'situacao': 'otp',
+          },
+        );
       case ('POST', '/auth/paciente/validar-otp'):
         final codigo = (corpo as Map?)?['codigo'];
         if (codigo == '000000') return (401, {'title': 'Código inválido ou expirado.', 'status': 401});
@@ -423,6 +454,23 @@ class DemoAdapter implements HttpClientAdapter {
     }
     return (404, {'title': 'Não encontrado (demonstração).', 'status': 404});
   }
+
+  /// Entrada (ADR-0078): os números que o "servidor" conhece — o app só vê o final. Qualquer CPF
+  /// válido e qualquer data de nascimento entram; "Nenhum desses é meu" acha mais um no e-SUS.
+  static const List<Map<String, Object>> _opcoesDoCadastro = [
+    {'id': 'o1', 'final': '4321', 'origem': 'cadastro', 'verificado': false},
+    {'id': 'o2', 'final': '7788', 'origem': 'cadastro', 'verificado': false},
+  ];
+  static const Map<String, Object> _opcaoDoEsus = {'id': 'o3', 'final': '5566', 'origem': 'esus', 'verificado': false};
+  List<Map<String, Object>> _opcoesEntrada = const [];
+  bool _esusConsultado = false;
+
+  Map<String, Object> _entrada() => {
+        'desafioId': 'demo',
+        'opcoes': _opcoesEntrada,
+        'podeBuscarEsus': !_esusConsultado,
+        'validadeSegundos': 600,
+      };
 
   /// Sessão fictícia usada pelo `DEMO_LOGADO`.
   static const sessaoDemo = (

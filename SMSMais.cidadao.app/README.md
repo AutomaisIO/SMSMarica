@@ -12,7 +12,7 @@ Versão **nativa (Flutter, Android + iOS)** do **App do Cidadão** — o mesmo a
 
 | Tela | Rota | O que mostra |
 |---|---|---|
-| Entrar | `/login` → `/login/verificacao` → `/login/codigo` | CPF + código pelo WhatsApp do cadastro; quem não tem WhatsApp verificado confirma nascimento + nº da solicitação |
+| Entrar | `/login` → `/login/telefone` → `/login/codigo` | CPF + data de nascimento; a pessoa escolhe o seu WhatsApp entre os números que a Saúde já conhece (só o final aparece) e recebe o código nele — nunca num número digitado. "Nenhum desses é meu" procura no e-SUS (se ligado para o canal) ou orienta ir ao posto ([ADR-0078](../docs/adr/0078-entrada-cidadao-cpf-nascimento.md)) |
 | Termo LGPD | (antes de tudo) | Aceite do consentimento vigente — bloqueante |
 | Início | `/` | Cartão do Cidadão + atalhos (com aviso de exames a confirmar) |
 | Consultas / Exames agendados | `/agendados/consultas`, `/agendados/exames` | Agendados e na fila da regulação; confirmar presença / avisar ausência |
@@ -69,8 +69,12 @@ adb reverse tcp:5080 tcp:5080
 flutter run --dart-define=API_BASE_URL=http://localhost:5080
 ```
 
-No modo demonstração qualquer CPF válido entra (ex.: `529.982.247-25`) e qualquer código serve,
-menos `000000` (simula código errado).
+No modo demonstração qualquer CPF válido (ex.: `529.982.247-25`) e qualquer data de nascimento
+entram; aparecem dois números fictícios "do cadastro", e "Nenhum desses é meu" → "Procurar outros
+números" acrescenta um "do e-SUS". Qualquer código serve, menos `000000` (simula código errado).
+
+Toda chamada leva o cabeçalho `X-App-Canal: nativo` (o PWA manda `pwa`): é por ele que o servidor
+sabe se a busca do telefone no e-SUS está ligada para este canal (Sistema → App do cidadão).
 
 ## Notificações (push)
 

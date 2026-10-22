@@ -8,7 +8,9 @@ const baseURL = envBase || (import.meta.env.PROD ? URL_PROD : '/api');
 
 export const http = axios.create({
   baseURL,
-  headers: { 'Content-Type': 'application/json' },
+  // `X-App-Canal`: o servidor separa por canal o que é preferência de produto (ex.: procurar o
+  // telefone no e-SUS na entrada — ADR-0078). O app nativo manda `nativo`.
+  headers: { 'Content-Type': 'application/json', 'X-App-Canal': 'pwa' },
 });
 
 http.interceptors.request.use((config) => {
@@ -28,7 +30,7 @@ http.interceptors.response.use(
       // Em qualquer outro endpoint autenticado, 401 = sessão expirada/revogada
       // (inclui /consentimento): limpa a sessão e manda pro login. Sem isso, o app
       // ficava preso na tela de consentimento no iOS (token velho persistido).
-      const ehLogin = url.includes('-otp');
+      const ehLogin = url.includes('-otp') || url.includes('/auth/paciente/entrada');
       const estado = useAuth.getState();
       if (!ehLogin && estado.token) {
         estado.sair();
@@ -58,6 +60,16 @@ export function classificarErro(erro: unknown): { status?: number; codigo?: stri
   if (!(erro instanceof AxiosError)) return {};
   const dados = erro.response?.data as ProblemaApi | undefined;
   return { status: erro.response?.status, codigo: dados?.type ?? undefined };
+}
+
+/**
+ * Todos os códigos de negócio de um erro da API: o `type` do ProblemDetails (409/410) e as chaves
+ * de `errors` do ValidationProblem (400, ex.: "entrada.expirada").
+ */
+export function codigosDoErro(erro: unknown): string[] {
+  if (!(erro instanceof AxiosError)) return [];
+  const dados = erro.response?.data as ProblemaApi | undefined;
+  return [...(dados?.type ? [dados.type] : []), ...Object.keys(dados?.errors ?? {})];
 }
 
 export function extrairMensagemDeErro(erro: unknown): string {
