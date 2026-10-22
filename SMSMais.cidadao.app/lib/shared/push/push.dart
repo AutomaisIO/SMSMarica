@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sms_mais_cidadao/app/router.dart';
 import 'package:sms_mais_cidadao/shared/api/api.dart';
+import 'package:sms_mais_cidadao/shared/api/demo_adapter.dart';
 import 'package:sms_mais_cidadao/shared/api/http.dart';
 import 'package:sms_mais_cidadao/shared/push/destinos.dart';
 import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
@@ -161,7 +162,8 @@ class PushCidadao {
   /// primeiro plano. Registra uma vez por sessão; a volta só refaz o que falhou (ver [MarcaDoRegistro]).
   void registrarAparelho() {
     final sessao = _ref.read(sessaoProvider)?.token;
-    if (!pushConfigurado || sessao == null) return;
+    // Na demonstração não há aparelho a registrar: nada ali é de verdade.
+    if (!pushConfigurado || sessao == null || sessao == DemoAdapter.tokenDemo) return;
     switch (_marca.proximo(sessao)) {
       case PassoDoRegistro.registrar:
         _executar(sessao).ignore();

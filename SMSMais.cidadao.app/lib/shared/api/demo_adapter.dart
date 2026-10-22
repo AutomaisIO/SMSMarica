@@ -8,6 +8,10 @@ import 'package:dio/dio.dart';
 /// telas sem backend e sem dado de paciente real. Pessoas, CPFs e números aqui são inventados
 /// (o CPF é o de exemplo que circula em documentação). Nunca ligado num build de loja.
 class DemoAdapter implements HttpClientAdapter {
+  /// O token da sessão de demonstração — é por ele que o app reconhece, ao reabrir, que estava em
+  /// demonstração (e não manda esse token à produção).
+  static const tokenDemo = 'demo';
+
   DemoAdapter({this.atraso = const Duration(milliseconds: 350), bool jaConsentiu = false})
       : _consentiu = jaConsentiu;
 
@@ -140,9 +144,9 @@ class DemoAdapter implements HttpClientAdapter {
       case ('POST', '/auth/paciente/validar-otp'):
         final codigo = (corpo as Map?)?['codigo'];
         if (codigo == '000000') return (401, {'title': 'Código inválido ou expirado.', 'status': 401});
-        return (200, {'token': 'demo', 'paciente': _paciente});
+        return (200, {'token': tokenDemo, 'paciente': _paciente});
       case ('POST', '/auth/paciente/magic'):
-        return (200, {'token': 'demo', 'paciente': _paciente, 'destino': '/exames'});
+        return (200, {'token': tokenDemo, 'paciente': _paciente, 'destino': '/exames'});
       case ('GET', '/auth/paciente/consentimento'):
         return (
           200,

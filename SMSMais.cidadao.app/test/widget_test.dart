@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sms_mais_cidadao/app/app.dart';
 import 'package:sms_mais_cidadao/shared/api/demo_adapter.dart';
+import 'package:sms_mais_cidadao/shared/api/demonstracao.dart';
 import 'package:sms_mais_cidadao/shared/api/http.dart';
 import 'package:sms_mais_cidadao/shared/api/modelos.dart';
 import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
@@ -189,6 +190,43 @@ void main() {
 
     expect(find.text('CARTÃO DO CIDADÃO'), findsOneWidget);
     expect(find.text('Saúde Maricá'), findsWidgets);
+  });
+
+  testWidgets('entrada de demonstração (revisão das lojas) roda sem rede, mesmo no build de loja', (tester) async {
+    // Sem trocar o dioProvider: é o cliente de verdade, apontado para a produção. Se a demonstração
+    // não ligasse, a chamada iria à rede — e o teste não tem rede (responde erro).
+    _celular(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sessaoInicialProvider.overrideWithValue(null)],
+        child: const AppCidadaoMarica(),
+      ),
+    );
+    await _assentar(tester);
+
+    await tester.enterText(find.byType(TextField).at(0), cpfDemonstracao);
+    await tester.enterText(find.byType(TextField).at(1), '01012000');
+    await tester.pump();
+    await _tocar(tester, find.text('Continuar'));
+    await _assentar(tester);
+
+    expect(find.text('WhatsApp final 4321'), findsOneWidget);
+    await _tocar(tester, find.text('WhatsApp final 4321'));
+    await tester.pump();
+    await _tocar(tester, find.text('Enviar código'));
+    await _assentar(tester);
+    await tester.enterText(find.byType(TextField).first, '123456');
+    await tester.pump();
+    await _tocar(tester, find.text('Entrar').last);
+    await _assentar(tester);
+
+    expect(find.text('Li e concordo'), findsOneWidget);
+  });
+
+  test('só o CPF e a data de demonstração ligam a demonstração', () {
+    expect(ehEntradaDeDemonstracao(cpfDemonstracao, nascimentoDemonstracao), isTrue);
+    expect(ehEntradaDeDemonstracao(cpfDemonstracao, '2000-01-02'), isFalse);
+    expect(ehEntradaDeDemonstracao('52998224725', nascimentoDemonstracao), isFalse);
   });
 
   testWidgets('com sessão salva abre direto no Início', (tester) async {

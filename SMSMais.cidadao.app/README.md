@@ -189,6 +189,23 @@ keyPassword=<a senha>
 Sem o `key.properties` (ou as variáveis `CIDADAO_*`), o build de release **para com erro** — de
 propósito: pacote assinado com a chave de debug a loja recusa.
 
+### Acesso para a revisão das lojas ("Detalhes do login")
+
+O revisor da Google Play (e da App Store) não tem CPF nem WhatsApp do cadastro. Para ele, a tela de
+entrada aceita uma **entrada de demonstração**, que liga o modo demonstração (`DemoAdapter`: dados
+fictícios, sem rede, sem tocar a produção) — o mesmo do `--dart-define=DEMO=true`:
+
+| Campo | Valor |
+|---|---|
+| CPF | `111.111.111-11` |
+| Data de nascimento | `01/01/2000` |
+| Número | qualquer um da lista |
+| Código | qualquer código de 6 dígitos (ex.: `123456`; só `000000` é recusado) |
+
+O CPF tem os 11 dígitos iguais: é inválido por regra, então nunca é de ninguém, e o app não o manda
+ao servidor. Sair da conta desliga a demonstração. Estes dados podem ir no Play Console sem risco: com
+eles não se chega a nada real.
+
 ### Gerar o pacote da loja
 
 ```powershell

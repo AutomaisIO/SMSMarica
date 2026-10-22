@@ -125,6 +125,15 @@ keyAlias=upload
 storePassword=&lt;a senha&gt;
 keyPassword=&lt;a senha&gt;</code></pre>
 <p>Sem o <code>key.properties</code> (ou as variáveis <code>CIDADAO_*</code>), o build de release <strong>para com erro</strong> — de propósito: pacote assinado com a chave de debug a loja recusa.</p>
+<h3>Acesso para a revisão das lojas ("Detalhes do login")</h3>
+<p>O revisor da Google Play (e da App Store) não tem CPF nem WhatsApp do cadastro. Para ele, a tela de entrada aceita uma <strong>entrada de demonstração</strong>, que liga o modo demonstração (<code>DemoAdapter</code>: dados fictícios, sem rede, sem tocar a produção) — o mesmo do <code>--dart-define=DEMO=true</code>:</p>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Valor</th></tr></thead><tbody>
+<tr><td>CPF</td><td><code>111.111.111-11</code></td></tr>
+<tr><td>Data de nascimento</td><td><code>01/01/2000</code></td></tr>
+<tr><td>Número</td><td>qualquer um da lista</td></tr>
+<tr><td>Código</td><td>qualquer código de 6 dígitos (ex.: <code>123456</code>; só <code>000000</code> é recusado)</td></tr>
+</tbody></table></div>
+<p>O CPF tem os 11 dígitos iguais: é inválido por regra, então nunca é de ninguém, e o app não o manda ao servidor. Sair da conta desliga a demonstração. Estes dados podem ir no Play Console sem risco: com eles não se chega a nada real.</p>
 <h3>Gerar o pacote da loja</h3>
 <pre><code>flutter build appbundle --release --dart-define-from-file=firebase.json</code></pre>
 <p>Sai em <code>build/app/outputs/bundle/release/app-release.aab</code>. A versão vem do <code>pubspec.yaml</code> (<code>version: &lt;nome&gt;+&lt;código&gt;</code>): cada envio à Play precisa de um <strong>código maior</strong> que o anterior.</p>
