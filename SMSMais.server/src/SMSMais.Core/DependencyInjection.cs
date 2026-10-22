@@ -960,6 +960,9 @@ public static class DependencyInjection
         // ---- Módulo TFD: configuração de integrações + geocodificação (FT0/FT1) — ADR-0017 ----
         services.AddMemoryCache();
         services.AddScoped<Cidadao.IPacienteAuthService, Cidadao.PacienteAuthService>();
+        // Entrada no app do cidadão (ADR-0078): configuração por canal e o e-SUS na hora.
+        services.AddScoped<Cidadao.Entrada.IConfiguracaoAppCidadaoService, Cidadao.Entrada.ConfiguracaoAppCidadaoService>();
+        services.AddScoped<Cidadao.Entrada.ITelefonesEsusNaEntrada, Cidadao.Entrada.TelefonesEsusNaEntrada>();
         services.AddScoped<Cidadao.ICidadaoSessaoService, Cidadao.CidadaoSessaoService>();
         services.AddScoped<Cidadao.ICidadaoLoginLinkService, Cidadao.CidadaoLoginLinkService>();
         services.AddScoped<Cidadao.IConsentimentoCidadaoService, Cidadao.ConsentimentoCidadaoService>();

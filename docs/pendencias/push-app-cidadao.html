@@ -191,9 +191,9 @@ powershell -ExecutionPolicy Bypass -File scripts\push-cidadao\pilha-local.ps1 -P
 </ul>
 <p>  marcar <strong>Envio de notificações ativo</strong> → <strong>Salvar</strong> → <strong>Testar</strong>. Sem a permissão de Exclusão o   Limpar não aparece; colar por cima e salvar também resolve. O Testar faz um envio de validação   (não entrega nada): prova a chave, a API ligada e a permissão.</p>
 <ul>
-<li>Criar um paciente de teste com CPF válido, <strong>data de nascimento</strong> e sem WhatsApp verificado, com</li>
+<li>Criar um paciente de teste com CPF válido, <strong>data de nascimento</strong> e um <strong>celular</strong> no cadastro.</li>
 </ul>
-<p>  uma solicitação que tenha número. No primeiro acesso o app pede nascimento, celular e esse   número. Sem nascimento no cadastro, o servidor confere o CPF na Receita (que localmente não tem   credencial).</p>
+<p>  Na entrada (ADR-0078) o app pede CPF + nascimento e oferece esse celular (só o final). Sem   nascimento no cadastro, o servidor confere o CPF na Receita (que localmente não tem credencial).</p>
 <h3>3. Celular</h3>
 <pre><code>cd SMSMais.cidadao.app
 flutter run -d &lt;serial&gt; --dart-define-from-file=firebase.json --dart-define=API_BASE_URL=http://localhost:5080</code></pre>

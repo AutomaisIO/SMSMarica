@@ -20,8 +20,8 @@ export function Otp() {
   const telefoneMascarado = estado?.telefoneMascarado;
   // Últimos 4 dígitos do destino — é como a pessoa reconhece o aparelho que vai tocar.
   const finalDoNumero = telefoneMascarado?.replace(/\D/g, '');
-  // O código acabou de ser enviado para um número que a própria pessoa digitou: oferecer
-  // "trocar de número" aqui seria um laço sem fim.
+  // "Trocar é no posto" só se diz do WhatsApp já confirmado. Um número do cadastro ainda não
+  // confirmado (`semTroca`) acabou de ser escolhido numa lista que oferecia "Nenhum desses é meu".
   const podeTrocarNumero = !codigoTeste && !estado?.semTroca;
 
   const [codigo, setCodigo] = useState(codigoTeste ?? '');
@@ -76,8 +76,8 @@ export function Otp() {
           Entrar
         </PrimaryButton>
         {/* Quem já tem número verificado NÃO troca de número por aqui: seria a porta para alguém
-            com a guia de papel apontar o contato para o próprio celular. Em vez de mandar a pessoa
-            a um formulário que vai recusar, já se diz o caminho. */}
+            que sabe CPF e nascimento apontar o contato para o próprio celular. Em vez de mandar a
+            pessoa a um formulário que vai recusar, já se diz o caminho. */}
         {podeTrocarNumero && (
           <p className="rounded-2xl border border-areia bg-white/70 px-4 py-3 text-center text-sm leading-relaxed text-tinta-mute">
             Não tem mais esse número? Para trocar, procure o <strong>posto de saúde</strong> onde

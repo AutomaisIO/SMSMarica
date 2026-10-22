@@ -31,8 +31,8 @@ class _OtpPageState extends ConsumerState<OtpPage> {
   String? get _codigoTeste => widget.dados?['codigoTeste'] as String?;
   String? get _telefoneMascarado => widget.dados?['telefoneMascarado'] as String?;
 
-  /// O código acabou de ser enviado para um número que a própria pessoa digitou: oferecer
-  /// "trocar de número" aqui seria um laço sem fim.
+  /// "Trocar é no posto" só se diz do WhatsApp já confirmado. Um número do cadastro ainda não
+  /// confirmado (`semTroca`) acabou de ser escolhido numa lista que oferecia "Nenhum desses é meu".
   bool get _podeTrocarNumero => _codigoTeste == null && widget.dados?['semTroca'] != true;
 
   bool get _valido => soDigitos(_codigo).length >= 4;
@@ -136,7 +136,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
           BotaoPrimario(rotulo: 'Entrar', carregando: _enviando, onPressed: _valido ? _validar : null),
           const SizedBox(height: 24),
           // Quem já tem número verificado NÃO troca de número por aqui: seria a porta para alguém
-          // com a guia de papel apontar o contato para o próprio celular. Em vez de mandar a
+          // que sabe CPF e nascimento apontar o contato para o próprio celular. Em vez de mandar a
           // pessoa a um formulário que vai recusar, já se diz o caminho.
           if (_podeTrocarNumero) ...[
             Container(

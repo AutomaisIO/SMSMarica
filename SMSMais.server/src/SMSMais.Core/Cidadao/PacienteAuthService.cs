@@ -1,18 +1,25 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Cidadao.Entrada;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Conversas;
 using SMSMais.Core.Integracoes.Dtos;
+using SMSMais.Core.Integracoes.EsusPec;
 using SMSMais.Core.Integracoes.Proxy;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
+using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Core.Sandbox;
 using SMSMais.Core.Telefones;
 using SMSMais.Data;
+using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Cidadao;
@@ -27,77 +34,44 @@ public sealed class PacienteAuthService(
     ITelefoneValidacaoService telefoneValidacao,
     IConsultaCpfService consultaCpf,
     IPersonificacaoPacienteService personificacoes,
+    IPacienteFhirClient fhir,
+    IConfiguracaoAppCidadaoService configuracaoApp,
+    ITelefonesEsusNaEntrada telefonesEsus,
     ILogger<PacienteAuthService> logger) : IPacienteAuthService
 {
     private static readonly TimeSpan Validade = TimeSpan.FromMinutes(5);
     private const int MaxTentativas = 5;
 
-    public async Task<OtpEmitidoDto> SolicitarOtpAsync(SolicitarOtpRequest request, CancellationToken ct = default)
+    private static readonly TimeSpan ValidadeEntrada = TimeSpan.FromMinutes(10);
+    private const int EnviosPorEntrada = 3;
+    internal const int FalhasAteBloquear = 5;
+    internal static readonly TimeSpan JanelaDeFalhas = TimeSpan.FromMinutes(30);
+    internal static readonly TimeSpan TempoBloqueado = TimeSpan.FromMinutes(30);
+
+    internal const string OrigemCadastro = "cadastro";
+    internal const string OrigemEsus = "esus";
+
+    public async Task<EntradaCidadaoDto> IniciarEntradaAsync(
+        IniciarEntradaRequest request, string? canal, CancellationToken ct = default)
     {
         var cpf = Digitos(request.Cpf);
         if (cpf.Length != 11) throw new ValidacaoException("cpf", "CPF deve ter 11 dígitos.");
-
-        var paciente = await pacientes.ObterPorCpfAsync(cpf, ct);
-
-        // CPF sem cadastro: o app pede nascimento + telefone e o par é conferido na Receita
-        // (o nº da solicitação não existe — não há paciente nosso a que ela pudesse pertencer).
-        if (paciente is null) return NadaEnviado(SituacaoLoginCidadao.Cadastro);
-
-        if (!paciente.Ativo)
-        {
-            throw new ValidacaoException(
-                "paciente.inativo",
-                "Seu cadastro está inativo. Procure a sua unidade de saúde.");
-        }
-
-        var dados = await pacientes.ObterPorIdAsync(paciente.Id, ct);
-
-        // Sem contato VERIFICADO não sai código: mandar para um número que ninguém provou ser
-        // desta pessoa é entregar o prontuário a quem estiver com o aparelho. A dica dos últimos
-        // 4 dígitos ajuda quem ainda tem o número do cadastro a se reconhecer.
-        if (string.IsNullOrWhiteSpace(dados.TelefoneVerificado))
-        {
-            var doCadastro = PrimeiroTelefone(
-                dados.TelefonePrincipal, dados.TelefoneCelular, dados.TelefoneResidencial);
-            return NadaEnviado(SituacaoLoginCidadao.Verificacao, doCadastro is null ? null : Mascarar(doCadastro));
-        }
-
-        var envio = await EmitirCodigoAsync(
-            cpf, dados.TelefoneVerificado, paciente.Id, paciente.NomeCompleto, cadastro: null, ct);
-        return envio;
-    }
-
-    public async Task<OtpEmitidoDto> SolicitarOtpVerificacaoAsync(
-        SolicitarOtpVerificacaoRequest request, CancellationToken ct = default)
-    {
-        var cpf = Digitos(request.Cpf);
-        if (cpf.Length != 11) throw new ValidacaoException("cpf", "CPF deve ter 11 dígitos.");
-
-        var telefone = TelefoneValidacaoService.Canonizar(request.Telefone);
-        // 55 (DDI) + DDD (2) + número (>=8) = 12 dígitos no mínimo.
-        if (telefone.Length < 12)
-            throw new ValidacaoException("telefone.invalido", "Informe um número de celular com DDD.");
 
         var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (request.DataNascimento == default
-            || request.DataNascimento > hoje
-            || request.DataNascimento.Year < 1900)
-        {
+        var nascimento = request.DataNascimento;
+        if (nascimento == default || nascimento > hoje || nascimento.Year < 1900)
             throw new ValidacaoException("nascimento.invalido", "Informe uma data de nascimento válida.");
-        }
 
+        await GarantirNaoBloqueadoAsync(cpf, ct);
+
+        var desafio = new DesafioEntrada(NovoIdDesafio(), cpf, nascimento, CanalAppCidadao.Normalizar(canal));
         var paciente = await pacientes.ObterPorCpfAsync(cpf, ct);
-
-        Guid? pacienteId = null;
-        string? nome = null;
-        CadastroPendente? cadastro = null;
 
         if (paciente is null)
         {
-            // Cadastro novo: quem confere a identidade é a Receita (par CPF + nascimento) — ela
-            // também devolve o nome oficial, que é melhor do que qualquer nome digitado aqui.
-            var receita = await ConferirNaReceitaAsync(cpf, request.DataNascimento, ct);
-            cadastro = new CadastroPendente(receita.Nome.Trim(), request.DataNascimento, SexoDe(receita.Sexo));
+            // Sem cadastro: quem confere o par é a Receita, que também dá o nome do cadastro a criar.
+            var receita = await ConferirNaReceitaNaEntradaAsync(cpf, nascimento, ct);
+            desafio.Cadastro = new CadastroPendente(receita.Nome.Trim(), nascimento, SexoDe(receita.Sexo));
         }
         else
         {
@@ -109,48 +83,87 @@ public sealed class PacienteAuthService(
             }
 
             var dados = await pacientes.ObterPorIdAsync(paciente.Id, ct);
-
-            // TROCA DE NÚMERO NÃO SE FAZ POR AQUI (decisão do produto em 17/09/2026, LGPD).
-            // Quem JÁ tem contato verificado só troca no posto: os três dados pedidos nesta tela
-            // (nascimento + nº de solicitação) não são segredo — o número da solicitação está
-            // impresso na guia de papel. Quem estivesse com a guia apontaria o contato verificado
-            // para o próprio celular e passaria a receber laudo e login da pessoa.
-            // Continua valendo quando o número informado É o verificado (não há troca nenhuma).
-            if (!string.IsNullOrWhiteSpace(dados.TelefoneVerificado)
-                && !TelefoneValidacaoService.EhMesmoNumero(dados.TelefoneVerificado, telefone))
+            if (dados.DataNascimento is { } daFicha)
             {
-                throw new ValidacaoException(
-                    "telefone.troca_no_posto",
-                    "Este cadastro já tem um WhatsApp verificado. Para trocar o número, procure o "
-                    + "posto de saúde onde você é atendido(a), com um documento com foto.");
-            }
-
-            if (dados.DataNascimento is { } nascimento)
-            {
-                if (nascimento != request.DataNascimento)
-                {
-                    throw new ValidacaoException(
-                        "nascimento.nao_confere",
-                        "A data de nascimento não confere com o cadastro. Confira os dados ou procure a sua unidade de saúde.");
-                }
+                if (daFicha != nascimento) throw await NaoConfereAsync(cpf, ct);
             }
             else
             {
-                // Cadastro antigo sem data de nascimento: cai na mesma régua do cadastro novo.
-                await ConferirNaReceitaAsync(cpf, request.DataNascimento, ct);
+                // Ficha antiga sem data de nascimento: cai na mesma régua do cadastro novo.
+                await ConferirNaReceitaNaEntradaAsync(cpf, nascimento, ct);
             }
 
-            await GarantirSolicitacaoAsync(paciente.Id, request.CodigoSolicitacao, ct);
+            desafio.PacienteId = paciente.Id;
+            desafio.Nome = paciente.NomeCompleto;
 
-            pacienteId = paciente.Id;
-            nome = paciente.NomeCompleto;
+            // Já tem WhatsApp verificado: só ele. Oferecer os outros números da ficha seria trocar o
+            // verificado sem passar pelo posto (ADR-0057 §5) — com CPF + nascimento, que não são segredo.
+            if (!string.IsNullOrWhiteSpace(dados.TelefoneVerificado))
+            {
+                desafio.TemVerificado = true;
+                desafio.Adicionar(TelefoneValidacaoService.Canonizar(dados.TelefoneVerificado), OrigemCadastro, verificado: true);
+            }
+            else
+            {
+                foreach (var numero in await CelularesDaFichaAsync(paciente.Id, ct))
+                {
+                    if (await NumeroLivreAsync(cpf, numero, ct)) desafio.Adicionar(numero, OrigemCadastro, verificado: false);
+                }
+            }
         }
 
-        // Barra ANTES de mandar o código: número que já é o contato confirmado de outra pessoa
-        // nunca chegaria a ser validado, e queimar o código do cidadão por isso seria cruel.
-        await telefoneValidacao.GarantirNumeroLivreAsync(cpf, telefone, ct);
+        await ZerarFalhasAsync(cpf, ct);
 
-        return await EmitirCodigoAsync(cpf, telefone, pacienteId, nome, cadastro, ct);
+        desafio.EsusPermitido = !desafio.TemVerificado
+            && await configuracaoApp.ConsultarEsusNoCanalAsync(desafio.Canal, ct)
+            && await telefonesEsus.DisponivelAsync(ct);
+        cache.Set(ChaveEntrada(desafio.Id), desafio, ValidadeEntrada);
+        return Dto(desafio);
+    }
+
+    public async Task<EntradaCidadaoDto> BuscarNoEsusAsync(string desafioId, CancellationToken ct = default)
+    {
+        var desafio = Desafio(desafioId);
+        if (!desafio.EsusPermitido || desafio.EsusConsultado) return Dto(desafio);
+
+        var numeros = await telefonesEsus.BuscarAsync(new PessoaNaEntrada(desafio.Cpf, desafio.Nascimento), ct);
+        var patient = desafio.PacienteId is { } id ? await fhir.ObterAsync(id, ct) : null;
+        foreach (var numero in numeros)
+        {
+            if (desafio.Opcoes.Any(o => TelefoneValidacaoService.EhMesmoNumero(o.Telefone, numero))) continue;
+            if (patient is not null && TrocaTelefoneEsus.EhNumeroNegado(patient, numero)) continue;
+            if (!await NumeroLivreAsync(desafio.Cpf, numero, ct)) continue;
+            desafio.Adicionar(numero, OrigemEsus, verificado: false);
+        }
+
+        // Só depois de responder: "tente de novo em instantes" (conta em uso) precisa poder tentar de novo.
+        desafio.EsusConsultado = true;
+        logger.LogInformation(
+            "Entrada do cidadão: e-SUS consultado para o CPF {Cpf} ({Novos} número(s) a mais).",
+            desafio.Cpf, desafio.Opcoes.Count(o => o.Origem == OrigemEsus));
+        return Dto(desafio);
+    }
+
+    public async Task<OtpEmitidoDto> EnviarCodigoEntradaAsync(
+        string desafioId, EnviarCodigoEntradaRequest request, CancellationToken ct = default)
+    {
+        var desafio = Desafio(desafioId);
+        var opcao = desafio.Opcoes.FirstOrDefault(o => o.Id == request.OpcaoId)
+            ?? throw new ValidacaoException("entrada.opcao_invalida", "Escolha um dos números da lista.");
+
+        if (desafio.Envios >= EnviosPorEntrada)
+        {
+            throw new ValidacaoException(
+                "entrada.muitos_envios",
+                "Você já pediu vários códigos. Espere alguns minutos e comece de novo.");
+        }
+        desafio.Envios++;
+
+        // Barra ANTES de mandar o código: número que virou o contato confirmado de outra pessoa
+        // nunca chegaria a ser validado, e queimar o código do cidadão por isso seria cruel.
+        await telefoneValidacao.GarantirNumeroLivreAsync(desafio.Cpf, opcao.Telefone, ct);
+
+        return await EmitirCodigoAsync(desafio.Cpf, opcao.Telefone, desafio.PacienteId, desafio.Nome, desafio.Cadastro, ct);
     }
 
     public async Task<RespostaLoginPacienteDto> ValidarOtpAsync(
@@ -265,39 +278,6 @@ public sealed class PacienteAuthService(
         return new OtpEmitidoDto(true, "whatsapp", null, validadeSeg, mascarado);
     }
 
-    /// <summary>
-    /// Exige que o nº informado seja de uma solicitação DO PRÓPRIO paciente. É o que amarra o
-    /// cidadão ao cadastro: quem não tem solicitação importada não entra por aqui (decisão de
-    /// produto) e recebe a orientação de procurar o posto.
-    /// </summary>
-    private async Task GarantirSolicitacaoAsync(Guid pacienteId, string? codigoInformado, CancellationToken ct)
-    {
-        var codigo = Digitos(codigoInformado);
-        if (codigo.Length == 0)
-        {
-            throw new ValidacaoException(
-                "solicitacao.obrigatoria",
-                "Informe o nº da solicitação do seu exame ou consulta.");
-        }
-
-        // O SISREG grava o número sem zeros à esquerda; quem digita costuma incluí-los.
-        var semZeros = codigo.TrimStart('0');
-        var existe = await db.Solicitacoes
-            .AsNoTracking()
-            .AnyAsync(
-                s => s.ExcluidoEm == null
-                     && s.PacienteId == pacienteId
-                     && (s.CodigoSolicitacao == codigo || s.CodigoSolicitacao == semZeros),
-                ct);
-
-        if (!existe)
-        {
-            throw new ValidacaoException(
-                "solicitacao.nao_encontrada",
-                "Solicitação não encontrada. Entre em contato com o posto de atendimento.");
-        }
-    }
-
     /// <summary>Confere o par CPF + nascimento na Receita (proxy CPF) e devolve o nome oficial.</summary>
     private async Task<HubCpfRespostaDto> ConferirNaReceitaAsync(string cpf, DateOnly nascimento, CancellationToken ct)
     {
@@ -359,9 +339,6 @@ public sealed class PacienteAuthService(
         }
     }
 
-    private static OtpEmitidoDto NadaEnviado(string situacao, string? telefoneMascarado = null) =>
-        new(false, "nenhum", null, 0, telefoneMascarado, situacao);
-
     private static Sexo SexoDe(string? sexo) => sexo switch
     {
         "Masculino" => Sexo.Masculino,
@@ -376,16 +353,163 @@ public sealed class PacienteAuthService(
     private static string Digitos(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
 
-    /// <summary>Primeiro telefone com pelo menos 10 dígitos (DDD + número), na ordem informada.</summary>
-    private static string? PrimeiroTelefone(params string?[] candidatos) =>
-        candidatos.FirstOrDefault(f => !string.IsNullOrWhiteSpace(f) && Digitos(f).Length >= 10);
-
     /// <summary>Dica do destino para o usuário conferir, ex.: <c>***-1234</c>.</summary>
     private static string? Mascarar(string telefone)
     {
         var d = Digitos(telefone);
         return d.Length < 4 ? null : "***-" + d[^4..];
     }
+
+    /// <summary>
+    /// Confere CPF + nascimento na Receita, na entrada: a negativa conta como tentativa errada e volta
+    /// com a mesma mensagem de qualquer "não confere".
+    /// </summary>
+    private async Task<HubCpfRespostaDto> ConferirNaReceitaNaEntradaAsync(string cpf, DateOnly nascimento, CancellationToken ct)
+    {
+        try
+        {
+            return await ConferirNaReceitaAsync(cpf, nascimento, ct);
+        }
+        catch (ValidacaoException ex) when (ex.Erros.ContainsKey("identidade.nao_confere"))
+        {
+            throw await NaoConfereAsync(cpf, ct);
+        }
+    }
+
+    /// <summary>Os celulares ativos da ficha, na ordem do cadastro (o principal primeiro), sem os negados.</summary>
+    private async Task<IReadOnlyList<string>> CelularesDaFichaAsync(Guid pacienteId, CancellationToken ct)
+    {
+        var patient = await fhir.ObterAsync(pacienteId, ct);
+        if (patient is null) return [];
+
+        var numeros = new List<string>();
+        foreach (var t in TrocaTelefoneEsus.TelefonesAtivos(patient).OrderBy(t => t.Rank ?? int.MaxValue))
+        {
+            if (string.IsNullOrWhiteSpace(t.Value) || TrocaTelefoneEsus.EhNumeroNegado(patient, t.Value)) continue;
+            var numero = TelefoneValidacaoService.Canonizar(t.Value);
+            if (!TelefoneWhatsApp.EhCelularBr(numero)) continue;
+            if (numeros.Any(n => TelefoneValidacaoService.EhMesmoNumero(n, numero))) continue;
+            numeros.Add(numero);
+        }
+        return numeros;
+    }
+
+    /// <summary>Número que já é o contato confirmado de OUTRO CPF não entra na lista.</summary>
+    private async Task<bool> NumeroLivreAsync(string cpf, string numero, CancellationToken ct)
+    {
+        try
+        {
+            await telefoneValidacao.GarantirNumeroLivreAsync(cpf, numero, ct);
+            return true;
+        }
+        catch (ConflitoException)
+        {
+            return false;
+        }
+    }
+
+    private async Task GarantirNaoBloqueadoAsync(string cpf, CancellationToken ct)
+    {
+        var bloqueio = await db.CidadaoEntradaBloqueios.AsNoTracking().FirstOrDefaultAsync(b => b.Cpf == cpf, ct);
+        if (bloqueio?.BloqueadoAte is { } ate && ate > DateTime.UtcNow)
+        {
+            throw new ValidacaoException(
+                "entrada.bloqueada",
+                $"Muitas tentativas com este CPF. Tente de novo depois das {FusoBrasilia.ParaExibicao(ate):HH:mm} "
+                + "ou procure a sua unidade de saúde.");
+        }
+    }
+
+    /// <summary>
+    /// Conta a tentativa errada e devolve a exceção — sempre a mesma mensagem, para não dizer a quem
+    /// tenta adivinhar o que errou. <see cref="FalhasAteBloquear"/> erros em <see cref="JanelaDeFalhas"/>
+    /// bloqueiam o CPF por <see cref="TempoBloqueado"/>.
+    /// </summary>
+    private async Task<ValidacaoException> NaoConfereAsync(string cpf, CancellationToken ct)
+    {
+        var agora = DateTime.UtcNow;
+        try
+        {
+            var b = await db.CidadaoEntradaBloqueios.FirstOrDefaultAsync(x => x.Cpf == cpf, ct);
+            if (b is null)
+            {
+                b = new CidadaoEntradaBloqueio { Cpf = cpf, PrimeiraFalhaEm = agora };
+                db.CidadaoEntradaBloqueios.Add(b);
+            }
+            else if (agora - b.PrimeiraFalhaEm > JanelaDeFalhas || b.BloqueadoAte is { } ate && ate <= agora)
+            {
+                b.Falhas = 0;
+                b.PrimeiraFalhaEm = agora;
+                b.BloqueadoAte = null;
+            }
+
+            b.Falhas++;
+            if (b.Falhas >= FalhasAteBloquear)
+            {
+                b.BloqueadoAte = agora + TempoBloqueado;
+                logger.LogWarning("Entrada do cidadão: CPF {Cpf} bloqueado por {Minutos} min após {Falhas} erros.",
+                    cpf, TempoBloqueado.TotalMinutes, b.Falhas);
+            }
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Duas tentativas ao mesmo tempo no mesmo CPF: a outra já contou. Não derruba a resposta.
+            logger.LogInformation(ex, "Entrada do cidadão: contagem de erro do CPF {Cpf} em corrida.", cpf);
+        }
+
+        return new ValidacaoException(
+            "entrada.nao_confere",
+            "Não conseguimos confirmar os seus dados. Confira o CPF e a data de nascimento ou procure a sua unidade de saúde.");
+    }
+
+    private Task ZerarFalhasAsync(string cpf, CancellationToken ct) =>
+        db.CidadaoEntradaBloqueios.Where(b => b.Cpf == cpf).ExecuteDeleteAsync(ct);
+
+    private DesafioEntrada Desafio(string? desafioId)
+    {
+        if (string.IsNullOrWhiteSpace(desafioId)
+            || !cache.TryGetValue(ChaveEntrada(desafioId), out DesafioEntrada? desafio) || desafio is null)
+        {
+            throw new ValidacaoException("entrada.expirada", "O tempo para entrar acabou. Comece de novo.");
+        }
+        return desafio;
+    }
+
+    private static EntradaCidadaoDto Dto(DesafioEntrada d) => new(
+        d.Id,
+        [.. d.Opcoes.Select(o => new OpcaoEntradaDto(o.Id, TelefoneWhatsApp.Ultimos4(o.Telefone), o.Origem, o.Verificado))],
+        d.EsusPermitido && !d.EsusConsultado,
+        (int)ValidadeEntrada.TotalSeconds);
+
+    private static string NovoIdDesafio() => Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+
+    private static string ChaveEntrada(string desafioId) => $"entrada:desafio:{desafioId}";
+
+    /// <summary>
+    /// A entrada em andamento, entre "CPF + nascimento" e o envio do código. Guarda os números de verdade;
+    /// o app só vê o final de cada um. Vive <see cref="ValidadeEntrada"/> no cache do servidor.
+    /// </summary>
+    private sealed class DesafioEntrada(string id, string cpf, DateOnly nascimento, string canal)
+    {
+        public string Id { get; } = id;
+        public string Cpf { get; } = cpf;
+        public DateOnly Nascimento { get; } = nascimento;
+        public string Canal { get; } = canal;
+        public Guid? PacienteId { get; set; }
+        public string? Nome { get; set; }
+        public CadastroPendente? Cadastro { get; set; }
+        public bool TemVerificado { get; set; }
+        public bool EsusPermitido { get; set; }
+        public bool EsusConsultado { get; set; }
+        public int Envios { get; set; }
+        public List<OpcaoTelefone> Opcoes { get; } = [];
+
+        public void Adicionar(string telefone, string origem, bool verificado) =>
+            Opcoes.Add(new OpcaoTelefone((Opcoes.Count + 1).ToString(CultureInfo.InvariantCulture), telefone, origem, verificado));
+    }
+
+    private sealed record OpcaoTelefone(string Id, string Telefone, string Origem, bool Verificado);
 
     /// <summary>Cadastro a criar quando o código for confirmado (dados já conferidos na Receita).</summary>
     private sealed record CadastroPendente(string Nome, DateOnly DataNascimento, Sexo Sexo);

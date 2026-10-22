@@ -699,18 +699,72 @@ class TelefoneValidado {
   final String? validadoEm;
 }
 
-/// Resposta de `POST /auth/paciente/solicitar-otp`.
-class RespostaSolicitarOtp {
-  const RespostaSolicitarOtp({required this.situacao, this.codigoTeste, this.telefoneMascarado});
+/// Um número para onde o código pode ir. O app só vê o final; o número fica no servidor (ADR-0078).
+class OpcaoTelefoneEntrada {
+  const OpcaoTelefoneEntrada({
+    required this.id,
+    required this.finalDoNumero,
+    required this.origem,
+    required this.verificado,
+  });
 
-  factory RespostaSolicitarOtp.deJson(Json? j) => RespostaSolicitarOtp(
-        situacao: _s(j?['situacao']) ?? 'otp',
+  factory OpcaoTelefoneEntrada.deJson(Json j) => OpcaoTelefoneEntrada(
+        id: j['id'] as String,
+        finalDoNumero: _s(j['final']) ?? '',
+        origem: _s(j['origem']) ?? 'cadastro',
+        verificado: _b(j['verificado']),
+      );
+
+  final String id;
+
+  /// Últimos 4 dígitos (`final` no JSON — palavra reservada no Dart).
+  final String finalDoNumero;
+
+  /// 'cadastro' | 'esus' (achado no e-SUS PEC na hora, pelo "Nenhum desses é meu").
+  final String origem;
+
+  /// É o WhatsApp já confirmado — aí ele é o único da lista (trocar é no posto).
+  final bool verificado;
+}
+
+/// Resposta de `POST /auth/paciente/entrada` e de `.../esus` (que devolve a lista inteira).
+class EntradaCidadao {
+  const EntradaCidadao({
+    required this.desafioId,
+    required this.opcoes,
+    required this.podeBuscarEsus,
+    required this.validadeSegundos,
+  });
+
+  factory EntradaCidadao.deJson(Json j) => EntradaCidadao(
+        desafioId: j['desafioId'] as String,
+        opcoes: _lista(j['opcoes'], OpcaoTelefoneEntrada.deJson),
+        podeBuscarEsus: _b(j['podeBuscarEsus']),
+        validadeSegundos: _i(j['validadeSegundos']) ?? 0,
+      );
+
+  final String desafioId;
+  final List<OpcaoTelefoneEntrada> opcoes;
+
+  /// O canal deixa procurar no e-SUS e ainda não se procurou nesta entrada.
+  final bool podeBuscarEsus;
+  final int validadeSegundos;
+}
+
+/// Código emitido (`POST /auth/paciente/entrada/{desafioId}/enviar`). `codigoTeste` só vem quando o
+/// servidor não está com o WhatsApp configurado (aí aparece na tela).
+class OtpEmitido {
+  const OtpEmitido({required this.canal, required this.validadeSegundos, this.codigoTeste, this.telefoneMascarado});
+
+  factory OtpEmitido.deJson(Json? j) => OtpEmitido(
+        canal: _s(j?['canal']) ?? '',
+        validadeSegundos: _i(j?['validadeSegundos']) ?? 0,
         codigoTeste: _s(j?['codigoTeste']),
         telefoneMascarado: _s(j?['telefoneMascarado']),
       );
 
-  /// 'otp' (código enviado) | 'verificacao' (WhatsApp não verificado) | 'cadastro' (CPF novo).
-  final String situacao;
+  final String canal;
+  final int validadeSegundos;
   final String? codigoTeste;
   final String? telefoneMascarado;
 }

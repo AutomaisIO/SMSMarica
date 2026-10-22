@@ -23,27 +23,27 @@ class ApiCidadao {
 
   // ── Login (rotas públicas) ────────────────────────────────────────────────────────────────
 
-  Future<RespostaSolicitarOtp> solicitarOtp(String cpf) async {
-    final r = await _dio.post<Json>('/auth/paciente/solicitar-otp', data: {'cpf': cpf});
-    return RespostaSolicitarOtp.deJson(r.data);
+  // Entrada (ADR-0078): CPF + nascimento → os números que a Saúde já conhece → o código vai para o
+  // escolhido. Nunca para um número digitado.
+
+  /// [dataNascimento] em 'aaaa-mm-dd'.
+  Future<EntradaCidadao> entrada(String cpf, String dataNascimento) async {
+    final r = await _dio.post<Json>('/auth/paciente/entrada', data: {'cpf': cpf, 'dataNascimento': dataNascimento});
+    return EntradaCidadao.deJson(r.data!);
   }
 
-  Future<RespostaSolicitarOtp> solicitarOtpVerificacao({
-    required String cpf,
-    required String dataNascimento,
-    required String? codigoSolicitacao,
-    required String telefone,
-  }) async {
+  /// "Nenhum desses é meu": procura no e-SUS (pode levar uns 10–20 s). Devolve a lista inteira.
+  Future<EntradaCidadao> procurarTelefoneNoEsus(String desafioId) async {
+    final r = await _dio.post<Json>('/auth/paciente/entrada/${Uri.encodeComponent(desafioId)}/esus');
+    return EntradaCidadao.deJson(r.data!);
+  }
+
+  Future<OtpEmitido> enviarCodigo(String desafioId, String opcaoId) async {
     final r = await _dio.post<Json>(
-      '/auth/paciente/solicitar-otp-verificacao',
-      data: {
-        'cpf': cpf,
-        'dataNascimento': dataNascimento,
-        'codigoSolicitacao': codigoSolicitacao,
-        'telefone': telefone,
-      },
+      '/auth/paciente/entrada/${Uri.encodeComponent(desafioId)}/enviar',
+      data: {'opcaoId': opcaoId},
     );
-    return RespostaSolicitarOtp.deJson(r.data);
+    return OtpEmitido.deJson(r.data);
   }
 
   Future<RespostaLogin> validarOtp(String cpf, String codigo) async {

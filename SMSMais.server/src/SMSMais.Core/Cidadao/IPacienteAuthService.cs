@@ -3,27 +3,29 @@ using SMSMais.Core.Cidadao.Dtos;
 namespace SMSMais.Core.Cidadao;
 
 /// <summary>
-/// Autenticação do paciente no PWA: CPF + código (OTP). Hoje o código é exibido na tela
-/// (modo teste); com o canal WhatsApp configurado (Automais.Zap), o código vai por ele.
+/// Entrada do paciente no app (PWA e nativo), ADR-0078: CPF + data de nascimento → escolher um dos
+/// números já conhecidos (ficha, ou e-SUS quando o canal permite) → código pelo WhatsApp. O código
+/// nunca vai para um número digitado.
 /// </summary>
 public interface IPacienteAuthService
 {
     /// <summary>
-    /// Passo 1: só CPF. Envia o código apenas quando o contato do cadastro está VERIFICADO
-    /// (<c>situacao=otp</c>). Sem verificação devolve <c>situacao=verificacao</c> e, sem cadastro,
-    /// <c>situacao=cadastro</c> — em ambos nada é enviado e o app segue para
-    /// <see cref="SolicitarOtpVerificacaoAsync"/>.
+    /// Passo 1: confere CPF + nascimento (contra a ficha; sem ficha ou sem data, na Receita) e devolve
+    /// os números possíveis. Quem já tem WhatsApp verificado vê só esse. Erro de dados conta tentativa:
+    /// 5 em 30 min bloqueiam o CPF por 30 min. <paramref name="canal"/> é o cabeçalho
+    /// <c>X-App-Canal</c> (decide se o e-SUS pode ser consultado).
     /// </summary>
-    Task<OtpEmitidoDto> SolicitarOtpAsync(SolicitarOtpRequest request, CancellationToken ct = default);
+    Task<EntradaCidadaoDto> IniciarEntradaAsync(IniciarEntradaRequest request, string? canal, CancellationToken ct = default);
+
+    /// <summary>"Nenhum desses é meu": acrescenta os celulares do e-SUS que ainda não estavam na lista.</summary>
+    Task<EntradaCidadaoDto> BuscarNoEsusAsync(string desafioId, CancellationToken ct = default);
 
     /// <summary>
-    /// Passo 2 (contato não verificado, ou número perdido): confere a identidade e envia o código
-    /// para o telefone informado. Com cadastro: data de nascimento + nº da solicitação SISREG do
-    /// próprio paciente. Sem cadastro: par CPF/nascimento conferido na Receita (proxy CPF) — o
-    /// paciente é criado só quando o código é confirmado em <see cref="ValidarOtpAsync"/>.
+    /// Envia o código para o número escolhido. Sem cadastro, o paciente só é criado quando o código é
+    /// confirmado em <see cref="ValidarOtpAsync"/>.
     /// </summary>
-    Task<OtpEmitidoDto> SolicitarOtpVerificacaoAsync(
-        SolicitarOtpVerificacaoRequest request, CancellationToken ct = default);
+    Task<OtpEmitidoDto> EnviarCodigoEntradaAsync(
+        string desafioId, EnviarCodigoEntradaRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Valida o OTP e abre a sessão (single-device). <paramref name="dispositivo"/> e

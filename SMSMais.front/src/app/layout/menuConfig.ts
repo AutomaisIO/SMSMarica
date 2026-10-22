@@ -43,6 +43,7 @@ import {
   ScrollText,
   Settings2,
   Siren,
+  Smartphone,
   Sparkles,
   Star,
   Stethoscope,
@@ -91,6 +92,11 @@ export type ItemMenu = {
    * cada fonte. A visibilidade do sub-grupo segue os `subItens` acessíveis.
    */
   subItens?: ItemMenu[];
+  /**
+   * Só para quem tem acesso global (`usuario.acessoGlobal`), além do `modulo` se houver. O servidor
+   * confere de novo — isto só evita mostrar a quem receberia 403.
+   */
+  somenteAcessoGlobal?: boolean;
 };
 
 export type SecaoMenu = {
@@ -819,6 +825,13 @@ export const SECOES: SecaoMenu[] = [
         icone: Landmark,
         modulo: 'Instituicao',
         descricao: 'Nome, marca, domínios e contatos legais desta instância.',
+      },
+      {
+        rotulo: 'App do cidadão',
+        to: '/app/app-cidadao',
+        icone: Smartphone,
+        somenteAcessoGlobal: true,
+        descricao: 'Como o paciente entra no PWA e no app nativo (consulta ao e-SUS), com o histórico de ajustes.',
       },
       {
         rotulo: 'Fontes de dados',

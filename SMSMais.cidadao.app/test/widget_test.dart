@@ -12,8 +12,8 @@ import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
 import 'package:sms_mais_cidadao/shared/util/documentos_br.dart';
 
 /// App com a API trocada pelo modo demonstração (sem rede, dados fictícios).
-Widget _app({SessaoCidadao? sessao}) {
-  final dio = Dio(BaseOptions(baseUrl: 'https://demo'))..httpClientAdapter = DemoAdapter(atraso: Duration.zero);
+Widget _app({SessaoCidadao? sessao, Duration atraso = Duration.zero}) {
+  final dio = Dio(BaseOptions(baseUrl: 'https://demo'))..httpClientAdapter = DemoAdapter(atraso: atraso);
   return ProviderScope(
     overrides: [
       sessaoInicialProvider.overrideWithValue(sessao),
@@ -75,26 +75,108 @@ void main() {
     });
   });
 
-  testWidgets('sem sessão abre o login com o CPF', (tester) async {
+  testWidgets('sem sessão abre o login com CPF e data de nascimento', (tester) async {
     _celular(tester);
     await tester.pumpWidget(_app());
     await _assentar(tester);
 
     expect(find.text('Entrar'), findsWidgets);
-    expect(find.text('Receber código'), findsOneWidget);
+    expect(find.text('SEU CPF'), findsOneWidget);
+    expect(find.text('DATA DE NASCIMENTO'), findsOneWidget);
+    expect(find.text('Continuar'), findsOneWidget);
   });
 
-  testWidgets('login por CPF + código chega ao Cartão do Cidadão', (tester) async {
+  testWidgets('login confere CPF e data antes de continuar', (tester) async {
     _celular(tester);
     await tester.pumpWidget(_app());
     await _assentar(tester);
 
-    await tester.enterText(find.byType(TextField).first, '52998224725');
+    // CPF com dígito verificador errado: avisa e não sai da tela.
+    await tester.enterText(find.byType(TextField).at(0), '52998224724');
+    await tester.enterText(find.byType(TextField).at(1), '20051961');
     await tester.pump();
-    await _tocar(tester, find.text('Receber código'));
+    expect(find.text('CPF inválido. Confira os números.'), findsOneWidget);
+    await _tocar(tester, find.text('Continuar'));
+    await _assentar(tester);
+    expect(find.text('Para onde enviamos o código?'), findsNothing);
+
+    // Data que não existe no calendário.
+    await tester.enterText(find.byType(TextField).at(0), '52998224725');
+    await tester.enterText(find.byType(TextField).at(1), '31021990');
+    await tester.pump();
+    expect(find.text('CPF inválido. Confira os números.'), findsNothing);
+    expect(find.text('Data inválida. Confira o dia, o mês e o ano.'), findsOneWidget);
+    await _tocar(tester, find.text('Continuar'));
+    await _assentar(tester);
+    expect(find.text('Para onde enviamos o código?'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).at(1), '20051961');
+    await tester.pump();
+    expect(find.text('Data inválida. Confira o dia, o mês e o ano.'), findsNothing);
+    await _tocar(tester, find.text('Continuar'));
+    await _assentar(tester);
+    expect(find.text('Para onde enviamos o código?'), findsOneWidget);
+  });
+
+  testWidgets('escolha do WhatsApp: finais mascarados, e-SUS e posto', (tester) async {
+    _celular(tester);
+    // Com atraso, para ver o "procurando" enquanto o e-SUS responde.
+    await tester.pumpWidget(_app(atraso: const Duration(milliseconds: 500)));
+    await _assentar(tester);
+    await tester.enterText(find.byType(TextField).at(0), '52998224725');
+    await tester.enterText(find.byType(TextField).at(1), '20051961');
+    await tester.pump();
+    await _tocar(tester, find.text('Continuar'));
+    await _assentar(tester);
+
+    // Só o final de cada número, com a origem; o botão espera a escolha.
+    expect(find.text('WhatsApp final 4321'), findsOneWidget);
+    expect(find.text('WhatsApp final 7788'), findsOneWidget);
+    expect(find.text('Do seu cadastro'), findsNWidgets(2));
+    expect(find.text('Enviar código'), findsOneWidget);
+    expect(find.text('Procurar outros números'), findsNothing);
+
+    // "Nenhum desses é meu" com o e-SUS permitido: oferece a busca, não o envio.
+    await _tocar(tester, find.text('Nenhum desses é meu'));
+    await tester.pump();
+    expect(find.text('Enviar código'), findsNothing);
+    expect(find.text('Procurar outros números'), findsOneWidget);
+
+    await _tocar(tester, find.text('Procurar outros números'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Procurando outros números… isso pode levar alguns segundos.'), findsOneWidget);
+    await _assentar(tester);
+
+    // O número novo entra na lista e a escolha recomeça.
+    expect(find.text('WhatsApp final 5566'), findsOneWidget);
+    expect(find.text('Encontrado no e-SUS'), findsOneWidget);
+    expect(find.text('Enviar código'), findsOneWidget);
+
+    // e-SUS já consultado: "nenhum desses" agora leva ao posto.
+    await _tocar(tester, find.text('Nenhum desses é meu'));
+    await tester.pump();
+    expect(find.text('Procurar outros números'), findsNothing);
+    expect(find.textContaining('para atualizar o seu WhatsApp'), findsOneWidget);
+  });
+
+  testWidgets('login por CPF + nascimento + código chega ao Cartão do Cidadão', (tester) async {
+    _celular(tester);
+    await tester.pumpWidget(_app());
+    await _assentar(tester);
+
+    await tester.enterText(find.byType(TextField).at(0), '52998224725');
+    await tester.enterText(find.byType(TextField).at(1), '20051961');
+    await tester.pump();
+    await _tocar(tester, find.text('Continuar'));
+    await _assentar(tester);
+
+    await _tocar(tester, find.text('WhatsApp final 4321'));
+    await tester.pump();
+    await _tocar(tester, find.text('Enviar código'));
     await _assentar(tester);
 
     expect(find.text('Código de acesso'), findsOneWidget);
+    expect(find.text('Enviado para o WhatsApp final 4321.'), findsOneWidget);
     await tester.enterText(find.byType(TextField).first, '123456');
     await tester.pump();
     await _tocar(tester, find.text('Entrar').last);

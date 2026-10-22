@@ -96,6 +96,7 @@ import { EsusSgSolicitacaoDetalhePage } from '@/features/esussg/pages/EsusSgSoli
 import RegulacaoEsusSgConfiguracaoPage from '@/features/esussg/pages/RegulacaoEsusSgConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
 import { FontesDadosPage } from '@/features/fontes-dados/pages/FontesDadosPage';
+import { AppCidadaoPage } from '@/features/app-cidadao/pages/AppCidadaoPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
@@ -353,6 +354,8 @@ export function AppRouter() {
           <Route path="pep-sincronizacao/fontes" element={<Navigate to="/app/fontes-dados" replace />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />
           <Route path="integracoes" element={<IntegracoesPage />} />
+          {/* Só admin global (ADR-0078): o servidor responde 403 aos demais. */}
+          <Route path="app-cidadao" element={<AppCidadaoPage />} />
           <Route path="auditoria" element={<AuditoriaPage />} />
           <Route path="instituicao" element={<InstituicaoPage />} />
           <Route element={<RotaComModulo modulo="FontesDados" rotulo="Fontes de dados" />}>

@@ -6,9 +6,9 @@ import 'package:sms_mais_cidadao/features/agendados/ticket_exame_page.dart';
 import 'package:sms_mais_cidadao/features/atendimentos/atendimentos_page.dart';
 import 'package:sms_mais_cidadao/features/auth/consentimento_gate.dart';
 import 'package:sms_mais_cidadao/features/auth/entrar_page.dart';
+import 'package:sms_mais_cidadao/features/auth/escolher_telefone_page.dart';
 import 'package:sms_mais_cidadao/features/auth/login_page.dart';
 import 'package:sms_mais_cidadao/features/auth/otp_page.dart';
-import 'package:sms_mais_cidadao/features/auth/verificacao_page.dart';
 import 'package:sms_mais_cidadao/features/chat/chat_page.dart';
 import 'package:sms_mais_cidadao/features/documento_publico/documento_publico_page.dart';
 import 'package:sms_mais_cidadao/features/documentos/documentos_page.dart';
@@ -52,9 +52,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
+      // Escolha do WhatsApp que recebe o código (ADR-0078). A antiga /login/verificacao (nº da
+      // solicitação + número digitado) saiu; um link velho para ela cai no `errorBuilder` (Início).
       GoRoute(
-        path: '/login/verificacao',
-        builder: (_, s) => VerificacaoPage(dados: s.extra as Map<String, String?>?),
+        path: '/login/telefone',
+        builder: (_, s) => EscolherTelefonePage(dados: s.extra as Map<String, Object?>?),
       ),
       GoRoute(
         path: '/login/codigo',

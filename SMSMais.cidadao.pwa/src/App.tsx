@@ -4,7 +4,7 @@ import { AppShell } from '@/components/AppShell';
 import { ConsentGate } from '@/components/ConsentGate';
 import { Login } from '@/pages/Login';
 import { Otp } from '@/pages/Otp';
-import { Verificacao } from '@/pages/Verificacao';
+import { EscolherTelefone } from '@/pages/EscolherTelefone';
 import { Home } from '@/pages/Home';
 import { Perfil } from '@/pages/Perfil';
 import { Atendimentos } from '@/pages/Atendimentos';
@@ -28,7 +28,9 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/login/verificacao" element={<Verificacao />} />
+        {/* Escolha do WhatsApp que recebe o código (ADR-0078). A antiga /login/verificacao (nº da
+            solicitação + número digitado) saiu; um link velho para ela cai no `*` abaixo. */}
+        <Route path="/login/telefone" element={<EscolherTelefone />} />
         <Route path="/login/codigo" element={<Otp />} />
         {/* Link público de download (uso único) enviado ao paciente — sem autenticação. */}
         <Route path="/documento/:token" element={<Documento />} />
