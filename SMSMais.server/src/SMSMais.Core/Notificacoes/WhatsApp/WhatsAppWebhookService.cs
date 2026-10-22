@@ -355,6 +355,33 @@ public sealed class WhatsAppWebhookService(
                         entrada.Property(nome).CurrentValue = valor;
                 }
             }
+            catch (DbUpdateException ex) when (tentativa < MaxTentativasGravacao
+                && ViolouIndice(ex, "IX_agendamento_confirmacao_estado_telefone_canonical"))
+            {
+                // Corrida de CRIAÇÃO: dois webhooks do mesmo número viram "não há estado" e os dois
+                // tentaram INSERIR a linha de estado (índice único por telefone) — o segundo viola a
+                // chave. Em vez de descartar o efeito, ADOTA a linha que o outro webhook já criou e
+                // aplica por cima o que este queria (abrir/atualizar o estado é idempotente). Mesmo
+                // espírito da adoção da conversa viva em SalvarEntradaAsync. 22/10/2026.
+                var entrada = ex.Entries.FirstOrDefault(
+                    e => e.Entity is SMSMais.Data.Entities.AgendamentoConfirmacaoEstado);
+                if (entrada?.Entity is SMSMais.Data.Entities.AgendamentoConfirmacaoEstado novo)
+                {
+                    entrada.State = EntityState.Detached;
+                    var existente = await db.AgendamentoConfirmacaoEstados
+                        .FirstOrDefaultAsync(e => e.TelefoneCanonical == novo.TelefoneCanonical, ct);
+                    if (existente is not null)
+                    {
+                        existente.ComunicacaoPacienteId = novo.ComunicacaoPacienteId;
+                        existente.Etapa = novo.Etapa;
+                        existente.ExpiraEm = novo.ExpiraEm;
+                        existente.AtualizadoEm = DateTime.UtcNow;
+                    }
+                    logger.LogInformation(
+                        "Webhook WhatsApp: a linha de estado do telefone já foi criada por outro webhook "
+                        + "— adotando a existente (tentativa {Tentativa}).", tentativa);
+                }
+            }
             catch (DbUpdateException ex)
             {
                 logger.LogError(ex,
