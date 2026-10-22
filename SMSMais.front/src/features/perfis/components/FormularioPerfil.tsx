@@ -125,9 +125,6 @@ export function FormularioPerfil({ modo, id, aoConcluir }: Props) {
 
       <section>
         <h3 className="mb-2 text-sm font-semibold text-gray-900">Permissões</h3>
-        <p className="mb-3 text-xs text-gray-500">
-          Marque o que este perfil pode fazer em cada módulo. Quem tiver este perfil herda essas permissões.
-        </p>
         <MatrizPermissoes
           editaveis={valores.matriz}
           aoMudarEditaveis={(m) => set('matriz', m)}
