@@ -49,10 +49,15 @@ export function useStatusPep() {
   });
 }
 
-export function useExecucoesPep(fonteId?: string) {
+/**
+ * Histórico de UMA base. O filtro vai ao servidor (e não na tela) porque ele corta nas 50 mais
+ * recentes: misturado, a base de ciclo mais curto empurrava as outras para fora da lista.
+ */
+export function useExecucoesPep(fonteId: string) {
   return useQuery({
     queryKey: pepKeys.execucoes(fonteId),
     queryFn: () => listarExecucoesPep(fonteId),
+    enabled: !!fonteId,
   });
 }
 
