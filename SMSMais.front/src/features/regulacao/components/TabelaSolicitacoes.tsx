@@ -2,7 +2,9 @@ import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacie
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { formatarInstante } from '@/shared/lib/datas';
 
-import { ROTULO_FLUXO, StatusRegulacaoBadge } from './StatusRegulacaoBadge';
+import { Share2 } from 'lucide-react';
+
+import { BadgeNar, CLASSE_LINHA_NAR, ROTULO_FILA, ROTULO_FLUXO, StatusRegulacaoBadge } from './StatusRegulacaoBadge';
 import type { SolicitacaoRegulacaoLista } from '../tiposSolicitacao';
 
 /**
@@ -75,11 +77,23 @@ export function TabelaSolicitacoes({
       className: 'whitespace-nowrap',
       ordenar: (s) => s.fluxo,
       render: (s) => (
-        <div className="text-xs">
-          <p className="text-slate-700">{ROTULO_FLUXO[s.fluxo]}</p>
-          {s.unidadeEmNomeDe && (
-            <p className="text-slate-500" title="NAR: aberta em nome de outra unidade">
-              p/ {s.unidadeEmNomeDe}
+        <div className="max-w-56 space-y-0.5 text-xs">
+          {s.fluxo === 'Nar' ? (
+            <>
+              <BadgeNar />
+              {s.unidadeEmNomeDe && (
+                <p className="truncate text-violet-800" title={`Em nome de ${s.unidadeEmNomeDe}`}>
+                  em nome de {s.unidadeEmNomeDe}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-slate-700">{ROTULO_FLUXO[s.fluxo]}</p>
+          )}
+          {(s.filasCompartilhadas ?? []).length > 0 && (
+            <p className="flex items-center gap-1 text-sky-800">
+              <Share2 className="size-3" aria-hidden />
+              {s.filasCompartilhadas.map((f) => ROTULO_FILA[f]).join(', ')}
             </p>
           )}
         </div>
@@ -133,6 +147,7 @@ export function TabelaSolicitacoes({
       chaveLinha={(s) => s.id}
       carregando={carregando}
       aoClicarLinha={aoAbrir}
+      classeLinha={(s) => (s.fluxo === 'Nar' ? CLASSE_LINHA_NAR : undefined)}
       dicaLinha="Clique para abrir a solicitação"
       vazio={vazio ?? 'Nenhuma solicitação nesta situação.'}
       idTabela="regulacao-solicitacoes"

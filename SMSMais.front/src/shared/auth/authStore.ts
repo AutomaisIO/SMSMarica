@@ -56,6 +56,10 @@ export type ModuloPermissao =
   // GLOBAL já valem hoje: são eles que liberam a lente "Município" do painel de início (ADR-0033).
   | 'Regulacao'
   | 'RegulacaoTriagem'
+  // Filas da Gestão de fila (83/84/85): quais pedidos o regulador vê e em quais age.
+  | 'RegulacaoFilaNar'
+  | 'RegulacaoFilaInterna'
+  | 'RegulacaoFilaIntermunicipal'
   | 'RegulacaoMedica'
   | 'RegulacaoAgendamento'
   | 'RegulacaoConfiguracao'

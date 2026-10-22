@@ -128,8 +128,7 @@ export function PermissoesSecao({
           ) : null}
         </div>
         <p className="mb-3 text-xs text-gray-500">
-          Ações com fundo cinza são <strong>herdadas dos perfis</strong> selecionados (não podem
-          ser desmarcadas). Marque ações adicionais como override individual.
+          Esmaecida = herdada do perfil. Marque para dar a mais só a este usuário.
         </p>
         <MatrizPermissoes
           herdadas={herdadas}

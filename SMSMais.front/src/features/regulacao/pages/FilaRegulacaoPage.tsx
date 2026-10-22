@@ -10,6 +10,8 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 
 import { ABAS_GESTAO_FILA, AbasFilaRegulacao } from '../components/AbasFilaRegulacao';
+import { ROTULO_FILA } from '../components/StatusRegulacaoBadge';
+import { useFilasDoPerfil } from '../lib/filasDoPerfil';
 import { TabelaSolicitacoes } from '../components/TabelaSolicitacoes';
 import { useResumoFilaRegulacao, useSolicitacoes } from '../api/solicitacoesQueries';
 import type { FluxoRegulacao } from '../tiposSolicitacao';
@@ -35,6 +37,8 @@ export function FilaRegulacaoPage() {
   const [buscaAplicada, setBuscaAplicada] = useState('');
   const [fluxo, setFluxo] = useState<FluxoRegulacao | ''>('');
   const [sistema, setSistema] = useState<SistemaRegulacao | ''>('');
+  // As filas (NAR, Interna, Intermunicipal) que o perfil enxerga — o servidor recorta igual.
+  const filas = useFilasDoPerfil();
 
   // Fila do agente: o município inteiro com "todas" no topo, ou a unidade escolhida lá — o backend
   // só amplia para quem tem o 48.
@@ -106,16 +110,18 @@ export function FilaRegulacaoPage() {
           </Button>
         </form>
 
-        <Campo label="Fluxo" htmlFor="filtro-fluxo">
+        <Campo label="Fila" htmlFor="filtro-fluxo">
           <Select
             id="filtro-fluxo"
             value={fluxo}
             onChange={(e) => setFluxo(e.target.value as FluxoRegulacao | '')}
           >
-            <option value="">Todos</option>
-            <option value="Interno">Interno (SISREG)</option>
-            <option value="Externo">Externo</option>
-            <option value="Nar">NAR</option>
+            <option value="">{filas.length > 1 ? 'Todas as minhas' : 'Todas'}</option>
+            {filas.map((f) => (
+              <option key={f} value={f}>
+                {ROTULO_FILA[f]}
+              </option>
+            ))}
           </Select>
         </Campo>
 
@@ -140,7 +146,11 @@ export function FilaRegulacaoPage() {
         mostrarUnidade={resumo.data?.veTodasUnidades ?? true}
         mostrarAgente
         aoAbrir={(s) => navegar(`/app/regulacao/gestao-fila/${s.id}`)}
-        vazio="Nenhuma solicitação nesta situação com os filtros atuais."
+        vazio={
+          filas.length === 0
+            ? 'Seu perfil não tem nenhuma fila (NAR, Interna ou Intermunicipal).'
+            : 'Nenhuma solicitação nesta situação com os filtros atuais.'
+        }
       />
 
       {(pagina.data?.total ?? 0) > (pagina.data?.itens.length ?? 0) && (

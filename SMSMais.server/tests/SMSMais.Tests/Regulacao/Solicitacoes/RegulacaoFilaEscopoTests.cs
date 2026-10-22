@@ -60,7 +60,7 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
     private static RegulacaoSolicitacaoService Montar(
         SmsMaisDbContext db, Guid usuarioId, Guid? unidadeAtiva, Guid versaoFormularioId,
         bool ehAgente, IPacientesService? pacientes = null, string[]? camposDoFormulario = null,
-        string[]? obrigatorios = null, CampoFormularioDto[]? campos = null)
+        string[]? obrigatorios = null, CampoFormularioDto[]? campos = null, FluxoRegulacao[]? filas = null)
     {
         var acessor = new UsuarioAtualAccessorFake(usuarioId, unidadeAtiva);
         var config = new RegulacaoConfiguracaoService(db, new MemoryCache(new MemoryCacheOptions()), acessor);
@@ -88,7 +88,12 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
                 Herdadas: [],
                 Overrides: [],
                 Resolvidas: ehAgente
-                    ? [new PermissaoModuloDto(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+                    ? [
+                        new PermissaoModuloDto(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao),
+                        // As filas da Gestão de fila (83/84/85): por padrão, as três.
+                        .. (filas ?? [FluxoRegulacao.Nar, FluxoRegulacao.Interno, FluxoRegulacao.Externo])
+                            .Select(f => new PermissaoModuloDto(RegulacaoEscopo.ModuloDaFila[f], AcoesPermissao.Consulta)),
+                    ]
                     : []));
 
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
@@ -432,6 +437,142 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
 
         var erro = await acao.Should().ThrowAsync<ConflitoException>();
         erro.Which.Codigo.Should().Be("regulacao.solicitacao.estrutura_da_unidade");
+    }
+
+    [Fact]
+    public async Task O_agente_troca_a_unidade_em_nome_de_do_nar_que_assumiu()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+
+        Unidade ComCnes(string nome) => new()
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"{nome} {Sufixo()}",
+            Cnes = Random.Shared.Next(1_000_000, 9_999_999).ToString(),
+            CriadoEm = DateTime.UtcNow,
+        };
+        var pedida = ComCnes("PERICLES");
+        var certa = ComCnes("CONDE");
+        db.Unidades.AddRange(pedida, certa);
+        await db.SaveChangesAsync();
+
+        var nar = await db.RegulacaoSolicitacoes.FirstAsync(s => s.Id == c.SolicitacaoA);
+        nar.Fluxo = FluxoRegulacao.Nar;
+        nar.SistemaDestino = SistemaRegulacao.Sisreg;
+        nar.UnidadeEmNomeDeId = pedida.Id;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+
+        // Antes de assumir, não: quem mexe no caso é quem o assumiu.
+        var semAssumir = () => agente.AtualizarAsync(
+            c.SolicitacaoA, new AtualizarRegulacaoSolicitacaoRequest(null, null, null, UnidadeEmNomeDeId: certa.Id),
+            CancellationToken.None);
+        await semAssumir.Should().ThrowAsync<ConflitoException>();
+
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        var depois = await agente.AtualizarAsync(
+            c.SolicitacaoA, new AtualizarRegulacaoSolicitacaoRequest(null, null, null, UnidadeEmNomeDeId: certa.Id),
+            CancellationToken.None);
+
+        depois.UnidadeEmNomeDeId.Should().Be(certa.Id);
+        depois.UnidadeEmNomeDeNome.Should().Be(certa.Nome);
+        depois.UnidadeEmNomeDeCnes.Should().Be(certa.Cnes);
+
+        // A troca fica na trilha como ajuste da regulação, com o de → para.
+        var ajuste = (await agente.EventosAsync(c.SolicitacaoA, CancellationToken.None))
+            .Single(e => e.Tipo == TipoEventoRegulacao.Ajuste);
+        ajuste.Papel.Should().Be(PapelEventoRegulacao.Agente);
+        ajuste.Diff!.Value.GetRawText().Should().Contain(pedida.Nome).And.Contain(certa.Nome);
+
+        // Fora do NAR, "em nome de" não existe.
+        await agente.AssumirAsync(c.SolicitacaoB, CancellationToken.None);
+        var foraDoNar = () => agente.AtualizarAsync(
+            c.SolicitacaoB, new AtualizarRegulacaoSolicitacaoRequest(null, null, null, UnidadeEmNomeDeId: certa.Id),
+            CancellationToken.None);
+        await foraDoNar.Should().ThrowAsync<ValidacaoException>();
+    }
+
+    /// <summary>A solicitação A vira NAR (em nome da unidade B); a B segue Externo (intermunicipal).</summary>
+    private static async Task TornarNarAsync(SmsMaisDbContext db, Cenario c)
+    {
+        var nar = await db.RegulacaoSolicitacoes.FirstAsync(s => s.Id == c.SolicitacaoA);
+        nar.Fluxo = FluxoRegulacao.Nar;
+        nar.SistemaDestino = SistemaRegulacao.Sisreg;
+        nar.UnidadeEmNomeDeId = c.UnidadeB;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+    }
+
+    private static async Task<List<Guid>> GestaoDeFilaAsync(RegulacaoSolicitacaoService servico, Guid procedimentoId) =>
+        [.. (await servico.ListarAsync(
+                new RegulacaoSolicitacaoFiltro(ProcedimentoId: procedimentoId, FilaDoMunicipio: true), CancellationToken.None))
+            .Itens.Select(i => i.Id)];
+
+    [Fact]
+    public async Task A_gestao_de_fila_mostra_so_as_filas_do_perfil_do_tecnico()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        await TornarNarAsync(db, c);
+
+        var soNar = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true, filas: [FluxoRegulacao.Nar]);
+        var soIntermunicipal = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true, filas: [FluxoRegulacao.Externo]);
+        var soInterna = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true, filas: [FluxoRegulacao.Interno]);
+        var nenhuma = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true, filas: []);
+
+        (await GestaoDeFilaAsync(soNar, c.ProcedimentoId)).Should().Contain(c.SolicitacaoA).And.NotContain(c.SolicitacaoB);
+        (await GestaoDeFilaAsync(soIntermunicipal, c.ProcedimentoId)).Should().Contain(c.SolicitacaoB).And.NotContain(c.SolicitacaoA);
+        (await GestaoDeFilaAsync(soInterna, c.ProcedimentoId)).Should().NotContain([c.SolicitacaoA, c.SolicitacaoB]);
+        (await GestaoDeFilaAsync(nenhuma, c.ProcedimentoId)).Should().BeEmpty("sem fila no perfil, a Gestão de fila vem vazia");
+
+        // Fora das filas dele, o técnico não abre nem assume — "não encontrado", como qualquer pedido de fora.
+        var abrir = () => soInterna.ObterAsync(c.SolicitacaoA, CancellationToken.None);
+        await abrir.Should().ThrowAsync<NaoEncontradoException>();
+        var assumir = () => soInterna.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await assumir.Should().ThrowAsync<NaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task Nar_compartilhado_com_a_fila_interna_aparece_para_quem_so_tem_a_interna_ate_desligar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        await TornarNarAsync(db, c);
+
+        var tecnicoNar = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true, filas: [FluxoRegulacao.Nar]);
+        var tecnicoInterna = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true, filas: [FluxoRegulacao.Interno]);
+
+        // Com a própria fila, não: o pedido já é dela.
+        var naPropria = () => tecnicoNar.CompartilharAsync(
+            c.SolicitacaoA, new CompartilharRequest(FluxoRegulacao.Nar, true), CancellationToken.None);
+        await naPropria.Should().ThrowAsync<ValidacaoException>();
+
+        var ligado = await tecnicoNar.CompartilharAsync(
+            c.SolicitacaoA, new CompartilharRequest(FluxoRegulacao.Interno, true), CancellationToken.None);
+        ligado.FilasCompartilhadas.Should().Equal(FluxoRegulacao.Interno);
+        ligado.ContinuaVisivel.Should().BeTrue();
+
+        (await GestaoDeFilaAsync(tecnicoInterna, c.ProcedimentoId)).Should().Contain(c.SolicitacaoA);
+        (await tecnicoInterna.ObterAsync(c.SolicitacaoA, CancellationToken.None))
+            .FilasCompartilhadas.Should().Equal(FluxoRegulacao.Interno);
+
+        // Ligar de novo não duplica nem suja a trilha.
+        await tecnicoNar.CompartilharAsync(
+            c.SolicitacaoA, new CompartilharRequest(FluxoRegulacao.Interno, true), CancellationToken.None);
+
+        // Quem só via pelo compartilhamento desliga — e deixa de ver.
+        var desligado = await tecnicoInterna.CompartilharAsync(
+            c.SolicitacaoA, new CompartilharRequest(FluxoRegulacao.Interno, false), CancellationToken.None);
+        desligado.FilasCompartilhadas.Should().BeEmpty();
+        desligado.ContinuaVisivel.Should().BeFalse();
+        (await GestaoDeFilaAsync(tecnicoInterna, c.ProcedimentoId)).Should().NotContain(c.SolicitacaoA);
+
+        (await db.RegulacaoEventos.CountAsync(e =>
+                e.SolicitacaoId == c.SolicitacaoA && e.Tipo == TipoEventoRegulacao.Compartilhamento))
+            .Should().Be(2, "ligou uma vez e desligou uma vez");
     }
 
     [Fact]

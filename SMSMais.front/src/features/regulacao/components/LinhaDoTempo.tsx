@@ -6,7 +6,9 @@ import {
   FileEdit,
   Hash,
   Paperclip,
+  ScanSearch,
   Send,
+  Share2,
   Undo2,
   XCircle,
 } from 'lucide-react';
@@ -14,8 +16,8 @@ import type { LucideIcon } from 'lucide-react';
 
 import { formatarInstante } from '@/shared/lib/datas';
 
-import { ROTULO_STATUS } from './StatusRegulacaoBadge';
-import type { EventoRegulacao, TipoEventoRegulacao } from '../tiposSolicitacao';
+import { ROTULO_FILA, ROTULO_STATUS } from './StatusRegulacaoBadge';
+import type { EventoRegulacao, FluxoRegulacao, TipoEventoRegulacao } from '../tiposSolicitacao';
 
 /**
  * A história do caso, em ordem.
@@ -29,6 +31,8 @@ const ICONES: Partial<Record<TipoEventoRegulacao, LucideIcon>> = {
   Criacao: CircleDot,
   Edicao: FileEdit,
   Ajuste: FileEdit,
+  ConferenciaExterna: ScanSearch,
+  Compartilhamento: Share2,
   Anexo: Paperclip,
   EnvioFila: Send,
   Assumida: CheckCircle2,
@@ -66,6 +70,8 @@ const ROTULOS: Record<TipoEventoRegulacao, string> = {
   OkInterno: 'Conferida pela regulação',
   TrocaProcedimento: 'Procedimento trocado',
   DocumentoAcessado: 'Documento aberto/baixado',
+  ConferenciaExterna: 'Conferida no sistema de regulação',
+  Compartilhamento: 'Compartilhamento',
 };
 
 /**
@@ -79,6 +85,7 @@ const ROTULOS_CAMPO: Record<string, string> = {
   cids_secundarios: 'CIDs secundários',
   observacoes: 'Observações',
   observacao: 'Observação',
+  unidadeEmNomeDe: 'Em nome de (NAR)',
 };
 
 function rotuloDoCampo(chave: string): string {
@@ -131,6 +138,14 @@ export function LinhaDoTempo({
 
               {motivo && <p className="mt-1 text-sm text-slate-700">“{motivo}”</p>}
 
+              {e.tipo === 'Compartilhamento' && (
+                <p className="mt-1 text-sm text-slate-700">{resumoCompartilhamento(e.detalhe)}</p>
+              )}
+
+              {e.tipo === 'ConferenciaExterna' && (
+                <p className="mt-1 text-sm text-slate-700">{resumoConferencia(e.detalhe)}</p>
+              )}
+
               {nomeDocumento && (
                 <p className="mt-1 text-sm text-slate-700">{nomeDocumento}</p>
               )}
@@ -154,4 +169,21 @@ export function LinhaDoTempo({
       })}
     </ol>
   );
+}
+
+/** Uma linha só na trilha: o cartão "Conferência no sistema" mostra campo a campo. */
+function resumoConferencia(detalhe: Record<string, unknown> | null | undefined): string {
+  if (!detalhe) return '';
+  if (typeof detalhe.erro === 'string' && detalhe.erro) return detalhe.erro;
+  const numero = typeof detalhe.numero === 'string' ? detalhe.numero : '';
+  if (!detalhe.encontrado) return `O sistema não achou o número ${numero}.`;
+  const n = typeof detalhe.divergencias === 'number' ? detalhe.divergencias : 0;
+  return n === 0
+    ? `Número ${numero}: sem divergência com o pedido.`
+    : `Número ${numero}: ${n} divergência${n > 1 ? 's' : ''} com o pedido.`;
+}
+
+function resumoCompartilhamento(detalhe: Record<string, unknown> | null | undefined): string {
+  const fila = typeof detalhe?.fila === 'string' ? (ROTULO_FILA[detalhe.fila as FluxoRegulacao] ?? detalhe.fila) : '';
+  return detalhe?.ligado ? `Compartilhada com a fila ${fila}` : `Deixou de ser compartilhada com a fila ${fila}`;
 }

@@ -89,3 +89,26 @@ internal sealed class RegulacaoEventoVistoConfiguration : IEntityTypeConfigurati
         builder.HasIndex(x => x.UsuarioId).HasDatabaseName("ix_regulacao_evento_visto_usuario");
     }
 }
+
+internal sealed class RegulacaoSolicitacaoCompartilhamentoConfiguration
+    : IEntityTypeConfiguration<RegulacaoSolicitacaoCompartilhamento>
+{
+    public void Configure(EntityTypeBuilder<RegulacaoSolicitacaoCompartilhamento> builder)
+    {
+        builder.ToTable("regulacao_solicitacao_compartilhamento");
+
+        // Uma linha por fila: compartilhar de novo com a mesma fila não duplica.
+        builder.HasKey(x => new { x.SolicitacaoId, x.Fila });
+
+        builder.Property(x => x.SolicitacaoId).HasColumnName("solicitacao_id");
+        builder.Property(x => x.Fila).HasColumnName("fila").IsRequired();
+        builder.Property(x => x.CompartilhadoEm).HasColumnName("compartilhado_em").IsRequired();
+        builder.Property(x => x.CompartilhadoPor).HasColumnName("compartilhado_por");
+
+        builder.HasOne(x => x.Solicitacao).WithMany(s => s.Compartilhamentos)
+            .HasForeignKey(x => x.SolicitacaoId).OnDelete(DeleteBehavior.Cascade);
+
+        // A Gestão de fila procura "o que foi compartilhado com a minha fila".
+        builder.HasIndex(x => x.Fila).HasDatabaseName("ix_regulacao_compartilhamento_fila");
+    }
+}

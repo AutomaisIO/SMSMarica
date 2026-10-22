@@ -17,6 +17,9 @@ import { ModalEnviarAoSistema } from '../components/ModalEnviarAoSistema';
 import { ModalMotivo } from '../components/ModalMotivo';
 import { ModalRegistrarEnvio } from '../components/ModalRegistrarEnvio';
 import { ParaLancarNoSistema } from '../components/ParaLancarNoSistema';
+import { ConferenciaNoSistema } from '../components/ConferenciaNoSistema';
+import { UnidadeEmNomeDeNar } from '../components/UnidadeEmNomeDeNar';
+import { CompartilharFilas } from '../components/CompartilharFilas';
 import { RespostasRegras } from '../components/RespostasRegras';
 import {
   useAssumirSolicitacao,
@@ -128,6 +131,8 @@ export function AnaliseSolicitacaoPage() {
 
       <CabecalhoSolicitacao s={s} />
 
+      <CompartilharFilas s={s} podeAlterar />
+
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">Decisão da regulação</h2>
         <p className="mt-1 text-sm text-slate-600">{SITUACAO_PARA_A_REGULACAO[s.status]}</p>
@@ -214,6 +219,10 @@ export function AnaliseSolicitacaoPage() {
         )}
       </section>
 
+      <UnidadeEmNomeDeNar s={s} aoSalvar={() => void Promise.all([solicitacao.refetch(), eventos.refetch()])} />
+
+      <ConferenciaNoSistema s={s} podeConferir />
+
       <AjusteRiscoCid s={s} aoSalvar={() => void Promise.all([solicitacao.refetch(), eventos.refetch()])} />
 
       <MedicoPendenteCard
@@ -244,14 +253,11 @@ export function AnaliseSolicitacaoPage() {
         aberto={modalEnvio}
         aoFechar={() => setModalEnvio(false)}
         salvando={registrarEnvio.isPending}
-        aoConfirmar={async (sistema, numeroExterno) => {
-          const ok = await executar(() =>
-            registrarEnvio.mutateAsync({ id, sistema, numeroExterno }),
-          );
-          // Fecha só quando deu certo: com número duplicado, o agente precisa ver o erro e
-          // corrigir sem redigitar tudo.
-          if (ok) setModalEnvio(false);
-        }}
+        // Com número duplicado, o modal fica no formulário para corrigir sem redigitar; dando
+        // certo, ele mesmo confere o pedido no sistema e mostra o resultado antes de fechar.
+        aoConfirmar={(sistema, numeroExterno) =>
+          executar(() => registrarEnvio.mutateAsync({ id, sistema, numeroExterno }))
+        }
       />
 
       {automatico && (

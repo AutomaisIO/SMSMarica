@@ -40,6 +40,14 @@ public interface IChaveConfirmacaoSisregService
     /// banco. <paramref name="tetoOrcamento"/>: o painel usa o teto cheio; os motores, o automático.
     /// </summary>
     Task<FichaSisregLida> LerFichaAsync(Guid solicitacaoId, int tetoOrcamento, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lê a ficha pelo CÓDIGO, sem exigir a solicitação no nosso espelho — é o caso do pedido que o
+    /// técnico acabou de lançar à mão no SISREG e cujo número digitou na regulação (a conferência).
+    /// Mesmo custo e mesma folga de orçamento de <see cref="LerFichaAsync"/>; não guarda a chave
+    /// (ela é do espelho, que ainda não tem a linha).
+    /// </summary>
+    Task<FichaSisregLida> LerFichaPorCodigoAsync(string codigo, int tetoOrcamento, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -130,6 +138,18 @@ public sealed class ChaveConfirmacaoSisregService(
         return ficha;
     }
 
+    public async Task<FichaSisregLida> LerFichaPorCodigoAsync(string codigo, int tetoOrcamento, CancellationToken ct = default)
+    {
+        var co = codigo.Trim();
+        if (co.Length == 0 || co == CodigoSemSisreg || !co.All(char.IsDigit))
+        {
+            throw new ValidacaoException("sisreg_chave.sem_codigo", "O código da solicitação do SISREG tem só números.");
+        }
+
+        ExigirFolga(tetoOrcamento);
+        return await LerAsync(co, ct);
+    }
+
     private async Task<(Data.Entities.Solicitacao Reg, string Codigo)> CarregarAsync(Guid solicitacaoId, CancellationToken ct)
     {
         var reg = await db.Solicitacoes
@@ -151,14 +171,7 @@ public sealed class ChaveConfirmacaoSisregService(
     private async Task<FichaSisregLida> LerNoSisregAsync(
         Data.Entities.Solicitacao reg, string co, int tetoOrcamento, CancellationToken ct)
     {
-        if (orcamento.Restante(tetoOrcamento) < OrcamentoMinimo)
-        {
-            var espera = orcamento.EsperaAteLiberar();
-            throw new ConflitoException(
-                CodigoOrcamentoCurto,
-                "O limite de consultas ao SISREG desta hora está no fim. Tente de novo em "
-                + $"{Math.Max(1, (int)Math.Ceiling(espera?.TotalMinutes ?? 1))} minuto(s).");
-        }
+        ExigirFolga(tetoOrcamento);
 
         var ficha = await LerAsync(co, ct);
         if (ficha.Chave is { } chave && string.IsNullOrWhiteSpace(reg.ChaveConfirmacaoSisreg))
@@ -169,6 +182,17 @@ public sealed class ChaveConfirmacaoSisregService(
             logger.LogInformation("SISREG_CHAVE: solicitação {Codigo} lida pela tela {Tela} e guardada.", co, ficha.Tela);
         }
         return ficha;
+    }
+
+    private void ExigirFolga(int tetoOrcamento)
+    {
+        if (orcamento.Restante(tetoOrcamento) >= OrcamentoMinimo) return;
+
+        var espera = orcamento.EsperaAteLiberar();
+        throw new ConflitoException(
+            CodigoOrcamentoCurto,
+            "O limite de consultas ao SISREG desta hora está no fim. Tente de novo em "
+            + $"{Math.Max(1, (int)Math.Ceiling(espera?.TotalMinutes ?? 1))} minuto(s).");
     }
 
     /// <summary>Código da recusa por orçamento curto — quem automatiza adia em vez de falhar.</summary>

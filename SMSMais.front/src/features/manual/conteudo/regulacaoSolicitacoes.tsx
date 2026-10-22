@@ -27,7 +27,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
   publico: 'Quem abre e acompanha solicitações na unidade',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'contato com o paciente',
     'aviso do SER',
@@ -59,6 +59,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'interno',
     'externo',
     'NAR',
+    'em nome de',
+    'agendamento indireto',
+    'CNES',
+    'conferência no sistema',
+    'divergência',
     'destino',
     'SISREG',
     'SER',
@@ -225,7 +230,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'destino',
       titulo: 'Para onde vai: Interno, Externo ou NAR',
-      busca: 'destino interno externo nar sisreg ser sernit esus oferta interna permitir externo sistema de destino agendamento indireto',
+      busca: 'destino interno externo nar sisreg ser sernit esus oferta interna permitir externo sistema de destino agendamento indireto em nome de qual unidade cnes selo violeta',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -243,7 +248,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               {
                 termo: 'NAR (agendamento indireto)',
                 descricao:
-                  'Sempre SISREG, em nome de outra unidade. Ainda não está liberado: a tela avisa e pede para usar Interno ou Externo.',
+                  'Sempre SISREG, em nome de outra unidade. Ao escolher NAR, a tela pede “Em nome de qual unidade?” — a lista traz todas as unidades ativas com CNES, não só as suas, porque o pedido entra no SISREG com o CNES dela. Dali em diante o caminho é o mesmo de sempre. A regulação pode trocar essa unidade antes de lançar.',
               },
             ]}
           />
@@ -539,7 +544,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'filas',
       titulo: 'Minha fila e as situações',
       busca:
-        'minha fila abas rascunhos pré-regulação em análise devolvidas enviadas no sistema encerradas situação status busca número PR unidade topo gestão de fila',
+        'minha fila abas rascunhos pré-regulação em análise devolvidas enviadas no sistema encerradas situação status busca número PR unidade topo gestão de fila nar selo violeta em nome de',
       conteudo: (
         <>
           <P>
@@ -589,6 +594,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             disso, o número interno <strong>PR-…</strong> em cinza. A busca aceita nome, CPF ou número. Um
             rascunho abre direto no assistente; os demais abrem o detalhe.
           </P>
+          <P>
+            Pedido <strong>NAR</strong> tem cara própria: a linha vem com fundo violeta e, na coluna Fluxo, o
+            selo <SeloRef cor="violeta">NAR</SeloRef> com “em nome de …” logo abaixo — para ninguém lançar no
+            SISREG com a unidade errada.
+          </P>
         </>
       ),
     },
@@ -596,7 +606,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'detalhe',
       titulo: 'O detalhe do pedido',
       busca:
-        'detalhe ações cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo ajustada pela regulação risco cid alterado regras do manual respostas condições marcadas anexos visualizar arquivo médico novo a cadastrar pendente formulário preenchido campos abrir na gestão de fila',
+        'detalhe ações cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo ajustada pela regulação risco cid alterado regras do manual respostas condições marcadas anexos visualizar arquivo médico novo a cadastrar pendente formulário preenchido campos abrir na gestão de fila nar em nome de cnes conferência no sistema divergência número conferido',
       conteudo: (
         <>
           <P>
@@ -609,7 +619,18 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
           <P>
             O quadro <strong>Para lançar no SER</strong> (ou SERNIT, SISREG — o destino da solicitação)
             mostra o formulário campo a campo, como foi preenchido. É o que a regulação vai digitar no
-            sistema de destino.
+            sistema de destino. No NAR, as duas primeiras linhas são o CNES e o nome da unidade “em nome de”.
+          </P>
+          <P>
+            No <strong>NAR</strong>, o cabeçalho diz, numa faixa violeta, quem abriu e em nome de qual unidade
+            (com o CNES). Se a regulação trocar essa unidade, a troca aparece na linha do tempo como
+            “Ajustada pela regulação”, com o antes → depois.
+          </P>
+          <P>
+            Depois que a regulação registra o número do sistema, aparece o cartão{' '}
+            <strong>Conferência no SISREG</strong> (ou SER, SERNIT, ESUS): a plataforma leu o pedido lá, pelo
+            número, e compara campo a campo com o que você pediu — paciente, procedimento, CID, unidade,
+            médico. O que diverge sai em vermelho. É só um aviso: o pedido segue normalmente.
           </P>
           <P>
             Quando o procedimento tem regras, o cartão <strong>Regras do manual</strong> mostra o que foi
@@ -758,7 +779,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'dúvidas não acho cid não aparece externo nar não avança não consigo cancelar não acho o médico rascunho sumiu',
+      busca: 'dúvidas não acho cid não aparece externo nar unidade não aparece lista em nome de sem cnes não consigo cancelar não acho o médico rascunho sumiu',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -778,8 +799,9 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
                 'Ou o procedimento não tem oferta externa, ou tem oferta interna e a configuração não permite mandar para fora.',
             },
             {
-              termo: 'O NAR não deixa avançar.',
-              descricao: 'O passo da unidade “em nome de” ainda não existe. Use Interno ou Externo por ora.',
+              termo: 'No NAR, a unidade que eu quero não aparece na lista.',
+              descricao:
+                'A lista só traz unidades ativas e com CNES cadastrado — sem o CNES, o pedido não tem como entrar no SISREG em nome dela. Peça a quem cuida do cadastro de unidades para completar o CNES.',
             },
             {
               termo: 'Não consigo mais cancelar.',

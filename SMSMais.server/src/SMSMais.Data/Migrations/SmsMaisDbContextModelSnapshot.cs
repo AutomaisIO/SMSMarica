@@ -10105,6 +10105,32 @@ namespace SMSMais.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacaoCompartilhamento", b =>
+                {
+                    b.Property<Guid>("SolicitacaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitacao_id");
+
+                    b.Property<int>("Fila")
+                        .HasColumnType("integer")
+                        .HasColumnName("fila");
+
+                    b.Property<DateTime>("CompartilhadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("compartilhado_em");
+
+                    b.Property<Guid?>("CompartilhadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("compartilhado_por");
+
+                    b.HasKey("SolicitacaoId", "Fila");
+
+                    b.HasIndex("Fila")
+                        .HasDatabaseName("ix_regulacao_compartilhamento_fila");
+
+                    b.ToTable("regulacao_solicitacao_compartilhamento", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacaoDestino", b =>
                 {
                     b.Property<Guid>("Id")
@@ -18329,6 +18355,17 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("UnidadeSolicitante");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacaoCompartilhamento", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacao", "Solicitacao")
+                        .WithMany("Compartilhamentos")
+                        .HasForeignKey("SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Solicitacao");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacaoDestino", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacao", "Solicitacao")
@@ -19356,6 +19393,8 @@ namespace SMSMais.Data.Migrations
 
             modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacao", b =>
                 {
+                    b.Navigation("Compartilhamentos");
+
                     b.Navigation("Destinos");
 
                     b.Navigation("Eventos");

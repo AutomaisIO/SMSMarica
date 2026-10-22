@@ -14,6 +14,10 @@ import {
   obterElegibilidade,
   listarNotificacoesRegulacao,
   listarSolicitacoes,
+  listarUnidadesEmNomeDe,
+  conferirNoSistema,
+  compartilharSolicitacao,
+  obterConferencia,
   confirmarOkInterno,
   type AutorizoCadastroMedico,
   enviarAutomatico,
@@ -62,6 +66,16 @@ export function useSolicitacao(id: string | null) {
     queryKey: [...raiz, id],
     queryFn: () => obterSolicitacao(id!),
     enabled: !!id,
+  });
+}
+
+/** A lista muda pouco (cadastro de unidades): cinco minutos de cache bastam. */
+export function useUnidadesEmNomeDe(habilitado = true) {
+  return useQuery({
+    queryKey: [...raiz, 'unidades-em-nome-de'],
+    queryFn: listarUnidadesEmNomeDe,
+    enabled: habilitado,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -232,6 +246,33 @@ export function useCancelarSolicitacao() {
   return useAcaoDeSolicitacao(({ id, motivo }: { id: string; motivo: string }) =>
     cancelarSolicitacao(id, motivo),
   );
+}
+
+/** A última conferência do número no sistema de regulação (só quando há número). */
+export function useConferencia(id: string | null) {
+  return useQuery({
+    queryKey: [...raiz, id, 'conferencia'],
+    queryFn: () => obterConferencia(id!),
+    enabled: !!id,
+  });
+}
+
+/** Confere de novo: vai ao sistema de lá. A linha do tempo e o cartão recarregam. */
+export function useConferirNoSistema() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => conferirNoSistema(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
+  });
+}
+
+export function useCompartilhar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fila, compartilhar }: { id: string; fila: FluxoRegulacao; compartilhar: boolean }) =>
+      compartilharSolicitacao(id, fila, compartilhar),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
+  });
 }
 
 export function useRegistrarEnvio() {

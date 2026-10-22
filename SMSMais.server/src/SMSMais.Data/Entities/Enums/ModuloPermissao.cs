@@ -392,4 +392,18 @@ public enum ModuloPermissao
     /// Administrador. <c>Consulta</c> = ver; <c>Inclusao</c> = criar base; <c>Edicao</c> = editar,
     /// testar e gerar token de agente; <c>Exclusao</c> = remover base ou limpar login.</summary>
     FontesDados = 82,
+
+    /// <summary>Gestão de fila — a fila <b>NAR</b> (agendamento indireto, em nome de outra unidade).
+    /// Só vale junto com <see cref="RegulacaoTriagem"/>: o 48 dá a tela e as ações; os três módulos de
+    /// fila (83, 84, 85) dizem QUAIS pedidos o técnico vê e em quais age. Sem nenhum deles, a Gestão
+    /// de fila vem vazia (pedido do Bernardo, 22/10/2026). Só <c>Consulta</c>.</summary>
+    RegulacaoFilaNar = 83,
+
+    /// <summary>Gestão de fila — a fila <b>Interna</b> (o SISREG do município). Ver
+    /// <see cref="RegulacaoFilaNar"/>. Só <c>Consulta</c>.</summary>
+    RegulacaoFilaInterna = 84,
+
+    /// <summary>Gestão de fila — a fila <b>Intermunicipal</b> (fluxo Externo: SER, SERNIT, ESUS de São
+    /// Gonçalo). Ver <see cref="RegulacaoFilaNar"/>. Só <c>Consulta</c>.</summary>
+    RegulacaoFilaIntermunicipal = 85,
 }

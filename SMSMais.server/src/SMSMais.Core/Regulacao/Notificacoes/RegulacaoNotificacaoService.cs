@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Common.Unidades;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
@@ -223,6 +224,20 @@ public sealed class RegulacaoNotificacaoService(
             .Include(e => e.Solicitacao).ThenInclude(s => s!.Procedimento)
             .Include(e => e.Solicitacao).ThenInclude(s => s!.UnidadeSolicitante)
             .Where(e => TiposQueAvisam.Contains(e.Tipo) && e.Solicitacao!.ExcluidoEm == null);
+
+        // O agente enxerga o município só nas filas do perfil (NAR, Internas, Intermunicipais) —
+        // pela origem do pedido ou por compartilhamento. Fora delas, vale a unidade dele.
+        if (await escopoRegulacao.EhAgenteAsync(ct))
+        {
+            var fluxos = (await escopoRegulacao.FluxosDoAgenteAsync(ct)).ToArray();
+            var proprias = await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
+            if (proprias.VeTudo) return eventos;
+            var minhas = proprias.Unidades;
+            return eventos.Where(e =>
+                fluxos.Contains(e.Solicitacao!.Fluxo)
+                || e.Solicitacao.Compartilhamentos.Any(c => fluxos.Contains(c.Fila))
+                || minhas.Contains(e.Solicitacao.UnidadeSolicitanteId));
+        }
 
         if (querTodas) return eventos;
 

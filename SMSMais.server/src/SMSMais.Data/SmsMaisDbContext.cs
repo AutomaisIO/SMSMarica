@@ -247,6 +247,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RegulacaoExigenciaArquivo> RegulacaoExigenciaArquivos => Set<RegulacaoExigenciaArquivo>();
     public DbSet<RegulacaoEvento> RegulacaoEventos => Set<RegulacaoEvento>();
     public DbSet<RegulacaoSolicitacaoDestino> RegulacaoSolicitacaoDestinos => Set<RegulacaoSolicitacaoDestino>();
+    public DbSet<RegulacaoSolicitacaoCompartilhamento> RegulacaoSolicitacaoCompartilhamentos => Set<RegulacaoSolicitacaoCompartilhamento>();
     public DbSet<RegulacaoEventoVisto> RegulacaoEventosVistos => Set<RegulacaoEventoVisto>();
     public DbSet<RegulacaoRegra> RegulacaoRegras => Set<RegulacaoRegra>();
     public DbSet<RegulacaoMedicoPendente> RegulacaoMedicosPendentes => Set<RegulacaoMedicoPendente>();

@@ -4,6 +4,7 @@ import type { MedicoParecido, SituacaoMedicoPendente } from './medicosApi';
 
 import type {
   AvaliacaoElegibilidade,
+  ConferenciaExterna,
   ContatoPacienteRegulacao,
   EscopoNotificacao,
   EventoRegulacao,
@@ -42,7 +43,17 @@ export type AtualizarSolicitacaoPayload = {
   procedimentoId?: string | null;
   /** Mandar o MESMO paciente relê a identidade — é assim que o CPF informado depois chega aqui. */
   pacienteId?: string | null;
+  /** Só no NAR: a unidade troca no rascunho/devolvida; o técnico, no caso que assumiu. */
+  unidadeEmNomeDeId?: string | null;
 };
+
+/** Unidade que o NAR aceita como "em nome de": ativa, do município e com CNES. */
+export type UnidadeEmNomeDe = { id: string; nome: string; cnes: string };
+
+export async function listarUnidadesEmNomeDe(): Promise<UnidadeEmNomeDe[]> {
+  const { data } = await http.get<UnidadeEmNomeDe[]>(`${base}/unidades-em-nome-de`);
+  return data;
+}
 
 export async function criarSolicitacao(p: CriarSolicitacaoPayload): Promise<SolicitacaoRegulacao> {
   const { data } = await http.post<SolicitacaoRegulacao>(base, p);
@@ -195,6 +206,37 @@ export async function registrarEnvioSolicitacao(
 ): Promise<SolicitacaoRegulacao> {
   const { data } = await http.post<SolicitacaoRegulacao>(`${base}/${id}/registrar-envio`, payload);
   return data;
+}
+
+export type CompartilhamentoResultado = {
+  filasCompartilhadas: FluxoRegulacao[];
+  /** Falso quando quem desligou só via o pedido por aquela fila. */
+  continuaVisivel: boolean;
+};
+
+/** Liga ou desliga o pedido em outra fila da Gestão de fila. */
+export async function compartilharSolicitacao(
+  id: string,
+  fila: FluxoRegulacao,
+  compartilhar: boolean,
+): Promise<CompartilhamentoResultado> {
+  const { data } = await http.put<CompartilhamentoResultado>(`${base}/${id}/compartilhamento`, {
+    fila,
+    compartilhar,
+  });
+  return data;
+}
+
+/** Lê o pedido no sistema pelo número registrado (credencial da integração) e compara com o nosso. */
+export async function conferirNoSistema(id: string): Promise<ConferenciaExterna> {
+  const { data } = await http.post<ConferenciaExterna>(`${base}/${id}/conferir-no-sistema`);
+  return data;
+}
+
+/** A conferência mais recente; `null` se nunca houve (204). */
+export async function obterConferencia(id: string): Promise<ConferenciaExterna | null> {
+  const { data, status } = await http.get<ConferenciaExterna>(`${base}/${id}/conferencia`);
+  return status === 204 ? null : data;
 }
 
 export async function confirmarOkInterno(id: string): Promise<SolicitacaoRegulacao> {

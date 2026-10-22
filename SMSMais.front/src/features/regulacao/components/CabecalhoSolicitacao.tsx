@@ -1,7 +1,7 @@
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarInstante } from '@/shared/lib/datas';
 
-import { ROTULO_FLUXO, StatusRegulacaoBadge } from './StatusRegulacaoBadge';
+import { BadgeNar, ROTULO_FLUXO, StatusRegulacaoBadge } from './StatusRegulacaoBadge';
 import type { SolicitacaoRegulacao } from '../tiposSolicitacao';
 
 /**
@@ -26,13 +26,29 @@ export function CabecalhoSolicitacao({ s }: { s: SolicitacaoRegulacao }) {
           </h1>
           <p className="text-sm text-slate-600">{s.procedimentoNome}</p>
         </div>
-        <StatusRegulacaoBadge status={s.status} />
+        <div className="flex flex-col items-end gap-1">
+          <StatusRegulacaoBadge status={s.status} />
+          {s.fluxo === 'Nar' && <BadgeNar />}
+        </div>
       </div>
+
+      {/* NAR: o pedido entra no SISREG com o CNES de outra unidade — isso fica à vista, não numa célula. */}
+      {s.fluxo === 'Nar' && (
+        <p className="mt-3 rounded border border-violet-200 bg-violet-50 p-2 text-sm text-violet-900">
+          Agendamento indireto: aberta por <strong>{s.unidadeSolicitanteNome}</strong>, em nome de{' '}
+          <strong>{s.unidadeEmNomeDeNome ?? '—'}</strong>
+          {s.unidadeEmNomeDeCnes && <> (CNES {s.unidadeEmNomeDeCnes})</>}.
+        </p>
+      )}
 
       <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
         <div>
           <dt className="text-xs text-slate-500">Fluxo</dt>
           <dd className="text-slate-800">{ROTULO_FLUXO[s.fluxo]}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Unidade</dt>
+          <dd className="text-slate-800">{s.unidadeSolicitanteNome}</dd>
         </div>
         <div>
           <dt className="text-xs text-slate-500">Destino</dt>

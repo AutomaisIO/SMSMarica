@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Data;
+using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
@@ -39,13 +41,18 @@ public sealed record CriarRegulacaoSolicitacaoRequest(
 /// Só a unidade, com a solicitação em rascunho ou devolvida. Mandar o MESMO paciente relê a
 /// identidade — é assim que o CPF informado depois chega à solicitação.
 /// </param>
+/// <param name="UnidadeEmNomeDeId">
+/// Só no NAR. A unidade troca enquanto a solicitação é dela; o técnico da regulação troca no caso
+/// que assumiu — é ele quem sabe com o CNES de qual unidade o pedido vai entrar no SISREG.
+/// </param>
 public sealed record AtualizarRegulacaoSolicitacaoRequest(
     SistemaRegulacao? SistemaDestino,
     JsonElement? Formulario,
     string? Observacoes,
     FluxoRegulacao? Fluxo = null,
     Guid? ProcedimentoId = null,
-    Guid? PacienteId = null);
+    Guid? PacienteId = null,
+    Guid? UnidadeEmNomeDeId = null);
 
 public sealed record RegulacaoSolicitacaoDetalheDto(
     Guid Id,
@@ -70,7 +77,22 @@ public sealed record RegulacaoSolicitacaoDetalheDto(
     /// <summary>O número foi digitado pelo agente (envio assistido), não gerado pelo nosso envio.</summary>
     bool EnvioAssistido,
     string? Observacoes,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    string UnidadeSolicitanteNome,
+    /// <summary>NAR: em nome de quem o pedido entra no SISREG — e o CNES que o técnico usa lá.</summary>
+    string? UnidadeEmNomeDeNome,
+    string? UnidadeEmNomeDeCnes,
+    /// <summary>Outras filas da Gestão de fila em que o pedido também aparece.</summary>
+    IReadOnlyList<FluxoRegulacao> FilasCompartilhadas);
+
+/// <param name="ContinuaVisivel">Falso quando quem desligou só via o pedido por aquela fila —
+/// a tela volta para a fila em vez de tentar reabrir o que não alcança mais.</param>
+public sealed record CompartilhamentoResultadoDto(IReadOnlyList<FluxoRegulacao> FilasCompartilhadas, bool ContinuaVisivel);
+
+public sealed record CompartilharRequest(FluxoRegulacao Fila, bool Compartilhar);
+
+/// <summary>Uma unidade que pode ser escolhida como "em nome de" no NAR.</summary>
+public sealed record UnidadeEmNomeDeDto(Guid Id, string Nome, string Cnes);
 
 /// <summary>Por que a solicitação ainda não pode ir para a fila.</summary>
 public sealed record PendenciaEnvioDto(string Codigo, string Descricao);
@@ -122,7 +144,8 @@ public sealed record RegulacaoSolicitacaoListaDto(
     DateTime CriadoEm,
     DateTime? AtualizadoEm,
     /// <summary>Para o nome sair com idade, resumo e WhatsApp, como em toda tela.</summary>
-    Guid PacienteId);
+    Guid PacienteId,
+    IReadOnlyList<FluxoRegulacao> FilasCompartilhadas);
 
 public sealed record PaginaSolicitacoesRegulacaoDto(
     int Total, IReadOnlyList<RegulacaoSolicitacaoListaDto> Itens);
@@ -147,6 +170,12 @@ public interface IRegulacaoSolicitacaoService
 
     Task<RegulacaoSolicitacaoDetalheDto> CriarAsync(
         CriarRegulacaoSolicitacaoRequest req, CancellationToken ct);
+
+    /// <summary>
+    /// As unidades que o NAR aceita como "em nome de": todas as ativas do município com CNES, e
+    /// não só as vinculadas a quem pede — é para isso que o NAR existe.
+    /// </summary>
+    Task<IReadOnlyList<UnidadeEmNomeDeDto>> UnidadesEmNomeDeAsync(CancellationToken ct);
 
     Task<RegulacaoSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct);
 
@@ -222,6 +251,12 @@ public interface IRegulacaoSolicitacaoService
     /// </summary>
     Task<RegulacaoSolicitacaoDetalheDto> TrocarProcedimentoAsync(
         Guid id, Guid procedimentoId, CancellationToken ct);
+
+    /// <summary>
+    /// Liga ou desliga o compartilhamento do pedido com outra fila da Gestão de fila (NAR, Internas,
+    /// Intermunicipais). Idempotente; cada mudança vira um evento na trilha.
+    /// </summary>
+    Task<CompartilhamentoResultadoDto> CompartilharAsync(Guid id, CompartilharRequest req, CancellationToken ct);
 }
 
 /// <summary>
@@ -257,9 +292,17 @@ public sealed class RegulacaoSolicitacaoService(
         var escopo = await EscopoDaFilaAsync(filtro.FilaDoMunicipio, ct);
         var consulta = ConsultaNoEscopo(escopo);
         if (consulta is null) return new PaginaSolicitacoesRegulacaoDto(0, []);
+        consulta = await SoFilasDoPerfilAsync(consulta, filtro.FilaDoMunicipio, ct);
 
         if (filtro.Status is { Length: > 0 } status) consulta = consulta.Where(s => status.Contains(s.Status));
-        if (filtro.Fluxo is { } fluxo) consulta = consulta.Where(s => s.Fluxo == fluxo);
+        if (filtro.Fluxo is { } fluxo)
+        {
+            // Na Gestão de fila, "fila Interna" inclui o que foi compartilhado com ela; na fila da
+            // unidade, é o fluxo do pedido e mais nada.
+            consulta = filtro.FilaDoMunicipio
+                ? consulta.Where(RegulacaoEscopo.NasFilas([fluxo]))
+                : consulta.Where(s => s.Fluxo == fluxo);
+        }
         if (filtro.Sistema is { } sistema) consulta = consulta.Where(s => s.SistemaDestino == sistema);
         if (filtro.ProcedimentoId is { } proc) consulta = consulta.Where(s => s.ProcedimentoId == proc);
         if (filtro.UnidadeSolicitanteId is { } unid) consulta = consulta.Where(s => s.UnidadeSolicitanteId == unid);
@@ -313,7 +356,8 @@ public sealed class RegulacaoSolicitacaoService(
                 s.UnidadeSolicitante != null ? s.UnidadeSolicitante.Nome : "(unidade removida)",
                 s.UnidadeEmNomeDe != null ? s.UnidadeEmNomeDe.Nome : null,
                 null,
-                s.CriadoEm, s.AtualizadoEm, s.PacienteId))
+                s.CriadoEm, s.AtualizadoEm, s.PacienteId,
+                s.Compartilhamentos.OrderBy(c => c.Fila).Select(c => c.Fila).ToList()))
             .ToListAsync(ct);
 
         // O nome do agente sai de uma segunda consulta, e não de um join por linha: são poucos
@@ -335,6 +379,7 @@ public sealed class RegulacaoSolicitacaoService(
         {
             return new RegulacaoResumoFilaDto(new Dictionary<StatusRegulacao, int>(), veTudo);
         }
+        consulta = await SoFilasDoPerfilAsync(consulta, filaDoMunicipio, ct);
 
         var contagens = await consulta
             .GroupBy(s => s.Status)
@@ -373,6 +418,7 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException(
                 "unidadeEmNomeDe", "Só o fluxo NAR abre solicitação em nome de outra unidade.");
         }
+        if (req.UnidadeEmNomeDeId is { } emNomeDe) await ExigirUnidadeEmNomeDeAsync(emNomeDe, ct);
 
         var procedimento = await db.RegulacaoProcedimentos.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == req.ProcedimentoId && p.Ativo, ct)
@@ -425,6 +471,13 @@ public sealed class RegulacaoSolicitacaoService(
         return await ObterAsync(s.Id, ct);
     }
 
+    public async Task<IReadOnlyList<UnidadeEmNomeDeDto>> UnidadesEmNomeDeAsync(CancellationToken ct) =>
+        await db.Unidades.AsNoTracking()
+            .Where(PodeSerEmNomeDe)
+            .OrderBy(u => u.Nome)
+            .Select(u => new UnidadeEmNomeDeDto(u.Id, u.Nome, u.Cnes!))
+            .ToListAsync(ct);
+
     public async Task<RegulacaoSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct)
     {
         var s = await CarregarNoEscopoAsync(id, ct);
@@ -433,8 +486,78 @@ public sealed class RegulacaoSolicitacaoService(
             .Select(p => p.NomeCanonico)
             .FirstOrDefaultAsync(ct) ?? "(procedimento removido)";
 
-        return Mapear(s, procedimento);
+        var ids = new[] { s.UnidadeSolicitanteId, s.UnidadeEmNomeDeId ?? Guid.Empty };
+        var unidades = await db.Unidades.AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .Select(u => new { u.Id, u.Nome, u.Cnes })
+            .ToDictionaryAsync(u => u.Id, ct);
+        var solicitante = unidades.GetValueOrDefault(s.UnidadeSolicitanteId);
+        var emNomeDe = s.UnidadeEmNomeDeId is { } e ? unidades.GetValueOrDefault(e) : null;
+
+        var compartilhadas = await FilasCompartilhadasAsync(s.Id, ct);
+
+        return Mapear(
+            s, procedimento, solicitante?.Nome ?? "(unidade removida)", emNomeDe?.Nome, emNomeDe?.Cnes,
+            compartilhadas);
     }
+
+    public async Task<CompartilhamentoResultadoDto> CompartilharAsync(
+        Guid id, CompartilharRequest req, CancellationToken ct)
+    {
+        var s = await CarregarNoEscopoAsync(id, ct, comoAgente: true);
+        if (req.Fila == s.Fluxo)
+        {
+            throw new ValidacaoException("fila", "O pedido já é desta fila.");
+        }
+
+        var atual = await db.RegulacaoSolicitacaoCompartilhamentos
+            .FirstOrDefaultAsync(c => c.SolicitacaoId == id && c.Fila == req.Fila, ct);
+
+        // Pedir o que já está não grava nada nem suja a trilha.
+        if (req.Compartilhar == (atual is not null))
+        {
+            return new CompartilhamentoResultadoDto(await FilasCompartilhadasAsync(id, ct), true);
+        }
+
+        if (req.Compartilhar)
+        {
+            db.RegulacaoSolicitacaoCompartilhamentos.Add(new RegulacaoSolicitacaoCompartilhamento
+            {
+                SolicitacaoId = id,
+                Fila = req.Fila,
+                CompartilhadoEm = DateTime.UtcNow,
+                CompartilhadoPor = usuarioAtual.UsuarioId,
+            });
+        }
+        else
+        {
+            db.RegulacaoSolicitacaoCompartilhamentos.Remove(atual!);
+        }
+
+        await eventos.RegistrarAsync(
+            id, TipoEventoRegulacao.Compartilhamento, PapelEventoRegulacao.Agente, ct,
+            detalhe: new { fila = req.Fila.ToString(), ligado = req.Compartilhar });
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            // Dois cliques (ou dois técnicos) ligando ao mesmo tempo: já está compartilhado.
+            db.ChangeTracker.Clear();
+        }
+
+        return new CompartilhamentoResultadoDto(
+            await FilasCompartilhadasAsync(id, ct), await escopoRegulacao.EhAgenteDoCasoAsync(s, ct));
+    }
+
+    private async Task<IReadOnlyList<FluxoRegulacao>> FilasCompartilhadasAsync(Guid id, CancellationToken ct) =>
+        await db.RegulacaoSolicitacaoCompartilhamentos.AsNoTracking()
+            .Where(c => c.SolicitacaoId == id)
+            .OrderBy(c => c.Fila)
+            .Select(c => c.Fila)
+            .ToListAsync(ct);
 
     public async Task<RegulacaoSolicitacaoDetalheDto> AtualizarAsync(
         Guid id, AtualizarRegulacaoSolicitacaoRequest req, CancellationToken ct)
@@ -446,7 +569,7 @@ public sealed class RegulacaoSolicitacaoService(
         // um do outro — `Edicao` da ponta, `Ajuste` do agente. O agente ajusta também depois de
         // um envio que falhou: é ali que o SER costuma dizer que não aceita aquele CID, e o
         // conserto é trocar e mandar de novo, sem devolver à unidade.
-        var ehAgente = await escopoRegulacao.EhAgenteAsync(ct);
+        var ehAgente = await escopoRegulacao.EhAgenteDoCasoAsync(s, ct);
         var ajusteDoAgente = ehAgente && s.Status is StatusRegulacao.EmAnalise or StatusRegulacao.FalhaEnvio;
 
         if (!ajusteDoAgente && s.Status is not (StatusRegulacao.Rascunho or StatusRegulacao.Devolvida))
@@ -476,6 +599,28 @@ public sealed class RegulacaoSolicitacaoService(
         var novoProcedimento = req.ProcedimentoId ?? s.ProcedimentoId;
         var fluxoTrocou = novoFluxo != s.Fluxo;
         var procedimentoTrocou = novoProcedimento != s.ProcedimentoId;
+
+        // A unidade "em nome de" NÃO é estrutura para o agente: com o caso assumido, é o técnico
+        // quem sabe com o CNES de qual unidade o pedido vai entrar no SISREG, e trocar não muda
+        // formulário, regras nem paciente (pedido do Bernardo, 22/10/2026).
+        if (req.UnidadeEmNomeDeId is { } emNomeDeId)
+        {
+            if (novoFluxo != FluxoRegulacao.Nar)
+            {
+                throw new ValidacaoException(
+                    "unidadeEmNomeDe", "Só o fluxo NAR abre solicitação em nome de outra unidade.");
+            }
+
+            var nova = await ExigirUnidadeEmNomeDeAsync(emNomeDeId, ct);
+            if (emNomeDeId != s.UnidadeEmNomeDeId)
+            {
+                var anterior = s.UnidadeEmNomeDeId is { } a
+                    ? await db.Unidades.AsNoTracking().Where(u => u.Id == a).Select(u => u.Nome).FirstOrDefaultAsync(ct)
+                    : null;
+                diff["unidadeEmNomeDe"] = new { de = anterior, para = nova.Nome };
+                s.UnidadeEmNomeDeId = emNomeDeId;
+            }
+        }
 
         // O formulário que vale é o de AGORA — o mesmo que a tela desenhou e que as pendências
         // conferem —, e é a versão dele que fica gravada (PR-17, 09/10/2026: a versão da abertura
@@ -511,7 +656,7 @@ public sealed class RegulacaoSolicitacaoService(
             if (novoFluxo == FluxoRegulacao.Nar && s.UnidadeEmNomeDeId is null)
             {
                 throw new ValidacaoException(
-                    "fluxo", "O NAR precisa da unidade em nome de quem a solicitação é aberta — abra uma nova solicitação NAR.");
+                    "unidadeEmNomeDe", "No NAR é obrigatório informar a unidade em nome de quem a solicitação é aberta.");
             }
 
             var procedimento = await db.RegulacaoProcedimentos.AsNoTracking()
@@ -738,7 +883,7 @@ public sealed class RegulacaoSolicitacaoService(
         // instância com o status antigo ao contexto, e a próxima leitura rastreada devolveria
         // esse valor obsoleto por identity resolution — foi assim que "assumir e devolver na
         // mesma sessão" quebrou no teste.
-        await CarregarNoEscopoAsync(id, ct);
+        await CarregarNoEscopoAsync(id, ct, comoAgente: true);
 
         // O claim é uma gravação condicional, não um "leia e escreva": dois agentes clicando no
         // mesmo caso ao mesmo tempo passariam os dois pela leitura e o segundo sobrescreveria o
@@ -799,7 +944,7 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException("motivo", "Diga à unidade o que precisa ser corrigido.");
         }
 
-        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true, comoAgente: true);
         await TransitarAsync(
             s, StatusRegulacao.Devolvida, PapelEventoRegulacao.Agente, ct, detalhe: new { motivo });
         s.StatusMotivo = motivo.Trim();
@@ -816,7 +961,7 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException("motivo", "A recusa precisa de um motivo — é o que a unidade lê.");
         }
 
-        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true, comoAgente: true);
         await TransitarAsync(
             s, StatusRegulacao.Recusada, PapelEventoRegulacao.Agente, ct, detalhe: new { motivo });
         s.StatusMotivo = motivo.Trim();
@@ -838,7 +983,7 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException("numeroExterno", "O número tem no máximo 40 caracteres.");
         }
 
-        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true, comoAgente: true);
 
         // O NAR termina no SISREG por definição (D-9). Registrar outro destino aqui faria a
         // conciliação procurar o número no espelho errado e nunca casar.
@@ -940,7 +1085,7 @@ public sealed class RegulacaoSolicitacaoService(
         Guid id, CancellationToken ct, bool aceitarMedicoPendente = false)
     {
         await escopoRegulacao.ExigirAgenteAsync(ct);
-        var s = await CarregarNoEscopoAsync(id, ct);
+        var s = await CarregarNoEscopoAsync(id, ct, comoAgente: true);
 
         // O envio automático existe para o SER-RJ e para o SERNIT — a mesma aplicação (ADR-0069).
         var sistema = s.SistemaDestino;
@@ -1035,7 +1180,7 @@ public sealed class RegulacaoSolicitacaoService(
     public async Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct, Guid? formularioVersaoId = null)
     {
         await escopoRegulacao.ExigirAgenteAsync(ct);
-        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true, comoAgente: true);
 
         // Grava a versão com que o formulário vai ser traduzido: é ela que explica, depois, o que
         // foi parar em cada campo do sistema de destino.
@@ -1149,7 +1294,7 @@ public sealed class RegulacaoSolicitacaoService(
     {
         await escopoRegulacao.ExigirAgenteAsync(ct);
 
-        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true, comoAgente: true);
         if (s.Fluxo != FluxoRegulacao.Interno)
         {
             throw new ValidacaoException(
@@ -1168,7 +1313,7 @@ public sealed class RegulacaoSolicitacaoService(
     {
         await escopoRegulacao.ExigirAgenteAsync(ct);
 
-        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true, comoAgente: true);
 
         // Depois do número externo, o pedido existe lá fora com aquele procedimento. Trocar aqui
         // faria a nossa ficha divergir do que o sistema de regulação tem — e ninguém saberia qual
@@ -1295,6 +1440,20 @@ public sealed class RegulacaoSolicitacaoService(
     }
 
     /// <summary>
+    /// Na Gestão de fila, o agente vê só as filas do perfil — NAR, Internas, Intermunicipais (módulos
+    /// 83, 84, 85; pedido do Bernardo, 22/10/2026). Sem nenhuma, a fila vem vazia. A fila da unidade
+    /// ("Solicitações") não passa por aqui: lá o agente é um solicitante como outro qualquer.
+    /// </summary>
+    private async Task<IQueryable<RegulacaoSolicitacao>> SoFilasDoPerfilAsync(
+        IQueryable<RegulacaoSolicitacao> consulta, bool filaDoMunicipio, CancellationToken ct)
+    {
+        if (!filaDoMunicipio || !await escopoRegulacao.EhAgenteAsync(ct)) return consulta;
+
+        var fluxos = (await escopoRegulacao.FluxosDoAgenteAsync(ct)).ToArray();
+        return consulta.Where(RegulacaoEscopo.NasFilas(fluxos));
+    }
+
+    /// <summary>
     /// A consulta base já filtrada pelo escopo. <c>null</c> significa <b>sem acesso a unidade
     /// nenhuma</b> — e quem chama devolve conjunto vazio, em vez de deixar um `Contains` sobre
     /// array vazio decidir isso por acidente (ADR-0037, fail-closed).
@@ -1409,8 +1568,10 @@ public sealed class RegulacaoSolicitacaoService(
     /// fora do alcance devolve "não encontrado", e não "sem permissão" — dizer que existe já é
     /// vazar informação de que aquele paciente tem solicitação.
     /// </summary>
+    /// <param name="comoAgente">Ação do regulador: além de alcançar o pedido, o perfil precisa da
+    /// fila dele (NAR, Internas ou Intermunicipais).</param>
     private async Task<RegulacaoSolicitacao> CarregarNoEscopoAsync(
-        Guid id, CancellationToken ct, bool rastrear = false)
+        Guid id, CancellationToken ct, bool rastrear = false, bool comoAgente = false)
     {
         var consulta = rastrear
             ? db.RegulacaoSolicitacoes.AsQueryable()
@@ -1420,6 +1581,7 @@ public sealed class RegulacaoSolicitacaoService(
             ?? throw new NaoEncontradoException("Solicitação da regulação", id);
 
         await escopoRegulacao.ExigirAlcanceAsync(s, ct);
+        if (comoAgente) await escopoRegulacao.ExigirAgenteDoCasoAsync(s, ct);
         return s;
     }
 
@@ -1449,7 +1611,30 @@ public sealed class RegulacaoSolicitacaoService(
         }
     }
 
-    private static RegulacaoSolicitacaoDetalheDto Mapear(RegulacaoSolicitacao s, string procedimentoNome) =>
+    /// <summary>
+    /// Quem pode ser "em nome de" no NAR. O CNES é obrigatório porque é com ele que o pedido entra
+    /// no SISREG (D-9); unidade de fora do município (destino de TFD) não pede pela rede de Maricá.
+    /// A lista da tela e a validação usam a MESMA régua — senão a tela oferece o que o servidor recusa.
+    /// </summary>
+    private static readonly Expression<Func<Unidade, bool>> PodeSerEmNomeDe =
+        u => u.Ativo && !u.Externa && u.Cnes != null && u.Cnes != "";
+
+    /// <summary>
+    /// Fora do escopo do usuário de propósito: o NAR existe para pedir em nome de unidade à qual quem
+    /// pede não está vinculado. Unidade inexistente ou fora da régua é erro de validação, não 500.
+    /// </summary>
+    private async Task<Unidade> ExigirUnidadeEmNomeDeAsync(Guid unidadeId, CancellationToken ct) =>
+        await db.Unidades.AsNoTracking()
+            .Where(u => u.Id == unidadeId)
+            .Where(PodeSerEmNomeDe)
+            .FirstOrDefaultAsync(ct)
+        ?? throw new ValidacaoException(
+            "unidadeEmNomeDe", "A unidade escolhida não pode receber NAR: precisa estar ativa e ter CNES.");
+
+    private static RegulacaoSolicitacaoDetalheDto Mapear(
+        RegulacaoSolicitacao s, string procedimentoNome,
+        string unidadeSolicitante, string? unidadeEmNomeDe, string? unidadeEmNomeDeCnes,
+        IReadOnlyList<FluxoRegulacao> filasCompartilhadas) =>
         new(
             s.Id, s.NumeroLocal, s.Fluxo, s.Status, s.StatusMotivo,
             s.UnidadeSolicitanteId, s.UnidadeEmNomeDeId,
@@ -1458,5 +1643,6 @@ public sealed class RegulacaoSolicitacaoService(
             s.SistemaDestino, s.FormularioVersaoId,
             LerCanonico(s.FormularioJson),
             s.NumeroExterno, s.AgenteResponsavelId, s.EnviadoEm, s.EnvioAssistido,
-            s.Observacoes, s.CriadoEm);
+            s.Observacoes, s.CriadoEm,
+            unidadeSolicitante, unidadeEmNomeDe, unidadeEmNomeDeCnes, filasCompartilhadas);
 }

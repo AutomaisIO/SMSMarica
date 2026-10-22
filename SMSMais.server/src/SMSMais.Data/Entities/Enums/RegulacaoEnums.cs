@@ -202,6 +202,17 @@ public enum TipoEventoRegulacao
     /// celular.
     /// </summary>
     DocumentoAcessado = 22,
+
+    /// <summary>
+    /// A plataforma leu o pedido no sistema de regulação pelo número registrado (credencial
+    /// institucional) e comparou com o nosso. Só registra — não muda estado nem bloqueia nada; o
+    /// detalhe guarda cada campo e se bateu.
+    /// </summary>
+    ConferenciaExterna = 23,
+
+    /// <summary>O pedido foi compartilhado com outra fila da Gestão de fila, ou o compartilhamento
+    /// foi desligado. O detalhe diz qual fila e se ligou ou desligou.</summary>
+    Compartilhamento = 24,
 }
 
 /// <summary>
