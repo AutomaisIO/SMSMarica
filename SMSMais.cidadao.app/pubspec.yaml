@@ -1,7 +1,7 @@
 name: sms_mais_cidadao
 description: "App do Cidadão (Saúde Maricá) — versão nativa do PWA app.smsmarica.online: agenda de consultas e exames, resultados, documentos, transporte e perfil. Login por CPF + código no WhatsApp."
 publish_to: 'none'
-version: 0.2.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.11.4

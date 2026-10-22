@@ -158,11 +158,50 @@ diagnóstico, medicamento, especialidade. Use texto genérico ("Você tem uma at
 deixe o conteúdo dentro do app, atrás do login. A mensagem leva só a rota e o id da notificação; o
 servidor guarda o histórico de cada envio (quem, quando, para quem, o texto).
 
+## Publicar na Play Store
+
+### Chave de upload (uma vez)
+
+A Play Store guarda a chave que assina o app para os aparelhos (**Assinatura de apps do Google
+Play**, ligada no primeiro envio); a nossa é só a **chave de upload**, que prova à Play que o pacote
+veio de nós. Ela fica **fora do repositório** e com cópia num cofre de senhas — sem ela não sai
+versão nova (perder se resolve pelo Play Console, com espera).
+
+Gere num PowerShell aberto por você (o `keytool` pede a senha na hora; ela não vai para lugar nenhum):
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\Chaves" | Out-Null
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v `
+  -keystore "$env:USERPROFILE\Documents\Chaves\smsmais-cidadao-upload.jks" -storetype PKCS12 `
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload `
+  -dname "CN=AutoMais Automacao Industrial, O=AutoMais, C=BR"
+```
+
+E crie `android/key.properties` (no `.gitignore`; PKCS12 usa a mesma senha nos dois campos):
+
+```properties
+storeFile=C:/Users/<você>/Documents/Chaves/smsmais-cidadao-upload.jks
+keyAlias=upload
+storePassword=<a senha>
+keyPassword=<a senha>
+```
+
+Sem o `key.properties` (ou as variáveis `CIDADAO_*`), o build de release **para com erro** — de
+propósito: pacote assinado com a chave de debug a loja recusa.
+
+### Gerar o pacote da loja
+
+```powershell
+flutter build appbundle --release --dart-define-from-file=firebase.json
+```
+
+Sai em `build/app/outputs/bundle/release/app-release.aab`. A versão vem do `pubspec.yaml`
+(`version: <nome>+<código>`): cada envio à Play precisa de um **código maior** que o anterior.
+
 ## Pendências para publicar
 
 - **Links do WhatsApp abrirem direto no app:** publicar `/.well-known/assetlinks.json` (Android)
   e `apple-app-site-association` (iOS, com Associated Domains no projeto) em
   `app.smsmarica.online`, com a impressão digital da chave de assinatura. Sem isso, o Android
   pergunta "abrir com" e o iOS abre no navegador (o PWA).
-- **Assinatura de release** (Android) e conta de desenvolvedor (lojas).
 - **Push:** criar o projeto no Firebase e montar o `firebase.json` do build de loja (seção acima). O Firebase está trocando o token de registro pelo FID (Firebase Installation ID); o app ainda usa `getToken`/`onTokenRefresh` e o servidor envia em `message.token`, que aceita os dois. Quando o FlutterFire publicar `register()`/`onRegistered`, migrar.

@@ -32,7 +32,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <p>&gt; <strong>Ainda não está em produção</strong> (nem nas lojas). O PWA continua sendo o canal oficial.</p>
 <h2>O que o app faz (igual ao PWA)</h2>
 <div class="tw"><table><thead><tr><th>Tela</th><th>Rota</th><th>O que mostra</th></tr></thead><tbody>
-<tr><td>Entrar</td><td><code>/login</code> → <code>/login/telefone</code> → <code>/login/codigo</code></td><td>CPF + data de nascimento; a pessoa escolhe o seu WhatsApp entre os números que a Saúde já conhece (só o final aparece) e recebe o código nele — nunca num número digitado. "Nenhum desses é meu" procura no e-SUS (se ligado para o canal) ou orienta ir ao posto (ADR-0078)</td></tr>
+<tr><td>Entrar</td><td><code>/login</code> → <code>/login/telefone</code> → <code>/login/codigo</code></td><td>CPF + data de nascimento; a pessoa escolhe o seu WhatsApp entre os números que a Saúde já conhece (só o final aparece) e recebe o código nele — nunca num número digitado. "Nenhum desses é meu" procura no e-SUS (se ligado para o canal) ou orienta ir ao posto (<a href="../docs/adr/0078-entrada-cidadao-cpf-nascimento.md">ADR-0078</a>)</td></tr>
 <tr><td>Termo LGPD</td><td>(antes de tudo)</td><td>Aceite do consentimento vigente — bloqueante</td></tr>
 <tr><td>Início</td><td><code>/</code></td><td>Cartão do Cidadão + atalhos (com aviso de exames a confirmar)</td></tr>
 <tr><td>Consultas / Exames agendados</td><td><code>/agendados/consultas</code>, <code>/agendados/exames</code></td><td>Agendados e na fila da regulação; confirmar presença / avisar ausência</td></tr>
@@ -69,7 +69,8 @@ flutter analyze &amp;&amp; flutter test</code></pre>
 <p><code>10.0.2.2</code> é o PC visto <strong>de dentro do emulador</strong>; num <strong>celular físico</strong> (USB, depuração ligada) encaminhe a porta e use <code>localhost</code>:</p>
 <pre><code>adb reverse tcp:5080 tcp:5080
 flutter run --dart-define=API_BASE_URL=http://localhost:5080</code></pre>
-<p>No modo demonstração qualquer CPF válido entra (ex.: <code>529.982.247-25</code>) e qualquer código serve, menos <code>000000</code> (simula código errado).</p>
+<p>No modo demonstração qualquer CPF válido (ex.: <code>529.982.247-25</code>) e qualquer data de nascimento entram; aparecem dois números fictícios "do cadastro", e "Nenhum desses é meu" → "Procurar outros números" acrescenta um "do e-SUS". Qualquer código serve, menos <code>000000</code> (simula código errado).</p>
+<p>Toda chamada leva o cabeçalho <code>X-App-Canal: nativo</code> (o PWA manda <code>pwa</code>): é por ele que o servidor sabe se a busca do telefone no e-SUS está ligada para este canal (Sistema → App do cidadão).</p>
 <h2>Notificações (push)</h2>
 <p>A equipe manda uma mensagem pela <strong>ficha do paciente</strong> no painel e ela chega ao celular pelo <strong>Firebase Cloud Messaging</strong> (no iPhone o Firebase entrega pela Apple, o APNs). O aparelho pertence à <strong>sessão</strong>: depois do login e do termo aceito o app registra o aparelho (<code>PUT /auth/paciente/dispositivo</code>); ao sair, o servidor apaga o token junto com a sessão e o app pede ao Firebase que esqueça o aparelho (<code>deleteToken</code>).</p>
 <p>O Firebase é iniciado <strong>só pelo Dart</strong>, com os valores passados no build — o projeto <strong>não</strong> usa <code>google-services.json</code>, <code>GoogleService-Info.plist</code> nem o plugin gradle <code>google-services</code>. Cada instância (prefeitura) tem o seu projeto no Firebase: nada disso fica no código. Por isso <strong>não rode <code>flutterfire configure</code></strong> na pasta do app: a FlutterFire CLI grava um <code>firebase.json</code> próprio na raiz (sobrescreve o nosso), gera o <code>lib/firebase_options.dart</code> e o <code>google-services.json</code> (os três estão no <code>.gitignore</code>) e liga o plugin <code>google-services</code> nos arquivos gradle — se rodou por engano, apague o que ela gerou e desfaça a mudança nos gradle.</p>
@@ -109,13 +110,30 @@ flutter build ipa --dart-define-from-file=firebase.json        # no Mac</code></
 </ul>
 <h3>Privacidade (ler antes de escrever uma notificação)</h3>
 <p>O texto da notificação aparece na <strong>tela bloqueada</strong> e passa pelos servidores do Google (e da Apple, no iPhone) sem criptografia de ponta a ponta. <strong>Nunca</strong> escreva dado de saúde — exame, resultado, diagnóstico, medicamento, especialidade. Use texto genérico ("Você tem uma atualização no app") e deixe o conteúdo dentro do app, atrás do login. A mensagem leva só a rota e o id da notificação; o servidor guarda o histórico de cada envio (quem, quando, para quem, o texto).</p>
+<h2>Publicar na Play Store</h2>
+<h3>Chave de upload (uma vez)</h3>
+<p>A Play Store guarda a chave que assina o app para os aparelhos (<strong>Assinatura de apps do Google Play</strong>, ligada no primeiro envio); a nossa é só a <strong>chave de upload</strong>, que prova à Play que o pacote veio de nós. Ela fica <strong>fora do repositório</strong> e com cópia num cofre de senhas — sem ela não sai versão nova (perder se resolve pelo Play Console, com espera).</p>
+<p>Gere num PowerShell aberto por você (o <code>keytool</code> pede a senha na hora; ela não vai para lugar nenhum):</p>
+<pre><code>New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\Chaves" | Out-Null
+&amp; "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v `
+  -keystore "$env:USERPROFILE\Documents\Chaves\smsmais-cidadao-upload.jks" -storetype PKCS12 `
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload `
+  -dname "CN=AutoMais Automacao Industrial, O=AutoMais, C=BR"</code></pre>
+<p>E crie <code>android/key.properties</code> (no <code>.gitignore</code>; PKCS12 usa a mesma senha nos dois campos):</p>
+<pre><code>storeFile=C:/Users/&lt;você&gt;/Documents/Chaves/smsmais-cidadao-upload.jks
+keyAlias=upload
+storePassword=&lt;a senha&gt;
+keyPassword=&lt;a senha&gt;</code></pre>
+<p>Sem o <code>key.properties</code> (ou as variáveis <code>CIDADAO_*</code>), o build de release <strong>para com erro</strong> — de propósito: pacote assinado com a chave de debug a loja recusa.</p>
+<h3>Gerar o pacote da loja</h3>
+<pre><code>flutter build appbundle --release --dart-define-from-file=firebase.json</code></pre>
+<p>Sai em <code>build/app/outputs/bundle/release/app-release.aab</code>. A versão vem do <code>pubspec.yaml</code> (<code>version: &lt;nome&gt;+&lt;código&gt;</code>): cada envio à Play precisa de um <strong>código maior</strong> que o anterior.</p>
 <h2>Pendências para publicar</h2>
 <ul>
 <li><strong>Links do WhatsApp abrirem direto no app:</strong> publicar <code>/.well-known/assetlinks.json</code> (Android)</li>
 </ul>
 <p>  e <code>apple-app-site-association</code> (iOS, com Associated Domains no projeto) em   <code>app.smsmarica.online</code>, com a impressão digital da chave de assinatura. Sem isso, o Android   pergunta "abrir com" e o iOS abre no navegador (o PWA).</p>
 <ul>
-<li><strong>Assinatura de release</strong> (Android) e conta de desenvolvedor (lojas).</li>
 <li><strong>Push:</strong> criar o projeto no Firebase e montar o <code>firebase.json</code> do build de loja (seção acima). O Firebase está trocando o token de registro pelo FID (Firebase Installation ID); o app ainda usa <code>getToken</code>/<code>onTokenRefresh</code> e o servidor envia em <code>message.token</code>, que aceita os dois. Quando o FlutterFire publicar <code>register()</code>/<code>onRegistered</code>, migrar.</li>
 </ul>
 </main>
