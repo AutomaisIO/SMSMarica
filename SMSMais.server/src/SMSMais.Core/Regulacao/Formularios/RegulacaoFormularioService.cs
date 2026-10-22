@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,12 @@ public sealed record OpcaoFormularioDto(
     string Rotulo,
     IReadOnlyList<SistemaRegulacao> Origens);
 
+/// <param name="ValorFixo">
+/// Valor que o campo SEMPRE leva naquele fluxo — a tela o mostra desativado e a gravação o
+/// impõe, venha o que vier (o "É retorno?" do NAR é sempre "Não", pedido do Bernardo em
+/// 22/10/2026). Nulo = campo livre; fica fora do JSON da definição, e o hash das versões
+/// antigas não muda.
+/// </param>
 public sealed record CampoFormularioDto(
     string Chave,
     string Rotulo,
@@ -29,7 +36,8 @@ public sealed record CampoFormularioDto(
     bool Obrigatorio,
     IReadOnlyList<OpcaoFormularioDto>? Opcoes,
     IReadOnlyList<SistemaRegulacao> Origens,
-    int Ordem);
+    int Ordem,
+    string? ValorFixo = null);
 
 public sealed record RegulacaoFormularioDto(
     Guid VersaoId,
@@ -106,7 +114,7 @@ public sealed class RegulacaoFormularioService(
 
         var (campos, mapa) = esquema == EsquemaExterno
             ? await MontarExternoAsync(procedimentoId, ct)
-            : MontarInterno();
+            : MontarInterno(fluxo);
 
         var definicao = JsonSerializer.Serialize(campos, JsonCompacto);
 
@@ -495,9 +503,16 @@ public sealed class RegulacaoFormularioService(
     /// Formulário do SISREG. <b>Provisório</b>: os campos reais da tela `marcar` só se conhecem
     /// depois do spike b, que escreve em sistema real e depende de OK. Estes cinco são os que o
     /// mapa por GET já documenta em <c>Automais.SISREG/docs/APRENDIZADOS.md</c>.
+    ///
+    /// <para>No NAR, "É retorno?" é sempre "Não" (pedido do Bernardo, 22/10/2026): o campo vem
+    /// com valor fixo e o envio leva a constante. Isso muda a definição, então o NAR ganha versão
+    /// própria do formulário — o Interno segue com a dele.</para>
     /// </summary>
-    private static (List<CampoFormularioDto> Campos, List<EntradaMapa> Mapa) MontarInterno()
+    private static (List<CampoFormularioDto> Campos, List<EntradaMapa> Mapa) MontarInterno(FluxoRegulacao fluxo)
     {
+        const string NaoERetorno = "N";
+        var retornoFixo = fluxo == FluxoRegulacao.Nar ? NaoERetorno : null;
+
         List<CampoFormularioDto> campos =
         [
             new("cid10", "CID", "cid", false, null, [SistemaRegulacao.Sisreg], 0),
@@ -506,8 +521,8 @@ public sealed class RegulacaoFormularioService(
             new("retorno", "É retorno?", "radio",
                 false,
                 [new OpcaoFormularioDto("S", "Sim", [SistemaRegulacao.Sisreg]),
-                 new OpcaoFormularioDto("N", "Não", [SistemaRegulacao.Sisreg])],
-                [SistemaRegulacao.Sisreg], 3),
+                 new OpcaoFormularioDto(NaoERetorno, "Não", [SistemaRegulacao.Sisreg])],
+                [SistemaRegulacao.Sisreg], 3, retornoFixo),
             new("observacao", "Observação", "textarea", false, null, [SistemaRegulacao.Sisreg], 4),
         ];
 
@@ -516,7 +531,8 @@ public sealed class RegulacaoFormularioService(
             new("cid10", SistemaRegulacao.Sisreg, "cid10", null),
             new("profissional_solicitante_cpf", SistemaRegulacao.Sisreg, "cpfprofsol", null),
             new("profissional_solicitante_nome", SistemaRegulacao.Sisreg, "nomeprofsol", null),
-            new("retorno", SistemaRegulacao.Sisreg, "ret", null),
+            new("retorno", SistemaRegulacao.Sisreg, "ret",
+                retornoFixo is null ? null : $"{PrefixoConstante}{retornoFixo}"),
             new("observacao", SistemaRegulacao.Sisreg, "observacao", null),
         ];
 
@@ -574,6 +590,22 @@ public sealed class RegulacaoFormularioService(
         if (cids.Count == 0) return baseTexto;
         var linha = $"CID(s) secundário(s): {string.Join("; ", cids)}";
         return baseTexto.Length == 0 ? linha : $"{baseTexto}\n\n{linha}";
+    }
+
+    /// <summary>
+    /// O canônico com cada campo de <see cref="CampoFormularioDto.ValorFixo"/> no valor fixo, venha
+    /// o que vier da tela: o campo desativado não pode depender só do front.
+    /// </summary>
+    public static JsonElement ComValoresFixos(JsonElement canonico, RegulacaoFormularioDto formulario)
+    {
+        var fixos = formulario.Campos.Where(c => c.ValorFixo is not null).ToList();
+        if (fixos.Count == 0) return canonico;
+
+        var objeto = canonico.ValueKind == JsonValueKind.Object
+            ? JsonNode.Parse(canonico.GetRawText())!.AsObject()
+            : new JsonObject();
+        foreach (var c in fixos) objeto[c.Chave] = c.ValorFixo;
+        return JsonSerializer.SerializeToElement(objeto);
     }
 
     private static string ComoTexto(JsonElement v) => v.ValueKind switch

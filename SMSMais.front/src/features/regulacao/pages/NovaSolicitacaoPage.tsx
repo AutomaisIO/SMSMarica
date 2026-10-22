@@ -579,7 +579,9 @@ export function NovaSolicitacaoPage() {
                           ?.filter((o) => (destino !== 'Ser' && destino !== 'Sernit') || o.origens.includes(destino))
                           .map((o) => ({ valor: o.valor, rotulo: o.rotulo })) ?? null,
                     }}
-                    valor={valores[c.chave] ?? ''}
+                    // Valor fixo (o "É retorno?" do NAR é sempre "Não"): o servidor grava o fixo.
+                    valor={c.valorFixo ?? valores[c.chave] ?? ''}
+                    desabilitado={c.valorFixo != null}
                     onChange={(v) => setValores((atual) => ({ ...atual, [c.chave]: v }))}
                   />
                   )}

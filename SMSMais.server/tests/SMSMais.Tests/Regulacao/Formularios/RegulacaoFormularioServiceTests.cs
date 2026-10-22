@@ -410,6 +410,42 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         f.Esquema.Should().Be("sisreg.inclusao");
     }
 
+    [Fact]
+    public async Task Nar_fixa_nao_e_retorno_e_o_interno_segue_livre()
+    {
+        await using var db = fixture.CriarDbContext();
+        var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
+        var (servico, _, _) = Montar(db);
+
+        var nar = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Nar, CancellationToken.None);
+        var interno = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Interno, CancellationToken.None);
+
+        nar.Campos.Single(c => c.Chave == "retorno").ValorFixo.Should().Be("N");
+        interno.Campos.Single(c => c.Chave == "retorno").ValorFixo.Should().BeNull();
+        nar.VersaoId.Should().NotBe(interno.VersaoId);
+
+        // O envio leva "N" mesmo se o canônico gravado antes da trava disser "S".
+        var canonico = JsonDocument.Parse("""{"retorno":"S"}""").RootElement;
+        var traduzido = await servico.TraduzirAsync(nar.VersaoId, SistemaRegulacao.Sisreg, canonico, CancellationToken.None);
+        traduzido["ret"].Should().Be("N");
+    }
+
+    [Fact]
+    public void Valores_fixos_sobrescrevem_o_canonico_e_preservam_o_resto()
+    {
+        var formulario = new RegulacaoFormularioDto(Guid.NewGuid(), "sisreg.inclusao",
+        [
+            new CampoFormularioDto("retorno", "É retorno?", "radio", false, null, [SistemaRegulacao.Sisreg], 0, "N"),
+            new CampoFormularioDto("cid10", "CID", "cid", false, null, [SistemaRegulacao.Sisreg], 1),
+        ]);
+        var canonico = JsonDocument.Parse("""{"retorno":"S","cid10":"I10"}""").RootElement;
+
+        var corrigido = RegulacaoFormularioService.ComValoresFixos(canonico, formulario);
+
+        corrigido.GetProperty("retorno").GetString().Should().Be("N");
+        corrigido.GetProperty("cid10").GetString().Should().Be("I10");
+    }
+
     [Theory]
     [InlineData("Paciente com dor", "Paciente com dor\n\nCID(s) secundário(s): (E11 ) Diabetes; (I10 ) Hipertensão")]
     [InlineData("", "CID(s) secundário(s): (E11 ) Diabetes; (I10 ) Hipertensão")]

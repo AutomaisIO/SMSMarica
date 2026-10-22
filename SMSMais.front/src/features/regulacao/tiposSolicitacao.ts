@@ -35,6 +35,8 @@ export type CampoFormulario = {
   /** Em quais sistemas o campo existe — a tela avisa quando é exigência de um só. */
   origens: SistemaRegulacao[];
   ordem: number;
+  /** Valor que o campo sempre leva neste fluxo (o "É retorno?" do NAR é sempre "N"): vai desativado. */
+  valorFixo?: string | null;
 };
 
 export type FormularioRegulacao = {
