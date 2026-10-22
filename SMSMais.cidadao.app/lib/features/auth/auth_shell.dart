@@ -89,7 +89,7 @@ class AuthShell extends StatelessWidget {
               children: [
                 Center(
                   child: Semantics(
-                    label: 'Prefeitura de Maricá — cidade que cuida, transforma e inspira',
+                    label: 'Prefeitura de Maricá — lugar de viver bem',
                     image: true,
                     child: Image.asset('assets/brand/marica_logo.png', width: 188),
                   ),

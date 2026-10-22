@@ -49,7 +49,7 @@ export default defineConfig({
         lang: 'pt-BR',
         theme_color: '#C8102E',
         // Splash na cor da marca (mesmo padrão do app do cidadão).
-        background_color: '#C8102E',
+        background_color: '#FF2A00',
         display: 'standalone',
         start_url: '/',
         scope: '/',

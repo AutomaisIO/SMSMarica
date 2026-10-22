@@ -34,7 +34,7 @@ export default defineConfig({
         description: 'Saúde de Maricá no seu bolso: agende consultas e exames, acesse seus documentos de saúde e acompanhe seu transporte (TFD).',
         lang: 'pt-BR',
         theme_color: '#C8102E',
-        background_color: '#BC1F28',
+        background_color: '#FF2A00',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
