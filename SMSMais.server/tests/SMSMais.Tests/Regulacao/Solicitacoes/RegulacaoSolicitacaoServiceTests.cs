@@ -41,6 +41,9 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
 {
     private static string Sufixo() => Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
 
+    /// <summary>CNES é único quando preenchido — cada unidade do teste ganha o seu.</summary>
+    private static string NovoCnes() => Random.Shared.Next(1_000_000, 9_999_999).ToString();
+
     private sealed class StoreFake : IArquivoExigenciaStore
     {
         public string MontarChave(Guid p, Guid a, string e) => $"Regulacao/{p:D}/{a:D}.{e}";
@@ -123,6 +126,8 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         {
             Id = Guid.NewGuid(),
             Nome = $"UNID SOLIC {Sufixo()}",
+            // Com CNES: os testes do NAR a usam também como "em nome de", e o NAR exige CNES.
+            Cnes = NovoCnes(),
             CriadoEm = DateTime.UtcNow,
         };
         db.Unidades.Add(unidade);
@@ -571,6 +576,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         {
             Id = Guid.NewGuid(),
             Nome = $"UNID EM NOME DE {Sufixo()}",
+            Cnes = NovoCnes(),
             CriadoEm = DateTime.UtcNow,
         };
         db.Unidades.Add(outra);
@@ -585,5 +591,50 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
 
         s.Fluxo.Should().Be(FluxoRegulacao.Nar);
         s.SistemaDestino.Should().Be(SistemaRegulacao.Sisreg);
+    }
+    [Fact]
+    public async Task Nar_em_nome_de_unidade_sem_cnes_e_recusado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, _, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "SEM CNES", "52998224725");
+
+        var semCnes = new Unidade { Id = Guid.NewGuid(), Nome = $"SEM CNES {Sufixo()}", CriadoEm = DateTime.UtcNow };
+        db.Unidades.Add(semCnes);
+        await db.SaveChangesAsync();
+
+        var acao = () => servico.CriarAsync(
+            new CriarRegulacaoSolicitacaoRequest(
+                FluxoRegulacao.Nar, procedimentoId, pacienteId, semCnes.Id, null, null),
+            CancellationToken.None);
+
+        // É com o CNES dela que o pedido entra no SISREG (D-9): sem ele, o NAR não tem como seguir.
+        var erro = await acao.Should().ThrowAsync<ValidacaoException>();
+        erro.Which.Erros.Should().ContainKey("unidadeEmNomeDe");
+    }
+
+    [Fact]
+    public async Task Unidades_em_nome_de_trazem_so_as_ativas_do_municipio_com_cnes()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, _, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, _, _, _) = Montar(db, usuarioId, unidadeId, versaoId);
+
+        var sufixo = Sufixo();
+        var valida = new Unidade { Id = Guid.NewGuid(), Nome = $"VALIDA {sufixo}", Cnes = NovoCnes(), CriadoEm = DateTime.UtcNow };
+        var inativa = new Unidade { Id = Guid.NewGuid(), Nome = $"INATIVA {sufixo}", Cnes = NovoCnes(), Ativo = false, CriadoEm = DateTime.UtcNow };
+        var deFora = new Unidade { Id = Guid.NewGuid(), Nome = $"DE FORA {sufixo}", Cnes = NovoCnes(), Externa = true, CriadoEm = DateTime.UtcNow };
+        var semCnes = new Unidade { Id = Guid.NewGuid(), Nome = $"SEM CNES {sufixo}", CriadoEm = DateTime.UtcNow };
+        db.Unidades.AddRange(valida, inativa, deFora, semCnes);
+        await db.SaveChangesAsync();
+
+        var lista = await servico.UnidadesEmNomeDeAsync(CancellationToken.None);
+
+        // Não só as vinculadas a quem pede: o NAR existe para pedir em nome de OUTRA unidade.
+        var ids = lista.Select(u => u.Id).ToList();
+        ids.Should().Contain(valida.Id);
+        ids.Should().NotContain([inativa.Id, deFora.Id, semCnes.Id]);
     }
 }

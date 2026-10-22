@@ -68,6 +68,10 @@ export type SolicitacaoRegulacao = {
   envioAssistido: boolean;
   observacoes: string | null;
   criadoEm: string;
+  unidadeSolicitanteNome: string;
+  /** NAR: em nome de quem o pedido entra no SISREG — e o CNES que o técnico usa lá. */
+  unidadeEmNomeDeNome: string | null;
+  unidadeEmNomeDeCnes: string | null;
 };
 
 /** Por que a solicitação ainda não pode ir para a fila. Lista vazia = pode enviar. */
@@ -130,7 +134,34 @@ export type TipoEventoRegulacao =
   | 'Recusa'
   | 'OkInterno'
   | 'TrocaProcedimento'
-  | 'DocumentoAcessado';
+  | 'DocumentoAcessado'
+  | 'ConferenciaExterna';
+
+export type ResultadoItemConferencia = 'Igual' | 'Diferente' | 'SoNoSistema' | 'Informativo';
+
+export type ItemConferencia = {
+  campo: string;
+  rotulo: string;
+  nosso: string | null;
+  noSistema: string | null;
+  resultado: ResultadoItemConferencia;
+};
+
+/**
+ * O pedido lido no sistema de regulação pelo número registrado e comparado com o nosso. Só
+ * registro: não muda o estado nem bloqueia nada.
+ */
+export type ConferenciaExterna = {
+  sistema: SistemaRegulacao;
+  numero: string;
+  conferidoEm: string;
+  /** O sistema achou o número. Falso sem `erro` = leu e não achou. */
+  encontrado: boolean;
+  /** A leitura não aconteceu (sessão caída, limite do SISREG). O número continua registrado. */
+  erro: string | null;
+  divergencias: number;
+  itens: ItemConferencia[];
+};
 
 export type EventoRegulacao = {
   id: string;

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Catalogo;
+using SMSMais.Core.Regulacao.Conferencia;
 using SMSMais.Core.Regulacao.ContatoPaciente;
 using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Formularios;
@@ -101,6 +102,17 @@ public sealed class RegulacaoSolicitacoesController(
         catalogos.Cutucar();
         return servico.ObterAsync(id, cancellationToken);
     }
+
+    /// <summary>
+    /// As unidades que o NAR aceita como "em nome de" — todas as ativas com CNES, não só as de
+    /// quem pede. Rota própria porque <c>GET /unidades</c> exige o módulo de cadastro de unidades,
+    /// que a unidade solicitante não tem.
+    /// </summary>
+    [HttpGet("unidades-em-nome-de")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<UnidadeEmNomeDeDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<UnidadeEmNomeDeDto>> UnidadesEmNomeDe(CancellationToken cancellationToken) =>
+        servico.UnidadesEmNomeDeAsync(cancellationToken);
 
     [HttpPut("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
@@ -238,6 +250,27 @@ public sealed class RegulacaoSolicitacoesController(
     public Task<RegulacaoSolicitacaoDetalheDto> RegistrarEnvio(
         Guid id, [FromBody] RegistrarEnvioRequest req, CancellationToken cancellationToken) =>
         servico.RegistrarEnvioAsync(id, req, cancellationToken);
+
+    /// <summary>
+    /// Confere o número registrado: lê o pedido no sistema de destino com a credencial institucional
+    /// e compara com o nosso, campo a campo. Só leitura lá fora; aqui, só um evento na linha do
+    /// tempo — não muda o estado. Falha de leitura volta no corpo (<c>erro</c>), não como erro HTTP.
+    /// </summary>
+    [HttpPost("{id:guid}/conferir-no-sistema")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ConferenciaExternaDto>(StatusCodes.Status200OK)]
+    public Task<ConferenciaExternaDto> ConferirNoSistema(
+        Guid id, [FromServices] IRegulacaoConferenciaService conferencia, CancellationToken cancellationToken) =>
+        conferencia.ConferirAsync(id, cancellationToken);
+
+    /// <summary>A conferência mais recente (ou 204, se nunca houve). Mesmo escopo do detalhe.</summary>
+    [HttpGet("{id:guid}/conferencia")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<ConferenciaExternaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UltimaConferencia(
+        Guid id, [FromServices] IRegulacaoConferenciaService conferencia, CancellationToken cancellationToken) =>
+        await conferencia.UltimaAsync(id, cancellationToken) is { } dto ? Ok(dto) : NoContent();
 
     /// <summary>D-8: confere a solicitação interna que o solicitante já incluiu no SISREG.</summary>
     [HttpPost("{id:guid}/ok-interno")]

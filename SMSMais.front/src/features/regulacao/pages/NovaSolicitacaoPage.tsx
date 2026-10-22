@@ -56,6 +56,8 @@ import {
   listarAcervoDaSolicitacao,
 } from '../api/acervoRegulacao';
 import { SeletorCidRegulacao } from '../components/SeletorCidRegulacao';
+import { SeletorUnidadeEmNomeDe } from '../components/SeletorUnidadeEmNomeDe';
+import { BadgeNar } from '../components/StatusRegulacaoBadge';
 import type { FluxoRegulacao, SolicitacaoRegulacao } from '../tiposSolicitacao';
 import { ROTULO_SISTEMA_REGULACAO } from '../types';
 import type { Paciente } from '@/features/pacientes/types';
@@ -112,6 +114,8 @@ export function NovaSolicitacaoPage() {
   const [procedimento, setProcedimento] = useState<RegulacaoProcedimentoItem | null>(null);
   const [fluxo, setFluxo] = useState<FluxoRegulacao | null>(null);
   const [destino, setDestino] = useState<string>('');
+  /** Só no NAR: a unidade em cujo nome (e com cujo CNES) o pedido entra no SISREG. */
+  const [unidadeEmNomeDe, setUnidadeEmNomeDe] = useState<string>('');
   const [paciente, setPaciente] = useState<PacienteResumoRegulacao | null>(null);
   const [solicitacaoId, setSolicitacaoId] = useState<string | null>(idEdicao ?? null);
   const [valores, setValores] = useState<Record<string, string>>({});
@@ -154,6 +158,7 @@ export function NovaSolicitacaoPage() {
     });
     setFluxo(s.fluxo);
     setDestino(s.fluxo === 'Externo' ? (s.sistemaDestino ?? '') : '');
+    setUnidadeEmNomeDe(s.unidadeEmNomeDeId ?? '');
     setPaciente(pacienteGravado(s));
     setValores(comoTexto(s.formulario));
     setPasso('formulario');
@@ -193,9 +198,9 @@ export function NovaSolicitacaoPage() {
 
   function passoValido(p: Passo): boolean {
     if (p === 'procedimento') return !!procedimento;
-    // O NAR ainda não tem o passo da unidade "em nome de" — o backend recusa sem ela, e a tela
-    // deixava avançar até o 400.
-    if (p === 'destino') return !!fluxo && fluxo !== 'Nar' && (fluxo !== 'Externo' || !!destino);
+    // NAR sem a unidade "em nome de" não tem com qual CNES entrar no SISREG — o servidor recusa.
+    if (p === 'destino')
+      return !!fluxo && (fluxo !== 'Externo' || !!destino) && (fluxo !== 'Nar' || !!unidadeEmNomeDe);
     if (p === 'paciente') return !!paciente;
     return true;
   }
@@ -223,6 +228,7 @@ export function NovaSolicitacaoPage() {
         procedimentoId: procedimento.id,
         pacienteId: paciente.id,
         sistemaDestino: destinoDoFluxo(fluxo),
+        unidadeEmNomeDeId: fluxo === 'Nar' ? unidadeEmNomeDe : null,
       });
       setSolicitacaoId(s.id);
       notificar(`Rascunho ${s.numeroLocal} criado.`);
@@ -240,9 +246,10 @@ export function NovaSolicitacaoPage() {
     const trocouProcedimento = procedimento.id !== s.procedimentoId;
     const trocouFluxo = fluxo !== s.fluxo;
     const trocouDestino = fluxo === 'Externo' && destino !== (s.sistemaDestino ?? '');
+    const trocouEmNomeDe = fluxo === 'Nar' && unidadeEmNomeDe !== (s.unidadeEmNomeDeId ?? '');
     // Mesmo paciente com CPF diferente do gravado = CPF informado depois; reenviar relê o cadastro.
     const trocouPaciente = paciente.id !== s.pacienteId || (paciente.cpf ?? null) !== (s.pacienteCpf ?? null);
-    if (!trocouProcedimento && !trocouFluxo && !trocouDestino && !trocouPaciente) return true;
+    if (!trocouProcedimento && !trocouFluxo && !trocouDestino && !trocouPaciente && !trocouEmNomeDe) return true;
 
     try {
       const depois = await atualizar.mutateAsync({
@@ -251,6 +258,7 @@ export function NovaSolicitacaoPage() {
         fluxo: trocouFluxo ? fluxo : undefined,
         sistemaDestino: trocouFluxo || trocouDestino ? destinoDoFluxo(fluxo) : undefined,
         pacienteId: trocouPaciente ? paciente.id : undefined,
+        unidadeEmNomeDeId: trocouEmNomeDe ? unidadeEmNomeDe : undefined,
       });
       // Trocar procedimento/fluxo troca o formulário: o servidor preserva o que sobrevive.
       setValores(comoTexto(depois.formulario));
@@ -504,10 +512,20 @@ export function NovaSolicitacaoPage() {
             ) : null}
 
             {fluxo === 'Nar' ? (
-              <p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                O NAR precisa da unidade em nome de quem a solicitação é aberta — esse passo ainda
-                não existe. Por ora, use Interno ou Externo.
-              </p>
+              <div className="space-y-2 rounded border border-violet-200 bg-violet-50 p-3">
+                <p className="flex flex-wrap items-center gap-2 text-sm text-violet-900">
+                  <BadgeNar />
+                  A solicitação entra no SISREG em nome da unidade escolhida aqui, com o CNES dela.
+                  Depois, o caminho é o mesmo de sempre.
+                </p>
+                <Campo label="Em nome de qual unidade?" htmlFor="nar-em-nome-de" required>
+                  <SeletorUnidadeEmNomeDe
+                    id="nar-em-nome-de"
+                    valor={unidadeEmNomeDe}
+                    onChange={setUnidadeEmNomeDe}
+                  />
+                </Campo>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -684,6 +702,9 @@ export function NovaSolicitacaoPage() {
             <dl className="grid gap-2 sm:grid-cols-2">
               <Linha rotulo="Procedimento" valor={procedimento?.nome} />
               <Linha rotulo="Destino" valor={fluxo === 'Externo' ? destino : fluxo ?? undefined} />
+              {fluxo === 'Nar' && (
+                <Linha rotulo="Em nome de (NAR)" valor={atual.data?.unidadeEmNomeDeNome ?? undefined} />
+              )}
               <Linha rotulo="Paciente" valor={paciente?.nome} />
               <Linha rotulo="CPF" valor={paciente?.cpf ?? 'não informado'} />
             </dl>

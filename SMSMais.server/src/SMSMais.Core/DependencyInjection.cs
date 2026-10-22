@@ -1193,6 +1193,13 @@ public static class DependencyInjection
         services.AddScoped<Regulacao.ContatoPaciente.IRegulacaoContatoPacienteService,
             Regulacao.ContatoPaciente.RegulacaoContatoPacienteService>();
         services.AddScoped<Regulacao.Conciliacao.IRegulacaoConciliacaoService, Regulacao.Conciliacao.RegulacaoConciliacaoService>();
+        // Conferência do número digitado pelo técnico: um leitor por sistema, todos só leitura e
+        // com a credencial institucional; o serviço escolhe pelo destino da solicitação.
+        services.AddScoped<Regulacao.Conferencia.ILeitorPedidoExterno, Regulacao.Conferencia.LeitorPedidoSisreg>();
+        services.AddScoped<Regulacao.Conferencia.ILeitorPedidoExterno, Regulacao.Conferencia.LeitorPedidoSer>();
+        services.AddScoped<Regulacao.Conferencia.ILeitorPedidoExterno, Regulacao.Conferencia.LeitorPedidoSernit>();
+        services.AddScoped<Regulacao.Conferencia.ILeitorPedidoExterno, Regulacao.Conferencia.LeitorPedidoEsusSg>();
+        services.AddScoped<Regulacao.Conferencia.IRegulacaoConferenciaService, Regulacao.Conferencia.RegulacaoConferenciaService>();
         services.AddScoped<Regulacao.Notificacoes.IRegulacaoNotificacaoService, Regulacao.Notificacoes.RegulacaoNotificacaoService>();
         services.AddScoped<Regulacao.Regras.IRegulacaoRegraService, Regulacao.Regras.RegulacaoRegraService>();
         services.AddScoped<Regulacao.Regras.IRegulacaoProcedimentoRegradoService, Regulacao.Regras.RegulacaoProcedimentoRegradoService>();

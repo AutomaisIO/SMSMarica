@@ -12,6 +12,7 @@ import { LinhaDoTempo } from '../components/LinhaDoTempo';
 import { MedicoPendenteCard } from '../components/MedicoPendenteCard';
 import { ModalMotivo } from '../components/ModalMotivo';
 import { ParaLancarNoSistema } from '../components/ParaLancarNoSistema';
+import { ConferenciaNoSistema } from '../components/ConferenciaNoSistema';
 import { RespostasRegras } from '../components/RespostasRegras';
 import {
   useCancelarSolicitacao,
@@ -96,6 +97,9 @@ export function SolicitacaoDetalhePage() {
 
       {/* Só leitura aqui: quem cadastra o médico no sistema e resolve o pedido é a regulação. */}
       <MedicoPendenteCard valorMedico={s.formulario?.medico_solicitante} podeResolver={false} />
+
+      {/* A unidade lê a conferência; quem confere de novo é a regulação, na análise. */}
+      <ConferenciaNoSistema s={s} podeConferir={false} />
 
       <ParaLancarNoSistema s={s} />
 

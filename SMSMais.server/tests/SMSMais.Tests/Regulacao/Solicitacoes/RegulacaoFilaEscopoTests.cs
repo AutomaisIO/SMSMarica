@@ -435,6 +435,62 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task O_agente_troca_a_unidade_em_nome_de_do_nar_que_assumiu()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+
+        Unidade ComCnes(string nome) => new()
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"{nome} {Sufixo()}",
+            Cnes = Random.Shared.Next(1_000_000, 9_999_999).ToString(),
+            CriadoEm = DateTime.UtcNow,
+        };
+        var pedida = ComCnes("PERICLES");
+        var certa = ComCnes("CONDE");
+        db.Unidades.AddRange(pedida, certa);
+        await db.SaveChangesAsync();
+
+        var nar = await db.RegulacaoSolicitacoes.FirstAsync(s => s.Id == c.SolicitacaoA);
+        nar.Fluxo = FluxoRegulacao.Nar;
+        nar.SistemaDestino = SistemaRegulacao.Sisreg;
+        nar.UnidadeEmNomeDeId = pedida.Id;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+
+        // Antes de assumir, não: quem mexe no caso é quem o assumiu.
+        var semAssumir = () => agente.AtualizarAsync(
+            c.SolicitacaoA, new AtualizarRegulacaoSolicitacaoRequest(null, null, null, UnidadeEmNomeDeId: certa.Id),
+            CancellationToken.None);
+        await semAssumir.Should().ThrowAsync<ConflitoException>();
+
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        var depois = await agente.AtualizarAsync(
+            c.SolicitacaoA, new AtualizarRegulacaoSolicitacaoRequest(null, null, null, UnidadeEmNomeDeId: certa.Id),
+            CancellationToken.None);
+
+        depois.UnidadeEmNomeDeId.Should().Be(certa.Id);
+        depois.UnidadeEmNomeDeNome.Should().Be(certa.Nome);
+        depois.UnidadeEmNomeDeCnes.Should().Be(certa.Cnes);
+
+        // A troca fica na trilha como ajuste da regulação, com o de → para.
+        var ajuste = (await agente.EventosAsync(c.SolicitacaoA, CancellationToken.None))
+            .Single(e => e.Tipo == TipoEventoRegulacao.Ajuste);
+        ajuste.Papel.Should().Be(PapelEventoRegulacao.Agente);
+        ajuste.Diff!.Value.GetRawText().Should().Contain(pedida.Nome).And.Contain(certa.Nome);
+
+        // Fora do NAR, "em nome de" não existe.
+        await agente.AssumirAsync(c.SolicitacaoB, CancellationToken.None);
+        var foraDoNar = () => agente.AtualizarAsync(
+            c.SolicitacaoB, new AtualizarRegulacaoSolicitacaoRequest(null, null, null, UnidadeEmNomeDeId: certa.Id),
+            CancellationToken.None);
+        await foraDoNar.Should().ThrowAsync<ValidacaoException>();
+    }
+
+    [Fact]
     public async Task Sem_vinculo_e_sem_o_modulo_do_agente_a_fila_vem_vazia()
     {
         await using var db = fixture.CriarDbContext();

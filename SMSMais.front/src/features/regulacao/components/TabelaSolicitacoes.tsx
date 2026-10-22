@@ -2,7 +2,7 @@ import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacie
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { formatarInstante } from '@/shared/lib/datas';
 
-import { ROTULO_FLUXO, StatusRegulacaoBadge } from './StatusRegulacaoBadge';
+import { BadgeNar, CLASSE_LINHA_NAR, ROTULO_FLUXO, StatusRegulacaoBadge } from './StatusRegulacaoBadge';
 import type { SolicitacaoRegulacaoLista } from '../tiposSolicitacao';
 
 /**
@@ -74,16 +74,19 @@ export function TabelaSolicitacoes({
       cabecalho: 'Fluxo',
       className: 'whitespace-nowrap',
       ordenar: (s) => s.fluxo,
-      render: (s) => (
-        <div className="text-xs">
-          <p className="text-slate-700">{ROTULO_FLUXO[s.fluxo]}</p>
-          {s.unidadeEmNomeDe && (
-            <p className="text-slate-500" title="NAR: aberta em nome de outra unidade">
-              p/ {s.unidadeEmNomeDe}
-            </p>
-          )}
-        </div>
-      ),
+      render: (s) =>
+        s.fluxo === 'Nar' ? (
+          <div className="max-w-56 space-y-0.5 text-xs">
+            <BadgeNar />
+            {s.unidadeEmNomeDe && (
+              <p className="truncate text-violet-800" title={`Em nome de ${s.unidadeEmNomeDe}`}>
+                em nome de {s.unidadeEmNomeDe}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-700">{ROTULO_FLUXO[s.fluxo]}</p>
+        ),
     },
     {
       chave: 'status',
@@ -133,6 +136,7 @@ export function TabelaSolicitacoes({
       chaveLinha={(s) => s.id}
       carregando={carregando}
       aoClicarLinha={aoAbrir}
+      classeLinha={(s) => (s.fluxo === 'Nar' ? CLASSE_LINHA_NAR : undefined)}
       dicaLinha="Clique para abrir a solicitação"
       vazio={vazio ?? 'Nenhuma solicitação nesta situação.'}
       idTabela="regulacao-solicitacoes"

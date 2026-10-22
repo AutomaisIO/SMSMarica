@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Data;
+using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
@@ -39,13 +41,18 @@ public sealed record CriarRegulacaoSolicitacaoRequest(
 /// Só a unidade, com a solicitação em rascunho ou devolvida. Mandar o MESMO paciente relê a
 /// identidade — é assim que o CPF informado depois chega à solicitação.
 /// </param>
+/// <param name="UnidadeEmNomeDeId">
+/// Só no NAR. A unidade troca enquanto a solicitação é dela; o técnico da regulação troca no caso
+/// que assumiu — é ele quem sabe com o CNES de qual unidade o pedido vai entrar no SISREG.
+/// </param>
 public sealed record AtualizarRegulacaoSolicitacaoRequest(
     SistemaRegulacao? SistemaDestino,
     JsonElement? Formulario,
     string? Observacoes,
     FluxoRegulacao? Fluxo = null,
     Guid? ProcedimentoId = null,
-    Guid? PacienteId = null);
+    Guid? PacienteId = null,
+    Guid? UnidadeEmNomeDeId = null);
 
 public sealed record RegulacaoSolicitacaoDetalheDto(
     Guid Id,
@@ -70,7 +77,14 @@ public sealed record RegulacaoSolicitacaoDetalheDto(
     /// <summary>O número foi digitado pelo agente (envio assistido), não gerado pelo nosso envio.</summary>
     bool EnvioAssistido,
     string? Observacoes,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    string UnidadeSolicitanteNome,
+    /// <summary>NAR: em nome de quem o pedido entra no SISREG — e o CNES que o técnico usa lá.</summary>
+    string? UnidadeEmNomeDeNome,
+    string? UnidadeEmNomeDeCnes);
+
+/// <summary>Uma unidade que pode ser escolhida como "em nome de" no NAR.</summary>
+public sealed record UnidadeEmNomeDeDto(Guid Id, string Nome, string Cnes);
 
 /// <summary>Por que a solicitação ainda não pode ir para a fila.</summary>
 public sealed record PendenciaEnvioDto(string Codigo, string Descricao);
@@ -147,6 +161,12 @@ public interface IRegulacaoSolicitacaoService
 
     Task<RegulacaoSolicitacaoDetalheDto> CriarAsync(
         CriarRegulacaoSolicitacaoRequest req, CancellationToken ct);
+
+    /// <summary>
+    /// As unidades que o NAR aceita como "em nome de": todas as ativas do município com CNES, e
+    /// não só as vinculadas a quem pede — é para isso que o NAR existe.
+    /// </summary>
+    Task<IReadOnlyList<UnidadeEmNomeDeDto>> UnidadesEmNomeDeAsync(CancellationToken ct);
 
     Task<RegulacaoSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct);
 
@@ -373,6 +393,7 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException(
                 "unidadeEmNomeDe", "Só o fluxo NAR abre solicitação em nome de outra unidade.");
         }
+        if (req.UnidadeEmNomeDeId is { } emNomeDe) await ExigirUnidadeEmNomeDeAsync(emNomeDe, ct);
 
         var procedimento = await db.RegulacaoProcedimentos.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == req.ProcedimentoId && p.Ativo, ct)
@@ -425,6 +446,13 @@ public sealed class RegulacaoSolicitacaoService(
         return await ObterAsync(s.Id, ct);
     }
 
+    public async Task<IReadOnlyList<UnidadeEmNomeDeDto>> UnidadesEmNomeDeAsync(CancellationToken ct) =>
+        await db.Unidades.AsNoTracking()
+            .Where(PodeSerEmNomeDe)
+            .OrderBy(u => u.Nome)
+            .Select(u => new UnidadeEmNomeDeDto(u.Id, u.Nome, u.Cnes!))
+            .ToListAsync(ct);
+
     public async Task<RegulacaoSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct)
     {
         var s = await CarregarNoEscopoAsync(id, ct);
@@ -433,7 +461,16 @@ public sealed class RegulacaoSolicitacaoService(
             .Select(p => p.NomeCanonico)
             .FirstOrDefaultAsync(ct) ?? "(procedimento removido)";
 
-        return Mapear(s, procedimento);
+        var ids = new[] { s.UnidadeSolicitanteId, s.UnidadeEmNomeDeId ?? Guid.Empty };
+        var unidades = await db.Unidades.AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .Select(u => new { u.Id, u.Nome, u.Cnes })
+            .ToDictionaryAsync(u => u.Id, ct);
+        var solicitante = unidades.GetValueOrDefault(s.UnidadeSolicitanteId);
+        var emNomeDe = s.UnidadeEmNomeDeId is { } e ? unidades.GetValueOrDefault(e) : null;
+
+        return Mapear(
+            s, procedimento, solicitante?.Nome ?? "(unidade removida)", emNomeDe?.Nome, emNomeDe?.Cnes);
     }
 
     public async Task<RegulacaoSolicitacaoDetalheDto> AtualizarAsync(
@@ -477,6 +514,28 @@ public sealed class RegulacaoSolicitacaoService(
         var fluxoTrocou = novoFluxo != s.Fluxo;
         var procedimentoTrocou = novoProcedimento != s.ProcedimentoId;
 
+        // A unidade "em nome de" NÃO é estrutura para o agente: com o caso assumido, é o técnico
+        // quem sabe com o CNES de qual unidade o pedido vai entrar no SISREG, e trocar não muda
+        // formulário, regras nem paciente (pedido do Bernardo, 22/10/2026).
+        if (req.UnidadeEmNomeDeId is { } emNomeDeId)
+        {
+            if (novoFluxo != FluxoRegulacao.Nar)
+            {
+                throw new ValidacaoException(
+                    "unidadeEmNomeDe", "Só o fluxo NAR abre solicitação em nome de outra unidade.");
+            }
+
+            var nova = await ExigirUnidadeEmNomeDeAsync(emNomeDeId, ct);
+            if (emNomeDeId != s.UnidadeEmNomeDeId)
+            {
+                var anterior = s.UnidadeEmNomeDeId is { } a
+                    ? await db.Unidades.AsNoTracking().Where(u => u.Id == a).Select(u => u.Nome).FirstOrDefaultAsync(ct)
+                    : null;
+                diff["unidadeEmNomeDe"] = new { de = anterior, para = nova.Nome };
+                s.UnidadeEmNomeDeId = emNomeDeId;
+            }
+        }
+
         // O formulário que vale é o de AGORA — o mesmo que a tela desenhou e que as pendências
         // conferem —, e é a versão dele que fica gravada (PR-17, 09/10/2026: a versão da abertura
         // ficava para sempre e o envio descartava o que ela não conhecia). Buscado antes de mexer
@@ -511,7 +570,7 @@ public sealed class RegulacaoSolicitacaoService(
             if (novoFluxo == FluxoRegulacao.Nar && s.UnidadeEmNomeDeId is null)
             {
                 throw new ValidacaoException(
-                    "fluxo", "O NAR precisa da unidade em nome de quem a solicitação é aberta — abra uma nova solicitação NAR.");
+                    "unidadeEmNomeDe", "No NAR é obrigatório informar a unidade em nome de quem a solicitação é aberta.");
             }
 
             var procedimento = await db.RegulacaoProcedimentos.AsNoTracking()
@@ -1449,7 +1508,29 @@ public sealed class RegulacaoSolicitacaoService(
         }
     }
 
-    private static RegulacaoSolicitacaoDetalheDto Mapear(RegulacaoSolicitacao s, string procedimentoNome) =>
+    /// <summary>
+    /// Quem pode ser "em nome de" no NAR. O CNES é obrigatório porque é com ele que o pedido entra
+    /// no SISREG (D-9); unidade de fora do município (destino de TFD) não pede pela rede de Maricá.
+    /// A lista da tela e a validação usam a MESMA régua — senão a tela oferece o que o servidor recusa.
+    /// </summary>
+    private static readonly Expression<Func<Unidade, bool>> PodeSerEmNomeDe =
+        u => u.Ativo && !u.Externa && u.Cnes != null && u.Cnes != "";
+
+    /// <summary>
+    /// Fora do escopo do usuário de propósito: o NAR existe para pedir em nome de unidade à qual quem
+    /// pede não está vinculado. Unidade inexistente ou fora da régua é erro de validação, não 500.
+    /// </summary>
+    private async Task<Unidade> ExigirUnidadeEmNomeDeAsync(Guid unidadeId, CancellationToken ct) =>
+        await db.Unidades.AsNoTracking()
+            .Where(u => u.Id == unidadeId)
+            .Where(PodeSerEmNomeDe)
+            .FirstOrDefaultAsync(ct)
+        ?? throw new ValidacaoException(
+            "unidadeEmNomeDe", "A unidade escolhida não pode receber NAR: precisa estar ativa e ter CNES.");
+
+    private static RegulacaoSolicitacaoDetalheDto Mapear(
+        RegulacaoSolicitacao s, string procedimentoNome,
+        string unidadeSolicitante, string? unidadeEmNomeDe, string? unidadeEmNomeDeCnes) =>
         new(
             s.Id, s.NumeroLocal, s.Fluxo, s.Status, s.StatusMotivo,
             s.UnidadeSolicitanteId, s.UnidadeEmNomeDeId,
@@ -1458,5 +1539,6 @@ public sealed class RegulacaoSolicitacaoService(
             s.SistemaDestino, s.FormularioVersaoId,
             LerCanonico(s.FormularioJson),
             s.NumeroExterno, s.AgenteResponsavelId, s.EnviadoEm, s.EnvioAssistido,
-            s.Observacoes, s.CriadoEm);
+            s.Observacoes, s.CriadoEm,
+            unidadeSolicitante, unidadeEmNomeDe, unidadeEmNomeDeCnes);
 }

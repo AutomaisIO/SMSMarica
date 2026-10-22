@@ -64,6 +64,15 @@ export function ParaLancarNoSistema({ s }: { s: SolicitacaoRegulacao }) {
     });
   }
 
+  // NAR: antes do formulário, com qual unidade entrar no SISREG — é o CNES dela que o pedido leva,
+  // e não o de quem abriu (D-9).
+  if (s.fluxo === 'Nar' && s.unidadeEmNomeDeCnes) {
+    linhas.unshift(
+      { chave: 'nar_cnes', rotulo: 'Entrar no SISREG com o CNES', valor: s.unidadeEmNomeDeCnes, risco: undefined },
+      { chave: 'nar_unidade', rotulo: 'Unidade solicitante (em nome de)', valor: s.unidadeEmNomeDeNome ?? '', risco: undefined },
+    );
+  }
+
   if (linhas.length === 0) return null;
 
   return (

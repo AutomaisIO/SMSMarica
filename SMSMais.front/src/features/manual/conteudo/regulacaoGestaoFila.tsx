@@ -27,7 +27,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/regulacao/gestao-fila',
   publico: 'Quem avalia e regula as solicitações (agente regulador)',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'anexar documento',
     'guia de agendamento',
@@ -88,6 +88,15 @@ export const artigoRegulacaoGestaoFila: Artigo = {
     'cadastro a conferir',
     'já lancei no SER',
     'registrar envio',
+    'NAR',
+    'agendamento indireto',
+    'em nome de',
+    'trocar unidade',
+    'CNES',
+    'conferência no sistema',
+    'conferir de novo',
+    'divergência',
+    'número digitado errado',
     'número do sistema',
     'devolver',
     'devolver à unidade',
@@ -139,7 +148,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'fila',
       titulo: 'A fila: o que chegou e em que pé está',
       busca:
-        'fila abas recebidas em análise devolvidas enviadas no sistema encerradas filtro fluxo destino busca nome cpf número coluna agente unidade topo todas município ordem mais antiga',
+        'fila abas recebidas em análise devolvidas enviadas no sistema encerradas filtro fluxo destino busca nome cpf número coluna agente unidade topo todas município ordem mais antiga nar selo violeta em nome de',
       conteudo: (
         <>
           <P>
@@ -217,6 +226,11 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             antes disso, o número interno <strong>PR-…</strong> em cinza. Clique na linha para abrir a
             análise do pedido.
           </P>
+          <P>
+            Pedido <strong>NAR</strong> salta na fila: linha com fundo violeta e o selo{' '}
+            <SeloRef cor="violeta">NAR</SeloRef> com “em nome de …” na coluna Fluxo. Ver “NAR: pedido em nome
+            de outra unidade”.
+          </P>
         </>
       ),
     },
@@ -224,7 +238,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'analise',
       titulo: 'A análise do pedido',
       busca:
-        'análise pedido cabeçalho decisão da regulação classificação de risco e cid hipótese alterar anexos visualizar arquivo pdf imagem caixinha regras do manual respostas condições marcadas médico novo a cadastrar cadastrei já existia para lançar no sistema copiar campos linha do tempo ajustada pela regulação',
+        'análise pedido cabeçalho decisão da regulação classificação de risco e cid hipótese alterar anexos visualizar arquivo pdf imagem caixinha regras do manual respostas condições marcadas médico novo a cadastrar cadastrei já existia para lançar no sistema copiar campos linha do tempo ajustada pela regulação nar em nome de qual unidade trocar unidade conferência no sistema',
       conteudo: (
         <>
           <P>
@@ -241,6 +255,16 @@ export const artigoRegulacaoGestaoFila: Artigo = {
                 termo: 'Decisão da regulação',
                 descricao:
                   'Diz em que pé o pedido está e mostra só os comandos que cabem naquele momento — ver “Decidir”.',
+              },
+              {
+                termo: 'Em nome de qual unidade (só no NAR)',
+                descricao:
+                  'A unidade em cujo nome — e com cujo CNES — o pedido entra no SISREG, com o botão Trocar unidade. Ver “NAR: pedido em nome de outra unidade”.',
+              },
+              {
+                termo: 'Conferência no sistema',
+                descricao:
+                  'Aparece depois que o número é registrado: o pedido lido no sistema de destino, comparado campo a campo com o daqui. Ver “Conferência do número no sistema”.',
               },
               {
                 termo: 'Classificação de risco e CID',
@@ -260,7 +284,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: 'Para lançar no sistema',
                 descricao:
-                  'O formulário campo a campo, com o nome do campo como o sistema de destino chama e um botão de copiar em cada valor: é o que se digita na tela de lá. As Observações já vêm com os CIDs secundários no fim. A classificação de risco aparece com o texto do combo de lá (no SER, “Prioridade 1”) e o badge colorido ao lado, só para conferir.',
+                  'O formulário campo a campo, com o nome do campo como o sistema de destino chama e um botão de copiar em cada valor: é o que se digita na tela de lá. As Observações já vêm com os CIDs secundários no fim. A classificação de risco aparece com o texto do combo de lá (no SER, “Prioridade 1”) e o badge colorido ao lado, só para conferir. No NAR, as duas primeiras linhas são o CNES e o nome da unidade “em nome de” — é com ela que se entra no SISREG.',
               },
               {
                 termo: 'Linha do tempo',
@@ -286,7 +310,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'decidir',
       titulo: 'Decidir: assumir, aceitar, devolver ou recusar',
       busca:
-        'decidir decisão assumir aceitar e enviar ao ser aceitar e registrar envio já lancei no ser número gerado sistema devolver à unidade recusar motivo obrigatório ok já está no sisreg interno nar outro agente assumiu número repetido duplicado resultado modal',
+        'decidir decisão assumir aceitar e enviar ao ser aceitar e registrar envio já lancei no ser número gerado sistema devolver à unidade recusar motivo obrigatório ok já está no sisreg interno nar outro agente assumiu número repetido duplicado resultado modal conferência na hora',
       conteudo: (
         <>
           <Passos
@@ -321,7 +345,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: <BotaoRef>Aceitar e registrar envio</BotaoRef>,
                 descricao:
-                  'Para os outros destinos (e quando você já lançou no SER pela tela dele — o botão aparece como “Já lancei no SER — registrar número”): inclua o pedido na tela do sistema (use o quadro “Para lançar no sistema”) e informe aqui o número que ele gerou. O pedido passa para “Enviada ao sistema” e o número passa a identificar o caso. Número repetido no mesmo sistema é recusado — é sinal de pedido lançado duas vezes. No Interno e no NAR o sistema é sempre o SISREG.',
+                  'Para os outros destinos (e quando você já lançou no SER pela tela dele — o botão aparece como “Já lancei no SER — registrar número”): inclua o pedido na tela do sistema (use o quadro “Para lançar no sistema”) e informe aqui o número que ele gerou. O pedido passa para “Enviada ao sistema” e o número passa a identificar o caso. Em seguida, na mesma janela, a plataforma confere o pedido no sistema pelo número (ver “Conferência do número no sistema”). Número repetido no mesmo sistema é recusado — é sinal de pedido lançado duas vezes. No Interno e no NAR o sistema é sempre o SISREG.',
               },
               {
                 termo: <BotaoRef variante="outline">Devolver à unidade</BotaoRef>,
@@ -344,6 +368,89 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             Ao devolver ou recusar, a janela do motivo mostra o que aconteceu e só fecha quando você
             clicar em <BotaoRef>Fechar</BotaoRef>. Se der erro, a mensagem aparece ali mesmo e o texto
             digitado continua.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'nar',
+      titulo: 'NAR: pedido em nome de outra unidade',
+      busca:
+        'nar agendamento indireto em nome de outra unidade cnes senha da unidade trocar unidade sisreg selo violeta lançar com o login da unidade',
+      conteudo: (
+        <>
+          <P>
+            No <strong>NAR</strong> (agendamento indireto) a unidade abre o pedido <strong>em nome de outra
+            unidade</strong> — qualquer unidade ativa com CNES, mesmo uma à qual ela não está ligada. O pedido
+            é sempre para o SISREG, e no SISREG ele deve aparecer como pedido <strong>daquela</strong> unidade:
+            é por isso que se lança com o CNES e o login dela, não com o seu.
+          </P>
+          <Passos
+            itens={[
+              {
+                titulo: 'Conferir a unidade',
+                detalhe:
+                  'O cabeçalho diz quem abriu e em nome de qual unidade, com o CNES. Se a unidade não for a certa, assuma o pedido e use “Trocar unidade” no cartão “Em nome de qual unidade” — a troca fica na linha do tempo com o seu nome. Não precisa devolver.',
+              },
+              {
+                titulo: 'Lançar no SISREG',
+                detalhe:
+                  'Entre no SISREG com o login da unidade “em nome de” e inclua o pedido usando o quadro “Para lançar no SISREG” (as duas primeiras linhas são o CNES e o nome da unidade).',
+              },
+              {
+                titulo: 'Registrar o número',
+                detalhe:
+                  '“Aceitar e registrar envio”: digite o código que o SISREG gerou. A plataforma confere na hora se o pedido entrou com o CNES certo.',
+              },
+            ]}
+          />
+          <Callout tipo="dica" titulo="O lançamento é seu, na tela do SISREG">
+            A plataforma não lança no SISREG por você: ela guarda o número, confere o que foi lançado e
+            acompanha o pedido daí em diante — e a unidade que pediu vê tudo na fila dela.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'conferencia',
+      titulo: 'Conferência do número no sistema',
+      busca:
+        'conferência conferir no sistema conferir de novo divergência diverge confere só lá número não encontrado digitado errado credencial da integração sisreg ser sernit esus cnes unidade paciente procedimento cid médico risco limite de consultas',
+      conteudo: (
+        <>
+          <P>
+            Toda vez que um número é registrado à mão — SISREG, SER, SERNIT ou ESUS —, a plataforma lê o
+            pedido no sistema pelo número, com o acesso da própria integração (não com a sua senha), e
+            compara com o que foi pedido aqui. O resultado aparece na janela do registro, fica no cartão{' '}
+            <strong>Conferência no …</strong> da análise e ganha uma linha na linha do tempo.
+          </P>
+          <ListaDefinicoes
+            itens={[
+              { termo: 'confere', descricao: 'O campo bate dos dois lados.' },
+              {
+                termo: 'diverge',
+                descricao:
+                  'Os dois lados têm valor e não batem — a linha fica em vermelho. No NAR, a divergência que mais importa é a unidade: o pedido entrou com o CNES de quem lançou, e não com o da unidade “em nome de”.',
+              },
+              { termo: 'só lá', descricao: 'O sistema mostra um dado que aqui não foi pedido.' },
+              {
+                termo: '(sem marca)',
+                descricao:
+                  'Informação lado a lado, sem julgamento: a situação no sistema, a data e a classificação de risco (cada sistema tem a sua escala).',
+              },
+            ]}
+          />
+          <P>
+            Cada sistema mostra uma coisa: o SISREG mostra quase tudo (inclusive a unidade com CNES e o
+            médico); o SER e o SERNIT mostram paciente, recurso e CID; o ESUS mostra paciente, procedimento,
+            unidade e profissional. O que o sistema não mostra não aparece na conferência.
+          </P>
+          <Callout tipo="atencao" titulo="É aviso, não trava">
+            Divergência não desfaz nada: o número continua registrado e o pedido segue. Se o sistema{' '}
+            <strong>não achou o número</strong>, confira se foi digitado certo. Se a leitura falhou (sistema
+            fora do ar, limite de consultas do SISREG daquela hora), use{' '}
+            <BotaoRef variante="outline">Conferir de novo</BotaoRef> mais tarde. O pedido muda lá fora com o
+            tempo — a conferência é uma foto daquele momento.
           </Callout>
         </>
       ),
