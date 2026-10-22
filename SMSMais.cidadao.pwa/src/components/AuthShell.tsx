@@ -32,7 +32,7 @@ export function AuthShell({
           <div className="animate-rise">
             <img
               src="/marica_logo.png"
-              alt="Prefeitura de Maricá — cidade que cuida, transforma e inspira"
+              alt="Prefeitura de Maricá — lugar de viver bem"
               className="mx-auto mb-8 h-auto w-[188px]"
             />
             <h1 className="text-center font-display text-[26px] font-semibold leading-tight text-tinta">
