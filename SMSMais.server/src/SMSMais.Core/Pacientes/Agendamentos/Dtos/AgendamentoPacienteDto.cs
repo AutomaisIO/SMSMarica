@@ -98,6 +98,9 @@ public enum SituacaoAgendamentoPaciente
 /// <param name="DetalheId">Id para abrir o detalhe (modal) da linha. SER: id da
 /// <c>ser_solicitacao</c>; SISREG: o id público da solicitação (o do exame de imagem quando há,
 /// senão o da espinha). <c>null</c> = linha sem detalhe navegável.</param>
+/// <param name="GuiaDocumentoId">A guia do agendamento já trazida pela fila (ADR-0076): o
+/// <c>documento_paciente</c> do acervo, aberto pelo conteúdo do cadastro do paciente. <c>null</c> =
+/// sem guia (ainda não veio, ou o sistema não emite). Só a ficha preenche.</param>
 public sealed record AgendamentoPacienteItemDto(
     Guid Id,
     OrigemAgendamentoPaciente Origem,
@@ -111,7 +114,8 @@ public sealed record AgendamentoPacienteItemDto(
     string SituacaoDescricao,
     string? SituacaoOrigem,
     string? NumeroSolicitacao,
-    Guid? DetalheId);
+    Guid? DetalheId,
+    Guid? GuiaDocumentoId = null);
 
 /// <summary>Em que parte da lista do PRÓPRIO paciente (app do cidadão) o item entra.</summary>
 public enum MomentoAgendamentoPaciente

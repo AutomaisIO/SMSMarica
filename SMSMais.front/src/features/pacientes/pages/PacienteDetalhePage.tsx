@@ -44,6 +44,7 @@ import { AppCidadaoNotificacoes } from '@/features/pacientes/components/AppCidad
 import { BotaoEnviarPesquisa } from '@/features/pacientes/components/BotaoEnviarPesquisa';
 import { SecaoConversasWhatsApp } from '@/features/pacientes/components/SecaoConversasWhatsApp';
 import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
+import { ModalGuiaAgendamento } from '@/features/pacientes/components/ModalGuiaAgendamento';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
 import type {
@@ -673,7 +674,7 @@ function formatarDataAgendamento(item: AgendamentoPacienteItem): string {
   return 'Sem data';
 }
 
-function colunasAgendamento(): Coluna<AgendamentoPacienteItem>[] {
+function colunasAgendamento(aoVerGuia: (a: AgendamentoPacienteItem) => void): Coluna<AgendamentoPacienteItem>[] {
   return [
     { chave: 'data', cabecalho: 'Data/hora', render: (a) => formatarDataAgendamento(a) },
     { chave: 'tipo', cabecalho: 'Tipo', render: (a) => a.tipo },
@@ -732,13 +733,31 @@ function colunasAgendamento(): Coluna<AgendamentoPacienteItem>[] {
         </span>
       ),
     },
+    {
+      chave: 'guia',
+      cabecalho: 'Guia',
+      render: (a) =>
+        a.guiaDocumentoId ? (
+          // Botão dentro da linha: a Tabela não dispara o clique da linha (que abre o pedido).
+          <button
+            type="button"
+            onClick={() => aoVerGuia(a)}
+            title="Ver a guia do agendamento — imprimir ou baixar"
+            aria-label="Ver a guia do agendamento"
+            className="rounded-md p-1 text-primary-600 hover:bg-primary-50"
+          >
+            <FileText className="h-4 w-4" />
+          </button>
+        ) : null,
+    },
   ];
 }
 
 /** Agendamentos do paciente (SER + SISREG + agenda local), próximos e histórico. */
 function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
   const q = useAgendamentosPaciente(pacienteId);
-  const colunas = colunasAgendamento();
+  const [guiaAberta, setGuiaAberta] = useState<AgendamentoPacienteItem | null>(null);
+  const colunas = colunasAgendamento(setGuiaAberta);
   const proximos = q.data?.proximos ?? [];
   const historico = q.data?.historico ?? [];
 
@@ -829,9 +848,16 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
         selo para ver de onde veio e quando foi lido.
         No ESUS SG, “Saiu da fila” quer dizer que o pedido não consta mais na fila nem nos agendados
         — o motivo não é informado, e não é o mesmo que cancelado. Clique numa linha do SER, do
-        SERNIT, do ESUS SG ou de exame de imagem para abrir o detalhe.
+        SERNIT, do ESUS SG ou de exame de imagem para abrir o detalhe. O ícone na coluna “Guia” abre
+        a guia do agendamento, para imprimir ou baixar — aparece quando o sincronismo já a trouxe.
       </p>
 
+      <ModalGuiaAgendamento
+        pacienteId={pacienteId}
+        documentoId={guiaAberta?.guiaDocumentoId ?? null}
+        descricao={guiaAberta ? `${guiaAberta.descricao} · ${formatarDataAgendamento(guiaAberta)}` : undefined}
+        aoFechar={() => setGuiaAberta(null)}
+      />
       <ModalSolicitacaoSer solicitacaoId={serModalId} aoFechar={() => setSerModalId(null)} />
       <ModalSolicitacaoSernit solicitacaoId={sernitModalId} aoFechar={() => setSernitModalId(null)} />
       <ModalSolicitacaoEsusSg solicitacaoId={esusSgModalId} aoFechar={() => setEsusSgModalId(null)} />

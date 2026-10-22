@@ -346,6 +346,8 @@ export type AgendamentoPacienteItem = {
   situacaoOrigem?: string | null;
   numeroSolicitacao?: string | null;
   detalheId?: string | null;
+  /** Guia do agendamento já no acervo (ADR-0076) — abre por `/pacientes/{id}/documentos/Documento/{guiaDocumentoId}/conteudo`. */
+  guiaDocumentoId?: string | null;
 };
 
 export type AgendamentosPaciente = {

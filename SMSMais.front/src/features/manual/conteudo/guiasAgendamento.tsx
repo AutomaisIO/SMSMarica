@@ -18,11 +18,11 @@ export const artigoGuiasAgendamento: Artigo = {
   slug: 'guias-agendamento',
   titulo: 'Guias dos agendamentos',
   resumo:
-    'A guia de cada agendamento do SISREG, do SER, do SERNIT e do ESUS é buscada sozinha, uma vez, e fica no cadastro do paciente — na tela do pedido, em Exames anexados e no app.',
+    'A guia de cada agendamento do SISREG, do SER, do SERNIT e do ESUS é buscada sozinha, uma vez, e fica no cadastro do paciente — na tela do pedido, na ficha (Agendamentos e Exames anexados) e no app.',
   grupo: 'regulacao',
   icone: FileText,
   publico: 'Quem regula, quem atende o paciente na unidade e quem cuida da configuração de cada sistema',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'guia',
     'guia do agendamento',
@@ -85,7 +85,7 @@ export const artigoGuiasAgendamento: Artigo = {
     {
       id: 'onde-aparece',
       titulo: 'Onde a guia aparece',
-      busca: 'ver guia contato com o paciente exames anexados documentos app cartão agendamento',
+      busca: 'ver guia contato com o paciente exames anexados documentos app cartão agendamento ficha aba agendamentos coluna guia imprimir baixar pdf',
       conteudo: (
         <>
           <P>
@@ -97,6 +97,12 @@ export const artigoGuiasAgendamento: Artigo = {
               <strong>Tela do pedido</strong> (detalhe do SER, do SERNIT, do ESUS e da solicitação da regulação):
               no quadro <em>Contato com o paciente</em>, a linha da guia com o botão <BotaoRef variante="outline">Ver guia</BotaoRef>.
               Enquanto ela não veio, a linha diz que está na fila; se não veio de jeito nenhum, diz por quê.
+            </Item>
+            <Item>
+              <strong>Cadastro do paciente → Agendamentos</strong>: o ícone na coluna <em>Guia</em> da linha abre a
+              guia com <BotaoRef variante="outline">Imprimir</BotaoRef> e <BotaoRef variante="outline">Baixar PDF</BotaoRef>.
+              Basta a permissão de consultar pacientes. Na linha do SISREG, só aparece a guia da data em que o
+              agendamento está — a de antes de uma remarcação não.
             </Item>
             <Item>
               <strong>Cadastro do paciente → Exames anexados</strong>: com a origem <em>Guia do agendamento</em>. Não
@@ -187,7 +193,7 @@ export const artigoGuiasAgendamento: Artigo = {
           <Lista>
             <Item>
               <strong>Remarcado</strong>: a data nova pede guia nova, que entra na fila. A guia da data antiga
-              continua no cadastro do paciente, mas o pedido e o app passam a mostrar a nova.
+              continua no cadastro do paciente, mas o pedido, a ficha e o app passam a mostrar a nova.
             </Item>
             <Item>
               <strong>Desmarcado antes de a guia vir</strong>: ela sai da fila sem ir ao sistema — no SER e no
