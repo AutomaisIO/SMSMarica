@@ -18,4 +18,4 @@ como registro, a critério do Bernardo).
 |---|---|
 | [`2026-10-20-holter-mapa-satelite`](./2026-10-20-holter-mapa-satelite/README.md) | Auditado e aplicado em 20/10/2026 (`feat/holter-mapa-satelite`) — ver "Decisões do Bernardo" no item |
 | [`2026-10-21-apaga-imagem-invalidada`](./2026-10-21-apaga-imagem-invalidada/README.md) | Auditado e aplicado em 21/10/2026 (`feat/imagem-invalidada`) — migration, build, testes e Manual feitos na aplicação |
-| [`2026-10-21-anamnese-cdt-holter`](./2026-10-21-anamnese-cdt-holter/README.md) | Aguardando auditoria — branch `ANAMNESE-CDT-HOLTER` (código commitado, sem build/teste) |
+| [`2026-10-21-anamnese-cdt-holter`](./2026-10-21-anamnese-cdt-holter/README.md) | Auditado e aplicado em 22/10/2026 (`feat/anamnese-holter`) — build, testes, correção do pedido misto e Manual feitos na aplicação |

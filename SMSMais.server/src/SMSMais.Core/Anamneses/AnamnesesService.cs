@@ -65,8 +65,19 @@ public sealed class AnamnesesService(
             sol.SiscanNumeroExame,
             cidCodigo,
             cidDescricao,
-            AnamneseHolter.QuestionarioDa(sol.TipoExame?.ModalidadeDicom));
+            AnamneseHolter.Questionario(await PedidoTemHolterAsync(sol.Id, cancellationToken)));
     }
+
+    /// <summary>
+    /// O questionário é do PEDIDO, como a anamnese (ADR-0074): Holter quando algum exame dele é ECG.
+    /// Decidir pelo exame clicado (contexto) e pelo principal (salvar) desencontrava os dois num
+    /// pedido de MAPA + Holter — a tela abria o do Holter e o salvar o recusava.
+    /// </summary>
+    private Task<bool> PedidoTemHolterAsync(Guid exameId, CancellationToken ct) =>
+        db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == exameId)
+            .SelectMany(e => db.ExamesImagem.Where(x => x.SolicitacaoId == e.SolicitacaoId && x.ExcluidoEm == null))
+            .AnyAsync(x => x.TipoExame!.ModalidadeDicom == ModalidadeDicom.ECG, ct);
 
     public async Task<AnamneseDto> SalvarAsync(
         Guid solicitacaoExameId, SalvarAnamneseDto dto, CancellationToken cancellationToken = default)
@@ -76,7 +87,7 @@ public sealed class AnamnesesService(
 
         var exame = await db.ExamesImagem.AsNoTracking()
             .Where(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null)
-            .Select(s => new { s.SiscanProtocolo, Modalidade = (ModalidadeDicom?)s.TipoExame!.ModalidadeDicom })
+            .Select(s => new { s.SiscanProtocolo })
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
 
@@ -96,10 +107,10 @@ public sealed class AnamnesesService(
 
         // O Holter tem questionário próprio, e o que ele grava vai ao aparelho: a forma é conferida
         // aqui. Um questionário trocado (mamografia num Holter, ou o contrário) é recusado.
-        var holter = AnamneseHolter.EhHolter(exame.Modalidade);
+        var holter = await PedidoTemHolterAsync(solicitacaoExameId, cancellationToken);
         if (holter != (dto.Tipo == AnamneseHolter.Tipo))
             throw new ValidacaoException("anamnese.questionario_errado",
-                $"Este exame usa o questionário \"{AnamneseHolter.QuestionarioDa(exame.Modalidade)}\", não \"{dto.Tipo}\".");
+                $"Este exame usa o questionário \"{AnamneseHolter.Questionario(holter)}\", não \"{dto.Tipo}\".");
         if (holter) AnamneseHolter.Validar(dto.ConteudoJson);
 
         var agora = DateTime.UtcNow;

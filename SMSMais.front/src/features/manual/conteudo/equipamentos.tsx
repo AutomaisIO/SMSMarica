@@ -25,7 +25,7 @@ export const artigoEquipamentos: Artigo = {
   icone: ScanLine,
   rota: '/app/equipamentos',
   publico: 'Quem administra os aparelhos de imagem e a integração com o PACS',
-  atualizadoEm: '2026-10-20',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'equipamento',
     'equipamentos',
@@ -197,7 +197,7 @@ export const artigoEquipamentos: Artigo = {
       id: 'depois-que-o-exame-chega',
       titulo: 'Depois que o exame chega: laudo, paciente e anamnese',
       busca:
-        'laudo laudado na plataforma laudado fora laudo vem junto com o exame MAPA Holter ultrassom mamografia densitometria raio-x quando o paciente recebe só com o laudo assinado assim que chegar retido exame liberado laudo pronto app do cidadão uma mensagem só usa anamnese sem anamnese selos laudo aqui laudo fora laudo junto paciente recebe com o laudo paciente recebe ao chegar aparelho novo modalidade',
+        'laudo laudado na plataforma laudado fora laudo vem junto com o exame MAPA Holter ultrassom mamografia densitometria raio-x quando o paciente recebe só com o laudo assinado assim que chegar retido exame liberado laudo pronto app do cidadão uma mensagem só usa anamnese sem anamnese anamnese do Holter altura peso fumante worklist CardioNet selos laudo aqui laudo fora laudo junto paciente recebe com o laudo paciente recebe ao chegar aparelho novo modalidade',
       conteudo: (
         <>
           <P>
@@ -247,9 +247,15 @@ export const artigoEquipamentos: Artigo = {
           </P>
           <Sub>Anamnese</Sub>
           <P>
-            Desmarque <strong>Usa anamnese</strong> no aparelho cujos exames não têm questionário (MAPA,
-            Holter): o botão de anamnese some da lista de Exames e consultas e do PACS, e o laudo não a
+            Desmarque <strong>Usa anamnese</strong> no aparelho cujos exames não têm questionário
+            (MAPA): o botão de anamnese some da lista de Exames e consultas e do PACS, e o laudo não a
             cobra.
+          </P>
+          <P>
+            No aparelho do <strong>Holter</strong> (modalidade ECG), deixe marcado: a anamnese dele é
+            curta (altura, peso e se o paciente fuma) e vai junto no item de worklist, para a técnica
+            não digitar no aparelho. Com ela ligada, o exame só vai à worklist depois que a anamnese for
+            salva. Desmarcado, o Holter vai direto, sem esses dados.
           </P>
           <Sub>Como fica cada aparelho</Sub>
           <Lista>
@@ -257,8 +263,12 @@ export const artigoEquipamentos: Artigo = {
               <strong>Ultrassom</strong> — laudado fora da plataforma, paciente recebe assim que chegar.
             </Item>
             <Item>
-              <strong>MAPA e Holter</strong> — laudo vem junto com o exame, paciente recebe assim que
-              chegar, sem anamnese.
+              <strong>MAPA</strong> — laudo vem junto com o exame, paciente recebe assim que chegar,
+              sem anamnese.
+            </Item>
+            <Item>
+              <strong>Holter</strong> — laudo vem junto com o exame, paciente recebe assim que chegar,
+              com a anamnese do Holter (altura, peso e fumante vão ao aparelho).
             </Item>
             <Item>
               <strong>Mamografia, densitometria e raio-X</strong> — laudado na plataforma, paciente

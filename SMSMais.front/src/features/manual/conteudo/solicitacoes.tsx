@@ -29,7 +29,7 @@ export const artigoSolicitacoes: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/solicitacoes',
   publico: 'Recepção das unidades e quem acompanha os agendamentos',
-  atualizadoEm: '2026-10-20',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'diagnóstico inicial',
     'CID',
@@ -185,7 +185,7 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'como-ler',
       titulo: 'Como ler uma linha',
-      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada vinculado a selo cadeado retido até o laudo',
+      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada vinculado a selo cadeado retido até o laudo anamnese aguardando a anamnese do Holter altura peso fumante',
       conteudo: (
         <>
           <Sub>As colunas</Sub>
@@ -213,7 +213,10 @@ export const artigoSolicitacoes: Artigo = {
             <Item>
               <strong>Ações</strong> — anamnese, declaração, imagens e laudo. Só existem no pedido
               com exame; na consulta a coluna fica vazia. A anamnese não aparece no exame de aparelho
-              que não a usa (MAPA, Holter).
+              que não a usa (MAPA). No <strong>Holter</strong> ela é o que manda o exame ao aparelho:
+              enquanto a técnica não salva a altura, o peso e se o paciente fuma, o exame fica em{' '}
+              <em>Aguardando a anamnese do Holter</em> e não aparece na worklist (ver o artigo
+              Anamnese).
             </Item>
           </Lista>
           <Sub>As cores da linha</Sub>

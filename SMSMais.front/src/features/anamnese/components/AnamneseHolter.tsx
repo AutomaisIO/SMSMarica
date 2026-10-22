@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, HeartPulse, Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
@@ -120,6 +121,7 @@ export function AnamneseHolter({
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-gray-900">
           <HeartPulse className="h-6 w-6 text-primary-600" />
           Anamnese do Holter
+          <AjudaManual artigo="anamnese" secao="holter" />
         </h1>
         <p className="text-sm text-gray-500">
           {ctx.pacienteNome} · Pedido <span className="font-mono">{ctx.accessionNumber}</span> ·{' '}

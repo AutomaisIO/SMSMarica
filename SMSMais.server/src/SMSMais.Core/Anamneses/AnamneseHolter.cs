@@ -22,8 +22,10 @@ public static class AnamneseHolter
     public const int Versao = 1;
 
     /// <summary>O questionário do exame: "holter" ou "mamografia" (o de sempre).</summary>
-    public static string QuestionarioDa(ModalidadeDicom? modalidade) =>
-        modalidade == ModalidadeDicom.ECG ? Tipo : "mamografia";
+    public static string QuestionarioDa(ModalidadeDicom? modalidade) => Questionario(EhHolter(modalidade));
+
+    /// <summary>O questionário do pedido: "holter" quando ele tem Holter, senão "mamografia".</summary>
+    public static string Questionario(bool holter) => holter ? Tipo : "mamografia";
 
     public static bool EhHolter(ModalidadeDicom? modalidade) => modalidade == ModalidadeDicom.ECG;
 
