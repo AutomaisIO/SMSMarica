@@ -24,6 +24,7 @@ public sealed record NotificacaoAppCidadaoDto(
     string? Rota,
     DateTime CriadaEm,
     string? EnviadaPor,
+    string Origem,
     int Aparelhos,
     int Entregues,
     string? Falha);

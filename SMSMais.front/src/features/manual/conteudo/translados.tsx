@@ -30,7 +30,7 @@ export const artigoTranslados: Artigo = {
   icone: Route,
   rota: '/app/translados',
   publico: 'Quem organiza e acompanha o transporte de pacientes (central)',
-  atualizadoEm: '2026-10-19',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'translado',
     'rota',
@@ -297,8 +297,10 @@ export const artigoTranslados: Artigo = {
               disponível para retorno?”. <strong>“Sim, já estou disponível”</strong> põe o paciente no topo da
               lista. <strong>“Não, ainda não terminei o procedimento”</strong> faz a pergunta voltar em 10
               minutos, até ele dizer que sim; enquanto isso, a lista mostra “Disponível em XX min” até a
-              próxima pergunta. Quem terminou antes do previsto avisa sozinho, a qualquer hora (“Já
-              terminei, estou disponível para retorno”);
+              próxima pergunta. Quem tem o app instalado no celular recebe a pergunta também como aviso,
+              mesmo com o app fechado, e o toque abre o Transporte; pelo navegador (PWA), ela espera a
+              pessoa abrir o Transporte. Quem terminou antes do previsto avisa sozinho, a qualquer hora
+              (“Já terminei, estou disponível para retorno”);
             </Item>
             <Item>
               a <strong>central</strong>, aqui: <BotaoRef variante="outline">Avisar que está no local</BotaoRef>{' '}

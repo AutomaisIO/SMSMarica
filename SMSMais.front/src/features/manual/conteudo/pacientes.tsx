@@ -754,7 +754,7 @@ export const artigoPacientes: Artigo = {
               {
                 termo: 'Últimas notificações enviadas',
                 descricao:
-                  'As 20 mais recentes: data e hora, quem enviou, a tela que abre, em quantos aparelhos foi entregue, o título, a mensagem e, se algum aparelho não recebeu, o resumo do porquê.',
+                  'As 20 mais recentes: data e hora, quem enviou (ou “aviso automático do Transporte”, quando foi o sistema: a pergunta do resgate e o pedido de avaliação do motorista), a tela que abre, em quantos aparelhos foi entregue, o título, a mensagem e, se algum aparelho não recebeu, o resumo do porquê.',
               },
             ]}
           />

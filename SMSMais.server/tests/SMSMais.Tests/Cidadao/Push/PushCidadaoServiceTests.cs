@@ -239,6 +239,27 @@ public class PushCidadaoServiceTests
     }
 
     [Fact]
+    public async Task Aviso_do_sistema_grava_a_origem_e_nenhum_operador_e_a_ficha_mostra_a_origem()
+    {
+        await using var db = _fixture.CriarDbContext();
+        var (paciente, acesso) = await SemearPacienteAsync(db);
+        await SemearSessaoAsync(db, acesso, TokenUnico());
+
+        var r = await Servico(db).EnviarDoSistemaAsync(paciente,
+            new EnviarNotificacaoAppRequest("Como foi o motorista?", "Olá! Toque para avaliar.", "/transporte"),
+            PushCidadaoService.OrigemTransporte);
+
+        Assert.Equal(1, r.Entregues);
+        var h = await db.CidadaoNotificacoes.AsNoTracking().SingleAsync(n => n.PacienteId == paciente);
+        Assert.Equal("transporte", h.Origem);
+        Assert.Null(h.EnviadoPor);
+
+        var linha = Assert.Single((await Servico(db).ObterStatusAsync(paciente)).Notificacoes);
+        Assert.Equal("transporte", linha.Origem);
+        Assert.Null(linha.EnviadaPor);
+    }
+
+    [Fact]
     public async Task Aparelho_desinstalado_perde_o_token_e_o_historico_registra_a_falha()
     {
         await using var db = _fixture.CriarDbContext();

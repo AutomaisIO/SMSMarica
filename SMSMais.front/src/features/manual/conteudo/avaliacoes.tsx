@@ -22,7 +22,7 @@ export const artigoAvaliacoes: Artigo = {
   icone: Star,
   rota: '/app/avaliacoes',
   publico: 'Quem acompanha a qualidade do transporte de pacientes',
-  atualizadoEm: '2026-10-19',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'avaliação',
     'nota',
@@ -57,8 +57,10 @@ export const artigoAvaliacoes: Artigo = {
             <Item>Só trecho que aconteceu: quem faltou não avalia a ida; o resgate, só depois de chegar em casa.</Item>
             <Item>Uma vez por trecho, até 30 dias depois.</Item>
             <Item>
-              O pedido aparece no app logo depois do desembarque. Quando o aviso no celular (push) for ligado, ele
-              também chega com o app fechado.
+              O pedido aparece no app logo depois do desembarque. Quem tem o app instalado no celular, com
+              as notificações permitidas, também recebe o aviso “Como foi o motorista?”, mesmo com o app
+              fechado; o toque abre o Transporte, onde estão as estrelas. Pelo navegador (PWA) não chega
+              aviso: o pedido espera a pessoa abrir o Transporte.
             </Item>
             <Item>
               Pelo link do WhatsApp o app só mostra; para avaliar, o paciente entra com o código. E quem

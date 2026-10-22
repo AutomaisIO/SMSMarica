@@ -19,6 +19,7 @@ public sealed class PushCidadaoService(
 {
     public const string ProvedorFcm = "fcm";
     public const string OrigemPainel = "painel";
+    public const string OrigemTransporte = "transporte";
 
     internal const int TituloMaximo = 65;
     internal const int MensagemMaxima = 240;
@@ -86,6 +87,7 @@ public sealed class PushCidadaoService(
                 n.Rota,
                 n.CriadoEm,
                 db.Usuarios.Where(u => u.Id == n.EnviadoPor).Select(u => u.NomeCompleto).FirstOrDefault(),
+                n.Origem,
                 n.Aparelhos,
                 n.Entregues,
                 n.Falha))
@@ -94,8 +96,16 @@ public sealed class PushCidadaoService(
         return new AppCidadaoStatusDto(credencial.ClientSecretDefinido && credencial.Ativo, aparelhos, notificacoes);
     }
 
-    public async Task<EnvioNotificacaoAppDto> EnviarAsync(
-        Guid pacienteId, EnviarNotificacaoAppRequest request, CancellationToken ct = default)
+    public Task<EnvioNotificacaoAppDto> EnviarAsync(
+        Guid pacienteId, EnviarNotificacaoAppRequest request, CancellationToken ct = default) =>
+        EnviarComoAsync(pacienteId, request, OrigemPainel, usuarioAtual.UsuarioId, ct);
+
+    public Task<EnvioNotificacaoAppDto> EnviarDoSistemaAsync(
+        Guid pacienteId, EnviarNotificacaoAppRequest request, string origem, CancellationToken ct = default) =>
+        EnviarComoAsync(pacienteId, request, origem, enviadoPor: null, ct);
+
+    private async Task<EnvioNotificacaoAppDto> EnviarComoAsync(
+        Guid pacienteId, EnviarNotificacaoAppRequest request, string origem, Guid? enviadoPor, CancellationToken ct)
     {
         var (titulo, mensagem, rota) = ValidarEnvio(request);
         var conta = await LerContaServicoAsync(ct);
@@ -159,8 +169,8 @@ public sealed class PushCidadaoService(
             Titulo = titulo,
             Mensagem = mensagem,
             Rota = rota,
-            Origem = OrigemPainel,
-            EnviadoPor = usuarioAtual.UsuarioId,
+            Origem = origem,
+            EnviadoPor = enviadoPor,
             CriadoEm = DateTime.UtcNow,
             Aparelhos = aparelhos.Count,
             Entregues = entregues,

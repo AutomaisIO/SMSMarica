@@ -170,9 +170,10 @@ Play Services (`client version: 0`).
   — com o tempo aguardando. Avisam que está no local: o **paciente** pelo app/PWA, a **central**
   no painel ou um **motorista** no tablet. Ao estourar a previsão, o app do paciente pergunta "você
   já está disponível para retorno?" (`PerguntaResgateWorker`, a cada minuto): "Sim" = no local;
-  "Não, ainda não terminei" = pergunta de novo em 10 min. O push dessa pergunta é o
-  `IEntregaPerguntaResgate` — hoje `EntregaPerguntaResgateSoNoApp` (a pergunta aparece quando
-  ele abre o app); liga quando o push do app (ADR-0070, branch `feat/push-cidadao`) chegar ao main.
+  "Não, ainda não terminei" = pergunta de novo em 10 min. A pergunta sai também como push do app
+  do cidadão (`IAvisoAoPacienteTransporte` = `AvisoAoPacientePorPush`, ADR-0070; histórico com origem
+  `transporte`, sem operador); sem app instalado ou sem push configurado, ela espera o paciente abrir
+  o Transporte no app/PWA.
   Qualquer carro **marca** quem vai buscar (`POST /rastreamento/dispositivos/resgates`; a central
   em `POST /rotas/{id}/resgates`), mesmo quem não levou; quem marca primeiro fica (trava de linha
   na rota e nas sessões). A marcação é a alocação `Parada = Retorno` na rota de quem busca, e só
@@ -189,7 +190,7 @@ Play Services (`client version: 0`).
   motorista da **ida**, e ao chegar em casa o do **resgate** — até 5 estrelas, uma vez por trecho
   (`Avaliacao.Trecho`, único por sessão + trecho), cada nota com o motorista, o veículo e a rota daquele
   trecho. O pedido sai no desembarque (`ViagemService` → `IAvisoAoPacienteTransporte.PedirAvaliacaoAsync`,
-  no-op até o push do app chegar) e aparece no topo do Transporte no app/PWA ("Como foi o motorista?").
+  também como push do app) e aparece no topo do Transporte no app/PWA ("Como foi o motorista?").
 - **Lotação** (decisão de 19/10): a central nunca põe no carro mais gente do que ele leva. Na
   alocação manual o paciente vai no assento escolhido e cada acompanhante ganha outro lugar
   sozinho; sem lugar, não aloca. Trocar acompanhantes de quem já está na rota segue a mesma regra;
