@@ -3,6 +3,7 @@ import { api, type ViagemTransporte } from '@/lib/api';
 import { Card } from '@/components/ui';
 import { Lista } from '@/components/Lista';
 import { Etiqueta } from '@/components/Etiqueta';
+import { AvaliarViagens } from '@/components/AvaliarViagens';
 import { MeusAcompanhantes } from '@/components/MeusAcompanhantes';
 
 const ROTULO_STATUS: Record<string, string> = {
@@ -60,6 +61,7 @@ export function Transporte() {
           </Card>
         )}
       />
+      <AvaliarViagens />
       <MeusAcompanhantes />
     </>
   );

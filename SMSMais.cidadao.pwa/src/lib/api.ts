@@ -37,6 +37,17 @@ export type ViagemTransporte = {
   limiteAcompanhantes: number;
 };
 
+/** Viagem feita nos últimos 30 dias, para avaliar. `nota` nula = ainda não avaliou. */
+export type ViagemParaAvaliar = {
+  sessaoId: string;
+  data: string;
+  destino: string;
+  /** Só o primeiro nome de quem levou. */
+  motorista: string | null;
+  nota: number | null;
+  comentario: string | null;
+};
+
 export const PARENTESCOS: { valor: string; rotulo: string }[] = [
   { valor: 'Mae', rotulo: 'Mãe' },
   { valor: 'Pai', rotulo: 'Pai' },
@@ -232,6 +243,12 @@ export const api = {
       .post<AcompanhanteCidadao>('/auth/paciente/me/acompanhantes', { cpf, dataNascimento, parentesco, telefone: null })
       .then((r) => r.data),
   removerAcompanhante: (id: string) => http.delete(`/auth/paciente/me/acompanhantes/${id}`),
+  /** Viagens recentes para avaliar (sem cache: a nota muda na hora). */
+  viagensParaAvaliar: () =>
+    http.get<ViagemParaAvaliar[]>('/auth/paciente/viagens-para-avaliar').then((r) => r.data),
+  /** Uma vez por viagem, até 30 dias depois. Nota de 1 a 5. */
+  avaliarViagem: (sessaoId: string, nota: number, comentario: string | null) =>
+    http.post(`/auth/paciente/viagens/${sessaoId}/avaliacao`, { nota, comentario }),
   atendimentos: () =>
     comCacheLocal('atendimentos', () =>
       http.get<Atendimento[]>('/auth/paciente/atendimentos').then((r) => r.data)),

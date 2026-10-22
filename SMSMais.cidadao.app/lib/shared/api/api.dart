@@ -153,6 +153,16 @@ class ApiCidadao {
 
   Future<void> removerAcompanhante(String id) => _dio.delete<void>('/auth/paciente/me/acompanhantes/$id');
 
+  /// Viagens recentes para avaliar (sem cache: a nota muda na hora).
+  Future<List<ViagemParaAvaliar>> viagensParaAvaliar() async =>
+      _lista(ViagemParaAvaliar.deJson)(await _get('/auth/paciente/viagens-para-avaliar'));
+
+  /// Uma vez por viagem, até 30 dias depois. Nota de 1 a 5.
+  Future<void> avaliarViagem(String sessaoId, int nota, String? comentario) => _dio.post<void>(
+        '/auth/paciente/viagens/$sessaoId/avaliacao',
+        data: {'nota': nota, 'comentario': comentario},
+      );
+
   // ── Histórico clínico ─────────────────────────────────────────────────────────────────────
 
   Future<List<Atendimento>> atendimentos() =>

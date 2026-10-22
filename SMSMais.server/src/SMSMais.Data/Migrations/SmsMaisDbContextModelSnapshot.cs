@@ -798,6 +798,12 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int>("Canal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("canal");
+
                     b.Property<string>("Comentario")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -807,18 +813,36 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
 
+                    b.Property<Guid?>("MotoristaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("motorista_id");
+
                     b.Property<int>("Nota")
                         .HasColumnType("integer")
                         .HasColumnName("nota");
+
+                    b.Property<Guid?>("RotaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rota_id");
 
                     b.Property<Guid>("SessaoId")
                         .HasColumnType("uuid")
                         .HasColumnName("sessao_id");
 
+                    b.Property<Guid?>("VeiculoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("veiculo_id");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("MotoristaId");
+
+                    b.HasIndex("RotaId");
 
                     b.HasIndex("SessaoId")
                         .IsUnique();
+
+                    b.HasIndex("VeiculoId");
 
                     b.ToTable("avaliacao", "smsmarica");
                 });
@@ -17334,11 +17358,26 @@ namespace SMSMais.Data.Migrations
 
             modelBuilder.Entity("SMSMais.Data.Entities.Avaliacao", b =>
                 {
+                    b.HasOne("SMSMais.Data.Entities.Motorista", null)
+                        .WithMany()
+                        .HasForeignKey("MotoristaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.RotaDiaria", null)
+                        .WithMany()
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SMSMais.Data.Entities.SessaoDeTratamento", "Sessao")
                         .WithMany()
                         .HasForeignKey("SessaoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Veiculo", null)
+                        .WithMany()
+                        .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Sessao");
                 });
