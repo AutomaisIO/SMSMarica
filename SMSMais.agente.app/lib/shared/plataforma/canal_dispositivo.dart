@@ -16,6 +16,16 @@ class CanalDispositivo {
     }
   }
 
+  /// Se o build trouxe a chave do Google Maps (`MAPS_API_KEY`). Sem canal
+  /// (teste/plataforma), supõe que sim para não bloquear à toa.
+  Future<bool> temChaveMaps() async {
+    try {
+      return await _canal.invokeMethod<bool>('temChaveMaps') ?? true;
+    } on Object catch (_) {
+      return true;
+    }
+  }
+
   /// Liga/desliga o `FLAG_KEEP_SCREEN_ON` da janela.
   Future<void> manterTelaLigada({required bool ligada}) async {
     try {

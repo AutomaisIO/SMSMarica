@@ -95,12 +95,15 @@ public enum ResultadoConciliacaoEsusSg
     Criado = 1,
     Enriquecido = 2,
     SemChave = 3,
+    /// <summary>A chave achou no hub a ficha de OUTRA pessoa (primeiro nome e nascimento
+    /// discordam). Nada é escrito e o pedido fica SEM paciente — ver ConferenciaPessoa.</summary>
+    PessoaDiferente = 4,
 }
 
 public sealed record ConciliacaoEsusSgDto(ResultadoConciliacaoEsusSg Resultado, Guid? PacienteId, int Mudancas);
 
 public sealed record BackfillPacientesEsusSgDto(
-    int Pacientes, int Criados, int Enriquecidos, int Inalterados, int SemChave, int Falhas, int DuracaoSegundos);
+    int Pacientes, int Criados, int Enriquecidos, int Inalterados, int SemChave, int Falhas, int DuracaoSegundos, int PessoaDiferente = 0);
 
 /// <summary>
 /// Leva o paciente de um pedido do ESUS SG ao hub FHIR pelo upsert canônico dos PEPs — o mesmo
@@ -139,22 +142,33 @@ public sealed class EsusSgConciliacaoPacienteService(
         Resource? antes = null;
         var escreveu = false;
 
-        var id = await UpsertCanonicoPep.UpsertAsync(
-            new ContextoImportacaoPep
-            {
-                Escritor = escritor,
-                Progresso = new ProgressoImportacao(),
-                BaseSlug = EsusSgPacienteFhirMapper.Slug,
-                Opcoes = new OpcoesImportacao(
-                    ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo,
-                    MaxMedicos: null, MaxPacientes: null, ApagarAntes: false),
-                Marca = new MarcaDagua(),
-            },
-            "Patient", system, valor, novo,
-            systemCdInterno: EsusSgPacienteFhirMapper.SysCns,
-            ct,
-            fonteParcial: true,
-            aoEscrever: (atual, _) => { antes = atual; escreveu = true; });
+        string id;
+        try
+        {
+            id = await UpsertCanonicoPep.UpsertAsync(
+                new ContextoImportacaoPep
+                {
+                    Escritor = escritor,
+                    Progresso = new ProgressoImportacao(),
+                    BaseSlug = EsusSgPacienteFhirMapper.Slug,
+                    Opcoes = new OpcoesImportacao(
+                        ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo,
+                        MaxMedicos: null, MaxPacientes: null, ApagarAntes: false),
+                    Marca = new MarcaDagua(),
+                },
+                "Patient", system, valor, novo,
+                systemCdInterno: EsusSgPacienteFhirMapper.SysCns,
+                ct,
+                fonteParcial: true,
+                aoEscrever: (atual, _) => { antes = atual; escreveu = true; });
+        }
+        catch (FusaoRecusadaException recusa)
+        {
+            // A chave achou a ficha de OUTRA pessoa: nada foi escrito, e o pedido fica sem
+            // paciente — ligá-lo ali é a mistura que a recusa existe para impedir.
+            await FusaoRecusada.RegistrarAsync(auditoria, logger, recusa, "ESUS de São Gonçalo", $"Pedido ESUS SG {s.IdEsusSg} ({s.Recurso})", ct);
+            return new ConciliacaoEsusSgDto(ResultadoConciliacaoEsusSg.PessoaDiferente, null, 0);
+        }
 
         var pacienteId = Guid.TryParse(id, out var g) ? g : (Guid?)null;
         if (!escreveu) return new ConciliacaoEsusSgDto(ResultadoConciliacaoEsusSg.Inalterado, pacienteId, 0);
@@ -179,7 +193,7 @@ public sealed class EsusSgConciliacaoPacienteService(
     public async Task<BackfillPacientesEsusSgDto> ExecutarPendentesAsync(int limite, CancellationToken ct)
     {
         var inicio = DateTime.UtcNow;
-        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, falhas = 0;
+        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, pessoaDiferente = 0, falhas = 0;
 
         var pendentes = await db.EsusSgSolicitacoes
             .Where(s => s.ExcluidoEm == null && s.PacienteConciliarEm != null)
@@ -200,6 +214,7 @@ public sealed class EsusSgConciliacaoPacienteService(
                     case ResultadoConciliacaoEsusSg.Enriquecido: enriquecidos++; break;
                     case ResultadoConciliacaoEsusSg.Inalterado: inalterados++; break;
                     case ResultadoConciliacaoEsusSg.SemChave: semChave++; break;
+                    case ResultadoConciliacaoEsusSg.PessoaDiferente: pessoaDiferente++; break;
                 }
                 if (r.PacienteId is { } pid) s.PacienteId = pid;
 
@@ -222,7 +237,7 @@ public sealed class EsusSgConciliacaoPacienteService(
             "ESUS SG/conciliação: {Qtd} pendente(s) — {Criados} criados, {Enriq} enriquecidos, {Inalt} inalterados, "
             + "{SemChave} sem chave, {Falhas} falhas em {Seg}s.",
             pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
-        return new BackfillPacientesEsusSgDto(pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
+        return new BackfillPacientesEsusSgDto(pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao, PessoaDiferente: pessoaDiferente);
     }
 }
 

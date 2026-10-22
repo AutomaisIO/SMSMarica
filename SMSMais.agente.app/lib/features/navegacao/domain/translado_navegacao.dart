@@ -35,6 +35,8 @@ class Acompanhante {
     required this.nome,
     required this.confirmacao,
     this.assento,
+    this.id,
+    this.ordem,
   });
 
   final String nome;
@@ -42,6 +44,21 @@ class Acompanhante {
 
   /// Assento alocado no planejamento (ex.: "Banco 2 — janela").
   final String? assento;
+
+  /// Id do cadastro na central (nulo quando a sessão só tem o nome).
+  final String? id;
+
+  /// Posição na lista da sessão (1 ou 2). Fica a mesma quando o outro falta:
+  /// é por ela que o tablet diz à central quem embarcou e quem desceu.
+  final int? ordem;
+
+  Acompanhante naOrdem(int ordem) => Acompanhante(
+        nome: nome,
+        confirmacao: confirmacao,
+        assento: assento,
+        id: id,
+        ordem: ordem,
+      );
 }
 
 /// Mensagem trocada entre paciente e motorista (dentro do app).
@@ -68,7 +85,7 @@ class PassageiroTranslado {
     this.telefone,
     this.observacao,
     this.assento,
-    this.acompanhante,
+    this.acompanhantes = const [],
     this.mensagens = const [],
   });
 
@@ -83,15 +100,46 @@ class PassageiroTranslado {
   /// Assento do paciente, conforme alocado no planejamento.
   final String? assento;
 
-  final Acompanhante? acompanhante;
+  /// Quem acompanha o paciente nesta sessão (até 2, pela regra do
+  /// atendimento), cada um com o seu assento.
+  final List<Acompanhante> acompanhantes;
 
   /// Conversa objetiva paciente ↔ motorista.
   final List<MensagemTranslado> mensagens;
 
-  bool get temAcompanhante => acompanhante != null;
+  bool get temAcompanhante => acompanhantes.isNotEmpty;
+
+  /// Posição do [i]-ésimo acompanhante na lista da sessão (1 ou 2).
+  int ordemDoAcompanhante(int i) =>
+      (i < acompanhantes.length ? acompanhantes[i].ordem : null) ?? i + 1;
+
+  /// Id do [i]-ésimo acompanhante deste paciente na conferência da parada
+  /// (o primeiro da sessão é `<paciente>:acompanhante`). Segue a posição na
+  /// sessão: no destino, sem o que faltou, o outro mantém o mesmo id.
+  String idAcompanhante([int i = 0]) {
+    final ordem = ordemDoAcompanhante(i);
+    return ordem == 1 ? '$id:acompanhante' : '$id:acompanhante:$ordem';
+  }
 
   int get mensagensNaoLidas =>
       mensagens.where((m) => !m.doMotorista).length;
+
+  /// O mesmo paciente, sem os acompanhantes que faltaram na coleta
+  /// ([ausentes] são ids de pessoa, como em [idAcompanhante]).
+  PassageiroTranslado semAusentes(Set<String> ausentes) => PassageiroTranslado(
+        id: id,
+        nome: nome,
+        confirmacao: confirmacao,
+        telefone: telefone,
+        observacao: observacao,
+        assento: assento,
+        acompanhantes: [
+          for (var i = 0; i < acompanhantes.length; i++)
+            if (!ausentes.contains(idAcompanhante(i)))
+              acompanhantes[i].naOrdem(ordemDoAcompanhante(i)),
+        ],
+        mensagens: mensagens,
+      );
 }
 
 /// Uma parada (waypoint) da rota otimizada.
@@ -105,8 +153,11 @@ class ParadaNavegacao {
     required this.latitude,
     required this.longitude,
     required this.horarioPrevisto,
+    this.observacoes,
     this.passageiros = const [],
     this.concluida = false,
+    this.resgate = false,
+    this.lote,
   });
 
   final String id;
@@ -118,16 +169,40 @@ class ParadaNavegacao {
   /// Nome do paciente (coleta) ou da unidade/destino (destino).
   final String rotulo;
   final String endereco;
-  final double latitude;
-  final double longitude;
-  final DateTime horarioPrevisto;
+
+  /// Ponto no mapa; nulo quando o endereço não foi localizado (a navegação
+  /// pula a parada e o motorista segue pelo endereço).
+  final double? latitude;
+  final double? longitude;
+
+  /// Horário previsto, quando a central definiu.
+  final DateTime? horarioPrevisto;
+
+  /// Para o motorista: ponto de referência (coleta) ou orientação de chegada
+  /// da unidade (destino).
+  final String? observacoes;
+
+  bool get temPonto => latitude != null && longitude != null;
 
   /// Quem embarca (coleta) ou desembarca (destino) nesta parada.
   final List<PassageiroTranslado> passageiros;
 
   final bool concluida;
 
-  ParadaNavegacao copyWith({bool? concluida}) => ParadaNavegacao(
+  /// Parada do resgate: buscar na unidade (coleta) ou deixar em casa
+  /// (destino). Só existe para quem o motorista ou a central marcaram para
+  /// este carro buscar — levado por ele ou não.
+  final bool resgate;
+
+  /// No resgate, a marcação a que a parada pertence: a busca e as entregas em
+  /// casa da mesma marcação têm o mesmo lote.
+  final int? lote;
+
+  ParadaNavegacao copyWith({
+    bool? concluida,
+    List<PassageiroTranslado>? passageiros,
+  }) =>
+      ParadaNavegacao(
         id: id,
         ordem: ordem,
         tipo: tipo,
@@ -136,10 +211,19 @@ class ParadaNavegacao {
         latitude: latitude,
         longitude: longitude,
         horarioPrevisto: horarioPrevisto,
-        passageiros: passageiros,
+        observacoes: observacoes,
+        passageiros: passageiros ?? this.passageiros,
         concluida: concluida ?? this.concluida,
+        resgate: resgate,
+        lote: lote,
       );
 }
+
+/// Id de quem não estava no local do resgate ([idPessoa] = paciente ou
+/// [PassageiroTranslado.idAcompanhante]): fica fora da entrega em casa
+/// daquele [lote], sem mexer no que aconteceu na ida.
+String idAusenteNoResgate(String idPessoa, int? lote) =>
+    '$idPessoa:resgate:${lote ?? 0}';
 
 /// O translado inteiro = uma rota com paradas, lançado em uma só sessão do SDK.
 class TransladoNavegacao {
@@ -159,5 +243,64 @@ class TransladoNavegacao {
       if (!p.concluida) return p;
     }
     return null;
+  }
+
+  /// Paradas com o andamento aplicado: [concluidas] (ids de parada) marcadas
+  /// e, no destino, só desembarca quem embarcou — [ausentes] são ids de
+  /// pessoa (paciente ou [PassageiroTranslado.idAcompanhante]) que faltaram
+  /// na coleta. Paciente ausente sai do destino junto com os acompanhantes.
+  /// Destino sem ninguém para desembarcar fica **dispensado** (conta como
+  /// concluído e sai da rota). No resgate, quem não estava no local
+  /// ([idAusenteNoResgate]) não é deixado em casa.
+  List<ParadaNavegacao> paradasComAndamento({
+    required Set<String> concluidas,
+    required Set<String> ausentes,
+  }) => [
+        for (final p in paradas)
+          if (p.resgate)
+            _resgateSemAusentes(p, concluidas, ausentes)
+          else if (p.tipo == TipoParada.destino)
+            _destinoSemAusentes(p, concluidas, ausentes)
+          else
+            p.copyWith(concluida: concluidas.contains(p.id)),
+      ];
+
+  static ParadaNavegacao _resgateSemAusentes(
+    ParadaNavegacao parada,
+    Set<String> concluidas,
+    Set<String> ausentes,
+  ) {
+    // Quem faltou na busca deste lote, sem o sufixo: id de pessoa.
+    final sufixo = idAusenteNoResgate('', parada.lote);
+    final faltou = {
+      for (final a in ausentes)
+        if (a.endsWith(sufixo)) a.substring(0, a.length - sufixo.length),
+    };
+    final vao = parada.tipo == TipoParada.coleta
+        ? parada.passageiros
+        : [
+            for (final p in parada.passageiros)
+              if (!faltou.contains(p.id)) p.semAusentes(faltou),
+          ];
+    return parada.copyWith(
+      passageiros: vao,
+      concluida: concluidas.contains(parada.id) || vao.isEmpty,
+    );
+  }
+
+  static ParadaNavegacao _destinoSemAusentes(
+    ParadaNavegacao parada,
+    Set<String> concluidas,
+    Set<String> ausentes,
+  ) {
+    final quemDesce = [
+      for (final p in parada.passageiros)
+        if (!ausentes.contains(p.id))
+          p.semAusentes(ausentes),
+    ];
+    return parada.copyWith(
+      passageiros: quemDesce,
+      concluida: concluidas.contains(parada.id) || quemDesce.isEmpty,
+    );
   }
 }

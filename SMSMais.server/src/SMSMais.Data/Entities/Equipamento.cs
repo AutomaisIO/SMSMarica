@@ -77,6 +77,22 @@ public class Equipamento
     /// <summary>De qual unidade do pedido sai o nome de <see cref="UnidadeTag"/>.</summary>
     public OrigemUnidadeWorklist UnidadeOrigem { get; set; } = OrigemUnidadeWorklist.Executante;
 
+    // ---- O que acontece com o exame depois que chega (ADR-0075) ----
+    // É do aparelho, e não do tipo de exame: o mesmo procedimento pode ser laudado aqui num aparelho
+    // e fora em outro, e o que decide se a imagem pode ir antes do laudo é quem lauda.
+
+    /// <summary>Onde nasce o laudo. Padrão: a plataforma.</summary>
+    public OrigemLaudo Laudo { get; set; } = OrigemLaudo.Plataforma;
+
+    /// <summary>Quando o exame chega ao paciente. Padrão: só com o laudo assinado.
+    /// <see cref="LiberacaoExamePaciente.ComLaudoAssinado"/> exige <see cref="OrigemLaudo.Plataforma"/>
+    /// (trava no banco: <c>ck_equipamento_liberacao_com_laudo</c>).</summary>
+    public LiberacaoExamePaciente LiberacaoPaciente { get; set; } = LiberacaoExamePaciente.ComLaudoAssinado;
+
+    /// <summary>Os exames deste aparelho usam anamnese. Desligado, o botão some e o laudo não a cobra
+    /// (MAPA e Holter não têm questionário).</summary>
+    public bool UsaAnamnese { get; set; } = true;
+
     /// <summary>Visibilidade no agendamento. Soft-delete via <see cref="ExcluidoEm"/>.</summary>
     public bool Ativo { get; set; } = true;
 

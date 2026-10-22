@@ -13,14 +13,11 @@ import {
   obterSolicitacaoEsusSg,
   obterStatusMotorEsusSg,
   obterVarreduraAutomaticaEsusSg,
-  salvarCredencialEsusSg,
   salvarVarreduraAutomaticaEsusSg,
   sincronizarCatalogoEsusSg,
-  testarCredencialEsusSg,
 } from '@/features/esussg/api/esussgApi';
 import type {
   BuscaEsusSgFiltro,
-  CredencialEsusSg,
   DispararVarreduraEsusSgPayload,
   NotificacoesEsusSgFiltro,
   VarreduraAutomaticaEsusSg,
@@ -87,18 +84,6 @@ export function useDispararVarreduraEsusSg() {
       void qc.invalidateQueries({ queryKey: esussgKeys.status });
       void qc.invalidateQueries({ queryKey: esussgKeys.execucoes });
     },
-  });
-}
-
-export function useTestarCredencialEsusSg() {
-  return useMutation({ mutationFn: (c: CredencialEsusSg) => testarCredencialEsusSg(c) });
-}
-
-export function useSalvarCredencialEsusSg() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (c: CredencialEsusSg) => salvarCredencialEsusSg(c),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: esussgKeys.status }),
   });
 }
 

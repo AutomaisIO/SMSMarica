@@ -81,7 +81,7 @@ public sealed partial class SernitWebSessao(
     ILogger<SernitWebSessao> logger) : ISernitWebSessao, IDisposable
 {
     public const string Provedor = "sernit";
-    private const string BaseUrlPadrao = "https://regulacao.niteroi.rj.gov.br";
+    public const string BaseUrlPadrao = "https://regulacao.niteroi.rj.gov.br";
     private const string CaminhoLogin = "/ser/login";
     private const string CaminhoLogout = "/ser/logout.jsp";
     private const string CaminhoHome = "/ser/home.seam";

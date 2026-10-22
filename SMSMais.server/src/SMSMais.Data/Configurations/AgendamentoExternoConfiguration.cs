@@ -23,6 +23,7 @@ internal sealed class AgendamentoExternoConfiguration : IEntityTypeConfiguration
         builder.Property(a => a.LocalNome).HasColumnName("local_nome").HasMaxLength(300);
         builder.Property(a => a.Situacao).HasColumnName("situacao").HasConversion<int>().IsRequired();
         builder.Property(a => a.EncerradoEm).HasColumnName("encerrado_em");
+        builder.Property(a => a.MotivoDesmarque).HasColumnName("motivo_desmarque").HasConversion<int?>();
         builder.Property(a => a.StatusConfirmacao).HasColumnName("status_confirmacao").HasConversion<int>().IsRequired();
         builder.Property(a => a.ConfirmadoEm).HasColumnName("confirmado_em");
         builder.Property(a => a.ConfirmadoCanal).HasColumnName("confirmado_canal").HasMaxLength(40);

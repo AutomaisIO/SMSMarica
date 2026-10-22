@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 
 using SMSMais.Core.Identidade;
+using SMSMais.Core.GuiasAgendamento;
 using SMSMais.Core.Notificacoes.Confirmacoes;
 using SMSMais.Core.Notificacoes.Confirmacoes.Dtos;
 using SMSMais.Core.Pacientes;
@@ -46,7 +47,8 @@ public class RegulacaoContatoPacienteServiceTests(PostgresFixture fixture)
         regras.ObterAsync(Arg.Any<CancellationToken>()).Returns(new ConfirmacaoConfiguracaoDto(
             "08:00", "18:00", 100, SomenteSisreg: true, true, null, AvisoAgendamentoExternoHabilitado: avisoExterno));
         return new RegulacaoContatoPacienteService(
-            db, escopo, new SolicitacaoHistoricoService(db, acessor), pacientes, regras);
+            db, escopo, new SolicitacaoHistoricoService(db, acessor), pacientes, regras,
+            Substitute.For<IFilaGuiasService>());
     }
 
     private static async Task<RegulacaoSolicitacao> SolicitacaoAsync(

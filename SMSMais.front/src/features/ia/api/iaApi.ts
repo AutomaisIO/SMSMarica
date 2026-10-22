@@ -6,8 +6,6 @@ import type {
   CorrecaoIa,
   FeedbackIa,
   FonteConfig,
-  ResultadoTesteConexao,
-  SalvarFonteConfigPayload,
 } from '@/features/ia/types';
 
 // ── Configuração ────────────────────────────────────────────────────────────
@@ -26,29 +24,6 @@ export async function atualizarConfiguracao(
 
 export async function listarFontesConfig(): Promise<FonteConfig[]> {
   const { data } = await http.get<FonteConfig[]>('/ia/configuracao/fontes');
-  return data;
-}
-
-export async function criarFonteConfig(payload: SalvarFonteConfigPayload): Promise<string> {
-  const { data } = await http.post<string>('/ia/configuracao/fontes', payload);
-  return data;
-}
-
-export async function atualizarFonteConfig(
-  id: string,
-  payload: SalvarFonteConfigPayload,
-): Promise<void> {
-  await http.put(`/ia/configuracao/fontes/${id}`, payload);
-}
-
-export async function removerFonteConfig(id: string): Promise<void> {
-  await http.delete(`/ia/configuracao/fontes/${id}`);
-}
-
-export async function testarConexaoFonte(id: string): Promise<ResultadoTesteConexao> {
-  const { data } = await http.post<ResultadoTesteConexao>(
-    `/ia/configuracao/fontes/${id}/testar-conexao`,
-  );
   return data;
 }
 

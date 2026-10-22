@@ -50,7 +50,8 @@ public sealed class ResolucaoPendenciasService(
     /// <para>Ficam de fora, e não por descuido: <c>SemCns</c> e <c>LinhaInvalida</c> não têm o dado
     /// na origem (nenhuma tentativa muda isso); <c>ArquivoIncompativel</c> nem linha do SISREG é;
     /// e <c>SigtapNaoMapeado</c> tem ação própria — enquanto ninguém mapear o procedimento, cada
-    /// tentativa aqui só gastaria a fonte de cadastro para falhar igual.</para>
+    /// tentativa aqui só gastaria a fonte de cadastro para falhar igual. <c>IdentidadeDivergente</c>
+    /// também fica: a ficha achada é de outra pessoa, e só quem olha decide quem é o paciente.</para>
     ///
     /// <para><c>CpfNaoResolvido</c> ENTRA porque a fonte pode ter mudado: um CNS que o CADSUS do
     /// SISREG não resolveu pode voltar com CPF pela porta do SER.</para>

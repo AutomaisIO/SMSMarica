@@ -33,8 +33,12 @@ public sealed class LaudosService(
     Configuracao.ILaudoConfiguracaoService configuracao,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<LaudosService> logger,
-    Microsoft.Extensions.Options.IOptions<Assinatura.Nuvem.IntegraIcpOptions> nuvemOptions) : ILaudosService
+    Microsoft.Extensions.Options.IOptions<Assinatura.Nuvem.IntegraIcpOptions> nuvemOptions,
+    // Opcional: só precisa do banco, e os testes que montam o serviço à mão seguem compilando.
+    Equipamentos.IRegrasDoExameService? regrasDoExame = null) : ILaudosService
 {
+    private readonly Equipamentos.IRegrasDoExameService _regrasDoExame =
+        regrasDoExame ?? new Equipamentos.RegrasDoExameService(db);
     private readonly bool _nuvemHabilitada = nuvemOptions.Value.Habilitado;
     private readonly SmsMaisDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
@@ -473,9 +477,21 @@ public sealed class LaudosService(
             throw new ValidacaoException("laudo.sem_associacao",
                 "Associe o exame a um pedido antes de iniciar o laudo.");
 
+        // O aparelho do exame decide se ele é laudado aqui e se usa anamnese (ADR-0075). Laudo feito
+        // fora (ultrassom) ou que chega junto com o exame (MAPA, Holter) não se inicia aqui: o laudo
+        // nosso, aprovado, soltaria a imagem ao paciente com um documento que não é o laudo dele.
+        var regra = vinculo is null
+            ? Equipamentos.RegraDoExame.SemAparelho
+            : await _regrasDoExame.ResolverAsync(vinculo.SolicitacaoExameId, cancellationToken);
+        if (!regra.LaudoNaPlataforma)
+            throw new ValidacaoException("laudo.fora_da_plataforma",
+                $"Os exames de {regra.EquipamentoNome ?? "este aparelho"} não são laudados pela plataforma "
+                + "(cadastro do equipamento). Se este precisa de laudo aqui, mude o cadastro do aparelho.");
+
         // Anamnese: por padrão exige a anamnese da solicitação preenchida (só faz sentido
-        // quando há vínculo/solicitação). A configuração pode liberar iniciar sem anamnese.
-        if (vinculo is not null && !config.PermitirLaudarSemAnamnese)
+        // quando há vínculo/solicitação). A configuração pode liberar iniciar sem anamnese, e o
+        // aparelho que não usa anamnese (ADR-0075) não a cobra.
+        if (vinculo is not null && !config.PermitirLaudarSemAnamnese && regra.UsaAnamnese)
         {
             // A anamnese é do PEDIDO (ADR-0074): o laudo do exame -1 vale a do exame principal.
             var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(

@@ -111,12 +111,14 @@ public sealed record ImportacaoFalhaDto(
     string? PacienteCns = null)
 {
     /// <summary>
-    /// A linha é resolvível informando o CPF? Só a causa <c>CpfNaoResolvido</c> — as demais ou são
-    /// transitórias (revalidar basta) ou não têm o dado na origem. A tela usa isto para não oferecer
-    /// um botão que fatalmente falharia.
+    /// A linha é resolvível informando o CPF? <c>CpfNaoResolvido</c> (o CPF faltou) e
+    /// <c>IdentidadeDivergente</c> (a chave achou a ficha de outra pessoa — quem é o paciente, uma
+    /// pessoa diz). As demais ou são transitórias (revalidar basta) ou não têm o dado na origem. A
+    /// tela usa isto para não oferecer um botão que fatalmente falharia.
     /// </summary>
     public bool PodeInformarCpf =>
-        ResolvidoEm is null && Causa == CausaFalhaImportacao.CpfNaoResolvido;
+        ResolvidoEm is null
+        && Causa is CausaFalhaImportacao.CpfNaoResolvido or CausaFalhaImportacao.IdentidadeDivergente;
 }
 
 /// <summary>Uma linha da aba de rastreio: um arquivo importado.</summary>

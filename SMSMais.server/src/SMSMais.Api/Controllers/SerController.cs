@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
+using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Ser;
 using SMSMais.Core.Ser.Dtos;
@@ -61,6 +63,21 @@ public sealed class SerController(ISerConsultaService consulta) : ControllerBase
         [FromServices] SMSMais.Core.Regulacao.ContatoPaciente.IRegulacaoContatoPacienteService contato,
         CancellationToken cancellationToken) =>
         contato.ObterPorEspelhoAsync(SistemaRegulacao.Ser, id, cancellationToken);
+
+    /// <summary>A guia do agendamento vigente deste pedido (ADR-0076) — o mesmo PDF do acervo do
+    /// paciente, buscado pelo sincronismo. Só lê: não emite nada no SER.</summary>
+    [HttpGet("{id:guid}/contato-paciente/guia")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GuiaDoAgendamento(
+        Guid id,
+        [FromServices] SMSMais.Core.Regulacao.ContatoPaciente.IRegulacaoContatoPacienteService contato,
+        CancellationToken cancellationToken)
+    {
+        var c = await contato.ObterGuiaPorEspelhoAsync(SistemaRegulacao.Ser, id, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
 
     /// <summary>Refaz agora a análise de regras deste pedido (ADR-0063 §4). Só recalcula o NOSSO
     /// parecer — não escreve nada no SER.</summary>
@@ -326,23 +343,6 @@ public sealed class SerConfiguracaoController(
     }
 
     /// <summary>
-    /// Grava a credencial do SER (cifrada no store de integrações). Autentica antes de
-    /// persistir — só salva o que o SER aceitou.
-    /// </summary>
-    [HttpPut("credencial")]
-    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SalvarCredencial(
-        [FromBody] SerTestarCredencialRequest requisicao, CancellationToken cancellationToken)
-    {
-        await motor.SalvarCredencialAsync(requisicao.Usuario, requisicao.Senha, cancellationToken);
-        return NoContent();
-    }
-
-    /// <summary>Testa uma credencial contra o SER sem gravá-la. Só autentica e confere se o
-    /// módulo Ambulatório abre — nenhuma escrita no SER.</summary>
-    /// <summary>
     /// Formulário de NOVA solicitação, lido ao vivo da aba Editar do SER.
     ///
     /// <para><b>Somente leitura.</b> Abrir a aba e trocar combos apenas re-renderiza a view do
@@ -497,21 +497,63 @@ public sealed class SerConfiguracaoController(
         CancellationToken cancellationToken) =>
         config.SalvarAsync(corpo, cancellationToken);
 
-    [HttpPost("testar-credencial")]
+    /// <summary>
+    /// Regra de anexos do SER no envio automático: o tamanho máximo por arquivo. Acima dele o envio
+    /// comprime (foto e PDF) para caber; o padrão fica abaixo dos 5 MB que a tela do SER declara.
+    /// </summary>
+    [HttpGet("anexos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<RegrasAnexoDestinoDto>(StatusCodes.Status200OK)]
+    public Task<RegrasAnexoDestinoDto> ObterRegrasAnexo(
+        [FromServices] IRegrasAnexoDestinoService regras, CancellationToken cancellationToken) =>
+        regras.ObterAsync(SistemaRegulacao.Ser, cancellationToken);
+
+    [HttpPut("anexos")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<RegrasAnexoDestinoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> TestarCredencial(
-        [FromBody] SerTestarCredencialRequest requisicao, CancellationToken cancellationToken)
-    {
-        await motor.TestarCredencialAsync(requisicao.Usuario, requisicao.Senha, cancellationToken);
-        return NoContent();
-    }
+    public Task<RegrasAnexoDestinoDto> SalvarRegrasAnexo(
+        [FromBody] SalvarRegrasAnexoDestinoRequest corpo,
+        [FromServices] IRegrasAnexoDestinoService regras,
+        CancellationToken cancellationToken) =>
+        regras.SalvarAsync(SistemaRegulacao.Ser, corpo.TamanhoMaximoMb, cancellationToken);
+
+    /// <summary>Avisos ao paciente do SER: lembrete X dias antes e aviso de cancelamento (21/10/2026).</summary>
+    [HttpGet("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<AvisosPacienteRegulacaoDto> ObterAvisosPaciente(
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos, CancellationToken cancellationToken) =>
+        avisos.ObterAsync(SistemaRegulacao.Ser, cancellationToken);
+
+    [HttpPut("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<AvisosPacienteRegulacaoDto> SalvarAvisosPaciente(
+        [FromBody] SalvarAvisosPacienteRegulacaoRequest corpo,
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
+        CancellationToken cancellationToken) =>
+        avisos.SalvarAsync(SistemaRegulacao.Ser, corpo, cancellationToken);
+
+    /// <summary>A fila de guias do SER (ADR-0076): ritmo, janela, quanto falta e por que parou.</summary>
+    [HttpGet("guias")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> ObterFilaGuias(
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias, CancellationToken cancellationToken) =>
+        guias.ResumoAsync(SistemaRegulacao.Ser, cancellationToken);
+
+    [HttpPut("guias")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> SalvarFilaGuias(
+        [FromBody] SMSMais.Core.GuiasAgendamento.SalvarFilaGuiasRequest corpo,
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias,
+        CancellationToken cancellationToken) =>
+        guias.SalvarAsync(SistemaRegulacao.Ser, corpo, cancellationToken);
 }
-
-/// <summary>Credencial avulsa para teste (não é gravada aqui).</summary>
-public sealed record SerTestarCredencialRequest(string Usuario, string Senha);
-
 
 /// <summary>
 /// <b>Regulação → Nova solicitação</b>: catálogo espelhado e rascunhos.

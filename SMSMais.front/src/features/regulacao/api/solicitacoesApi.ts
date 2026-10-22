@@ -159,6 +159,16 @@ export async function obterContatoPacienteEspelho(
   return data;
 }
 
+/**
+ * Caminho do PDF da guia do agendamento (ADR-0076) — o mesmo documento do acervo do paciente, aberto
+ * com a permissão da tela onde o quadro está. Vai para o `VisualizadorArquivo`.
+ */
+export function caminhoGuiaAgendamento(origem: { solicitacaoId: string } | { sistema: SistemaEspelho; espelhoId: string }) {
+  return 'solicitacaoId' in origem
+    ? `${base}/${origem.solicitacaoId}/contato-paciente/guia`
+    : `/regulacao/${origem.sistema}/${origem.espelhoId}/contato-paciente/guia`;
+}
+
 // ---------------------------------------------------------------- ações do agente (módulo 48)
 
 export async function assumirSolicitacao(id: string): Promise<SolicitacaoRegulacao> {
@@ -281,6 +291,10 @@ export type AnexoEnvioSer = {
   arquivosJuntados: number;
   /** Os nomes dos arquivos que entraram neste anexo — listados para a pessoa confirmar o agrupamento. */
   nomesJuntados: string[];
+  /** Só quando o arquivo foi comprimido para caber nos 5 MB do sistema: o tamanho de antes. */
+  tamanhoOriginal?: number | null;
+  /** Como foi comprimido ("200 dpi", "foto reduzida"). */
+  compressao?: string | null;
 };
 
 export type PedidoParecidoSer = {
@@ -305,6 +319,8 @@ export type PreparoEnvioSer = {
   possiveisDuplicados: PedidoParecidoSer[];
   /** O médico pedido pela unidade não está na lista do sistema: a pergunta ao regulador. */
   medicoNovo: MedicoNovoNoSistema | null;
+  /** O tamanho máximo por arquivo do destino (configurado na aba dele), em bytes. */
+  limiteAnexoBytes?: number | null;
 };
 
 /** O médico pedido na abertura que o combo "Médico responsável" do sistema não tem HOJE. */

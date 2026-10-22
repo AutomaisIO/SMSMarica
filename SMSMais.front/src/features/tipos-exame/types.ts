@@ -13,7 +13,7 @@ export const MODALIDADES_DICOM: { valor: ModalidadeDicom; rotulo: string }[] = [
   { valor: 'MR', rotulo: 'Ressonância magnética (MR)' },
   { valor: 'NM', rotulo: 'Medicina nuclear (NM)' },
   { valor: 'PT', rotulo: 'PET (PT)' },
-  { valor: 'ECG', rotulo: 'Cardiologia — Holter, MAPA, ECG (ECG)' },
+  { valor: 'ECG', rotulo: 'Cardiologia — Holter (ECG)' },
   { valor: 'OT', rotulo: 'Outro (OT)' },
 ];
 

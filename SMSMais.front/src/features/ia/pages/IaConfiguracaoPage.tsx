@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, Database, Edit2, Loader2, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BookOpen, Database, ExternalLink, Loader2, Settings2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
-import { FonteConfigModal } from '@/features/ia/components/FonteConfigModal';
 import { PainelConhecimento } from '@/features/ia/components/PainelConhecimento';
 import {
   useAtualizarConfiguracaoIa,
   useConfiguracaoIa,
   useFontesConfig,
-  useRemoverFonteConfig,
 } from '@/features/ia/api/queries';
 import type { AtualizarConfiguracaoPayload, FonteConfig } from '@/features/ia/types';
 
@@ -29,7 +29,9 @@ export function IaConfiguracaoPage() {
   const config = useConfiguracaoIa();
   const salvar = useAtualizarConfiguracaoIa();
   const fontes = useFontesConfig();
-  const remover = useRemoverFonteConfig();
+  const verFontesDados = usePermissao('FontesDados', 'Consulta');
+  // A IA consulta por SQL: bases sem dialeto (Klinikos Web, FHIR) não entram aqui.
+  const fontesDaIa = (fontes.data ?? []).filter((f) => f.dialeto !== 'Nenhum');
 
   const [form, setForm] = useState<FormConfig>({
     provedor: '',
@@ -42,9 +44,6 @@ export function IaConfiguracaoPage() {
   const [erroConfig, setErroConfig] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
-  const [modalAberto, setModalAberto] = useState(false);
-  const [emEdicao, setEmEdicao] = useState<FonteConfig | undefined>(undefined);
-  const [erroFonte, setErroFonte] = useState<string | null>(null);
   const [conhecimentoDe, setConhecimentoDe] = useState<FonteConfig | null>(null);
 
   useEffect(() => {
@@ -84,22 +83,6 @@ export function IaConfiguracaoPage() {
     });
   }
 
-  function abrirNova() {
-    setEmEdicao(undefined);
-    setModalAberto(true);
-  }
-
-  function abrirEdicao(fonte: FonteConfig) {
-    setEmEdicao(fonte);
-    setModalAberto(true);
-  }
-
-  function aoRemover(fonte: FonteConfig) {
-    if (!window.confirm(`Remover a base "${fonte.nome}"?`)) return;
-    setErroFonte(null);
-    remover.mutate(fonte.id, { onError: (err) => setErroFonte(extrairMensagemDeErro(err)) });
-  }
-
   const colunas: Coluna<FonteConfig>[] = [
     {
       chave: 'nome',
@@ -109,8 +92,8 @@ export function IaConfiguracaoPage() {
           <div className="truncate font-medium text-gray-900">{f.nome}</div>
           <div className="truncate text-xs text-gray-500">
             {f.tipo}
-            {f.host ? ` · ${f.host}${f.porta ? `:${f.porta}` : ''}` : ''}
-            {f.servico ? ` · ${f.servico}` : ''}
+            {f.slug ? ` · ${f.slug}` : ''}
+            {f.viaAgente ? ' · via agente' : ''}
           </div>
         </div>
       ),
@@ -144,24 +127,6 @@ export function IaConfiguracaoPage() {
             <BookOpen className="h-3.5 w-3.5" />
             Conhecimento
           </button>
-          <button
-            type="button"
-            onClick={() => abrirEdicao(f)}
-            title="Editar"
-            className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-          >
-            <Edit2 className="h-3.5 w-3.5" />
-            Editar
-          </button>
-          <button
-            type="button"
-            onClick={() => aoRemover(f)}
-            title="Remover"
-            className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Remover
-          </button>
         </div>
       ),
     },
@@ -175,7 +140,7 @@ export function IaConfiguracaoPage() {
           Configuração IA
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Provedor de IA, modelos e bases de dados consultáveis.
+          Provedor de IA, modelos e o conhecimento das bases que a IA consulta.
         </p>
       </header>
 
@@ -295,29 +260,29 @@ export function IaConfiguracaoPage() {
         </form>
       </section>
 
-      {/* ── Bases de dados ───────────────────────────────────────────────── */}
+      {/* ── Bases que a IA consulta ──────────────────────────────────────── */}
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
               <Database className="h-5 w-5 text-primary-600" />
-              Bases de dados
+              Bases que a IA consulta
             </h2>
             <p className="mt-0.5 text-sm text-gray-500">
-              Conexões consultáveis pela IA. A senha é write-only e nunca é exibida.
+              O conhecimento de cada base (documentos, modelo, exemplos) é configurado aqui. A conexão —
+              endereço, login, agente — é cadastrada em Sistema → Fontes de dados.
             </p>
           </div>
-          <Button onClick={abrirNova}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova base
-          </Button>
+          {verFontesDados ? (
+            <Link
+              to="/app/fontes-dados"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Fontes de dados
+            </Link>
+          ) : null}
         </div>
-
-        {erroFonte ? (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {erroFonte}
-          </div>
-        ) : null}
 
         {fontes.isError ? (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -327,18 +292,12 @@ export function IaConfiguracaoPage() {
 
         <Tabela
           colunas={colunas}
-          dados={fontes.data ?? []}
+          dados={fontesDaIa}
           chaveLinha={(f) => f.id}
           carregando={fontes.isPending}
-          vazio="Nenhuma base cadastrada."
+          vazio="Nenhuma base consultável cadastrada em Sistema → Fontes de dados."
         />
       </section>
-
-      <FonteConfigModal
-        aberto={modalAberto}
-        aoFechar={() => setModalAberto(false)}
-        fonte={emEdicao}
-      />
 
       {conhecimentoDe && (
         <PainelConhecimento fonte={conhecimentoDe} onFechar={() => setConhecimentoDe(null)} />

@@ -39,6 +39,10 @@ public interface IEsusSgSessao
     Task<JsonElement> PostarLegadoAsync(
         string caminho, JsonObject corpo, CancellationToken cancellationToken);
 
+    /// <summary>Dados do comprovante de UM agendamento de exame (<c>eap_id</c>) — a guia (ADR-0076).
+    /// Porta nomeada: a trava geral continua recusando "comprovante". Devolve a lista <c>dados</c>.</summary>
+    Task<JsonElement> ObterComprovanteExameAsync(string agendamentoIdEsus, CancellationToken cancellationToken);
+
     /// <summary>Unidade de saúde da conta no ESUS (a "MUNICÍPIO DE MARICÁ", uns_id 39 em 30/09/2026).</summary>
     Task<int> UnidadeAsync(CancellationToken cancellationToken);
 
@@ -125,11 +129,36 @@ public sealed partial class EsusSgSessao(
         }
     }
 
-    public async Task<JsonElement> PostarLegadoAsync(
+    public Task<JsonElement> PostarLegadoAsync(
         string caminho, JsonObject corpo, CancellationToken cancellationToken)
     {
         GarantirLeitura(caminho);
+        return EnviarLegadoAsync(caminho, corpo, cancellationToken);
+    }
 
+    /// <summary>
+    /// A ação dos dados do comprovante de agendamento de exame. A trava geral a recusa ("comprovante"),
+    /// e continua recusando: só ESTE caminho passa, por esta porta nomeada. Medido em 21/10/2026
+    /// (Automais.esus_saocongalo/docs/APRENDIZADOS.md §5.4): ela só LÊ — o "impresso = SIM" é o
+    /// <c>cadastrar-comprovante-impressao-lote</c>, que o front chama antes e que nunca chamamos.
+    /// </summary>
+    public const string CaminhoComprovanteExame =
+        "exames2/controller-exame-agendamento-procedimento/obter-comprovante-exame-agendamento-em-lote-com-preparo-subprocedimentos";
+
+    public Task<JsonElement> ObterComprovanteExameAsync(string agendamentoIdEsus, CancellationToken cancellationToken)
+    {
+        if (!long.TryParse(agendamentoIdEsus, out var eapId))
+        {
+            throw new ArgumentException($"eap_id inválido: '{agendamentoIdEsus}'.", nameof(agendamentoIdEsus));
+        }
+        // Sem arrFormData: o front manda { ids: [...] } solto.
+        return EnviarLegadoAsync(
+            CaminhoComprovanteExame, new JsonObject { ["ids"] = new JsonArray(eapId) }, cancellationToken);
+    }
+
+    private async Task<JsonElement> EnviarLegadoAsync(
+        string caminho, JsonObject corpo, CancellationToken cancellationToken)
+    {
         await _gate.WaitAsync(cancellationToken);
         try
         {

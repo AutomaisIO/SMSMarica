@@ -42,7 +42,8 @@ public sealed class WhatsAppWebhookService(
     IContatoComprometidoService contatosComprometidos,
     ILogger<WhatsAppWebhookService> logger,
     SinalMidiasWhatsApp? sinalMidias = null,
-    Transcricao.SinalTranscricaoAudio? sinalTranscricao = null) : IWhatsAppWebhookService
+    Transcricao.SinalTranscricaoAudio? sinalTranscricao = null,
+    Conta.ISituacaoContaWhatsApp? situacaoConta = null) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
     {
@@ -249,7 +250,10 @@ public sealed class WhatsAppWebhookService(
             ocorridoEm: msg.OcorridoEm, ct);
     }
 
-    private const int MaxTentativasGravacao = 3;
+    // Subido de 3 para 5 em 21/10/2026: sob surto (ex.: backfill grande) a contenção de xmin
+    // chega a esgotar 3 tentativas e o efeito cai no catch genérico (diálogo uma etapa atrás).
+    // 5 cobre os picos sem risco — cada tentativa só relê e regrava, não reenvia.
+    private const int MaxTentativasGravacao = 5;
     private const string IndiceConversaVivaDoTelefone = "IX_conversa_telefone_canonical_canal";
     private const string IndiceWamid = "IX_whatsapp_mensagem_wa_message_id";
 
@@ -327,20 +331,56 @@ public sealed class WhatsAppWebhookService(
                 await db.SaveChangesAsync(ct);
                 return;
             }
-            catch (DbUpdateConcurrencyException ex) when (tentativa < MaxTentativasGravacao
-                && ex.Entries.All(e => e.Entity is Conversa c && c.Id == conversa.Id))
+            catch (DbUpdateConcurrencyException ex) when (tentativa < MaxTentativasGravacao)
             {
+                // Antes só a Conversa era reaplicada; o conflito nas entidades do diálogo
+                // (Solicitacao.StatusConfirmacao, AtendimentoConfirmacao, AgendamentoConfirmacaoEstado
+                // — todas com xmin) caía no catch genérico e o efeito era DESCARTADO: o cidadão
+                // recebia a resposta e o diálogo ficava uma etapa atrás. Agora relê e reaplica
+                // QUALQUER entrada em conflito (concorrência = outro webhook do mesmo número gravou
+                // no meio; last-writer-wins é aceitável e muito melhor que perder o estado). 20/10/2026.
                 logger.LogInformation(
-                    "Webhook WhatsApp: conversa {Conversa} mudou enquanto os manipuladores respondiam — relendo e reaplicando (tentativa {Tentativa}).",
-                    conversa.Id, tentativa);
-                var entrada = db.Entry(conversa);
-                var mudadas = entrada.Properties
-                    .Where(p => p.IsModified)
-                    .Select(p => (p.Metadata.Name, p.CurrentValue))
-                    .ToList();
-                await entrada.ReloadAsync(ct);
-                foreach (var (nome, valor) in mudadas)
-                    entrada.Property(nome).CurrentValue = valor;
+                    "Webhook WhatsApp: {Qtd} entidade(s) mudaram enquanto os manipuladores respondiam — relendo e reaplicando (tentativa {Tentativa}).",
+                    ex.Entries.Count, tentativa);
+                foreach (var entrada in ex.Entries)
+                {
+                    var mudadas = entrada.Properties
+                        .Where(p => p.IsModified)
+                        .Select(p => (p.Metadata.Name, p.CurrentValue))
+                        .ToList();
+                    await entrada.ReloadAsync(ct);
+                    // Linha apagada no meio (reload deixa a entrada Detached): não há o que reaplicar.
+                    if (entrada.State == EntityState.Detached) continue;
+                    foreach (var (nome, valor) in mudadas)
+                        entrada.Property(nome).CurrentValue = valor;
+                }
+            }
+            catch (DbUpdateException ex) when (tentativa < MaxTentativasGravacao
+                && ViolouIndice(ex, "IX_agendamento_confirmacao_estado_telefone_canonical"))
+            {
+                // Corrida de CRIAÇÃO: dois webhooks do mesmo número viram "não há estado" e os dois
+                // tentaram INSERIR a linha de estado (índice único por telefone) — o segundo viola a
+                // chave. Em vez de descartar o efeito, ADOTA a linha que o outro webhook já criou e
+                // aplica por cima o que este queria (abrir/atualizar o estado é idempotente). Mesmo
+                // espírito da adoção da conversa viva em SalvarEntradaAsync. 22/10/2026.
+                var entrada = ex.Entries.FirstOrDefault(
+                    e => e.Entity is SMSMais.Data.Entities.AgendamentoConfirmacaoEstado);
+                if (entrada?.Entity is SMSMais.Data.Entities.AgendamentoConfirmacaoEstado novo)
+                {
+                    entrada.State = EntityState.Detached;
+                    var existente = await db.AgendamentoConfirmacaoEstados
+                        .FirstOrDefaultAsync(e => e.TelefoneCanonical == novo.TelefoneCanonical, ct);
+                    if (existente is not null)
+                    {
+                        existente.ComunicacaoPacienteId = novo.ComunicacaoPacienteId;
+                        existente.Etapa = novo.Etapa;
+                        existente.ExpiraEm = novo.ExpiraEm;
+                        existente.AtualizadoEm = DateTime.UtcNow;
+                    }
+                    logger.LogInformation(
+                        "Webhook WhatsApp: a linha de estado do telefone já foi criada por outro webhook "
+                        + "— adotando a existente (tentativa {Tentativa}).", tentativa);
+                }
             }
             catch (DbUpdateException ex)
             {
@@ -397,17 +437,25 @@ public sealed class WhatsAppWebhookService(
 
         var ocorridoEm = ExtrairTimestamp(st);
         string? erro = null;
+        Conta.ErroDeContaWhatsApp? erroConta = null;
         if (novo == StatusMensagemWhatsApp.Falha)
         {
             erro = ExtrairErroStatus(st);
             msg.Status = StatusMensagemWhatsApp.Falha;
             msg.ErroMeta = erro is { Length: > 500 } ? erro[..500] : erro;
+            erroConta = Conta.ErroContaWhatsApp.Classificar(erro);
+            if (erroConta is not null)
+                situacaoConta?.Parar(erroConta, Conta.OrigemSituacaoConta.Webhook, erro);
         }
         else if (msg.Status is StatusMensagemWhatsApp.Enviada or StatusMensagemWhatsApp.Entregue
                  && novo > msg.Status)
         {
             msg.Status = novo.Value; // promoção monotônica; Lida não regride para Entregue
         }
+
+        // Entregou ou foi lida: a conta está de pé, qualquer que tenha sido o motivo da parada.
+        if (novo is StatusMensagemWhatsApp.Entregue or StatusMensagemWhatsApp.Lida)
+            situacaoConta?.Liberar(Conta.OrigemSituacaoConta.Webhook);
 
         // Espelho na notificação de agendamento (tela de gestão + retentativa em falha de entrega).
         var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
@@ -427,6 +475,14 @@ public sealed class WhatsAppWebhookService(
                     notificacao.LidoEm ??= ocorridoEm;
                     if (notificacao.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue)
                         notificacao.Status = StatusComunicacao.Lida;
+                    break;
+                case StatusMensagemWhatsApp.Falha when erroConta is not null:
+                    // Recusa da CONTA (pagamento, bloqueio…), não deste número: volta à fila sem gastar
+                    // a tentativa; o freio segura o reenvio até a conta voltar.
+                    notificacao.MotivoFalha = erro;
+                    notificacao.Status = StatusComunicacao.Pendente;
+                    notificacao.Tentativas = Math.Max(0, notificacao.Tentativas - 1);
+                    notificacao.ProximaTentativaEm = DateTime.UtcNow.AddMinutes(10);
                     break;
                 case StatusMensagemWhatsApp.Falha:
                     notificacao.MotivoFalha = erro ?? "Falha de entrega reportada pelo WhatsApp.";

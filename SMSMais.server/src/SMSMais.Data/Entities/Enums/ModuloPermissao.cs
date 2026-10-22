@@ -381,4 +381,15 @@ public enum ModuloPermissao
     /// versão e revogar computador. Baixar o instalador e autorizar o próprio computador NÃO pedem
     /// este módulo: basta estar logado (mesma regra do envio das capturas).</summary>
     ExtensaoNavegador = 80,
+
+    // 81 está reservado: NotificacaoAppCidadao, nos branches feat/push-cidadao e
+    // feat/cidadao-app-historico (ADR-0070). Não usar.
+
+    /// <summary>Fontes de dados (ADR-0077): o cadastro ÚNICO, em Sistema, de toda fonte de onde a
+    /// plataforma lê dado — bancos, agentes, Klinikos Web, SISREG (web e API), SER, SERNIT, ESUS SG,
+    /// e-SUS PEC. Módulo próprio porque a tela mostra conexões de produção e troca senhas que os
+    /// robôs usam de madrugada: não é coisa de quem configura um recurso (IA, regulação). Nasce só no
+    /// Administrador. <c>Consulta</c> = ver; <c>Inclusao</c> = criar base; <c>Edicao</c> = editar,
+    /// testar e gerar token de agente; <c>Exclusao</c> = remover base ou limpar login.</summary>
+    FontesDados = 82,
 }

@@ -38,6 +38,10 @@ internal sealed class ExameImagemConfiguration : IEntityTypeConfiguration<ExameI
         // DataEstudo = wall-clock do DICOM (Kind=Unspecified) → timestamp without time zone.
         builder.Property(e => e.DataEstudo).HasColumnName("data_estudo").HasColumnType("timestamp without time zone");
 
+        // Liberação ao paciente (ADR-0075): null = retido.
+        builder.Property(e => e.LiberadoPacienteEm).HasColumnName("liberado_paciente_em");
+        builder.Property(e => e.LiberadoPacientePor).HasColumnName("liberado_paciente_por");
+
         builder.Property(e => e.ErroIntegracaoPacs).HasColumnName("erro_integracao_pacs").HasMaxLength(1000);
         builder.Property(e => e.TentativasEnvio).HasColumnName("tentativas_envio").HasDefaultValue(0).IsRequired();
         builder.Property(e => e.UltimaTentativaEm).HasColumnName("ultima_tentativa_em");

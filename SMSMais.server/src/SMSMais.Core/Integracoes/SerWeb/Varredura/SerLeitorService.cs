@@ -55,7 +55,19 @@ public interface ISerLeitorService
     Task<SerContatosDaTela> AlterarContatosAsync(
         string idSer, SituacaoSer situacao, IReadOnlyDictionary<string, string> novos,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Emite a guia do agendamento — o PDF "Autorização de Consulta/Exame Resumida" do item
+    /// "Emitir CHAVE DE AUTORIZAÇÃO DO AGENDAMENTO - Nª via" (docs/ser.md §13, ADR-0076).
+    ///
+    /// <para><b>Gasta uma via no SER</b> (o contador é deles; a emissão não entra na trilha). Por
+    /// isso sai pela porta de escrita, e quem chama emite UMA vez por agendamento.</para>
+    /// </summary>
+    Task<byte[]> EmitirGuiaAsync(string idSer, CancellationToken cancellationToken);
 }
+
+/// <summary>A solicitação não está agendada ou a linha não oferece a chave de autorização.</summary>
+public sealed class GuiaSerIndisponivelException(string mensagem) : Exception(mensagem);
 
 /// <summary>A linha não oferece "Editar" (situações terminais, como Cancelada e Alta).</summary>
 public sealed class EdicaoSerIndisponivelException(string mensagem) : Exception(mensagem);
@@ -216,6 +228,55 @@ public sealed class SerLeitorService(
         logger.LogDebug("SER: histórico de {IdSer} lido com {Eventos} eventos.", idSer, historico.Eventos.Count);
         return historico;
     }
+
+    public async Task<byte[]> EmitirGuiaAsync(string idSer, CancellationToken cancellationToken)
+    {
+        var pagina = await PesquisarAsync(
+            new SerFiltroPesquisa { Situacao = SituacaoSer.Agendada, IdSolicitacao = idSer }, cancellationToken);
+
+        // Sem 1 linha exata, e dela mesma, não dá para saber de QUEM seria a guia.
+        if (pagina.Linhas.Count != 1 || !string.Equals(pagina.Linhas[0].IdSer, idSer, StringComparison.Ordinal))
+        {
+            throw new GuiaSerIndisponivelException(
+                $"A busca pelo ID {idSer} em Agendada devolveu {pagina.Linhas.Count} linha(s) — "
+                + "esperava exatamente ela. Nenhuma guia foi emitida.");
+        }
+
+        var dados = SerHtmlParser.Documento(_htmlDados);
+        var item = SerHtmlParser.ItemGuia(dados, 0);
+        if (item is null)
+        {
+            var disponiveis = string.Join(", ", SerHtmlParser.ItensDeOpcoes(dados, 0).Keys);
+            throw new GuiaSerIndisponivelException(
+                $"A solicitação {idSer} não oferece a chave de autorização no menu Opções. "
+                + $"Itens disponíveis: [{disponiveis}]");
+        }
+
+        // POST comum (commandLink `jsfcljs`), sem AJAXREQUEST: a resposta é o PDF, não HTML.
+        var resposta = await sessao.SubmeterEscritaAsync(
+            _htmlForm,
+            SerHtmlParser.FormPesquisa,
+            new Dictionary<string, string>(StringComparer.Ordinal) { [item] = item },
+            _ultimoViewState,
+            $"emitir a guia (chave de autorização) da solicitação {idSer} — gasta uma via",
+            cancellationToken);
+
+        // A resposta não traz tela: a próxima pesquisa reabre a de pesquisa em vez de partir de base velha.
+        _htmlForm = string.Empty;
+
+        if (!EhPdf(resposta.Corpo))
+        {
+            throw new InvalidOperationException(
+                $"O SER não devolveu PDF na guia da solicitação {idSer} "
+                + $"({resposta.ContentType ?? "sem content-type"}, {resposta.Corpo.Length} bytes).");
+        }
+
+        logger.LogInformation("SER: guia da solicitação {IdSer} emitida ({Bytes} bytes).", idSer, resposta.Corpo.Length);
+        return resposta.Corpo;
+    }
+
+    private static bool EhPdf(byte[] corpo) =>
+        corpo.Length > 4 && corpo[0] == '%' && corpo[1] == 'P' && corpo[2] == 'D' && corpo[3] == 'F';
 
     public async Task<string> RegistrarFollowUpAsync(
         string idSer, SituacaoSer situacao, string texto, CancellationToken cancellationToken)

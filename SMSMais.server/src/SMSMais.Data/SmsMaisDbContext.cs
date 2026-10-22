@@ -51,6 +51,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<Avaliacao> Avaliacoes => Set<Avaliacao>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<EstudoAnotacao> EstudoAnotacoes => Set<EstudoAnotacao>();
+    public DbSet<ImagemInvalidada> ImagensInvalidadas => Set<ImagemInvalidada>();
     public DbSet<Perfil> Perfis => Set<Perfil>();
     public DbSet<PermissaoPerfil> PermissoesPerfil => Set<PermissaoPerfil>();
     public DbSet<UsuarioPerfil> UsuariosPerfis => Set<UsuarioPerfil>();
@@ -328,7 +329,11 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Agendamentos do SER/SERNIT/ESUS SG vistos pelo lado do aviso ao paciente (âncora da comunicação
     // desses sistemas) e os nomes com que as unidades de atendimento aparecem neles (endereço).
     public DbSet<Entities.Notificacoes.AgendamentoExterno> AgendamentosExternos => Set<Entities.Notificacoes.AgendamentoExterno>();
+    public DbSet<Entities.Notificacoes.GuiaAgendamento> GuiasAgendamento => Set<Entities.Notificacoes.GuiaAgendamento>();
+    public DbSet<Entities.Notificacoes.GuiaFilaConfiguracao> GuiaFilaConfiguracoes => Set<Entities.Notificacoes.GuiaFilaConfiguracao>();
     public DbSet<UnidadeAtendimentoNomeExterno> UnidadeAtendimentoNomesExternos => Set<UnidadeAtendimentoNomeExterno>();
+    // Lembrete e aviso de cancelamento de cada regulação externa (tela de Configuração dela).
+    public DbSet<Entities.Notificacoes.AvisoRegulacaoConfiguracao> AvisosRegulacaoConfiguracao => Set<Entities.Notificacoes.AvisoRegulacaoConfiguracao>();
     public DbSet<Entities.Notificacoes.VerificacaoCadastralEstado> VerificacoesCadastraisEstado => Set<Entities.Notificacoes.VerificacaoCadastralEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();
 

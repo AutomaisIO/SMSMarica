@@ -69,6 +69,15 @@ public enum CausaFalhaImportacao : short
     /// </summary>
     SigtapNaoMapeado = 7,
 
+    /// <summary>
+    /// A chave do SISREG (CNS, ou o CPF que o CADSUS deu para ele) achou uma ficha nossa, mas de
+    /// OUTRA pessoa: o primeiro nome e o nascimento da linha não batem com os da ficha. Ligar o
+    /// pedido ali é como os pedidos de uma mãe foram parar na ficha da filha (caso de 21/10/2026).
+    /// <b>É acionável, e só por pessoa</b>: o operador informa o paciente certo. Não entra na
+    /// revalidação em lote — repetir dá o mesmo resultado, e quem decide quem é quem é gente.
+    /// </summary>
+    IdentidadeDivergente = 8,
+
     /// <summary>Falha não classificada — inclusive o acervo anterior ao backfill.</summary>
     Outro = 99,
 }

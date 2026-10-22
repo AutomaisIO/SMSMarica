@@ -34,9 +34,10 @@ public class SisregVarreduraAgenda
     /// <para>Combina com <c>SisregProcedimentoProfissional.EnviarConfirmacao</c> por "E": desligar
     /// aqui corta tudo; ligado aqui, cada procedimento ainda precisa estar ligado.</para>
     ///
-    /// <para><b>Nasce DESLIGADO</b>, e unidade sem linha nesta tabela também não envia. É opt-in
-    /// deliberado: mensagem ao paciente só sai depois que alguém decidiu que deve sair, unidade a
-    /// unidade e procedimento a procedimento.</para>
+    /// <para><b>Nasce LIGADO</b> (padrão desde 20/10/2026, revertendo o opt-in de 03/08/2026): toda
+    /// unidade nova já avisa o paciente por padrão. A reversão foi decisão do operador — o opt-in
+    /// silencioso deixava unidades inteiras sem aviso sem ninguém perceber. Ainda é possível
+    /// DESLIGAR a unidade depois (opt-out).</para>
     /// </summary>
     public bool EnviarConfirmacao { get; set; }
 

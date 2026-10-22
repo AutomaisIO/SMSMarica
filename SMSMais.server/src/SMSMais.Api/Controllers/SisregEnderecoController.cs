@@ -6,8 +6,8 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Api.Controllers;
 
 /// <summary>
-/// Endereço do SISREG para o card em Integrações: IP atual, desde quando, se sai pelo túnel e o
-/// histórico das trocas. Só leitura — quem conserta a rota é o timer do servidor
+/// Endereço do SISREG mostrado na fonte "SISREG III" de Sistema → Fontes de dados (ADR-0077): IP
+/// atual, desde quando, se sai pelo túnel e o histórico das trocas. A rota manteve o prefixo antigo. Só leitura — quem conserta a rota é o timer do servidor
 /// (docs/sisreg-egress.md §Verificador).
 /// </summary>
 [ApiController]
@@ -15,7 +15,7 @@ namespace SMSMais.Api.Controllers;
 public sealed class SisregEnderecoController(IEnderecoSisregService service) : ControllerBase
 {
     [HttpGet]
-    [RequerPermissao(ModuloPermissao.IntegracoesConfig, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.FontesDados, AcoesPermissao.Consulta)]
     [ProducesResponseType<EnderecoSisregDto>(StatusCodes.Status200OK)]
     public async Task<EnderecoSisregDto> Obter(CancellationToken cancellationToken) =>
         await service.ObterAsync(cancellationToken);

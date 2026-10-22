@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.DocumentosPaciente;
 using SMSMais.Core.Notificacoes.AgendamentosExternos;
+using SMSMais.Core.GuiasAgendamento;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Notificacoes.Confirmacoes;
 using SMSMais.Core.Pacientes;
@@ -78,7 +80,8 @@ public sealed record ContatoPacienteRegulacaoDto(
     IReadOnlyList<HistoricoComunicacaoDto> Avisos,
     IReadOnlyList<HistoricoContatoDto> Contatos,
     IReadOnlyList<MensagemAoPacienteDto> Mensagens,
-    string? TelefoneConfirmado);
+    string? TelefoneConfirmado,
+    GuiaDoAgendamentoDto? Guia = null);
 
 public interface IRegulacaoContatoPacienteService
 {
@@ -94,6 +97,12 @@ public interface IRegulacaoContatoPacienteService
     /// solicitação da regulação. A permissão é a da tela do sistema (controller).
     /// </summary>
     Task<ContatoPacienteRegulacaoDto> ObterPorEspelhoAsync(SistemaRegulacao sistema, Guid espelhoId, CancellationToken ct);
+
+    /// <summary>O PDF da guia do agendamento (ADR-0076), com o escopo do detalhe da solicitação.</summary>
+    Task<ConteudoAcervo> ObterGuiaAsync(Guid solicitacaoId, CancellationToken ct);
+
+    /// <summary>O PDF da guia do agendamento do pedido no espelho. A permissão é a da tela do sistema.</summary>
+    Task<ConteudoAcervo> ObterGuiaPorEspelhoAsync(SistemaRegulacao sistema, Guid espelhoId, CancellationToken ct);
 }
 
 /// <summary>
@@ -114,7 +123,8 @@ public sealed class RegulacaoContatoPacienteService(
     IRegulacaoEscopo escopo,
     ISolicitacaoHistoricoService historico,
     IPacientesService pacientes,
-    IConfirmacaoConfiguracaoService regras) : IRegulacaoContatoPacienteService
+    IConfirmacaoConfiguracaoService regras,
+    IFilaGuiasService guias) : IRegulacaoContatoPacienteService
 {
     /// <summary>Teto de mensagens na tela — a conversa inteira continua no módulo Conversas.</summary>
     internal const int MaxMensagens = 40;
@@ -133,15 +143,38 @@ public sealed class RegulacaoContatoPacienteService(
             ?? throw new NaoEncontradoException("Solicitação da regulação", solicitacaoId);
         await escopo.ExigirAlcanceAsync(s, ct);
 
-        var espelhoId = s.SistemaDestino switch
-        {
-            SistemaRegulacao.Ser => s.SerSolicitacaoId,
-            SistemaRegulacao.Sernit => s.SernitSolicitacaoId,
-            SistemaRegulacao.EsusSg => s.EsusSgSolicitacaoId,
-            _ => null,
-        };
+        var espelhoId = EspelhoDaSolicitacao(s);
         return await MontarAsync(new Alvo(s.SistemaDestino, s.SolicitacaoId, espelhoId, s.PacienteId, s.CriadoEm), ct);
     }
+
+    public async Task<ConteudoAcervo> ObterGuiaAsync(Guid solicitacaoId, CancellationToken ct)
+    {
+        var s = await db.RegulacaoSolicitacoes.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("Solicitação da regulação", solicitacaoId);
+        await escopo.ExigirAlcanceAsync(s, ct);
+        // SISREG: a guia é da solicitação (espinha); os demais, do pedido no espelho.
+        if (s.SistemaDestino == SistemaRegulacao.Sisreg && s.SolicitacaoId is { } espinhaId)
+        {
+            return await guias.ConteudoPorSolicitacaoAsync(espinhaId, ct);
+        }
+        if (s.SistemaDestino is not { } sistema || EspelhoDaSolicitacao(s) is not { } espelhoId)
+        {
+            throw new NaoEncontradoException("Guia do agendamento", solicitacaoId);
+        }
+        return await guias.ConteudoPorEspelhoAsync(sistema, espelhoId, ct);
+    }
+
+    public Task<ConteudoAcervo> ObterGuiaPorEspelhoAsync(SistemaRegulacao sistema, Guid espelhoId, CancellationToken ct) =>
+        guias.ConteudoPorEspelhoAsync(sistema, espelhoId, ct);
+
+    private static Guid? EspelhoDaSolicitacao(Data.Entities.Regulacao.RegulacaoSolicitacao s) => s.SistemaDestino switch
+    {
+        SistemaRegulacao.Ser => s.SerSolicitacaoId,
+        SistemaRegulacao.Sernit => s.SernitSolicitacaoId,
+        SistemaRegulacao.EsusSg => s.EsusSgSolicitacaoId,
+        _ => null,
+    };
 
     public async Task<ContatoPacienteRegulacaoDto> ObterPorEspelhoAsync(
         SistemaRegulacao sistema, Guid espelhoId, CancellationToken ct)
@@ -237,8 +270,18 @@ public sealed class RegulacaoContatoPacienteService(
             alvo.Sistema is { } sis && await AvisaSozinhoAsync(sis, ct),
             confirmacao, confirmadoEm, canal, motivoCancelamento,
             avisos, contatos, mensagens,
-            await TelefoneConfirmadoAsync(alvo.PacienteId, ct));
+            await TelefoneConfirmadoAsync(alvo.PacienteId, ct),
+            await GuiaAsync(alvo, ct));
     }
+
+    /// <summary>A guia do agendamento (ADR-0076): da solicitação no SISREG, do pedido no espelho nos demais.</summary>
+    private async Task<GuiaDoAgendamentoDto?> GuiaAsync(Alvo alvo, CancellationToken ct) => alvo switch
+    {
+        { Sistema: SistemaRegulacao.Sisreg, EspinhaId: { } espinha } => await guias.SituacaoPorSolicitacaoAsync(espinha, ct),
+        { Sistema: { } sistema, EspelhoId: { } espelho } when sistema != SistemaRegulacao.Sisreg =>
+            await guias.SituacaoPorEspelhoAsync(sistema, espelho, ct),
+        _ => null,
+    };
 
     /// <summary>O SISREG avisa sempre; o SER/SERNIT/ESUS SG, enquanto a chave da Mensageria estiver ligada.</summary>
     private async Task<bool> AvisaSozinhoAsync(SistemaRegulacao sistema, CancellationToken ct) =>

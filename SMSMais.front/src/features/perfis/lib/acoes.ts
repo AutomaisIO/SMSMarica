@@ -85,6 +85,9 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   // Extensão do Chrome (80, ADR-0064): só a ADMINISTRAÇÃO pede módulo. Baixar o instalador e
   // autorizar o próprio computador ficam abertos a qualquer usuário logado.
   { id: 'ExtensaoNavegador', rotulo: 'Extensão Chrome — computadores autorizados e versões publicadas' },
+  // Fontes de dados (82, ADR-0077): o cadastro único de bancos, agentes e logins de sistemas de
+  // onde a plataforma lê dado. Mostra conexões de produção — dar com critério.
+  { id: 'FontesDados', rotulo: 'Fontes de dados — bancos, agentes e logins (SISREG, SER, SERNIT…)' },
   { id: 'Conversas', rotulo: 'Central de Atendimento (chat)' },
   { id: 'ConversasSupervisao', rotulo: 'Atendimento — supervisão (ver todas as unidades)' },
   { id: 'Ticket', rotulo: 'Suporte — gestão de tickets (ver/responder todos)' },
@@ -259,6 +262,13 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
     Inclusao: 'Publicar versão (entra no canal de teste)',
     Edicao: 'Pôr versão em produção, trocar o canal de um computador e ligar/desligar a publicação por API',
     Exclusao: 'Retirar versão e revogar computador',
+  },
+  // Fontes de dados (ADR-0077). A senha nunca é exibida; "Edição" troca a que os robôs usam.
+  FontesDados: {
+    Consulta: 'Ver as fontes, a situação e quem usa cada uma',
+    Inclusao: 'Cadastrar base de dados',
+    Edicao: 'Editar conexão, trocar login/senha, testar e gerar token do agente',
+    Exclusao: 'Remover base ou limpar o login de um sistema',
   },
   // Ouvidoria (ADR-0060, plano §1.5). "Exclusão" aqui é ARQUIVAR — não apaga nada (trilha append-only).
   Ouvidoria: {

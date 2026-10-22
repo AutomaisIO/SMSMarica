@@ -7,8 +7,9 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Api.Controllers;
 
 /// <summary>
-/// Tela de configuração do módulo IA: configuração global (provedor/modelo/tokens) e
-/// CRUD das bases de dados (fontes) + teste de conexão. Tokens e senhas são write-only.
+/// Tela de configuração do módulo IA: configuração global (provedor/modelo/tokens) e a lista, só de
+/// leitura, das bases que a IA consulta. Cadastrar, editar, testar e gerar token de base é em
+/// Sistema → Fontes de dados (<see cref="FontesDadosController"/>, ADR-0077).
 /// </summary>
 [ApiController]
 [Route("ia/configuracao")]
@@ -47,64 +48,12 @@ public sealed class IaConfiguracaoController(
     public async Task<IReadOnlyList<FonteDetalheDto>> ListarFontes(CancellationToken cancellationToken) =>
         await _fonteService.ListarAsync(cancellationToken);
 
-    [HttpPost("fontes")]
-    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CadastrarFonte(
-        [FromBody] CadastrarFonteRequest request,
-        CancellationToken cancellationToken)
-    {
-        var id = await _fonteService.CadastrarAsync(request, cancellationToken);
-        return CreatedAtAction(nameof(ListarFontes), new { id }, id);
-    }
-
-    [HttpPut("fontes/{id:guid}")]
-    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AtualizarFonte(
-        Guid id,
-        [FromBody] AtualizarFonteRequest request,
-        CancellationToken cancellationToken)
-    {
-        await _fonteService.AtualizarAsync(id, request, cancellationToken);
-        return NoContent();
-    }
-
-    [HttpDelete("fontes/{id:guid}")]
-    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoverFonte(Guid id, CancellationToken cancellationToken)
-    {
-        await _fonteService.RemoverAsync(id, cancellationToken);
-        return NoContent();
-    }
-
-    [HttpPost("fontes/{id:guid}/testar-conexao")]
-    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType<TestarConexaoResultado>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<TestarConexaoResultado> TestarConexao(Guid id, CancellationToken cancellationToken) =>
-        await _fonteService.TestarConexaoAsync(id, cancellationToken);
-
-    /// <summary>
-    /// Gera (ou rotaciona) o token de conexão do agente proxy de uma base via agente. O token é
-    /// devolvido em claro UMA vez — guarde-o no .env do servidor de destino. Ver ADR-0023.
-    /// </summary>
-    [HttpPost("fontes/{id:guid}/token-agente")]
-    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType<TokenAgenteGerado>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<TokenAgenteGerado> GerarTokenAgente(Guid id, CancellationToken cancellationToken) =>
-        await _fonteService.GerarTokenAgenteAsync(id, cancellationToken);
-
     /// <summary>
     /// Auto-provisionamento do agente: o próprio agente chama isto no primeiro run, autenticado com
-    /// o login do admin, informando o slug. Cria a base via agente se não existir e devolve o token
-    /// (uma vez). O agente guarda o token localmente e a partir daí conecta sozinho. Ver ADR-0023.
+    /// o login do admin, informando o slug. Fica nesta rota porque o instalador do agente já a chama
+    /// (docs/proxy-sql-agente-wss.md); a equivalente nova é <c>fontes-dados/agentes/provisionar</c>.
+    /// Cria a base via agente se não existir e devolve o token (uma vez). O agente guarda o token
+    /// localmente e a partir daí conecta sozinho. Ver ADR-0023.
     /// </summary>
     [HttpPost("agentes/provisionar")]
     [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]

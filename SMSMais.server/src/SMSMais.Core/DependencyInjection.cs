@@ -251,6 +251,22 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.AgendamentosExternos.IAgendamentoExternoService,
             Notificacoes.AgendamentosExternos.AgendamentoExternoService>();
         services.AddHostedService<Notificacoes.AgendamentosExternos.AgendamentoExternoWorker>();
+        // Lembrete e aviso de cancelamento de cada regulação externa (21/10/2026): as chaves moram na
+        // tela de Configuração dela; o lembrete roda no mesmo worker do SISREG.
+        services.AddScoped<Notificacoes.AgendamentosExternos.IAvisoRegulacaoConfiguracaoService,
+            Notificacoes.AgendamentosExternos.AvisoRegulacaoConfiguracaoService>();
+        services.AddScoped<Notificacoes.AgendamentosExternos.ILembreteAgendamentoExternoService,
+            Notificacoes.AgendamentosExternos.LembreteAgendamentoExternoService>();
+
+        // Fila de guias dos agendamentos regulados (ADR-0076): enfileira vazia, um baixador por
+        // sistema, cada um no ritmo e na janela configurados; a guia fica UMA vez no acervo.
+        services.AddScoped<GuiasAgendamento.IFilaGuiasService, GuiasAgendamento.FilaGuiasService>();
+        services.AddScoped<GuiasAgendamento.IFilaGuiasConfiguracaoService, GuiasAgendamento.FilaGuiasConfiguracaoService>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaSer>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaSernit>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaEsusSg>();
+        services.AddScoped<GuiasAgendamento.IBaixadorGuia, GuiasAgendamento.BaixadorGuiaSisreg>();
+        services.AddHostedService<GuiasAgendamento.FilaGuiasScheduler>();
         services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
             Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
         // Aba Equipe (produção por atendente, lida da trilha) — módulo ConfirmacoesEquipe.
@@ -338,6 +354,7 @@ public static class DependencyInjection
         // Equipamento SOBREVIVEU a remocao da agenda local (05/09/2026): ele e recurso de imagem
         // usado por PACS/worklist, nao residuo daquele modulo.
         services.AddScoped<Equipamentos.IEquipamentosService, Equipamentos.EquipamentosService>();
+        services.AddScoped<Equipamentos.IRegrasDoExameService, Equipamentos.RegrasDoExameService>();
         services.AddScoped<EscopoExames.IEscopoExamesService, EscopoExames.EscopoExamesService>();
         services.AddScoped<IBackfillEscopoExameUnidade, BackfillEscopoExameUnidade>();
 
@@ -615,6 +632,8 @@ public static class DependencyInjection
         // (Conde/UPA/Santa Rita são servers distintos), singleton com cookies próprios por provedor.
         // O dry-run/paridade são sob demanda; o periódico tem scheduler (abaixo), INERTE por padrão.
         services.AddSingleton<Integracoes.KlinikosWeb.IKlinikosWebSessao, Integracoes.KlinikosWeb.KlinikosWebSessao>();
+        // Cadência/escrita do conector por base, editadas em Importar Prontuários (ADR-0077).
+        services.AddScoped<Integracoes.KlinikosWeb.IKlinikosWebUsoService, Integracoes.KlinikosWeb.KlinikosWebUsoService>();
         // Resolve a instância (URL/usuário/senha/params) a partir da IaFonte (Tipo=KlinikosWeb) —
         // o conector é uma FONTE DE PRONTUÁRIO, não uma credencial de integração de serviço.
         services.AddScoped<
@@ -929,6 +948,8 @@ public static class DependencyInjection
         services.AddScoped<Inteligencia.IIaService, Inteligencia.IaService>();
         services.AddScoped<Inteligencia.Configuracao.IIaConfiguracaoService, Inteligencia.Configuracao.IaConfiguracaoService>();
         services.AddScoped<Inteligencia.Configuracao.IIaFonteService, Inteligencia.Configuracao.IaFonteService>();
+        // Fontes de dados (ADR-0077): cadastro único sobre ia_fonte, integracao_credencial e sisreg_configuracao.
+        services.AddScoped<Fontes.IFontesDadosService, Fontes.FontesDadosService>();
         services.AddScoped<Inteligencia.Governanca.IIaGovernancaService, Inteligencia.Governanca.IaGovernancaService>();
 
         // ---- Módulo TFD: configuração de integrações + geocodificação (FT0/FT1) — ADR-0017 ----
@@ -942,6 +963,8 @@ public static class DependencyInjection
         services.AddScoped<Exames.IExamePacsImagensReader, Exames.ExamePacsImagensReader>();
         services.AddScoped<Exames.IExameImagensPdfService, Exames.ExameImagensPdfService>();
         services.AddScoped<Exames.IExameCompletoPdfService, Exames.ExameCompletoPdfService>();
+        // Imagens que a médica retira do que vai ao paciente (soft delete só da entrega).
+        services.AddScoped<Exames.ImagensInvalidadas.IImagensInvalidadasService, Exames.ImagensInvalidadas.ImagensInvalidadasService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
         services.AddScoped<Integracoes.ElevenLabs.IElevenLabsConfigService, Integracoes.ElevenLabs.ElevenLabsConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();
@@ -993,6 +1016,21 @@ public static class DependencyInjection
         {
             client.Timeout = TimeSpan.FromSeconds(20);
         });
+
+        // Conta do WhatsApp parada (pagamento, bloqueio, token): detector + freio + faixa vermelha
+        // no painel + consulta periódica do health_status pelo Zap (19/10/2026). Singleton: o estado
+        // é um só para a instância inteira.
+        services.Configure<Notificacoes.WhatsApp.Conta.ContaWhatsAppOptions>(
+            configuration.GetSection(Notificacoes.WhatsApp.Conta.ContaWhatsAppOptions.SecaoConfig));
+        services.AddSingleton<Notificacoes.WhatsApp.Conta.ISituacaoContaWhatsApp,
+            Notificacoes.WhatsApp.Conta.SituacaoContaWhatsApp>();
+        services.AddScoped<Notificacoes.WhatsApp.Conta.IFaixaContaWhatsAppService,
+            Notificacoes.WhatsApp.Conta.FaixaContaWhatsAppService>();
+        services.AddHttpClient<Notificacoes.WhatsApp.Conta.SaudeContaWhatsAppCliente>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
+        services.AddHostedService<Notificacoes.WhatsApp.Conta.SaudeContaWhatsAppWorker>();
 
         // Mídia que o paciente manda (foto/PDF): o webhook anota, o worker baixa pelo Zap e guarda
         // como pendente; a equipe aceita no cadastro ou descarta. Trava de 10 pendentes por número.
@@ -1132,6 +1170,13 @@ public static class DependencyInjection
         services.AddScoped<Regulacao.Catalogo.IRegulacaoCatalogoService, Regulacao.Catalogo.RegulacaoCatalogoService>();
         // Envio automático ao SER (07/10/2026): preenche, anexa e grava com a senha do regulador.
         services.AddScoped<Regulacao.EnvioSer.IRegulacaoEnvioSerService, Regulacao.EnvioSer.RegulacaoEnvioSerService>();
+        // PDF acima de 5 MB é comprimido pelo Ghostscript antes de subir (21/10/2026). Singleton: o
+        // semáforo de passadas simultâneas vale para o servidor inteiro.
+        services.Configure<Regulacao.EnvioSer.GhostscriptOptions>(
+            configuration.GetSection(Regulacao.EnvioSer.GhostscriptOptions.Secao));
+        services.AddSingleton<Regulacao.EnvioSer.ICompressorPdf, Regulacao.EnvioSer.CompressorPdfGhostscript>();
+        // Tamanho máximo por arquivo de cada destino (SER, SERNIT), configurado na aba dele.
+        services.AddScoped<Regulacao.EnvioSer.IRegrasAnexoDestinoService, Regulacao.EnvioSer.RegrasAnexoDestinoService>();
         // Cópia diária dos catálogos do SER/SERNIT (07/10/2026): agendador de madrugada + a
         // primeira solicitação aberta no dia confere também.
         services.Configure<Regulacao.Catalogo.CatalogoDiarioOpcoes>(

@@ -26,7 +26,10 @@ export type DirecaoSolicitacao = 'Recebida' | 'Enviada';
 /** Natureza da vaga no SISREG (coluna 8 "Vaga (flag)" do TXT): 1ª vez ou retorno. */
 export type TipoVaga = 'PrimeiraVez' | 'Retorno';
 
-/** Tipo da solicitação, derivado do SIGTAP na importação (ADR-0021). Só `Imagem` tem exame. */
+/**
+ * Tipo da solicitação, derivado do SIGTAP na importação (ADR-0021). Diz o que o exame É — se ele
+ * tem exame (worklist, PACS, laudo) quem diz é `temExame`.
+ */
 export type CategoriaSolicitacao =
   | 'Consulta'
   | 'Imagem'
@@ -37,9 +40,18 @@ export type CategoriaSolicitacao =
   | 'Outro';
 
 /**
+ * Se a linha tem exame (satélite de execução: accession, Study, worklist, equipamento, laudo). Não é
+ * o mesmo que `categoria === 'Imagem'`: Holter e MAPA são Gráfico/funcional e têm exame — vão à
+ * worklist da cardiologia e o laudo volta em PDF pelo PACS (adendo de 20/10/2026 ao ADR-0021).
+ */
+export function temExame(s: { accessionNumber?: string | null }): boolean {
+  return Boolean(s.accessionNumber);
+}
+
+/**
  * Uma solicitação regulada — exame de imagem, consulta, laboratório… `id` é o id PÚBLICO: o do
- * exame de imagem quando há, senão o da solicitação. Os campos de execução (accession, study,
- * worklist, equipamento, tipo de exame) só têm valor no exame de imagem.
+ * exame quando há, senão o da solicitação. Os campos de execução (accession, study, worklist,
+ * equipamento, tipo de exame) só têm valor quando há exame (`temExame`).
  */
 export type Solicitacao = {
   id: string;
@@ -147,6 +159,16 @@ export type Solicitacao = {
   procedimentos?: SolicitacaoProcedimento[] | null;
   /** Accessions dos OUTROS exames do mesmo pedido (ADR-0074) — o selo "vinculado a". */
   accessionsVinculados?: string[] | null;
+
+  // ---- Regra do aparelho (ADR-0075); só exame de imagem ----
+  /** Quando o exame ficou visível ao paciente. null = ainda não (retido, ou não realizado). */
+  liberadoPacienteEm?: string | null;
+  /** Realizado e retido até o laudo assinado: "Enviar exame" vira "Liberar antes do laudo". */
+  retidoAteLaudo?: boolean;
+  /** O aparelho cuja regra vale para o exame (com vários candidatos, os nomes de todos). */
+  aparelhoRegraNome?: string | null;
+  liberacaoPaciente?: 'ComLaudoAssinado' | 'AoChegar' | null;
+  usaAnamnese?: boolean;
 };
 
 /** Um procedimento do pedido. Data e executante são do item — no SISREG cada linha tem os seus. */
@@ -214,6 +236,10 @@ export type SolicitacaoListItem = {
   /** Accessions dos OUTROS exames do mesmo pedido (ADR-0074): o pedido com joelho D e E aparece em
    *  duas linhas, cada uma com o selo "vinculado a" a outra. Null no pedido de um exame só. */
   accessionsVinculados?: string[] | null;
+  /** Realizado e retido até o laudo assinado pela regra do aparelho (ADR-0075) — cadeado na lista. */
+  retidoAteLaudo?: boolean;
+  /** O aparelho usa anamnese (ADR-0075). false = a lista não oferece o botão. */
+  usaAnamnese?: boolean;
 };
 
 /** Resumo da comunicação para os checks na lista. */

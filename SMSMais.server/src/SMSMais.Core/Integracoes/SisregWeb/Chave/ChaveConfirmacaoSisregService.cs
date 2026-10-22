@@ -12,6 +12,12 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Chave;
 /// SISREG às …". Quando vem do banco, é a data da primeira leitura, não a de agora.</param>
 public sealed record ChaveConfirmacaoSisregDto(string CodigoSolicitacao, string Chave, DateTime LidaEm);
 
+/// <summary>A ficha da solicitação como o SISREG a mostrou — é dela que sai a guia do agendamento
+/// (o "Imprimir" do SISREG imprime a <c>div.fichaAmbulatorial</c> desta página).</summary>
+/// <param name="Html">A página inteira. Tem dado de paciente: nunca vai para log.</param>
+/// <param name="Tela">Qual tela respondeu (<c>cons_marcados_reg</c> ou <c>gerenciador_solicitacao</c>).</param>
+public sealed record FichaSisregLida(string CodigoSolicitacao, string Html, string Tela, string? Chave);
+
 public interface IChaveConfirmacaoSisregService
 {
     /// <summary>
@@ -26,6 +32,14 @@ public interface IChaveConfirmacaoSisregService
     /// ou o da própria solicitação — as duas telas de detalhe têm ids diferentes na mão.
     /// </summary>
     Task<ChaveConfirmacaoSisregDto> RevelarAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lê a FICHA no SISREG — a mesma leitura da chave (1 requisição, 2 se a primeira tela não a
+    /// mostrar) — e guarda a chave se ainda não estava guardada. É o que a fila de guias usa
+    /// (ADR-0076): ela precisa da página, não só da chave, então vai ao SISREG mesmo com a chave no
+    /// banco. <paramref name="tetoOrcamento"/>: o painel usa o teto cheio; os motores, o automático.
+    /// </summary>
+    Task<FichaSisregLida> LerFichaAsync(Guid solicitacaoId, int tetoOrcamento, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -73,17 +87,7 @@ public sealed class ChaveConfirmacaoSisregService(
 
     public async Task<ChaveConfirmacaoSisregDto> ObterAsync(Guid solicitacaoId, CancellationToken ct = default)
     {
-        var reg = await db.Solicitacoes
-            .FirstOrDefaultAsync(s => s.Id == solicitacaoId && s.ExcluidoEm == null, ct)
-            ?? throw new NaoEncontradoException("solicitacao", solicitacaoId.ToString());
-
-        var co = reg.CodigoSolicitacao?.Trim();
-        if (string.IsNullOrEmpty(co) || co == CodigoSemSisreg || !co.All(char.IsDigit))
-        {
-            throw new ValidacaoException(
-                "sisreg_chave.sem_codigo",
-                "Esta solicitação não tem número do SISREG — não há chave para consultar.");
-        }
+        var (reg, co) = await CarregarAsync(solicitacaoId, ct);
 
         // 1) Já está no banco: devolve sem ir ao SISREG.
         if (!string.IsNullOrWhiteSpace(reg.ChaveConfirmacaoSisreg))
@@ -96,18 +100,8 @@ public sealed class ChaveConfirmacaoSisregService(
         }
 
         // 2) Não está: lê no SISREG, guarda e devolve.
-        var restante = orcamento.Restante(orcamentoOpcoes.Value.TetoPorHora);
-        if (restante < OrcamentoMinimo)
-        {
-            var espera = orcamento.EsperaAteLiberar();
-            throw new ConflitoException(
-                "sisreg_chave.orcamento_curto",
-                "O limite de consultas ao SISREG desta hora está no fim. Tente de novo em "
-                + $"{Math.Max(1, (int)Math.Ceiling(espera?.TotalMinutes ?? 1))} minuto(s).");
-        }
-
-        var (chave, tela) = await LerAsync(co, ct);
-        if (chave is null)
+        var ficha = await LerNoSisregAsync(reg, co, orcamentoOpcoes.Value.TetoPorHora, ct);
+        if (ficha.Chave is null)
         {
             // Sem valor e sem HTML no log: a ficha tem nome, CNS e endereço do paciente.
             logger.LogWarning(
@@ -118,38 +112,93 @@ public sealed class ChaveConfirmacaoSisregService(
                 + "que a solicitação é autorizada e agendada.");
         }
 
-        var agora = DateTime.UtcNow;
-        reg.ChaveConfirmacaoSisreg = chave;
-        reg.ChaveSisregLidaEm = agora;
-        await db.SaveChangesAsync(ct);
-
-        logger.LogInformation("SISREG_CHAVE: solicitação {Codigo} lida pela tela {Tela} e guardada.", co, tela);
         await auditoria.RegistrarAsync(
             "Solicitacao", reg.Id.ToString(), "ChaveConfirmacaoRevelada",
-            null, $"SISREG {co} (lida na tela {tela})", ct);
+            null, $"SISREG {co} (lida na tela {ficha.Tela})", ct);
 
-        return new ChaveConfirmacaoSisregDto(co, chave, agora);
+        return new ChaveConfirmacaoSisregDto(co, ficha.Chave, reg.ChaveSisregLidaEm ?? DateTime.UtcNow);
     }
+
+    public async Task<FichaSisregLida> LerFichaAsync(Guid solicitacaoId, int tetoOrcamento, CancellationToken ct = default)
+    {
+        var (reg, co) = await CarregarAsync(solicitacaoId, ct);
+        var ficha = await LerNoSisregAsync(reg, co, tetoOrcamento, ct);
+        // Ação própria na auditoria: a guia que sai desta leitura leva a chave (ADR-0076).
+        await auditoria.RegistrarAsync(
+            "Solicitacao", reg.Id.ToString(), "FichaSisregLidaParaGuia",
+            null, $"SISREG {co} (tela {ficha.Tela})", ct);
+        return ficha;
+    }
+
+    private async Task<(Data.Entities.Solicitacao Reg, string Codigo)> CarregarAsync(Guid solicitacaoId, CancellationToken ct)
+    {
+        var reg = await db.Solicitacoes
+            .FirstOrDefaultAsync(s => s.Id == solicitacaoId && s.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("solicitacao", solicitacaoId.ToString());
+
+        var co = reg.CodigoSolicitacao?.Trim();
+        if (string.IsNullOrEmpty(co) || co == CodigoSemSisreg || !co.All(char.IsDigit))
+        {
+            throw new ValidacaoException(
+                "sisreg_chave.sem_codigo",
+                "Esta solicitação não tem número do SISREG — não há chave para consultar.");
+        }
+        return (reg, co);
+    }
+
+    /// <summary>A ida ao SISREG, com a folga de orçamento conferida antes. Guarda a chave se ela
+    /// veio e ainda não estava guardada.</summary>
+    private async Task<FichaSisregLida> LerNoSisregAsync(
+        Data.Entities.Solicitacao reg, string co, int tetoOrcamento, CancellationToken ct)
+    {
+        if (orcamento.Restante(tetoOrcamento) < OrcamentoMinimo)
+        {
+            var espera = orcamento.EsperaAteLiberar();
+            throw new ConflitoException(
+                CodigoOrcamentoCurto,
+                "O limite de consultas ao SISREG desta hora está no fim. Tente de novo em "
+                + $"{Math.Max(1, (int)Math.Ceiling(espera?.TotalMinutes ?? 1))} minuto(s).");
+        }
+
+        var ficha = await LerAsync(co, ct);
+        if (ficha.Chave is { } chave && string.IsNullOrWhiteSpace(reg.ChaveConfirmacaoSisreg))
+        {
+            reg.ChaveConfirmacaoSisreg = chave;
+            reg.ChaveSisregLidaEm = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("SISREG_CHAVE: solicitação {Codigo} lida pela tela {Tela} e guardada.", co, ficha.Tela);
+        }
+        return ficha;
+    }
+
+    /// <summary>Código da recusa por orçamento curto — quem automatiza adia em vez de falhar.</summary>
+    public const string CodigoOrcamentoCurto = "sisreg_chave.orcamento_curto";
 
     /// <summary>
     /// A ficha do <c>cons_marcados_reg</c> é onde a chave foi vista (capturas do laboratório). Se
     /// ela não vier — o perfil do operador pode não alcançar essa tela —, tenta a ficha do
     /// <c>gerenciador_solicitacao</c> (menu Consulta Amb → Solicitações), que também a mostra.
+    /// Sem a chave em nenhuma, devolve a página que trouxe a ficha (ou a última).
     /// </summary>
-    private async Task<(string? Chave, string Tela)> LerAsync(string codigo, CancellationToken ct)
+    private async Task<FichaSisregLida> LerAsync(string codigo, CancellationToken ct)
     {
         var html = await sessao.PostFormAsync("/cgi-bin/cons_marcados_reg", new Dictionary<string, string>
         {
             ["etapa"] = "EXIBIR_FICHA",
             ["co_solicitacao"] = codigo,
         }, ct);
-        if (FichaChaveHtmlParser.Ler(html) is { } chave) return (chave, "cons_marcados_reg");
+        if (FichaChaveHtmlParser.Ler(html) is { } chave) return new(codigo, html, "cons_marcados_reg", chave);
+        var primeira = html;
 
         html = await sessao.GetAsync("/cgi-bin/gerenciador_solicitacao", new Dictionary<string, string>
         {
             ["etapa"] = "VISUALIZAR_FICHA",
             ["co_seq_solicitacao"] = codigo,
         }, ct);
-        return (FichaChaveHtmlParser.Ler(html), "gerenciador_solicitacao");
+        if (FichaChaveHtmlParser.Ler(html) is { } chave2) return new(codigo, html, "gerenciador_solicitacao", chave2);
+
+        return html.Contains("fichaAmbulatorial", StringComparison.Ordinal) || !primeira.Contains("fichaAmbulatorial", StringComparison.Ordinal)
+            ? new(codigo, html, "gerenciador_solicitacao", null)
+            : new(codigo, primeira, "cons_marcados_reg", null);
     }
 }

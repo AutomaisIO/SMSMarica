@@ -28,4 +28,4 @@ Instâncias de Claude Code devem começar por [`CLAUDE.md`](./CLAUDE.md).
 
 ## Regra crítica (leia antes de qualquer migration)
 
-O backend compartilha a instância e o banco lógico PostgreSQL (`defaultdb`) com outros produtos. **Todo** o modelo do SMSMais vive no schema `smsmarica` — zero dependência cross-schema. Detalhes e rationale em [`docs/adr/0001-schema-isolation.md`](./docs/adr/0001-schema-isolation.md).
+Em produção o SMSMais tem database próprio (`smsmais`, PostgreSQL 18 na VM PSQL-01 da EVEO, desde 14/10/2026). A regra nasceu quando o backend dividia o `defaultdb` da DigitalOcean com outros produtos e continua valendo, porque o PSQL-01 hospeda outros bancos. **Todo** o modelo do SMSMais vive no schema `smsmarica` — zero dependência cross-schema. Detalhes e rationale em [`docs/adr/0001-schema-isolation.md`](./docs/adr/0001-schema-isolation.md).

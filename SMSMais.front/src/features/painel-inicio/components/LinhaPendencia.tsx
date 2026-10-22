@@ -13,6 +13,7 @@ export const ROTULO_CAUSA: Record<CausaFalhaImportacao, string> = {
   UnidadeNaoResolvida: 'Unidade executante não identificada',
   LinhaInvalida: 'Linha ilegível no arquivo',
   ArquivoIncompativel: 'Arquivo não é do SISREG',
+  IdentidadeDivergente: 'A ficha do CNS é de outra pessoa',
   Outro: 'Não classificada',
 };
 

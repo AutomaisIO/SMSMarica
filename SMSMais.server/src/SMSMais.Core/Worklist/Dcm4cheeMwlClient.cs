@@ -31,7 +31,11 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         _estacao = estacao;
     }
 
-    public async Task<string> CriarOuAtualizarMwlItemAsync(ExameImagem s, CancellationToken ct = default)
+    public Task<string> CriarOuAtualizarMwlItemAsync(ExameImagem s, CancellationToken ct = default) =>
+        CriarOuAtualizarMwlItemAsync(s, clinicos: null, ct);
+
+    public async Task<string> CriarOuAtualizarMwlItemAsync(
+        ExameImagem s, DadosClinicosWorklist? clinicos, CancellationToken ct = default)
     {
         var paciente = await ResolverPacienteAsync(s.Solicitacao!.PacienteId, ct);
 
@@ -43,7 +47,7 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         var estacao = await _estacao.ResolverAsync(s, ct);
         var item = ConstrutorMwlItem.Item(
             s, paciente, estacao.AeTitle, estacao.DescricaoMaxCaracteres,
-            estacao.CodigoProcedimentoDestinos, estacao.CodigoProcedimentoEsquema, estacao.Campos);
+            estacao.CodigoProcedimentoDestinos, estacao.CodigoProcedimentoEsquema, estacao.Campos, clinicos);
         var req = new HttpRequestMessage(HttpMethod.Post, "mwlitems")
         {
             Content = JsonContent.Create(item, DicomJson),

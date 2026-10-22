@@ -1147,3 +1147,24 @@ Sonda: `sonda_faltas_dia.py` (~45 requisições no total, com OK do Bernardo).
 - **Ainda em aberto:** 691941761 (CRAD, 23/09) está como AGE/FALTA/EXEC na tela do SISREG e fora da lista
   de 23/09 lida às 15:17 de 07/10 (204 linhas, dentro da paginação). Não sondado — conferir se a lista
   do CRAD em 23/09 traz o código antes de concluir que a lista oficial omite falta apontada.
+
+### Rodada 7 (21/10/2026) — a oficial do dia pesado não tinha saída (só log de produção, 0 requisição)
+
+Motivo: a lista "De volta na fila" mostrava a oficial de 01, 02, 04, 09, 10 e 11/09 cortando em toda
+tentativa. Medido no `journalctl` da VM de produção, sem tocar no SISREG:
+
+- **O corte é de 65–66 s, cravado**, do "começando" à falha (17:41:20 → 17:42:25; 16:27:39 → 16:28:44;
+  16:40:08 → 16:41:13 UTC). Do nosso lado o limite é 180 s; `HttpRequestException` = o SISREG fechou a
+  conexão (estouro nosso seria `TaskCanceledException`). Continua igual depois da troca para o F5 e da
+  mudança da produção para a EVEO.
+- **Quem morre é a PRIMEIRA requisição** (a paginada, que devolve 10 linhas e o rodapé): o peso é da
+  consulta no SISREG, não do tamanho da resposta. No mesmo dia 16/10 (290 faltas) e 19/10 (310) passaram em
+  ~40 s, e 01/09 não — depende da carga do SISREG na hora, não só do tamanho do dia.
+- **Por executante também corta às vezes:** 2266741 e 2266806 em 09/09 e 23/09; 8 de 15 unidades no 09/09
+  às 01:21 de 20/10. E 2266741 (Péricles) voltou "só o formulário" para um dia em que tínhamos 30 faltas
+  dele gravadas pela rede — a trava não apagou. Não sondado: pode ser a mesma coisa do 14/09 (Péricles 0)
+  ou o executante do agendamento no SISREG não bater com o nosso.
+- **Na plataforma (fix de 21/10):** a oficial de um dia que corta vai por executante já no 1º corte e volta
+  para a fila na hora; antes ela caía em falha comum, tentava uma vez por noite e parava no teto (01–04/09
+  pararam em 15/10). A marca "PRÓXIMA POR EXECUTANTE" passou a sobreviver a reinício e a devolução sem culpa
+  — num reinício às 13:2x, o 22/09 voltou para a rede e levou mais dois cortes de 65 s.

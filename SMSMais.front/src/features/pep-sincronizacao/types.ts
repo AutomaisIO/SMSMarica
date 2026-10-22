@@ -182,3 +182,20 @@ export type ResultadoVerificacaoDivergencias = {
   naoConclusivas: number;
   interrompidaPorIndisponibilidade: boolean;
 };
+
+/** Uso de uma fonte Klinikos Web pela importação (GET /klinikos-web/uso). A conexão é cadastrada em
+ *  Sistema → Fontes de dados; aqui fica só como a importação usa a fonte (ADR-0077). */
+export type UsoKlinikosWeb = {
+  fonteId: string;
+  nome: string;
+  slug: string | null;
+  ativa: boolean;
+  /** Esta base é a dona da escrita no hub (só o Conde; as UPAs têm o conector SQL). */
+  webPrimaria: boolean;
+  periodicoLigado: boolean;
+  /** Minutos entre puxadas; 0 = desligado. Manual e por base — o motor nunca ajusta. */
+  periodicoIntervaloMin: number;
+  deepThrottleSeg: number;
+};
+
+export type SalvarUsoKlinikosWeb = Omit<UsoKlinikosWeb, 'fonteId' | 'nome' | 'slug' | 'ativa'>;

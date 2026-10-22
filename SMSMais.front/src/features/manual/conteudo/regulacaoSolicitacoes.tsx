@@ -27,7 +27,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
   publico: 'Quem abre e acompanha solicitações na unidade',
-  atualizadoEm: '2026-10-11',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'contato com o paciente',
     'aviso do SER',
@@ -458,7 +458,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'anexos',
       titulo: 'Anexos',
       busca:
-        'anexo anexos caixinha documento exigido anexos gerais pdf imagem tamanho limite usar este exame da rede remover nome do documento descrição visualizar abrir anexar do cadastro exames anexados laudo assinado imagens do exame cadastro do paciente',
+        'anexo anexos caixinha documento exigido anexos gerais pdf imagem tamanho limite usar este exame da rede remover nome do documento descrição visualizar abrir anexar do cadastro exames anexados laudo assinado imagens do exame cadastro do paciente 15 mb 5 mb arquivo grande reduzir comprimir pdf compressão ser sernit',
       conteudo: (
         <>
           <Lista>
@@ -479,7 +479,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               com busca, “olho” para visualizar e <BotaoRef>Anexar</BotaoRef>. O escolhido entra na
               caixinha sem novo upload.
             </Item>
-            <Item>Os tipos e o tamanho máximo do upload são os da configuração (normalmente PDF e imagens, até 15 MB).</Item>
+            <Item>
+              Os tipos e o tamanho máximo do upload são os da configuração (normalmente PDF e imagens, até 15 MB).
+              Não precisa reduzir o arquivo para o SER ou o SERNIT, que têm limite por arquivo (perto de 5 MB):
+              ao levar o pedido, a regulação comprime sozinha o que passar do limite, e aqui fica o original.
+            </Item>
             <Item>
               Quando a rede já tem um exame do paciente que serve para a caixinha, aparece a sugestão com{' '}
               <BotaoRef>Usar este</BotaoRef>.
@@ -649,7 +653,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'contato-paciente',
       titulo: 'Contato com o paciente: ele foi avisado?',
       busca:
-        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu motivo telefone confirmado sisreg ser sernit esus local outro pedido equipe avisou à mão conversas',
+        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu motivo telefone confirmado sisreg ser sernit esus local outro pedido equipe avisou à mão conversas guia ver guia',
       conteudo: (
         <>
           <P>
@@ -660,6 +664,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             <Item>
               <strong>O agendamento</strong> — a data e o local como o sistema de destino mostra (o SER e o
               SERNIT escrevem a data do jeito deles).
+            </Item>
+            <Item>
+              <strong>A guia do agendamento</strong> — buscada sozinha no sistema de destino e guardada no
+              cadastro do paciente; o botão <BotaoRef variante="outline">Ver guia</BotaoRef> abre o PDF. Enquanto
+              não veio, a linha diz que está na fila (artigo <strong>Guias dos agendamentos</strong>).
             </Item>
             <Item>
               <strong>O aviso automático</strong> — do SISREG, do SER, do SERNIT e do ESUS. Aparece com os

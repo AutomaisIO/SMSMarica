@@ -184,8 +184,8 @@ seguidas HTTP 200 em 0,8–1,2 s já pelo caminho de produção.
 
 - **Persistência:** `wg-quick@wg-eveo` habilitado no boot; config do CCR é permanente.
 - **Se o SISREG mudar de IP:** nada a fazer — o verificador põe o IP novo no túnel em até 1 min
-  e o CCR já libera qualquer destino em 443. Conferir no card do SISREG em Integrações (ou
-  `journalctl -t sisreg-egress`). Se o SISREG deixar de ser HTTPS/443, aí sim mexer no CCR.
+  e o CCR já libera qualquer destino em 443. Conferir em Sistema → Fontes de dados, fonte SISREG III
+  (bloco Endereço do SISREG), ou `journalctl -t sisreg-egress`. Se o SISREG deixar de ser HTTPS/443, aí sim mexer no CCR.
 - **Outro sistema bloqueado geograficamente (SER, CADSUS…):** só o lado da VM — `/32` no
   `AllowedIPs` (ao vivo com `wg set` + no `.conf`); o CCR já libera 443. Se o IP dele também
   mudar, generalizar o verificador para uma lista de nomes. Não rotear `0.0.0.0/0` pelo túnel.

@@ -88,7 +88,7 @@ public sealed class PacientesService(
         if (patient is null) return null;
 
         var dto = PacienteFhirMapper.ParaDto(patient);
-        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo, dto.DataNascimento);
     }
 
     public async Task<PacienteExistenciaDto?> ObterPorCnsAsync(string cns, CancellationToken cancellationToken = default)
@@ -108,7 +108,7 @@ public sealed class PacientesService(
         if (patient is null) return null;
 
         var dto = PacienteFhirMapper.ParaDto(patient);
-        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo, dto.DataNascimento);
     }
 
     public async Task<PacienteExistenciaDto?> ObterPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default)
@@ -117,7 +117,7 @@ public sealed class PacientesService(
         if (patient is null) return null;
 
         var dto = PacienteFhirMapper.ParaDto(patient);
-        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo, dto.DataNascimento);
     }
 
     public async Task<IReadOnlyList<PacienteListItemDto>> ListarPorTelefoneAsync(

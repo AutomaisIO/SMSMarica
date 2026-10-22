@@ -141,6 +141,8 @@ export function PainelInicio() {
             pacienteNome: pendenciaAlvo.pacienteNome,
             procedimento: pendenciaAlvo.procedimento,
             codigoSolicitacao: pendenciaAlvo.codigoSolicitacao,
+            causa: pendenciaAlvo.causa,
+            motivo: pendenciaAlvo.motivo,
           }
         }
         aoFechar={() => setPendenciaAlvo(null)}

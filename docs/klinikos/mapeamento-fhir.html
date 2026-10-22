@@ -19,6 +19,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -26,13 +29,24 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h1>Klinikos → FHIR: levantamento e de-para (03/08/2026)</h1>
 <p>&gt; <strong>Como isto foi feito.</strong> Tudo aqui foi <strong>medido ao vivo</strong> contra a instância da <strong>UPA Maricá</strong> &gt; (SQL Server, base <code>UPA24H</code>) pelo proxy SQL interno (<code>/root/pq.sh upa24h-marica-sqlserver</code>), em &gt; 03/08/2026. Nada é presumido a partir de documentação do fornecedor. Onde não deu para medir, &gt; está escrito que não deu. &gt; &gt; <strong>PII fica fora deste arquivo.</strong> As consultas devolvem nome de paciente; nenhum entrou aqui. &gt; &gt; Este documento substitui a referência quebrada que o &gt; <a href="../integracoes/plano-sincronismo-hub.md">plano de sincronismo</a> apontava — a versão de 26/07 &gt; nunca foi commitada.</p>
 <hr>
-<h2>1. As duas instâncias</h2>
-<p>O Klinikos assumiu a <strong>UPA Inoã</strong> e o <strong>PA Santa Rita</strong> em <strong>07/04/2025</strong> (data do primeiro boletim medido), substituindo o Salux. O <strong>Conde</strong> ainda é Salux e migrará.</p>
+<h2>1. As instâncias</h2>
+<p>O Klinikos assumiu a <strong>UPA Inoã</strong> e o <strong>PA Santa Rita</strong> em <strong>07/04/2025</strong> (data do primeiro boletim medido), substituindo o Salux. O <strong>Conde</strong> migrou em agosto/2026 — ver §1.2.</p>
 <div class="tw"><table><thead><tr><th>Instância</th><th>Slug da base</th><th>Estado em 03/08</th></tr></thead><tbody>
 <tr><td>UPA Maricá</td><td><code>upa24h-marica-sqlserver</code></td><td>agente WSS <strong>conectado</strong>, tudo abaixo medido aqui</td></tr>
 <tr><td>PA Santa Rita</td><td><code>santarita-marica-sqlserver</code></td><td>agente <strong>offline</strong> — "não está conectado". Estrutura declarada idêntica; <strong>não medida</strong></td></tr>
 </tbody></table></div>
 <p>&gt; <strong>Ponta aberta P1.</strong> Enquanto o agente de Santa Rita não subir, o censo daquela instância é &gt; desconhecido. O conector é por instância (slug próprio), então Santa Rita pode entrar depois &gt; sem tocar no que já roda.</p>
+<h3>1.2 Conde: a mesma aplicação, outra versão do banco (medido em 21/10/2026)</h3>
+<p>O Conde migrou para o Klinikos em agosto/2026 (base <code>conde-marica-sqlserver</code>, banco <code>KLINIKOSNET</code>, unidade <code>0005</code>). A aplicação é a mesma das UPAs, mas o banco está numa versão mais antiga (build <code>K.2024</code>; as UPAs estão na <code>U.2025</code>). O conector lia três coisas que não existem lá:</p>
+<div class="tw"><table><thead><tr><th>O que o conector das UPAs lê</th><th>No Conde (K.2024)</th></tr></thead><tbody>
+<tr><td><code>UPA_Evolucao.SPA_CODIGO</code> (a evolução aponta para o boletim)</td><td><strong>não existe</strong>. A evolução aponta para o atendimento: <code>atendamb_codigo</code> → <code>atendimento_ambulatorial.spa_codigo</code></td></tr>
+<tr><td><code>UPA_SinaisVitais</code> (uma tabela com as medidas de todas as etapas)</td><td><strong>não existe</strong>. As mesmas etapas guardam a medida na própria linha: <code>UPA_ACOLHIMENTO.aco_<em></code>, <code>UPA_Classificacao_Risco.upaclaris_</em></code> (chega ao boletim pelo acolhimento — o <code>spa_codigo</code> dela está vazio nas 41.547 linhas) e <code>UPA_Evolucao.upaevo_*</code></td></tr>
+<tr><td><code>Pronto_Atendimento.spa_nomesocial</code> / <code>spa_cartao_nsaude</code></td><td><code>spa_nome_social</code> (com sublinhado); o boletim não tem CNS, que vem do cadastro do paciente</td></tr>
+</tbody></table></div>
+<p>E a evolução tem duas colunas que as UPAs não têm: <code>Inativa</code> (713 evoluções anuladas) e <code>Rascunho</code> (4 ainda não assinadas). As duas ficam fora, como o ESTORNO nas UPAs; o rascunho entra quando for assinado, porque a linha muda e o rowversion avança.</p>
+<p><strong>Como o conector decide.</strong> A cada run, antes de escrever qualquer coisa, uma sonda de metadado (<code>COL_LENGTH</code>/<code>OBJECT_ID</code>, sem ler dado) diz qual versão o banco é (<code>KlinikosLayout</code>). Cada versão exige a assinatura inteira; esquema que não bate com nenhuma <strong>para o run</strong> com a lista do que viu, em vez de rodar o SQL mais parecido. O mapeamento FHIR é o mesmo nas duas; só o SQL muda.</p>
+<p>Volumes no Conde em 21/10/2026: 29.028 pacientes, 44.066 boletins, 74.667 evoluções ligadas a boletim, 164.436 itens de prescrição, 42.905 linhas de acolhimento/classificação com sinal vital.</p>
+<p><strong>O que fica de fora: a internação.</strong> 39.629 evoluções do Conde são de internação (<code>inter_codigo</code>) e não têm boletim. O <code>JOIN</code> com o atendimento é o que as deixa de fora — se entrassem, cada uma seguraria o ponteiro da fase como "boletim não resolvido". Ver P7.</p>
 <hr>
 <h2>2. A unidade: a ponte do CNES existe e fecha</h2>
 <p>Esta era a pergunta que o <a href="../adr/0039-unidade-de-saude-eixo-duravel.md">ADR-0039</a> precisava responder antes de casar unidade por CNES: <strong>a UPA do Klinikos e a UPA do Salux são a mesma unidade real?</strong></p>
@@ -104,7 +118,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 <hr>
 <h2>5. CDC: <code>rv_atualizacao</code> é o melhor watermark que temos</h2>
 <p>Quase toda tabela relevante tem <code>rv_atualizacao</code> (<code>timestamp</code>/<code>rowversion</code> do SQL Server): um <strong>bigint monotônico global</strong> que o banco incrementa em toda escrita, sem depender de o aplicativo lembrar de atualizar uma data.</p>
-<p>``<code>sql SELECT TOP 3 pac_codigo, CONVERT(BIGINT, rv_atualizacao) rv FROM paciente ORDER BY rv_atualizacao DESC -- 226712823 / 226712766 / 226712364 </code>``</p>
+<pre><code>SELECT TOP 3 pac_codigo, CONVERT(BIGINT, rv_atualizacao) rv FROM paciente ORDER BY rv_atualizacao DESC
+-- 226712823 / 226712766 / 226712364</code></pre>
 <p>É <strong>estritamente melhor</strong> que o CDC do Salux (janela de 120 dias sobre <code>dt_atualizacao</code>, com lag de segurança): não tem fuso, não tem relógio, não tem registro que escapa por a origem não ter mexido na data. A marca d'água por fase vira um <code>long</code>, e o filtro é <code>WHERE rv_atualizacao &gt; @marca</code>.</p>
 <div class="tw"><table><thead><tr><th>Fase</th><th>Tabela</th><th>Coluna de corte</th></tr></thead><tbody>
 <tr><td>Unidades</td><td><code>unidade</code></td><td>(1 linha por instância — upsert integral todo ciclo)</td></tr>
@@ -182,6 +197,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>A origem guarda <strong>só o código</strong> (<code>Z008</code>, sem ponto e com padding). O nome vem de <code>TB_CID</code> (<code>CO_CID</code> → <code>NO_CID</code>), carregado uma vez por run. Sem ele o <code>text</code> repetia o código e o prontuário exibia <strong>"M545 · M545"</strong> no lugar de "M54.5 · Dor lombar baixa". No <code>coding</code> o código sai no formato canônico do ICD-10, com ponto depois da categoria de 3 caracteres; a chave de busca no catálogo <strong>ignora o ponto dos dois lados</strong>, para não depender de as duas pontas gravarem no mesmo formato. Catálogo indisponível <strong>não derruba o run</strong> — a Condition entra com o código, porque enriquecimento que falha não pode custar dado clínico.</p>
 <h3>Observation ← <code>UPA_SinaisVitais</code></h3>
 <p>Colunas separadas (<code>pressaoarterial</code>, <code>pulso</code>, <code>temperatura</code>, <code>frequenciarespiratoria</code>, <code>hgt</code>, <code>saturacaoO2</code>, <code>peso</code>) — <strong>muito</strong> melhor que o EAV do eDoc do Salux. Cada uma vira uma Observation LOINC com <code>encounter</code> amarrado. A pressão vem como texto ("120/80") e precisa ser partida em sistólica/diastólica.</p>
+<p>No Conde (K.2024, §1.2) as medidas vêm do acolhimento, da classificação e da evolução, num <code>UNION</code> com um ponteiro só: o rowversion é um contador do banco, não da tabela. O identifier leva a origem na frente do código (<code>aco-5</code>, <code>cr-5</code>, <code>evo-5</code>), porque as três sequências são independentes. Nas UPAs o identifier não muda.</p>
 <h3>DocumentReference ← <code>UPA_Atendimento_Medico</code> (o boletim médico)</h3>
 <p><strong>É o documento principal do atendimento</strong> — o análogo do eDoc "Boletim de Atendimento de Urgência" do Salux. Um por atendimento (identifier <code>urn:klinikos:atendimento-medico</code> sobre o <code>atendamb_codigo</code>), <strong>não</strong> um por edição: o médico reescreve o mesmo registro durante a passagem, e cada gravação tem de atualizar o documento em vez de empilhar cópias.</p>
 <p>Vai como <strong>HTML</strong>, com uma seção por campo — <code>Anamnese</code>, <code>Exame físico</code>, <code>Hipótese diagnóstica</code>, <code>Conduta</code>, <code>Observação</code>. Texto puro não serve: são cinco campos distintos, e sem os títulos ninguém sabe onde termina o exame físico e começa a conduta. O texto da origem é escapado antes de entrar no HTML (campo livre digitado por humano). Boletim aberto e ainda <strong>sem nada escrito não vira documento</strong> — documento vazio no prontuário é pior que documento nenhum.</p>
@@ -233,7 +249,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>P10</td><td>CNS não é âncora secundária de dedup (cobertura de 0,16% no cadastro; provisórios sem semântica)</td><td>decidir com validação CADSUS</td></tr>
 <tr><td>P11</td><td>Entradas de sala amarela/vermelha não viram <code>statusHistory</code> (o CID delas JÁ é extraído)</td><td>Fase 2</td></tr>
 <tr><td>P12</td><td><code>MedicationRequest.status</code> fixo em <code>completed</code> para prescrição histórica</td><td>aceito para importação</td></tr>
-<tr><td>P7</td><td>Internação: morta no Klinikos desde 25/01/2026. Se o Conde migrar como a UPA roda hoje, o hub <strong>perde a internação no dia do cutover</strong></td><td>não bloqueia hoje; <strong>bloqueia o cutover do Conde</strong></td></tr>
+<tr><td>P7</td><td>Internação: morta no Klinikos das UPAs desde 25/01/2026, mas <strong>viva no Conde</strong> (<code>Internacao_Pep</code>, e 39.629 evoluções com <code>inter_codigo</code> em 21/10/2026). O conector traz o pronto-atendimento do Conde (§1.2); a internação dele ainda não entra no hub</td><td><strong>pendente</strong>: precisa de fase própria (Encounter IMP)</td></tr>
+<tr><td>P14</td><td><strong>Inativação não retroage</strong> no Conde: evolução anulada (<code>Inativa = 'S'</code>) depois de importada fica no hub — mesmo caso do P9</td><td>qualidade, não bloqueia</td></tr>
 </tbody></table></div>
 </main>
 </body>

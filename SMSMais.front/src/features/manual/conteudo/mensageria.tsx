@@ -24,9 +24,13 @@ export const artigoMensageria: Artigo = {
   icone: BellRing,
   rota: '/app/mensageria',
   publico: 'Quem responde pelo canal: coordenação, regulação e quem configura o envio automático',
-  atualizadoEm: '2026-10-11',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'mensageria',
+    'lembrete do ser',
+    'aviso de cancelamento do ser',
+    'voltou para a fila',
+    'avisos ao paciente',
     'retorno',
     'confirmação de retorno',
     'mesmo dia',
@@ -506,7 +510,9 @@ export const artigoMensageria: Artigo = {
           <Sub>Lembrete antes do agendamento</Sub>
           <P>
             Uma segunda mensagem às vésperas, com um texto para quem já confirmou e outro para quem ainda não
-            respondeu. Vale para a rede toda — não é por unidade.
+            respondeu. Vale para a rede toda — não é por unidade. Estas chaves (o lembrete e o aviso de cancelamento)
+            são as do <strong>SISREG</strong>, e aparecem também em SISREG → Configuração. SER, SERNIT e ESUS têm as
+            suas na Configuração de cada regulação.
           </P>
           <Callout tipo="regra" titulo="O lembrete se cala por uma semana depois da mensagem principal">
             Se a mensagem principal saiu há menos de sete dias, o lembrete não é enviado àquela pessoa. A regra
@@ -595,7 +601,9 @@ export const artigoMensageria: Artigo = {
             Um interruptor só, que <strong>nasce ligado</strong>: <em>Avisar o paciente quando o pedido for
             agendado</em>. Ele não passa pelas chaves por unidade da lista abaixo — essas são do SISREG. Como o aviso
             funciona está na seção <em>Agendamentos do SER, do SERNIT e do ESUS</em>, logo depois desta. Desligado,
-            os avisos que já estavam na fila esperam; ao religar, eles saem (se a data ainda não passou).
+            os avisos que já estavam na fila esperam; ao religar, eles saem (se a data ainda não passou). O lembrete e
+            o aviso de cancelamento desses agendamentos não ficam aqui: cada regulação tem os seus, no bloco{' '}
+            <em>Avisos ao paciente</em> da tela de Configuração dela.
           </P>
 
           <Sub>Quem recebe o aviso</Sub>
@@ -614,13 +622,19 @@ export const artigoMensageria: Artigo = {
       id: 'agendamentos-externos',
       titulo: 'Agendamentos do SER, do SERNIT e do ESUS',
       busca:
-        'ser sernit esus são gonçalo regulação estadual agendado aviso automático fora do município nome do local hospital quero mais informações cpf nascimento confirmo não poderei ir motivo não desmarca hora do agendamento histórico amanhã remarcado desmarcado contato com o paciente',
+        'ser sernit esus são gonçalo regulação estadual agendado aviso automático fora do município nome do local hospital quero mais informações cpf nascimento confirmo não poderei ir motivo não desmarca hora do agendamento histórico amanhã remarcado desmarcado contato com o paciente devolvido para a fila voltou para a fila reagendado de novo lembrete dias antes aviso de cancelamento guia do agendamento cancelado carência 30 minutos avisos ao paciente',
       conteudo: (
         <div className="space-y-4">
           <P>
             Até 10/10/2026 só o agendamento do SISREG avisava o paciente. O paciente encaminhado pelo SER, pelo
             SERNIT ou pelo ESUS só sabia da data se alguém da equipe mandasse a mensagem à mão. Agora a plataforma
             avisa sozinha, pela mesma conversa da confirmação do SISREG:
+          </P>
+          <P>
+            O quadro <strong>Contato com o paciente</strong>, na tela do pedido, também traz a{' '}
+            <strong>guia do agendamento</strong>: a plataforma a busca sozinha no sistema e guarda no cadastro do
+            paciente, e o botão <BotaoRef variante="outline">Ver guia</BotaoRef> abre o PDF. Detalhes no artigo{' '}
+            <strong>Guias dos agendamentos</strong>.
           </P>
           <Passos
             itens={[
@@ -671,12 +685,39 @@ export const artigoMensageria: Artigo = {
               },
             ]}
           />
-          <Sub>Remarcou ou desmarcou no sistema</Sub>
+          <Sub>Remarcou ou agendou de novo</Sub>
           <P>
             Se o sistema passa a mostrar <strong>outra data</strong>, o aviso antigo que ainda não tinha chegado ao
-            paciente não sai, e um aviso novo entra na fila com a data nova. Se o pedido <strong>sai de Agendada</strong>{' '}
-            (cancelado, voltou à fila), o que ainda não saiu não sai mais. O que já chegou ao paciente não é desfeito:
-            não existe aviso de cancelamento para esses sistemas.
+            paciente não sai, e um aviso novo entra na fila com a data nova. Vale também para o pedido que o paciente
+            não conseguiu fazer e a regulação <strong>devolveu para a fila</strong>: quando ele é agendado de novo, o
+            paciente recebe o aviso da data nova, e a confirmação começa do zero.
+          </P>
+          <Sub>Cancelou ou devolveu para a fila antes da data</Sub>
+          <P>
+            Se o pedido <strong>sai de Agendada</strong> com a data ainda pela frente, o que ainda não saiu não sai
+            mais. Com o <strong>aviso de cancelamento</strong> ligado na Configuração daquela regulação, o paciente
+            recebe a mensagem de cancelamento do SISREG (anônima para número não confirmado) quando o sistema mostra o
+            pedido <strong>cancelado</strong> (SER e SERNIT) ou <strong>devolvido para a fila</strong> (os três). No
+            segundo caso a mensagem diz que o agendamento foi desmarcado e o pedido voltou para a fila.
+          </P>
+          <Lista>
+            <Item>
+              O aviso espera 30 minutos antes de poder sair: se o pedido voltar com o mesmo dia nesse meio-tempo, ele
+              não sai. Se já tinha saído e o pedido voltou com o mesmo dia, o paciente recebe o aviso do agendamento de
+              novo.
+            </Item>
+            <Item>
+              Pendência no SER/SERNIT e saída da fila do ESUS <strong>não</strong> avisam: a pendência às vezes volta
+              com o mesmo dia, e o ESUS não diz por que o pedido saiu.
+            </Item>
+            <Item>Ligar o aviso vale daqui para frente: o que foi desmarcado antes não é avisado.</Item>
+          </Lista>
+          <Sub>Lembrete antes do dia</Sub>
+          <P>
+            Também na Configuração de cada regulação, com os dias antes. As regras são as do SISREG: quem confirmou
+            recebe o lembrete com o dia e a hora; quem não respondeu, a primeira mensagem de novo; quem avisou que não
+            vai não recebe; e quem recebeu o aviso há menos de 7 dias também não. A resposta ao lembrete (“Sim! Está
+            confirmado!” ou “Não poderei ir.”) fica no agendamento, como a do aviso.
           </P>
           <P>
             Em <AbaRef>Envios</AbaRef> esses avisos aparecem com o número do pedido no lugar do código do SISREG

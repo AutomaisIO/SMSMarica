@@ -51,7 +51,14 @@ public sealed class IntegracaoCredencialService(
         var c = await ObterOuCriarAsync(provedor, cancellationToken);
 
         c.RedirectUri = string.IsNullOrWhiteSpace(request.RedirectUri) ? null : request.RedirectUri.Trim();
-        c.ParametrosJson = string.IsNullOrWhiteSpace(request.ParametrosJson) ? null : request.ParametrosJson.Trim();
+        // Nulo = mantém; texto vazio = limpa; preenchido = substitui INTEIRO (ADR-0077). O JSON guarda
+        // também a agenda dos motores: salvar só o login com nulo apagava fila, escalas e varredura.
+        // Não é merge de propósito — quem altera uma parte lê, altera e grava o todo, e a coleta de
+        // indicadores retoma REMOVENDO a chave de pausa, o que um merge nunca deixaria sair.
+        if (request.ParametrosJson is not null)
+        {
+            c.ParametrosJson = string.IsNullOrWhiteSpace(request.ParametrosJson) ? null : request.ParametrosJson.Trim();
+        }
         c.Ativo = request.Ativo;
 
         // Vazio = mantém o atual; preenchido = cifra e substitui.

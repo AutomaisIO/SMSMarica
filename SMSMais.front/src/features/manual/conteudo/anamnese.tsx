@@ -21,12 +21,12 @@ export const artigoAnamnese: Artigo = {
   slug: 'anamnese',
   titulo: 'Anamnese de mamografia',
   resumo:
-    'O questionário que a paciente responde antes do exame — e de onde sai, com um clique, a requisição no SISCAN que a médica precisa para laudar.',
+    'O questionário que a paciente responde antes do exame — e de onde sai, com um clique, a requisição no SISCAN que a médica precisa para laudar. No Holter, a altura, o peso e o fumante que vão ao aparelho.',
   grupo: 'assistencial',
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-10-16',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'anamnese',
     'anamnese do pedido',
@@ -112,6 +112,15 @@ export const artigoAnamnese: Artigo = {
     'autodeclarada',
     'etnia',
     'indígena',
+    'holter',
+    'anamnese do holter',
+    'altura',
+    'peso',
+    'fumante',
+    'parou de fumar',
+    'cardionet',
+    'aguardando a anamnese',
+    'worklist do holter',
   ],
   secoes: () => [
     {
@@ -658,6 +667,51 @@ export const artigoAnamnese: Artigo = {
             gerar agora. Não é insistência: é o último momento em que você ainda está na tela com o
             caso na cabeça. Depois, vira uma pendência que ninguém vê.
           </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'holter',
+      titulo: 'Anamnese do Holter',
+      busca:
+        'holter anamnese do holter altura peso fumante sim não parou cardionet ECG worklist aparelho aguardando a anamnese do holter salvar e enviar à worklist salvar correção corrigir sobrescreve',
+      conteudo: (
+        <>
+          <P>
+            No Holter, o mesmo botão de anamnese da lista de Exames e consultas abre um questionário
+            curto: <strong>altura</strong> (cm), <strong>peso</strong> (kg) e se o paciente é{' '}
+            <strong>fumante</strong> (sim, não ou parou). O aparelho da cardiologia pede esses três dados
+            quando importa o paciente da worklist. Com a anamnese, eles já chegam preenchidos e a
+            técnica não precisa digitá-los no aparelho.
+          </P>
+          <Callout tipo="regra" titulo="O exame só vai ao aparelho depois da anamnese">
+            No Holter, quem manda o exame à worklist é a anamnese, e não a confirmação de presença.
+            Enquanto ela não for salva, o exame mostra <em>Aguardando a anamnese do Holter</em> e não
+            aparece no aparelho.
+          </Callout>
+          <Lista>
+            <Item>
+              <strong>Salvar e enviar à worklist</strong>: com a presença confirmada, o exame vai para o
+              aparelho na hora. Se a recepção ainda não confirmou, a anamnese fica salva e o exame vai
+              quando a presença for confirmada.
+            </Item>
+            <Item>
+              <strong>Salvar correção</strong>: errou um dado? Abra de novo, corrija e salve. O paciente é
+              atualizado na worklist; no aparelho, importe o paciente de novo.
+            </Item>
+            <Item>
+              Depois que o exame começou no aparelho, a correção fica só na anamnese e não chega mais
+              lá. Corrija direto no aparelho.
+            </Item>
+          </Lista>
+          <P>
+            <strong>Parou</strong> chega ao aparelho como “não fuma”: a worklist só tem sim, não e não
+            informado, e a pergunta do aparelho é se o paciente fuma hoje.
+          </P>
+          <P>
+            Isso vale quando o aparelho do Holter está com <strong>Usa anamnese</strong> marcado (artigo
+            Equipamentos). Desmarcado, o Holter vai direto à worklist, sem os três dados.
+          </P>
         </>
       ),
     },

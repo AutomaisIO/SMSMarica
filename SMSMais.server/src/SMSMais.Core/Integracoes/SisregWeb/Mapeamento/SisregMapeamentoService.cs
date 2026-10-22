@@ -556,6 +556,9 @@ public sealed class SisregMapeamentoService(
                     ProfissionalId = profissional.Id,
                     Codigo = codigo,
                     Habilitado = false,
+                    // Nasce LIGADO desde 20/10/2026 (reverte o opt-in de 03/08/2026): procedimento
+                    // novo já avisa por padrão. Opt-out continua possível desligando-o depois.
+                    EnviarConfirmacao = true,
                 };
                 profissional.Procedimentos.Add(procedimento);
                 db.SisregProcedimentosProfissional.Add(procedimento); // ver nota do método

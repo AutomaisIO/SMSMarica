@@ -33,7 +33,12 @@ public sealed record EnvioSerPassoDto(string Campo, string? Valor, bool Ok, stri
 /// <param name="ArquivosJuntados">Quantos arquivos entraram neste anexo (1, ou 3+ quando viraram um PDF).</param>
 /// <param name="NomesJuntados">Os nomes desses arquivos — a tela os lista para a pessoa confirmar o
 /// agrupamento antes de enviar (ticket #167).</param>
-public sealed record EnvioSerAnexoDto(string Nome, long Tamanho, int ArquivosJuntados, IReadOnlyList<string> NomesJuntados);
+/// <param name="TamanhoOriginal">O tamanho antes da compressão — só quando o arquivo foi comprimido para
+/// caber nos 5 MB do sistema.</param>
+/// <param name="Compressao">Como foi comprimido ("200 dpi", "foto reduzida").</param>
+public sealed record EnvioSerAnexoDto(
+    string Nome, long Tamanho, int ArquivosJuntados, IReadOnlyList<string> NomesJuntados,
+    long? TamanhoOriginal = null, string? Compressao = null);
 
 /// <summary>Pedido que o sistema já tem para o mesmo paciente e o mesmo recurso.</summary>
 public sealed record EnvioSerDuplicadoDto(string IdSer, string? Recurso, string? DataSolicitacao, string? Situacao);
@@ -43,6 +48,8 @@ public sealed record EnvioSerDuplicadoDto(string IdSer, string? Recurso, string?
 /// <param name="MedicoNovo">O médico pedido pela unidade ainda não está na lista do sistema: a
 /// pergunta ao regulador (é um destes parecidos? autoriza cadastrar?). Sem resposta, não envia; com o
 /// "Autorizo", o envio cadastra o médico na própria tela de nova solicitação.</param>
+/// <param name="LimiteAnexoBytes">O tamanho máximo por arquivo do destino (configurado na aba dele) —
+/// a tela diz "comprimido para caber nos 4,5 MB do SER".</param>
 public sealed record EnvioSerPreparoDto(
     string OperadorSer,
     string Recurso,
@@ -50,7 +57,8 @@ public sealed record EnvioSerPreparoDto(
     IReadOnlyList<EnvioSerAnexoDto> Anexos,
     IReadOnlyList<EnvioSerDuplicadoDto> PossiveisDuplicados,
     string Sistema = "SER",
-    MedicoNovoNoSistemaDto? MedicoNovo = null);
+    MedicoNovoNoSistemaDto? MedicoNovo = null,
+    long? LimiteAnexoBytes = null);
 
 /// <summary>
 /// O médico pedido na abertura que a lista do sistema (o combo "Médico responsável" de HOJE) não tem.
@@ -135,6 +143,8 @@ public sealed partial class RegulacaoEnvioSerService(
     IRegulacaoSolicitacaoService solicitacoes,
     IRegulacaoFormularioService formularios,
     IArquivoExigenciaStore arquivos,
+    ICompressorPdf compressorPdf,
+    IRegrasAnexoDestinoService regrasAnexo,
     ISerSessaoOperadorStore sessoesSer,
     ISernitSessaoOperadorStore sessoesSernit,
     IPacientesService pacientes,
@@ -164,7 +174,8 @@ public sealed partial class RegulacaoEnvioSerService(
         // pergunta ao regulador. O envio só passa com a escolha de um parecido ou com o "Autorizo".
         var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct, aceitarMedicoPendente: true);
         var ctx = Contextualizar(dados);
-        var anexos = await LerAnexosAsync(ctx, dados, ct);
+        var limiteAnexo = await regrasAnexo.TamanhoMaximoBytesAsync(dados.Sistema, ct);
+        var anexos = await LerAnexosAsync(ctx, dados, limiteAnexo, ct);
 
         var motor = new SerCriacaoSolicitacao(ctx.Transporte, ctx.Perfil, logger);
         var medicoNovo = new MedicoNovoColetado();
@@ -173,8 +184,9 @@ public sealed partial class RegulacaoEnvioSerService(
 
         return new EnvioSerPreparoDto(
             ctx.Operador, dados.RecursoRotulo, passos,
-            [.. anexos.Select(a => new EnvioSerAnexoDto(a.Nome, a.Conteudo.LongLength, a.Origens.Count, a.NomesOrigem))],
-            duplicados, ctx.Nome, medicoNovo.Bloco);
+            [.. anexos.Select(a => new EnvioSerAnexoDto(
+                a.Nome, a.Conteudo.LongLength, a.Origens.Count, a.NomesOrigem, a.TamanhoOriginal, a.Compressao))],
+            duplicados, ctx.Nome, medicoNovo.Bloco, limiteAnexo);
     }
 
     /// <summary>Onde o preenchimento deixa o bloco do médico novo (só a prévia passa um).</summary>
@@ -346,7 +358,8 @@ public sealed partial class RegulacaoEnvioSerService(
         // Médico fora da lista não barra aqui: o envio o resolve antes de tudo (abaixo).
         var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct, aceitarMedicoPendente: true);
         var ctx = Contextualizar(dados);
-        var anexos = await LerAnexosAsync(ctx, dados, ct);
+        var anexos = await LerAnexosAsync(
+            ctx, dados, await regrasAnexo.TamanhoMaximoBytesAsync(dados.Sistema, ct), ct);
 
         // A crítica ANTES da trava: pedido parecido não é falha de envio, é pergunta.
         if (!req.EnviarMesmoComPedidoParecido)
@@ -1115,7 +1128,9 @@ public sealed partial class RegulacaoEnvioSerService(
             });
     }
 
-    private async Task<IReadOnlyList<AnexoParaSer>> LerAnexosAsync(Contexto ctx, DadosEnvioSer dados, CancellationToken ct)
+    /// <param name="limite">O tamanho máximo por arquivo do destino (aba de configuração dele).</param>
+    private async Task<IReadOnlyList<AnexoParaSer>> LerAnexosAsync(
+        Contexto ctx, DadosEnvioSer dados, long limite, CancellationToken ct)
     {
         var lidos = new List<ArquivoLido>();
         foreach (var a in dados.Arquivos)
@@ -1131,7 +1146,7 @@ public sealed partial class RegulacaoEnvioSerService(
             throw new ValidacaoException(
                 "anexos", $"A solicitação não tem anexo. O {ctx.Nome} exige o pedido médico legível, datado e justificado.");
         }
-        return AnexosParaSer.Preparar(lidos, ctx.Nome);
+        return await AnexosParaSer.PrepararAsync(lidos, ctx.Nome, limite, compressorPdf, ct);
     }
 
     private static string Obrigatorio(IReadOnlyDictionary<string, string> traduzido, string campo, string rotulo) =>

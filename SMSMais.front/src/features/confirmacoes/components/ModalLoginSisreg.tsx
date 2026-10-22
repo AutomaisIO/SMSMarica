@@ -10,7 +10,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 /**
  * Entrada no SISREG com a credencial do PRÓPRIO operador.
  *
- * <p>Por que não basta a credencial já cadastrada em Integrações: aquela é de <b>sincronismo</b> —
+ * <p>Por que não basta a credencial já cadastrada em Fontes de dados: aquela é de <b>sincronismo</b> —
  * serve para a varredura ler a agenda. O SISREG carimba cada cancelamento com o login de quem o
  * fez (é a coluna "Operador" da tela de marcações canceladas, que a própria SMS usa para saber
  * quem desmarcou). Cancelar com a credencial do sistema faria todo cancelamento do município sair

@@ -245,7 +245,7 @@ export const artigoEnvioMensagens: Artigo = {
   grupo: 'atendimento',
   icone: Send,
   publico: 'Gestão e equipe técnica — quem configura o automático e quem investiga por que uma mensagem não chegou',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'envio',
     'mensagem',
@@ -287,6 +287,12 @@ export const artigoEnvioMensagens: Artigo = {
     'sem celular',
     'dispensada',
     '131026',
+    'conta parada',
+    'whatsapp parado',
+    'pagamento',
+    '131042',
+    'conta bloqueada',
+    'faixa vermelha',
   ],
   secoes: () => [
     {
@@ -348,8 +354,9 @@ export const artigoEnvioMensagens: Artigo = {
                 <tr>
                   <td className="px-3 py-2 font-medium">Lembrete</td>
                   <td className="px-3 py-2">
-                    Os dias antes configurados em Regras. Não sai se a primeira mensagem tem menos de 7 dias, se a
-                    pessoa disse que não vai, ou depois da orientação ao posto / "Vou ao posto".
+                    Os dias antes configurados em Regras (SISREG) ou na Configuração de cada regulação (SER, SERNIT,
+                    ESUS). Não sai se a primeira mensagem tem menos de 7 dias, se a pessoa disse que não vai, ou depois
+                    da orientação ao posto / "Vou ao posto".
                   </td>
                   <td className="px-3 py-2">
                     já confirmou: <code>agendamento_proximo</code>
@@ -360,7 +367,11 @@ export const artigoEnvioMensagens: Artigo = {
                 </tr>
                 <tr>
                   <td className="px-3 py-2 font-medium">Aviso de cancelamento</td>
-                  <td className="px-3 py-2">Cancelamento feito aqui ou trazido do SISREG — só os feitos depois de ligar o aviso.</td>
+                  <td className="px-3 py-2">
+                    Cancelamento feito aqui ou trazido do SISREG; ou o SER/SERNIT/ESUS mostrando o pedido cancelado ou
+                    devolvido para a fila com a data pela frente (chave da regulação, espera 30 min). Só os feitos depois
+                    de ligar o aviso.
+                  </td>
                   <td className="px-3 py-2">
                     <code>agendamento_cancelado_anonimo</code>
                   </td>
@@ -385,7 +396,11 @@ export const artigoEnvioMensagens: Artigo = {
                 </tr>
                 <tr>
                   <td className="px-3 py-2 font-medium">Exame liberado / Laudo pronto</td>
-                  <td className="px-3 py-2">Exame realizado / laudo assinado. Só para número verificado.</td>
+                  <td className="px-3 py-2">
+                    Exame realizado, se o aparelho libera ao chegar (ultrassom) / laudo assinado. No aparelho
+                    que só libera com o laudo (mamografia, densitometria, raio-X), sai só o Laudo pronto, com
+                    imagem e laudo. Só para número verificado.
+                  </td>
                   <td className="px-3 py-2">
                     <code>exame_liberado</code> / <code>laudo_disponivel</code>
                   </td>
@@ -614,6 +629,45 @@ export const artigoEnvioMensagens: Artigo = {
       ),
     },
     {
+      id: 'conta-parada',
+      titulo: 'Quando a CONTA do WhatsApp para',
+      busca:
+        'conta parada whatsapp parado pagamento faturamento 131042 bloqueio conta bloqueada 131031 368 política limite qualidade 131048 token vencido 190 número não registrado 133010 sonda freio segurado CONTA_WHATSAPP_PARADA saúde health_status faixa vermelha',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Às vezes o problema não é de um número, é da <strong>conta inteira</strong> na Meta: falta de pagamento
+            (131042), conta bloqueada (131031 ou 368), limite por qualidade (131048), token vencido (190) ou número que
+            deixou de estar registrado (133010). Nesses casos <strong>nenhuma</strong> mensagem sai — para paciente
+            nenhum — até alguém resolver na Meta.
+          </P>
+          <Lista>
+            <Item>
+              <strong>A fila espera, sem gastar tentativa.</strong> A linha continua <SeloRef>Na fila</SeloRef>, com o
+              motivo começando por <code>CONTA_WHATSAPP_PARADA</code>, e não vira Falha. Quando a conta volta, tudo sai
+              sozinho, sem ninguém reenviar.
+            </Item>
+            <Item>
+              <strong>Uma sonda a cada 10 minutos.</strong> Com a conta parada, só uma mensagem por vez vai à Meta para
+              ver se ela voltou. Além disso, a cada 5 minutos o sistema pergunta à própria Meta como está a conta.
+            </Item>
+            <Item>
+              <strong>Mensagem do atendente também é segurada.</strong> No Conversas, o envio é recusado na hora com o
+              mesmo motivo — não adianta tentar de novo até a conta voltar.
+            </Item>
+            <Item>
+              <strong>Quem cuida da plataforma vê uma faixa vermelha</strong> no topo do painel, com o motivo e desde
+              quando. Ela some sozinha quando a conta volta.
+            </Item>
+          </Lista>
+          <Callout tipo="atencao" titulo="Por que o aviso não vem pelo WhatsApp">
+            O aviso de erro da plataforma no celular sai pelo próprio WhatsApp — com a conta parada, ele não chega.
+            Por isso a conta parada é avisada na faixa do painel.
+          </Callout>
+        </div>
+      ),
+    },
+    {
       id: 'o-que-fazer',
       titulo: 'O que fazer com uma mensagem que não saiu',
       busca: 'o que fazer reenviar revogar e reenviar assumo o risco corrigir telefone pendências de cadastro motivo envios detalhe',
@@ -694,6 +748,17 @@ export const artigoEnvioMensagens: Artigo = {
             <Item>
               Por unidade e por procedimento: a chave de aviso no mapeamento do SISREG. As duas precisam estar ligadas
               para a confirmação nascer.
+            </Item>
+          </Lista>
+          <Sub>Na Configuração de cada regulação (bloco Avisos ao paciente)</Sub>
+          <Lista>
+            <Item>
+              <strong>SER, SERNIT e ESUS</strong>: lembrete (ligado e dias antes) e aviso de cancelamento dos agendamentos
+              daquele sistema — chaves próprias, que nascem desligadas.
+            </Item>
+            <Item>
+              <strong>SISREG</strong>: o mesmo bloco mostra as chaves de Regras (lembrete e aviso de cancelamento) — um
+              valor só, visto dos dois lugares.
             </Item>
           </Lista>
           <Sub>No ambiente do servidor (prefixo ComunicacaoPaciente__)</Sub>

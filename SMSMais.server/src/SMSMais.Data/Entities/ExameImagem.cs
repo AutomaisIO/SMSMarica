@@ -80,6 +80,18 @@ public class ExameImagem
     /// da data do exame/laudo. Wall-clock local (Kind=Unspecified) → timestamp without time zone.</summary>
     public DateTime? DataEstudo { get; set; }
 
+    // ---- Liberação ao paciente (ADR-0075) ----
+    //
+    // A decisão é tomada no momento em que acontece e fica gravada: ao chegar (se o aparelho
+    // libera ao chegar), ao aprovar o laudo assinado, ou por uma pessoa ("Enviar exame"). Mudar a
+    // regra do aparelho depois não esconde nem solta exame antigo.
+
+    /// <summary>Quando o exame ficou visível para o paciente (app do cidadão). Null = retido.</summary>
+    public DateTime? LiberadoPacienteEm { get; set; }
+
+    /// <summary>Quem liberou à mão, antes da regra do aparelho. Null = liberação automática.</summary>
+    public Guid? LiberadoPacientePor { get; set; }
+
     // Autorização da recepção vive na <see cref="Solicitacao"/> (é a frente de recepção, aplicável a
     // qualquer categoria). O envio ao PACS reage a ela: enfileira quando a solicitação é autorizada.
 

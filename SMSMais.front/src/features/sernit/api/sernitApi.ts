@@ -63,14 +63,6 @@ export async function dispararVarreduraSernit(payload: DispararVarreduraSernitPa
   await http.post('/regulacao/sernit/configuracao/varreduras', payload);
 }
 
-export async function testarCredencialSernit(usuario: string, senha: string): Promise<void> {
-  await http.post('/regulacao/sernit/configuracao/testar-credencial', { usuario, senha });
-}
-
-export async function salvarCredencialSernit(usuario: string, senha: string): Promise<void> {
-  await http.put('/regulacao/sernit/configuracao/credencial', { usuario, senha });
-}
-
 // ---------------------------------------------------------------- notificações
 
 // `indexes: null` manda a lista como `tecnicos=A&tecnicos=B` — o formato que o ASP.NET liga.

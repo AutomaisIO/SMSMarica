@@ -10,22 +10,28 @@ import type { Artigo } from '@/features/manual/tipos';
  * `SincronizarTudoSecao`, `SincronismoEscalasSecao`, `FilaEsperaSecao` e `IndicadoresColetaSecao`;
  * no servidor, `VarreduraAgendaService` (janela, dias não lidos, chegadas), `DecididorVarreduraSisreg`
  * (nova tentativa) e `SisregConfiguracaoController` (Testar conexão, permissões).
- * Seção "endereco" conferida em 09/10/2026: `features/integracoes/components/EnderecoSisregStatus`
- * (cartão do SISREG em Integrações) e, no servidor, `VerificadorEnderecoSisregWorker` (verificação a
- * cada 2 min, avisos) — o conserto da rota é o timer do servidor, docs/sisreg-egress.md.
+ * Seção "endereco" conferida em 09/10/2026: `features/fontes-dados/components/EnderecoSisregStatus`
+ * (fonte "SISREG III" em Sistema → Fontes de dados desde 21/10/2026, ADR-0077) e, no servidor,
+ * `VerificadorEnderecoSisregWorker` (verificação a cada 2 min, avisos) — o conserto da rota é o timer
+ * do servidor, docs/sisreg-egress.md. Login, senha, token e URL da API saíram desta tela em 21/10/2026
+ * (ADR-0077): seção "credenciais" conferida contra `SisregConfiguracaoPage` e `FonteDadosModal`.
  */
 export const artigoSisregConfiguracao: Artigo = {
   slug: 'sisreg-configuracao',
   titulo: 'Configuração do SISREG',
   resumo:
-    'Credenciais da integração, o interruptor do sincronismo automático e os motores que leem o SISREG sozinhos: unidades e médicos, agenda de cada unidade, escalas, fila de espera e a coleta dos indicadores.',
+    'Escopo da integração, o interruptor do sincronismo automático e os motores que leem o SISREG sozinhos: unidades e médicos, agenda de cada unidade, escalas, fila de espera e a coleta dos indicadores. O login fica em Sistema → Fontes de dados.',
   grupo: 'regulacao',
   icone: Settings2,
   rota: '/app/sisreg/configuracao',
   publico: 'Quem cuida da integração com o SISREG (não quem está regulando)',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-10-21',
   palavrasChave: [
     'configuração sisreg',
+    'avisos ao paciente',
+    'lembrete',
+    'dias antes',
+    'aviso de cancelamento',
     'endereço do sisreg',
     'ip do sisreg',
     'trocou de ip',
@@ -35,6 +41,8 @@ export const artigoSisregConfiguracao: Artigo = {
     'não foi possível autenticar',
     'credenciais',
     'senha',
+    'fontes de dados',
+    'trocar a senha do sisreg',
     'testar conexão',
     'sincronismo automático',
     'desligar sincronismo',
@@ -62,6 +70,9 @@ export const artigoSisregConfiguracao: Artigo = {
     'sessão do operador',
     'cadsus',
     'parcial',
+    'guias',
+    'guia do agendamento',
+    'ficha',
   ],
   secoes: () => [
     {
@@ -122,18 +133,20 @@ export const artigoSisregConfiguracao: Artigo = {
     },
     {
       id: 'credenciais',
-      titulo: 'Credenciais e escopo',
-      busca: 'url base escopo municipal nacional uf município ibge centrais reguladoras login senha token testar conexão integração ativa cadastro do paciente cadsus ser consultas simultâneas',
+      titulo: 'Escopo e cadastro do paciente',
+      busca: 'escopo municipal nacional uf município ibge centrais reguladoras login senha token url fontes de dados testar conexão cadastro do paciente cadsus ser consultas simultâneas',
       conteudo: (
         <>
+          <Callout tipo="dica" titulo="Login, senha e endereço ficam em Sistema → Fontes de dados">
+            Esta tela cuida do que a integração faz. A conexão — URL da API, tipo de autenticação, login,
+            senha, token e se ela está ativa — é editada em <strong>Sistema → Fontes de dados</strong>, na
+            fonte <strong>SISREG — API (DATASUS)</strong>. O login do robô que lê as agendas e o CADSUS é a
+            fonte <strong>SISREG III</strong>, no mesmo lugar. A linha “Fonte” no topo desta tela mostra se
+            o login está configurado e leva até lá.
+          </Callout>
           <ListaDefinicoes
             itens={[
-              { termo: 'URL base, Escopo, UF, Município e Centrais reguladoras', descricao: 'De onde e de quem a integração lê. As centrais vão separadas por vírgula.' },
-              {
-                termo: 'Login, Senha e Token',
-                descricao:
-                  'A senha e o token são guardados de forma segura e nunca aparecem de volta. Quando já existem, o campo diz “Já definida”: preencha só para trocar.',
-              },
+              { termo: 'Escopo, UF, Município e Centrais reguladoras', descricao: 'De quem a integração lê. As centrais vão separadas por vírgula.' },
               {
                 termo: 'Consulta de cadastro do paciente',
                 descricao:
@@ -143,13 +156,12 @@ export const artigoSisregConfiguracao: Artigo = {
                 termo: 'Consultas simultâneas no SER',
                 descricao: 'De 1 a 8 consultas de cadastro ao mesmo tempo, cada uma na sua sessão do SER. Só vale quando a fonte é o SER.',
               },
-              { termo: 'Integração ativa', descricao: 'Desmarcada, a integração não é usada.' },
             ]}
           />
           <P>
-            <BotaoRef variante="outline">Testar conexão</BotaoRef> faz uma consulta mínima à fila com as credenciais{' '}
-            <strong>salvas</strong> e responde “Conexão OK” com o total da fila, ou o motivo da falha. Salve antes
-            de testar uma senha nova.
+            <BotaoRef variante="outline">Testar conexão</BotaoRef> faz uma consulta mínima à fila com o login{' '}
+            <strong>salvo</strong> em Fontes de dados e responde “Conexão OK” com o total da fila, ou o motivo da
+            falha.
           </P>
         </>
       ),
@@ -291,7 +303,8 @@ export const artigoSisregConfiguracao: Artigo = {
           <P>
             Quando o SISREG recusa o login, a seção mostra “<strong>Aguardando: o SISREG recusou o login</strong>”.
             Nenhuma leitura é gasta com isso: o coletor espera alguns minutos e tenta de novo sozinho. Se a
-            recusa continuar, olhe o Endereço do SISREG em Integrações antes de mexer na senha.
+            recusa continuar, olhe o Endereço do SISREG (Sistema → Fontes de dados, fonte SISREG III) antes de
+            mexer na senha.
           </P>
         </>
       ),
@@ -299,7 +312,7 @@ export const artigoSisregConfiguracao: Artigo = {
     {
       id: 'endereco',
       titulo: 'Endereço do SISREG (IP e túnel)',
-      busca: 'endereço ip do sisreg trocou de ip túnel saída brasil bloqueio bloqueado histórico integrações não foi possível autenticar',
+      busca: 'endereço ip do sisreg trocou de ip túnel saída brasil bloqueio bloqueado histórico fontes de dados não foi possível autenticar',
       conteudo: (
         <>
           <P>
@@ -312,7 +325,8 @@ export const artigoSisregConfiguracao: Artigo = {
           <P>
             Por isso o servidor confere o IP do SISREG <strong>sozinho, a cada poucos minutos</strong>. Quando o IP
             muda, ele mesmo põe o novo no túnel, em até um minuto. O resultado aparece em{' '}
-            <strong>Integrações</strong>, no cartão do SISREG, no bloco <strong>Endereço do SISREG</strong>:
+            <strong>Sistema → Fontes de dados</strong>, ao editar a fonte <strong>SISREG III</strong>, no bloco{' '}
+            <strong>Endereço do SISREG</strong>:
           </P>
           <ListaDefinicoes
             itens={[
@@ -330,6 +344,55 @@ export const artigoSisregConfiguracao: Artigo = {
               { termo: 'Histórico', descricao: 'Cada IP em que o SISREG já respondeu, de quando a quando.' },
             ]}
           />
+        </>
+      ),
+    },
+    {
+      id: 'avisos-paciente',
+      titulo: 'Avisos ao paciente: lembrete e cancelamento',
+      busca:
+        'avisos ao paciente lembrete dias antes aviso de cancelamento whatsapp mensageria regras mesmas chaves conciliação de cancelamentos ligar vale daqui para frente',
+      conteudo: (
+        <>
+          <P>
+            O bloco <strong>Avisos ao paciente</strong> liga o <strong>lembrete</strong> (e quantos dias antes do
+            agendamento ele sai) e o <strong>aviso de cancelamento</strong> dos agendamentos do SISREG. São as{' '}
+            <strong>mesmas chaves</strong> de Mensageria → Regras: mudar aqui muda lá, e vice-versa.
+          </P>
+          <Lista>
+            <Item>
+              O aviso de que foi <em>agendado</em> não se liga aqui: ele é por unidade e por procedimento (Unidade → aba
+              SISREG).
+            </Item>
+            <Item>
+              Os cancelamentos feitos no SISREG por outra pessoa só chegam à plataforma pela{' '}
+              <strong>conciliação de cancelamentos</strong> (Mensageria → Regras). Desligada, só avisa o cancelamento
+              feito pela tela de Confirmações — o bloco mostra um alerta quando é o caso.
+            </Item>
+            <Item>Ligar o aviso de cancelamento vale daqui para frente: o que foi cancelado antes não é avisado.</Item>
+          </Lista>
+          <P>SER, SERNIT e ESUS têm o mesmo bloco, com chaves próprias, na Configuração de cada regulação.</P>
+        </>
+      ),
+    },
+    {
+      id: 'guias',
+      titulo: 'Guias dos agendamentos',
+      busca: 'guias guia do agendamento ficha chave de confirmação fila guias por hora janela pausa captcha imprimir',
+      conteudo: (
+        <>
+          <P>
+            O quadro <strong>Guias dos agendamentos</strong> controla a fila que lê a ficha de cada solicitação
+            agendada — a mesma página que o botão Imprimir do SISREG imprime, com a chave de confirmação — e a
+            guarda como PDF no cadastro do paciente. Liga e desliga, quantas por hora (começa em 30) e em que
+            janela do dia (começa no dia inteiro).
+          </P>
+          <P>
+            É o motor menos urgente: espera os outros processos do SISREG, para quando o limite de consultas da
+            hora está no fim e, se o SISREG pedir CAPTCHA, para por 24 horas — salvar o quadro tira a pausa. O
+            quadro diz quantas faltam e, quando a fila não anda, por quê. Tudo sobre a guia no artigo{' '}
+            <strong>Guias dos agendamentos</strong>.
+          </P>
         </>
       ),
     },
@@ -365,7 +428,8 @@ export const artigoSisregConfiguracao: Artigo = {
         <P>
           Ver a tela exige o módulo <strong>Configuração SISREG</strong> com consulta. Salvar, testar a conexão,
           ligar ou desligar o sincronismo e qualquer botão que dispare leitura exigem a mesma permissão com{' '}
-          <strong>edição</strong>, porque gastam o limite de acessos do operador da integração.
+          <strong>edição</strong>, porque gastam o limite de acessos do operador da integração. Trocar login,
+          senha ou token é em Sistema → Fontes de dados e exige o módulo <strong>Fontes de dados</strong>.
         </P>
       ),
     },
@@ -384,7 +448,7 @@ export const artigoSisregConfiguracao: Artigo = {
             {
               termo: 'De repente tudo falha com “Não foi possível autenticar no SISREG”. É a senha?',
               descricao:
-                'Antes de trocar a senha, abra Integrações e olhe o bloco Endereço do SISREG no cartão do SISREG. Se estiver “Fora do túnel”, o problema é o caminho até o SISREG, não a senha. Foi o que aconteceu quando o SISREG trocou de IP.',
+                'Antes de trocar a senha, abra Sistema → Fontes de dados, edite a fonte SISREG III e olhe o bloco Endereço do SISREG. Se estiver “Fora do túnel”, o problema é o caminho até o SISREG, não a senha. Foi o que aconteceu quando o SISREG trocou de IP.',
             },
             {
               termo: 'Uma unidade terminou Parcial. Perdi dados?',

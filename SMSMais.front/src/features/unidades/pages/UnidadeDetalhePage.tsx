@@ -94,7 +94,7 @@ export function UnidadeDetalhePage() {
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">
                   Profissionais e procedimentos desta unidade no SISREG, e o sincronismo diário da
-                  agenda dela. A credencial é uma só, global, e fica em Sistema → Integrações.
+                  agenda dela. A credencial é uma só, global, e fica em Sistema → Fontes de dados.
                 </p>
                 <SincronismoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
                 <MapeamentoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />

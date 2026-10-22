@@ -74,7 +74,11 @@ public sealed class ExameImagensPdfService(
         if (cache is { Length: > 0 })
             return cache;
 
-        var imagens = await imagensReader.ObterImagensAsync(studyUid, MaxImagens, cancellationToken);
+        // Imagens que a médica retirou do que vai ao paciente ficam fora do PDF (ImagemInvalidada).
+        var imagens = await imagensReader.ObterImagensAsync(
+            studyUid, MaxImagens,
+            await ImagensInvalidadas.SopsInvalidados.DoEstudoAsync(db, studyUid, cancellationToken),
+            cancellationToken);
         if (imagens.Count == 0)
             throw new ConflitoException("exame.sem_imagens", "Este exame ainda não tem imagens disponíveis no PACS.");
 

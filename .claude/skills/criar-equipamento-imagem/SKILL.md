@@ -139,6 +139,13 @@ Exames de Imagem → Equipamentos. `identificador_dicom` = o AE Title do **apare
   tag DICOM editável. Tudo desligado por padrão. **Antes de ligar, descubra o que o aparelho pede:**
   capture o C-FIND dele (receita em "Diagnóstico: a descrição não aparece") — o CardioNet, por
   exemplo, pede `0008,0090` e nenhum campo de instituição.
+- **"Depois que o exame chega"** (ADR-0075): onde o laudo nasce, quando o paciente recebe e se usa
+  anamnese. **Perguntar ao operador quem lauda esse aparelho** — a resposta decide se o paciente vê a
+  imagem antes do laudo. Sem os campos, o servidor (e a tela) aplicam o padrão da modalidade:
+  ultrassom = laudado fora + libera ao chegar; o resto = laudado aqui + só com o laudo assinado. MAPA
+  e Holter (CardioNet): **laudo vem junto + assim que chegar + sem anamnese** — o padrão de OT/ECG
+  NÃO serve para eles (reteria o exame à espera de um laudo que nunca é feito aqui). Aparelho
+  configurado errado retém em silêncio: o paciente só não recebe.
 - **`ativo`**: **perguntar ao operador**, não decidir sozinho. Cadastrar **INATIVO** é o default
   seguro quando o aparelho ainda não chegou — um equipamento ativo a mais na mesma modalidade
   torna a dedução ambígua e **todo envio daquela unidade passa a exigir escolha da recepção**
@@ -183,6 +190,27 @@ Acrescentar o aparelho às tabelas de `docs/pacs.md` (§8 e §9.1).
   fechamento para esse caso, o filtro de **Período** no aparelho segura a lista (`docs/pacs-cardio-cdt.md`
   §5). Aparelho novo: ler a declaração de conformidade DICOM **antes** — se não houver C-STORE,
   o ciclo de vida é outro.
+- **Dois aparelhos da mesma modalidade na unidade, cada um com a sua worklist, NÃO se separam
+  sozinhos.** A worklist separada é do PACS; quem escolhe o aparelho é o painel, pela modalidade do
+  tipo. Em 19/10/2026 a MAPA do CDT virou `OT` (`MAPAS-CDT`), e o CDT já tinha a densitometria em
+  `OT` (`DO-CDT`) por dedução: sem fixar o **aparelho de destino** no escopo dos DOIS tipos, as 169
+  densitometrias pendentes passariam a pedir sala na recepção. Fixe primeiro o tipo que já existia,
+  depois cadastre o aparelho novo. A troca da modalidade do tipo vem antes de fixar o aparelho dele:
+  o seletor só mostra aparelhos da mesma modalidade.
+- **Método gráfico (MAPA, Holter) só tem exame com modalidade no TIPO e worklist no ESCOPO.** O SISREG
+  manda esses pedidos como gráfico funcional (SIGTAP 0211), não imagem, e sem exame nada vai à
+  worklist. Desde 20/10/2026 (adendo do ADR-0021) o pedido não-imagem ganha exame quando o tipo dele
+  já existe com modalidade ≠ Indefinida **e** a unidade executante o tem no escopo com o envio à
+  worklist ligado (`CategoriaSigtap.CriaSatelite`); a importação nunca cria tipo fora da imagem. As
+  duas condições são de propósito: só a modalidade deu exame a 178 ressonâncias "Outro" da DIMAGEM
+  (sem integração); só o escopo daria ao ELETROCARDIOGRAMA do CDT, que fica Indefinida de propósito
+  (a máquina imprime e entrega ao paciente). Antes disso, só os gravados como Imagem pela carga de 08/09 tinham exame — de 31/10
+  em diante nenhuma MAPA ou Holter chegaria ao CardioNet. Aparelho novo de método gráfico: modalidade
+  no tipo, depois o reparo (`POST /sisreg/importacao/reparar-exames-sem-satelite`) para os pedidos
+  **futuros**, e conferir que eles têm exame (`exame_imagem`), não só os de hoje.
+- **No modo automático, gravar no LDAP do PACS e no banco de produção é barrado.** Monte o script
+  (ensaio primeiro, que o modo deixa rodar) e passe ao operador um comando curto com `!`; no banco,
+  a gravação só passou depois de autorização explícita do Bernardo na conversa.
 - **Modalidade que o sistema não tem é mudança de código.** `ModalidadeDicom` é enum (int, sem
   CHECK — não precisa de migration), mas aparece em dois seletores do front (`equipamentos/types.ts`
   e `tipos-exame/types.ts`) e no rótulo das estatísticas. Foi o caso do `ECG` (Holter e MAPA)
@@ -255,7 +283,7 @@ Depois conferir o lado do servidor: `GET /aets/<AE>/rs/mwlitems` e as **datas** 
 Três provas, nesta ordem — cada uma elimina um lado:
 
 1. **O item tem a descrição?** `GET /aets/WORKLIST/rs/mwlitems?ScheduledProcedureStepSequence.ScheduledStationAETitle=<AE>&includefield=all`
-   (pelo droplet; a 8080 não responde do Windows). Se `00321060`/`00400007` estão lá, o nosso lado está certo.
+   (pela VM SMSMAIS-01; a 8080 não responde do Windows). Se `00321060`/`00400007` estão lá, o nosso lado está certo.
 2. **Que campos o aparelho pede?** O log do dcm4chee imprime o C-FIND-RQ mas **corta o dataset
    com "..."**. Capturar só a ida (sem PHI) e decodificar com pydicom:
    ```bash

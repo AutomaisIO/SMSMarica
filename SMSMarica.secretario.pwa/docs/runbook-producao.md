@@ -18,6 +18,11 @@ Let's Encrypt emitido e env file com a credencial Oracle provisionado (`chmod 60
 responde **502** até o primeiro deploy do back. Os passos abaixo ficam registrados
 para reconstrução do zero e para o passo 5 em diante.
 
+> **14/10/2026:** a produção saiu do droplet para a VM SMSMAIS-01 da EVEO; o painel do secretário
+> roda lá (porta 5090, loopback). O texto abaixo descreve a montagem original no droplet. Desde
+> 21/10/2026 o workflow `deploy-secretario` publica na VM pelo environment `automais` (ver skill
+> `operar-servidor`); os secrets `HOST/USER/PASS_SMSMARICA` citados abaixo ficaram sem uso.
+
 **Contexto**: droplet DigitalOcean de `smsmarica.online` (mesmo host dos secrets
 `HOST_SMSMARICA`/`USER_SMSMARICA`/`PASS_SMSMARICA`). Já rodam nele:
 `smsmarica-server` (5080), `automais-fhir` (5081), `aiengine` (5085). O painel

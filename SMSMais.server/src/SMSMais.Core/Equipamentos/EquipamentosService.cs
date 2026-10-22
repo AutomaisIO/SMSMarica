@@ -51,6 +51,15 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
         await ValidarUnidadeAsync(request.UnidadeId, cancellationToken);
         await GarantirNomeUnicoAsync(request.UnidadeId, nome, null, cancellationToken);
 
+        // Laudo e liberação ao paciente (ADR-0075): omitidos, o padrão da modalidade. Laudo fora ou
+        // junto sem liberação informada = "assim que chegar" — não há laudo nosso para soltar o exame.
+        var padrao = RegraDoExame.PadraoDaModalidade(request.ModalidadeDicom);
+        var laudo = request.Laudo ?? padrao.Laudo;
+        var liberacao = request.LiberacaoPaciente
+            ?? (laudo == OrigemLaudo.Plataforma ? padrao.Liberacao : LiberacaoExamePaciente.AoChegar);
+        if (!EquipamentosMapper.CombinacaoLiberacaoValida(laudo, liberacao))
+            throw new ValidacaoException("LiberacaoPaciente", EquipamentosMapper.MensagemCombinacaoLiberacao);
+
         // Código numa tag de texto (fora de sequência) dispensa as sequências: uma coisa ou outra.
         var codigoTag = EquipamentosMapper.TagCodigo(request.CodigoProcedimentoTag);
         var equipamento = new Equipamento
@@ -71,6 +80,9 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
             UnidadeOrigem = request.UnidadeOrigem,
             UnidadeTag = EquipamentosMapper.TagLigada(
                 request.EnviarUnidade, request.UnidadeTag, TagDicomWorklist.UnidadePadrao(request.UnidadeOrigem)),
+            Laudo = laudo,
+            LiberacaoPaciente = liberacao,
+            UsaAnamnese = request.UsaAnamnese,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
@@ -115,6 +127,14 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
         if (request.EnviarUnidade is { } enviarUnidade)
             e.UnidadeTag = EquipamentosMapper.TagLigada(
                 enviarUnidade, request.UnidadeTag, TagDicomWorklist.UnidadePadrao(e.UnidadeOrigem));
+        // Laudo e liberação ao paciente (ADR-0075) — omitido = mantém. A combinação é conferida já
+        // com o que está gravado: trocar só o laudo para "fora" com "só com o laudo" gravado prenderia
+        // o exame, e o validador não enxerga o valor do banco.
+        if (request.Laudo is { } laudo) e.Laudo = laudo;
+        if (request.LiberacaoPaciente is { } liberacao) e.LiberacaoPaciente = liberacao;
+        if (!EquipamentosMapper.CombinacaoLiberacaoValida(e.Laudo, e.LiberacaoPaciente))
+            throw new ValidacaoException("LiberacaoPaciente", EquipamentosMapper.MensagemCombinacaoLiberacao);
+        if (request.UsaAnamnese is { } usaAnamnese) e.UsaAnamnese = usaAnamnese;
         e.Ativo = request.Ativo;
         e.AtualizadoEm = DateTime.UtcNow;
         e.AtualizadoPor = _usuarioAtual.UsuarioId;

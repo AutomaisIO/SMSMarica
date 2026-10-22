@@ -28,22 +28,29 @@ public sealed record SisregConfiguracaoDto(
     int ConsultasSimultaneasSer);
 
 /// <summary>
-/// Atualização da configuração SISREG. Senha/token vazios = mantém o atual;
-/// preenchidos = cifra e substitui (padrão write-only).
+/// Atualização do USO da API-SISREG (escopo, UF/município, centrais e operação). A conexão — URL,
+/// autenticação, login, senha, token e ativo — vai por <see cref="AtualizarCredencialSisregApiRequest"/>,
+/// pela tela Sistema → Fontes de dados (ADR-0077).
 /// </summary>
 public sealed record AtualizarSisregConfiguracaoRequest(
-    string BaseUrl,
     EscopoSisreg Escopo,
     string Uf,
     string Municipio,
     string CentraisReguladoras,
+    FonteCadastroPaciente FonteCadastroPaciente = FonteCadastroPaciente.Sisreg,
+    int ConsultasSimultaneasSer = 1);
+
+/// <summary>
+/// Conexão da API-SISREG, editada em Sistema → Fontes de dados. Senha/token vazios = mantém o atual;
+/// preenchidos = cifra e substitui (write-only).
+/// </summary>
+public sealed record AtualizarCredencialSisregApiRequest(
+    string BaseUrl,
     TipoAutenticacaoSisreg TipoAutenticacao,
     string? Login,
     string? Senha,
     string? Token,
-    bool Ativo,
-    FonteCadastroPaciente FonteCadastroPaciente = FonteCadastroPaciente.Sisreg,
-    int ConsultasSimultaneasSer = 1);
+    bool Ativo);
 
 /// <summary>
 /// Liga/desliga o sincronismo automático com o SISREG.

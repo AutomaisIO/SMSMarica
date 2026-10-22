@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   ListOrdered,
   Loader2,
+  Lock,
   Plus,
   RotateCw,
   Siren,
@@ -55,6 +56,7 @@ import type {
   SolicitacaoListItem,
   StatusSolicitacao,
 } from '@/features/solicitacoes/types';
+import { temExame } from '@/features/solicitacoes/types';
 
 const CHAVE_TOGGLE_HOJE = 'solicitacoes:filtro-hoje';
 
@@ -123,12 +125,12 @@ function DirecaoIcone({ direcao }: { direcao: SolicitacaoListItem['direcao'] }) 
 }
 
 /**
- * O que foi pedido, para a coluna Procedimento: o tipo de exame no exame de imagem (ou o
+ * O que foi pedido, para a coluna Procedimento: o tipo de exame quando há exame (ou o
  * procedimento do SISREG quando ainda não foi mapeado); nos demais, a especialidade da consulta
  * ou o procedimento.
  */
 function procedimentoDaLinha(s: SolicitacaoListItem): string {
-  return s.categoria === 'Imagem'
+  return temExame(s)
     ? s.tipoExameNome || s.procedimentoTexto || ''
     : s.especialidadeTexto || s.procedimentoTexto || '';
 }
@@ -411,7 +413,7 @@ export function SolicitacoesPage() {
         <div className="min-w-0" title={procedimentoDaLinha(s) || undefined}>
           <TextoLimitado texto={procedimentoDaLinha(s)} max={40} className="block truncate text-gray-900" />
           <div className="flex items-center gap-1.5 truncate text-xs text-gray-500">
-            {s.categoria === 'Imagem' ? (
+            {temExame(s) ? (
               <span className="uppercase">{s.modalidadeDicom}</span>
             ) : (
               <span className="shrink-0">
@@ -420,7 +422,7 @@ export function SolicitacoesPage() {
             )}
             {s.unidadeNome ? (
               <span className="min-w-0 truncate">
-                {s.categoria === 'Imagem' ? '— ' : ''}
+                {temExame(s) ? '— ' : ''}
                 {s.unidadeNome}
               </span>
             ) : null}
@@ -454,6 +456,15 @@ export function SolicitacoesPage() {
             <ChecksComunicacao chip={s.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
             <ChecksComunicacao chip={s.chipExameLiberado} finalidade="ExameLiberado" />
             <ChecksComunicacao chip={s.chipLaudoPronto} finalidade="LaudoPronto" />
+            {/* Regra do aparelho (ADR-0075): o paciente ainda não vê este exame. */}
+            {s.retidoAteLaudo ? (
+              <span
+                title="Retido até o laudo: o aparelho só libera o exame ao paciente com o laudo assinado. Imagem e laudo vão juntos."
+                className="inline-flex"
+              >
+                <Lock className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              </span>
+            ) : null}
           </span>
         );
       },
@@ -464,18 +475,21 @@ export function SolicitacoesPage() {
       // No máximo 4 ícones (anamnese + declaração + exame completo + laudo).
       className: 'w-36 whitespace-nowrap text-right',
       render: (s) => {
-        // Anamnese, declaração, imagens, laudo e exclusão são do exame de imagem.
-        if (s.categoria !== 'Imagem') return null;
+        // Anamnese, declaração, imagens, laudo e exclusão são do exame (imagem, Holter, MAPA…).
+        if (!temExame(s)) return null;
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
           <div className="flex items-center justify-end gap-2">
-            <BotaoAnamnese
-              solicitacaoExameId={s.id}
-              accessionNumber={s.accessionNumber}
-              temAnamnese={s.temAnamnese}
-              siscanProtocolo={s.siscanProtocolo}
-              iconeApenas
-            />
+            {/* O aparelho que não usa anamnese (MAPA) não oferece o botão (ADR-0075). No Holter ela é o que manda o exame à worklist. */}
+            {s.usaAnamnese !== false ? (
+              <BotaoAnamnese
+                solicitacaoExameId={s.id}
+                accessionNumber={s.accessionNumber}
+                temAnamnese={s.temAnamnese}
+                siscanProtocolo={s.siscanProtocolo}
+                iconeApenas
+              />
+            ) : null}
             {realizadaOuLaudada ? (
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
@@ -753,14 +767,14 @@ export function SolicitacoesPage() {
         layoutFixo
         redimensionavel
         idTabela="solicitacoes"
-        // Exame de imagem sem CPF NÃO abre: o paciente entrou pela importação do SISREG ancorado
+        // Pedido com exame sem CPF NÃO abre: o paciente entrou pela importação do SISREG ancorado
         // só no CNS, e o CPF é cobrado aqui, com a pessoa no balcão. Sem ele não há como
         // autorizar nem mandar para a worklist (o PatientID do DICOM é o CPF). Consulta e demais
         // não vão ao PACS — abrem direto.
         aoClicarLinha={
           podeVer
             ? (s) =>
-                s.pacienteCpf || s.categoria !== 'Imagem'
+                s.pacienteCpf || !temExame(s)
                   ? navigate(`/app/solicitacoes/${s.id}`)
                   : setCpfPendente({
                       id: s.id,
@@ -775,9 +789,9 @@ export function SolicitacoesPage() {
         classeLinha={(s) =>
           s.statusConfirmacao === 'Cancelada'
             ? 'opacity-55 bg-gray-50 hover:bg-gray-100'
-            : // Exame de imagem sem CPF: laranja. É acionável — a recepção resolve em 10 segundos —
+            : // Pedido com exame sem CPF: laranja. É acionável — a recepção resolve em 10 segundos —
               // e por isso se distingue do vermelho de urgência, que é gravidade clínica.
-              !s.pacienteCpf && s.categoria === 'Imagem'
+              !s.pacienteCpf && temExame(s)
               ? 'bg-orange-50 hover:bg-orange-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-orange-500'
               : s.prioridade === 'Urgente'
               ? 'bg-red-50 hover:bg-red-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-red-600'

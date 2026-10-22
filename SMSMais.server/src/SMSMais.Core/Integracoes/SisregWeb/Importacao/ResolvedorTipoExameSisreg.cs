@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -43,12 +44,50 @@ public interface IResolvedorTipoExameSisreg
     /// </param>
     Task<Guid?> ResolverOuCriarAsync(
         string? nomeSisreg, string? codigoSisreg, string? codigoSigtap, CancellationToken ct);
+
+    /// <summary>
+    /// Se o pedido ganha satélite de execução e com qual tipo — a regra de
+    /// <see cref="CategoriaSigtap.CriaSatelite"/>. Imagem: resolve OU CRIA o tipo, como
+    /// sempre. Fora da imagem: só um tipo que JÁ EXISTE, tem modalidade DICOM e está no escopo da
+    /// unidade executante com o envio à worklist ligado (Holter, MAPA no CDT) — e NUNCA cria tipo,
+    /// senão cada audiometria ou EEG importado viraria um tipo de exame automático "aguardando
+    /// configuração DICOM".
+    /// </summary>
+    /// <param name="unidadeExecutanteId">Quem executa. Fora da imagem, sem ela não há satélite.</param>
+    /// <returns><c>CriaSatelite</c> e o tipo (null = imagem sem nome no SISREG, mapeamento pendente).</returns>
+    Task<(bool CriaSatelite, Guid? TipoExameId)> ResolverParaExecucaoAsync(
+        CategoriaSolicitacao categoria, string? nomeSisreg, string? codigoSisreg, string? codigoSigtap,
+        Guid? unidadeExecutanteId, CancellationToken ct);
 }
 
 public sealed class ResolvedorTipoExameSisreg(
     SmsMaisDbContext db,
     ILogger<ResolvedorTipoExameSisreg> logger) : IResolvedorTipoExameSisreg
 {
+    public async Task<(bool CriaSatelite, Guid? TipoExameId)> ResolverParaExecucaoAsync(
+        CategoriaSolicitacao categoria, string? nomeSisreg, string? codigoSisreg, string? codigoSigtap,
+        Guid? unidadeExecutanteId, CancellationToken ct)
+    {
+        if (categoria == CategoriaSolicitacao.Imagem)
+            return (true, await ResolverOuCriarAsync(nomeSisreg, codigoSisreg, codigoSigtap, ct));
+
+        var nome = NormalizarNome(nomeSisreg ?? string.Empty);
+        if (nome.Length == 0 || unidadeExecutanteId is not { } unidade) return (false, null);
+
+        var tipo = await db.TiposExame
+            .Where(t => t.Nome == nome && t.ExcluidoEm == null)
+            .Select(t => new { t.Id, t.ModalidadeDicom })
+            .FirstOrDefaultAsync(ct);
+        if (tipo is null) return (false, null);
+
+        var enviaParaWorklist = await db.TiposExameUnidade.AnyAsync(a =>
+            a.TipoExameId == tipo.Id && a.UnidadeId == unidade
+            && a.Ativo && a.EnviarParaWorklist && a.ExcluidoEm == null, ct);
+        return CategoriaSigtap.CriaSatelite(categoria, tipo.ModalidadeDicom, enviaParaWorklist)
+            ? (true, tipo.Id)
+            : (false, null);
+    }
+
     public async Task<Guid?> ResolverOuCriarAsync(
         string? nomeSisreg, string? codigoSisreg, string? codigoSigtap, CancellationToken ct)
     {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agente/app/theme.dart';
 import 'package:agente/features/deslocamento/application/deslocamento_controller.dart';
 import 'package:agente/features/dispositivo/application/dispositivo_controller.dart';
+import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
@@ -13,9 +14,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 
-/// Tela de Deslocamento: mapa seguindo o tablet + velocímetro e odômetro com
-/// Iniciar/Parar. Usa o mapa simples (sem sessão de navegação — não é cobrado
-/// como navegação). Contrato: `docs/modulos/tfd/deslocamento-tablet.md`.
+/// Tela de Deslocamento: mapa seguindo o tablet + velocímetro ao vivo e o
+/// odômetro/tempo do translado. Sem botão: o contador liga sozinho quando a
+/// navegação do translado começa e para quando ele termina (NavegacaoPage).
+/// Usa o mapa simples (sem sessão de navegação — não é cobrado como
+/// navegação). Contrato: `docs/modulos/tfd/deslocamento-tablet.md`.
 class DeslocamentoPage extends ConsumerStatefulWidget {
   const DeslocamentoPage({super.key});
 
@@ -89,18 +92,6 @@ class _DeslocamentoPageState extends ConsumerState<DeslocamentoPage> {
     }
   }
 
-  void _alternarDeslocamento() {
-    final controller = ref.read(deslocamentoProvider.notifier);
-    if (ref.read(deslocamentoProvider).ativo) {
-      controller.parar();
-    } else {
-      controller.iniciar();
-      setState(() => _seguir = true);
-      final fix = ref.read(gpsAoVivoProvider);
-      if (fix != null) unawaited(_centralizar(fix));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<Position?>(gpsAoVivoProvider, (_, p) {
@@ -132,9 +123,9 @@ class _DeslocamentoPageState extends ConsumerState<DeslocamentoPage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Sair',
+            tooltip: 'Trocar motorista',
             onPressed: () {
-              ref.read(sessaoProvider.notifier).sair();
+              unawaited(ref.read(sessaoProvider.notifier).sair());
               context.go('/login');
             },
           ),
@@ -142,11 +133,7 @@ class _DeslocamentoPageState extends ConsumerState<DeslocamentoPage> {
       ),
       body: OrientationBuilder(
         builder: (context, orientacao) {
-          final painel = _PainelDeslocamento(
-            estado: desloc,
-            semGps: semGps,
-            onAlternar: _alternarDeslocamento,
-          );
+          final painel = _PainelDeslocamento(estado: desloc, semGps: semGps);
           final mapa = Stack(
             fit: StackFit.expand,
             children: [
@@ -172,6 +159,7 @@ class _DeslocamentoPageState extends ConsumerState<DeslocamentoPage> {
                   onVincular: () => context.push('/vincular'),
                 ),
               ),
+              const Positioned(left: 12, bottom: 16, child: BotaoReport()),
               if (!_seguir)
                 Positioned(
                   right: 16,
@@ -260,23 +248,18 @@ class _FaixaVeiculo extends StatelessWidget {
 }
 
 class _PainelDeslocamento extends StatelessWidget {
-  const _PainelDeslocamento({
-    required this.estado,
-    required this.semGps,
-    required this.onAlternar,
-  });
+  const _PainelDeslocamento({required this.estado, required this.semGps});
 
   final EstadoDeslocamento estado;
   final bool semGps;
-  final VoidCallback onAlternar;
 
   @override
   Widget build(BuildContext context) {
     final ativo = estado.ativo;
     final mostrarValores = estado.fase != FaseDeslocamento.parado;
-    final velocidade = mostrarValores
-        ? estado.velocidadeKmh.round().toString()
-        : '—';
+    final velocidade = semGps
+        ? '—'
+        : estado.velocidadeAoVivoKmh.round().toString();
 
     return Material(
       elevation: 8,
@@ -289,14 +272,11 @@ class _PainelDeslocamento extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _Rotulo(
-                estado.fase == FaseDeslocamento.congelado
-                    ? 'Deslocamento parado'
-                    : ativo
-                    ? 'Em deslocamento'
-                    : 'Pronto para iniciar',
-                cor: ativo ? Colors.green.shade700 : Colors.grey.shade700,
-              ),
+              _Rotulo(switch (estado.fase) {
+                FaseDeslocamento.ativo => 'Translado em andamento',
+                FaseDeslocamento.congelado => 'Translado concluído',
+                FaseDeslocamento.parado => 'Aguardando translado',
+              }, cor: ativo ? Colors.green.shade700 : Colors.grey.shade700),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -340,32 +320,15 @@ class _PainelDeslocamento extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 76,
-                child: ElevatedButton.icon(
-                  onPressed: onAlternar,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ativo
-                        ? Colors.red.shade700
-                        : Colors.green.shade700,
-                    foregroundColor: Colors.white,
-                    textStyle: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: Icon(
-                    ativo ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                    size: 40,
-                  ),
-                  label: Text(ativo ? 'PARAR' : 'INICIAR'),
+              if (!mostrarValores) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Distância e tempo começam a contar sozinhos ao iniciar a '
+                  'navegação do translado.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 15),
                 ),
-              ),
+              ],
               if (semGps) ...[
                 const SizedBox(height: 10),
                 Text(

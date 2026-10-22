@@ -70,6 +70,8 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     private const string PrefixoVinculoResponsavel = "vcad_vinc_resp:";
     private const string PrefixoVinculoParente = "vcad_vinc_parente:";
     private const string PrefixoConheco = "vcad_conheco:";
+    private const string PrefixoRecebeSim = "vcad_recebe_sim:";
+    private const string PrefixoRecebeNao = "vcad_recebe_nao:";
 
     /// <summary>Chances de acertar os dados antes de encerrar e orientar o posto. Cada ciclo
     /// (dígitos + nascimento) que não confere gasta uma — errar de digitação é comum.</summary>
@@ -92,6 +94,17 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoNao, out var idNao))
         {
             await TratarBotaoNomeAsync(ctx, idNao, confirmou: false, ct);
+            return;
+        }
+        // Botões do "você recebe as mensagens dele(a)?" (depois de um "Não" ao nome).
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoRecebeSim, out var idRecebeSim))
+        {
+            await TratarBotaoRecebeAsync(ctx, idRecebeSim, recebe: true, ct);
+            return;
+        }
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoRecebeNao, out var idRecebeNao))
+        {
+            await TratarBotaoRecebeAsync(ctx, idRecebeNao, recebe: false, ct);
             return;
         }
         // Botões do "quer tentar de novo?"
@@ -163,7 +176,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                         // cancelou: se a atendente registrou o motivo para o paciente, é ele que sai;
                         // sem motivo registrado, vale a orientação genérica de procurar o posto.
                         await ResponderAsync(ctx,
-                            await MotivoCancelamentoParaPacienteAsync(alvoInteresse.SolicitacaoId, ct) is { } porQue
+                            await MotivoCancelamentoParaPacienteAsync(alvoInteresse, ct) is { } porQue
                                 ? $"Esse agendamento foi cancelado. {porQue}"
                                 : "Esse agendamento foi cancelado. Para saber mais e remarcar, procure o posto de "
                                   + "saúde onde o paciente tem cadastro.", ct);
@@ -287,6 +300,9 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 break;
             case EtapaVerificacaoCadastral.AguardandoNome:
                 await TratarEtapaNomeTextoAsync(ctx, estado, ct);
+                break;
+            case EtapaVerificacaoCadastral.AguardandoConfirmacaoNegacao:
+                await TratarEtapaRecebeTextoAsync(ctx, estado, ct);
                 break;
             case EtapaVerificacaoCadastral.AguardandoVinculo:
                 await TratarEtapaVinculoTextoAsync(ctx, estado, ct);
@@ -599,7 +615,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
         ctx.Consumido = true;
         if (confirmou) await PerguntarVinculoAsync(ctx, estado, ct);
-        else await ConcluirComoNumeroErradoAsync(ctx, estado, ct);
+        else await PerguntarSeRecebePeloPacienteAsync(ctx, estado, ct);
     }
 
     private async Task TratarEtapaNomeTextoAsync(ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
@@ -622,12 +638,88 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         if (InterpretadorRespostaCidadao.EhNao(ctx.Texto))
         {
             ctx.Consumido = true;
-            await ConcluirComoNumeroErradoAsync(ctx, estado, ct);
+            await PerguntarSeRecebePeloPacienteAsync(ctx, estado, ct);
             return;
         }
 
         await ReorientarAsync(ctx, estado,
             $"Só falta confirmar: o paciente é *{paciente.NomeCompleto?.Trim()}*? Responda *Sim* ou *Não*.", ct);
+    }
+
+    // ---------- etapa 3b: "Não" ao nome de quem acertou os dados ----------
+
+    /// <summary>
+    /// Só chega aqui quem acertou CPF E nascimento — e quem acerta os dois conhece o paciente. O
+    /// "Não" a "o paciente é Fulano?" costuma ser "não sou eu" (a esposa no número do casal, a mãe
+    /// pelo filho), não "não conheço". Antes de negar o número — o que corta todo aviso automático
+    /// sobre o paciente — pergunta-se de novo, sem margem para essa leitura.
+    /// </summary>
+    private async Task PerguntarSeRecebePeloPacienteAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        if (estado.PacienteId is not { } pacienteId
+            || await ObterPacienteAsync(pacienteId, ct) is not { } paciente)
+        {
+            await ConcluirComoNumeroErradoAsync(ctx, estado, ct);
+            return;
+        }
+
+        estado.Etapa = EtapaVerificacaoCadastral.AguardandoConfirmacaoNegacao;
+        estado.Reorientacoes = 0;
+        Tocar(estado);
+
+        await whatsApp.EnviarInterativoBotoesAsync(
+            estado.TelefoneCanonical,
+            $"Os dados que você informou são do cadastro de *{paciente.NomeCompleto?.Trim()}*. "
+            + "Você recebe as mensagens dele(a) por este WhatsApp?",
+            [
+                new BotaoInterativoWhatsApp($"{PrefixoRecebeSim}{estado.Id}", "Sim, recebo"),
+                new BotaoInterativoWhatsApp($"{PrefixoRecebeNao}{estado.Id}", "Não conheço"),
+            ],
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+    }
+
+    private async Task TratarBotaoRecebeAsync(ManipuladorContexto ctx, Guid estadoId, bool recebe, CancellationToken ct)
+    {
+        var estado = await db.VerificacoesCadastraisEstado.FirstOrDefaultAsync(e => e.Id == estadoId, ct);
+        if (estado is null || estado.Etapa != EtapaVerificacaoCadastral.AguardandoConfirmacaoNegacao) return;
+        if (estado.ExpiraEm <= DateTime.UtcNow) { db.VerificacoesCadastraisEstado.Remove(estado); return; }
+
+        ctx.Consumido = true;
+        if (recebe) await PerguntarVinculoAsync(ctx, estado, ct);
+        else await ConcluirComoNumeroErradoAsync(ctx, estado, ct);
+    }
+
+    private async Task TratarEtapaRecebeTextoAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        if (InterpretadorRespostaCidadao.EhSim(ctx.Texto))
+        {
+            ctx.Consumido = true;
+            await PerguntarVinculoAsync(ctx, estado, ct);
+            return;
+        }
+        if (InterpretadorRespostaCidadao.EhNao(ctx.Texto) || NaoConhece(ctx.Texto))
+        {
+            ctx.Consumido = true;
+            await ConcluirComoNumeroErradoAsync(ctx, estado, ct);
+            return;
+        }
+
+        var nome = await PrimeiroNomeDoAlvoAsync(estado, ct);
+        await ReorientarAsync(ctx, estado,
+            $"Você recebe as mensagens {(nome is null ? "do paciente" : $"de *{nome}*")} por este WhatsApp? "
+            + "Responda *Sim* ou *Não conheço*.", ct);
+    }
+
+    /// <summary>"não conheço", "nao conheco", "desconheço" — o texto do botão digitado à mão.</summary>
+    internal static bool NaoConhece(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return false;
+        var t = texto.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+        t = new string([.. t.Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+            != System.Globalization.UnicodeCategory.NonSpacingMark)]);
+        return t.Contains("nao conheco") || t.Contains("desconheco");
     }
 
     // ---------- etapa 4: vínculo (LGPD) ----------
@@ -1051,6 +1143,10 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 await PerguntarNomeAsync(ctx, estado, paciente.NomeCompleto, ct);
                 return true;
 
+            case EtapaVerificacaoCadastral.AguardandoConfirmacaoNegacao:
+                await PerguntarSeRecebePeloPacienteAsync(ctx, estado, ct);
+                return true;
+
             case EtapaVerificacaoCadastral.AguardandoVinculo:
                 await PerguntarVinculoAsync(ctx, estado, ct);
                 return true;
@@ -1209,9 +1305,27 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     /// ou null quando não foi registrado. É deliberadamente o texto que a atendente escreveu para
     /// ser dito — nunca a justificativa interna que foi ao SISREG.
     /// </summary>
-    private async Task<string?> MotivoCancelamentoParaPacienteAsync(Guid? solicitacaoId, CancellationToken ct)
+    private async Task<string?> MotivoCancelamentoParaPacienteAsync(
+        Data.Entities.ComunicacaoPaciente alvo, CancellationToken ct)
     {
-        if (solicitacaoId is not { } sid) return null;
+        // Agendamento do SER/SERNIT/ESUS SG: não há motivo redigido por atendente — o que se sabe é o
+        // que o sistema de regulação mostrou. Devolvido à fila não é o fim: a pessoa segue esperando.
+        if (alvo.AgendamentoExternoId is { } externoId)
+        {
+            var a = await db.AgendamentosExternos.AsNoTracking()
+                .Where(x => x.Id == externoId)
+                .Select(x => new { x.Sistema, x.MotivoDesmarque })
+                .FirstOrDefaultAsync(ct);
+            if (a is null) return null;
+            var sistema = AgendamentosExternos.AgendamentoExternoService.Rotulo(a.Sistema);
+            return a.MotivoDesmarque == Data.Entities.Notificacoes.MotivoDesmarqueExterno.VoltouParaFila
+                ? $"O pedido voltou para a fila da regulação do {sistema} e aguarda uma nova data. "
+                  + "Para saber mais, procure o posto de saúde onde o paciente tem cadastro."
+                : $"O pedido foi cancelado na regulação do {sistema}. "
+                  + "Para saber mais, procure o posto de saúde onde o paciente tem cadastro.";
+        }
+
+        if (alvo.SolicitacaoId is not { } sid) return null;
         var motivo = await db.Solicitacoes.AsNoTracking()
             .Where(s => s.Id == sid)
             .Select(s => s.MotivoCancelamentoParaPaciente)
@@ -1248,7 +1362,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             // motivo registrado para o paciente, quando existe, responde o "por quê" aqui também.
             var deQuemCancelado = nome is null ? "do paciente" : $"de *{nome}*";
             await ResponderAsync(ctx,
-                await MotivoCancelamentoParaPacienteAsync(alvo.SolicitacaoId, ct) is { } porQue
+                await MotivoCancelamentoParaPacienteAsync(alvo, ct) is { } porQue
                     ? $"Tudo bem! O agendamento {deQuemCancelado} foi cancelado. {porQue}"
                     : $"Tudo bem! O agendamento {deQuemCancelado} foi cancelado. "
                       + "Para saber mais e remarcar, procure o posto de saúde onde o paciente tem cadastro.", ct);

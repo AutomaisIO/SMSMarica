@@ -89,6 +89,33 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>Banco: tabela nova <code>agendamento_externo</code> e <code>unidade_atendimento_nome_externo</code>; colunas novas em</li>
 </ul>
 <p>  <code>comunicacao_paciente</code> e <code>confirmacao_configuracao</code>. Com a replicação lógica para a EVEO ligada, a DDL   das colunas novas em tabelas publicadas precisa estar no destino <strong>antes</strong> do deploy.</p>
+<h2>Fase 2 (21/10/2026): lembrete e aviso de cancelamento, por regulação</h2>
+<p>Pedido do dono: "enviar para o SER, SERNIT e ESUS mensagem antes, habilitar dentro de configurações da própria regulação, com quantos dias antes" e "enviar informação de cancelamento igual ao SISREG, também como opção na configuração".</p>
+<ol>
+<li><strong>As chaves moram na tela de Configuração de cada regulação</strong> (bloco <em>Avisos ao paciente</em>), numa tabela</li>
+</ol>
+<p>   própria, <code>aviso_regulacao_configuracao</code> (uma linha por sistema: lembrete ligado, dias antes, aviso de    cancelamento ligado e quando foi ligado). Não no <code>parametros_json</code> da credencial, porque salvar a    credencial do SER e do SERNIT regrava aquele JSON inteiro e apagaria a chave em silêncio. Sem linha,    tudo desligado; nada de seed em migration. O aviso de que foi <strong>agendado</strong> segue com a chave única da    Mensageria (item 7). A tela de Configuração do <strong>SISREG</strong> ganhou o mesmo bloco, editando as chaves que    ele já tinha em <code>confirmacao_configuracao</code>: um valor só, visto de dois lugares.</p>
+<ol>
+<li><strong>Lembrete:</strong> as regras do SISREG. Quem confirmou e tem número provado recebe <code>agendamento_proximo</code>, com</li>
+</ol>
+<p>   dia e hora. Sem hora, ou com número não provado, vai a primeira mensagem de novo, e os dados saem na    conversa depois da identificação. Quem avisou que não vai não recebe, e quem recebeu o aviso há menos de    <code>LembreteIntervaloMinimoDias</code> também não. Não sai enquanto o aviso do agendamento ainda está na fila. As    respostas "Sim! Está confirmado!" e "Não poderei ir." voltam como texto e caem no <code>agendamento_externo</code>    (só a partir do lembrete que saiu com os dados, para não revelar o agendamento a número não provado).</p>
+<ol>
+<li><strong>Aviso de cancelamento:</strong> o modelo do SISREG (<code>agendamento_cancelado_anonimo</code>), anônimo para número</li>
+</ol>
+<p>   não provado. Sai quando o agendamento é <strong>desmarcado com a data pela frente e o sistema diz por quê</strong>:    <code>Cancelada</code> no SER e no SERNIT, ou <strong>de volta à fila</strong> nos três. Nesse segundo caso, a frase diz    "foi desmarcado e o pedido voltou para a fila da regulação". O motivo fica em    <code>agendamento_externo.motivo_desmarque</code>. <strong>Pendência não avisa</strong>: o SER às vezes pendencia e reagenda o    mesmo dia. <strong>Saída da fila do ESUS não avisa</strong>: o ESUS não diz por quê, e "saiu da fila" não é    cancelado (ADR-0063).</p>
+<ol>
+<li><strong>Carência de 30 minutos</strong> antes de o cancelamento poder sair. Se o pedido voltar a "Agendada" com o</li>
+</ol>
+<p>   <strong>mesmo dia</strong> antes disso, o aviso é dispensado. Isso acontece, por exemplo, com uma leitura no meio da    rodada do ESUS, que lê a fila antes dos agendados. Se o aviso já tinha saído e o pedido voltou com o    mesmo dia, nasce um agendamento novo e o paciente recebe o aviso do agendamento outra vez, em vez de    ficar com "foi cancelado" como última palavra.</p>
+<ol>
+<li><strong>Ligar vale daqui para frente</strong>, como no SISREG: o envio recusa o que entrou na fila antes da última</li>
+</ol>
+<p>   vez em que a chave foi ligada.</p>
+<ol>
+<li><strong>Remarcação</strong> continua como no item 4 da fase 1: a data nova gera um aviso novo. Isso inclui o pedido</li>
+</ol>
+<p>   que o paciente não conseguiu fazer e a regulação devolveu à fila. Conferido em produção em 21/10/2026:    no SER 7023054, marcado para 14/10, devolvido e remarcado para 21/10, o aviso novo saiu em 16/10.</p>
+<p><strong>Consequências:</strong> as duas chaves nascem desligadas em cada regulação. Uma coluna nova em <code>agendamento_externo</code> e uma tabela nova; desde a virada para a EVEO (14/10/2026) não há replicação a preparar. Continua de fora a régua de reforço desses sistemas.</p>
 </main>
 </body>
 </html>

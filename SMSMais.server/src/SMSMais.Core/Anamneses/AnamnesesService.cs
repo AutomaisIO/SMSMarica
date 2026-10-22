@@ -5,6 +5,7 @@ using SMSMais.Core.Identidade;
 using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Anamneses;
 
@@ -12,7 +13,8 @@ public sealed class AnamnesesService(
     SmsMaisDbContext db,
     IPacienteResolver pacienteResolver,
     Common.Cid.ICidCatalogoService cidCatalogo,
-    IUsuarioAtualAccessor usuarioAtual) : IAnamnesesService
+    IUsuarioAtualAccessor usuarioAtual,
+    Solicitacoes.ISolicitacoesService solicitacoes) : IAnamnesesService
 {
     public async Task<AnamneseContextoDto> ObterContextoAsync(
         Guid? solicitacaoExameId, string? accessionNumber, CancellationToken cancellationToken = default)
@@ -62,8 +64,20 @@ public sealed class AnamnesesService(
             sol.SiscanProtocolo,
             sol.SiscanNumeroExame,
             cidCodigo,
-            cidDescricao);
+            cidDescricao,
+            AnamneseHolter.Questionario(await PedidoTemHolterAsync(sol.Id, cancellationToken)));
     }
+
+    /// <summary>
+    /// O questionário é do PEDIDO, como a anamnese (ADR-0074): Holter quando algum exame dele é ECG.
+    /// Decidir pelo exame clicado (contexto) e pelo principal (salvar) desencontrava os dois num
+    /// pedido de MAPA + Holter — a tela abria o do Holter e o salvar o recusava.
+    /// </summary>
+    private Task<bool> PedidoTemHolterAsync(Guid exameId, CancellationToken ct) =>
+        db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == exameId)
+            .SelectMany(e => db.ExamesImagem.Where(x => x.SolicitacaoId == e.SolicitacaoId && x.ExcluidoEm == null))
+            .AnyAsync(x => x.TipoExame!.ModalidadeDicom == ModalidadeDicom.ECG, ct);
 
     public async Task<AnamneseDto> SalvarAsync(
         Guid solicitacaoExameId, SalvarAnamneseDto dto, CancellationToken cancellationToken = default)
@@ -90,6 +104,14 @@ public sealed class AnamnesesService(
                 $"Esta anamnese já gerou a requisição {protocolo} no SISCAN e não pode mais ser "
                 + "alterada aqui. Se algo estiver errado, corrija na própria requisição do SISCAN.");
         }
+
+        // O Holter tem questionário próprio, e o que ele grava vai ao aparelho: a forma é conferida
+        // aqui. Um questionário trocado (mamografia num Holter, ou o contrário) é recusado.
+        var holter = await PedidoTemHolterAsync(solicitacaoExameId, cancellationToken);
+        if (holter != (dto.Tipo == AnamneseHolter.Tipo))
+            throw new ValidacaoException("anamnese.questionario_errado",
+                $"Este exame usa o questionário \"{AnamneseHolter.Questionario(holter)}\", não \"{dto.Tipo}\".");
+        if (holter) AnamneseHolter.Validar(dto.ConteudoJson);
 
         var agora = DateTime.UtcNow;
         var usuarioId = usuarioAtual.UsuarioId;
@@ -133,7 +155,11 @@ public sealed class AnamnesesService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return ParaDto(anamnese);
+
+        // Holter: salvar é o que manda o exame à worklist — e salvar de novo, corrigido, sobrescreve
+        // o paciente no aparelho. Fora do Holter, não faz nada.
+        var aviso = holter ? await solicitacoes.AnamneseSalvaAsync(solicitacaoExameId, cancellationToken) : null;
+        return ParaDto(anamnese) with { AvisoWorklist = aviso };
     }
 
     private static AnamneseDto ParaDto(Anamnese a) => new(

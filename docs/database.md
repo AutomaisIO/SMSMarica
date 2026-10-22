@@ -2,7 +2,7 @@
 
 ## 1. Regra crítica: isolamento por schema
 
-O SMSMais **compartilha** a instância e o banco lógico PostgreSQL com outros produtos (notadamente Automais.IO). O banco convencional é `defaultdb`.
+Em produção (desde 14/10/2026) o SMSMais tem database próprio, `smsmais`, no PostgreSQL 18 da VM PSQL-01 (datacenter EVEO), com os schemas `smsmarica` e `fhir` ([ADR-0007](./adr/0007-schema-fhir-separado.md)). Até essa data ele **compartilhava** o banco lógico `defaultdb` da DigitalOcean com outros produtos (notadamente Automais.IO), que é a origem da regra abaixo. A regra continua valendo: o PSQL-01 hospeda outros bancos, e uma instância nova pode voltar a dividir servidor.
 
 **Todo** o modelo do SMSMais vive **exclusivamente** no schema:
 
@@ -17,7 +17,7 @@ Decisão registrada em [ADR-0001](./adr/0001-schema-isolation.md).
 - Nenhuma tabela do SMSMais fora do schema `smsmarica`.
 - Nenhuma FK, view, trigger ou migration referenciando objetos de outros schemas.
 - `DbContext` base aplica `HasDefaultSchema("smsmarica")` — não depender de cada entidade declarar.
-- Connection string pode apontar para `defaultdb` compartilhado; isolamento é **por schema, não por banco**.
+- Connection string pode apontar para um banco compartilhado; isolamento é **por schema, não por banco**.
 
 ### O que NÃO fazer
 

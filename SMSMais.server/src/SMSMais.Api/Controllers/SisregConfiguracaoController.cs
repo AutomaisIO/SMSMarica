@@ -5,6 +5,7 @@ using SMSMais.Core.Integracoes.Sisreg;
 using SMSMais.Core.Integracoes.Sisreg.Configuracao;
 using SMSMais.Core.Integracoes.Sisreg.Dtos;
 using SMSMais.Core.Integracoes.SisregWeb.Importacao;
+using SMSMais.Core.Notificacoes.AgendamentosExternos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -42,6 +43,24 @@ public sealed class SisregConfiguracaoController(
         return NoContent();
     }
 
+    /// <summary>Avisos ao paciente do SISREG (as mesmas chaves de Mensageria → Regras): lembrete X dias antes e aviso de cancelamento (21/10/2026).</summary>
+    [HttpGet("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<AvisosPacienteRegulacaoDto> ObterAvisosPaciente(
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos, CancellationToken cancellationToken) =>
+        avisos.ObterAsync(SistemaRegulacao.Sisreg, cancellationToken);
+
+    [HttpPut("avisos-paciente")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AvisosPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<AvisosPacienteRegulacaoDto> SalvarAvisosPaciente(
+        [FromBody] SalvarAvisosPacienteRegulacaoRequest corpo,
+        [FromServices] IAvisoRegulacaoConfiguracaoService avisos,
+        CancellationToken cancellationToken) =>
+        avisos.SalvarAsync(SistemaRegulacao.Sisreg, corpo, cancellationToken);
+
     /// <summary>
     /// Liga/desliga o sincronismo AUTOMÁTICO com o SISREG — varredura diária das unidades e lote de
     /// mapeamento ("sincronizar tudo", inclusive a carga inicial).
@@ -58,6 +77,25 @@ public sealed class SisregConfiguracaoController(
         [FromBody] AlternarSincronismoAutomaticoRequest request,
         CancellationToken cancellationToken) =>
         await _configuracaoService.AlternarSincronismoAutomaticoAsync(request.Ativo, cancellationToken);
+
+    /// <summary>A fila de guias do SISREG (ADR-0076): ritmo, janela, quanto falta e por que parou
+    /// (outro motor rodando, orçamento curto, CAPTCHA).</summary>
+    [HttpGet("guias")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> ObterFilaGuias(
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias, CancellationToken cancellationToken) =>
+        guias.ResumoAsync(SistemaRegulacao.Sisreg, cancellationToken);
+
+    [HttpPut("guias")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SMSMais.Core.GuiasAgendamento.FilaGuiasDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SMSMais.Core.GuiasAgendamento.FilaGuiasDto> SalvarFilaGuias(
+        [FromBody] SMSMais.Core.GuiasAgendamento.SalvarFilaGuiasRequest corpo,
+        [FromServices] SMSMais.Core.GuiasAgendamento.IFilaGuiasConfiguracaoService guias,
+        CancellationToken cancellationToken) =>
+        guias.SalvarAsync(SistemaRegulacao.Sisreg, corpo, cancellationToken);
 
     /// <summary>
     /// Completa as solicitações já importadas com o profissional EXECUTANTE, relendo a linha crua do

@@ -155,7 +155,7 @@ Regras que saem daí (âncoras da varredura):
 Confirma o SER-RJ §4.2: **Editar** só em EM_FILA/PENDENTE; **Cancelada** perde Editar/Cancelar;
 **Alta** não tem ação nem Histórico. Novidade vs SER-RJ: as situações agendadas/chegada trazem
 **Emitir Autorização Completa** e **Emitir Chave de Autorização - Nª via** (a "Nª via" conta
-reemissões). Ids `form0:listagem:<i>:j_idNN` posicionais na página corrente (não são o ID da
+reemissões — e emitir gasta uma; ver §10). Ids `form0:listagem:<i>:j_idNN` posicionais na página corrente (não são o ID da
 solicitação) — **localizar sempre pelo texto**.
 
 > Observação de contagem: as 7 situações reportam grade capada em 100, mas o total real de cada
@@ -356,3 +356,32 @@ tela antes de cada pesquisa.
 Correção: `SernitLeitorService.PesquisarAsync` reabre a tela (GET) antes de TODA pesquisa (+1
 requisição por janela). Teste de regressão: `SernitLeitorServiceTests` (falha sem a correção com os IDs
 da pesquisa anterior). Depois do deploy, uma varredura Diária recupera as faltantes.
+
+## 10. As guias do agendamento — Chave × Autorização Completa (sondado 21/10/2026)
+
+Sonda `probe_guia.py` (15). Espelho do SER-RJ (`../../docs/ser.md §13`), com um item a mais.
+
+**Achar.** Situação `AGENDADA` + **"Data de Agendamento"** (`form0:dt{Inicial,Final}AgendamentoInputDate`)
+= o dia do atendimento — aqui não existe o par "Data da Consulta/Exame" do SER-RJ. O "Data de
+Agendamento **da Regulação**" (`form0:data…RegulacaoInputDate`) é o dia em que o regulador agendou.
+Amanhã → +30 dias deu 11 agendadas para Maricá (APADA, AFR, APN).
+
+**Baixar.** Os dois itens são `jsfcljs`: **POST comum do `form0`, sem `AJAXREQUEST`**, no `action` do
+form, campos do form + `form0:listagem:<i>:j_idNN=<o mesmo id>` lido do `onclick`. A resposta é o PDF
+direto (`application/pdf`, `attachment`), 1 página, ~65 KB.
+
+**Com `X-Requested-With: XMLHttpRequest` também vem o PDF** (medido em 21/10/2026, gastou a 3ª via da
+solicitação de teste): o motor .NET manda o cabeçalho em todo POST, e para este commandLink isso não muda
+nada — ao contrário da suspeita do `probe_diag_xrw.py` para a aba Editar.
+
+| Item do menu | Arquivo | Conta via? | O que traz |
+|---|---|---|---|
+| **Emitir Chave de Autorização - Nª via** | `relatorioAutorizacaoConsultaExameResumido.pdf` | **sim** — rótulo 2ª → 3ª após emitir; rodapé "2ª via" + data/hora da emissão | layout do SER-RJ: executante (endereço, CNES, telefone), data/hora, **chave de autorização numérica de 6 dígitos** (no SER-RJ é alfanumérica), observação da unidade (preparo), paciente, médico solicitante **com CPF por extenso**, recurso solicitado × agendado, **nome e CPF do autorizador** |
+| **Emitir Autorização Completa** | `relatorioAutorizacaoConsultaExame.pdf` | **não** — rótulo da chave seguiu em 3ª; sem via no rodapé | **sem chave e sem preparo**; traz o que a resumida não tem: **endereço do paciente** (com IBGE), **CID + descrição** e a **Avaliação** clínica do pedido |
+
+Igual ao SER-RJ: **o número no rótulo é o da PRÓXIMA via** (ler o rótulo não emite; N − 1 já saíram)
+e a emissão **não entra no Histórico da Solicitação** (trilha seguiu Solicitar → Agendar). A 1ª via
+já constava antes do nosso clique — não se sabe quem a emitiu.
+
+A emissão sai pela `post_escrita` do cliente (logada), por gastar via — a trava `guardar()` não a
+pegaria, porque o parâmetro `form0:listagem:<i>:j_idNN` não tem verbo.

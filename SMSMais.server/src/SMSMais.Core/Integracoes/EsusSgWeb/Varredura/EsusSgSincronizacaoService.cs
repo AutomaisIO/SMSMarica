@@ -76,6 +76,16 @@ public sealed class EsusSgSincronizacaoService(
             execucao.Status = StatusVarreduraEsusSg.EmExecucao;
             execucao.Retomadas++;
             execucao.RetomadaEm = DateTime.UtcNow;
+            // A retomada RELÊ a fila e a janela inteira: os contadores de leitura recomeçam, senão a
+            // rodada retomada mostrava o dobro do que há (683 na fila virava 1.366). Os de efeito
+            // (novas, mudanças, saídas, eventos) seguem somando — o que foi gravado antes da queda
+            // aconteceu e não se repete. A mensagem da queda também sai: a tela já mostra
+            // "retomada N×", e a rodada que terminar bem não fica com texto de erro pendurado.
+            execucao.NaFila = 0;
+            execucao.AgendadosLidos = 0;
+            execucao.SolicitacoesAtualizadas = 0;
+            execucao.MesesIncompletos = 0;
+            execucao.MensagemErro = null;
             logger.LogInformation(
                 "ESUS SG: retomando execução {Execucao} na fase {Fase} (retomada nº {N}); agendados lidos até {Mes}.",
                 execucao.Id, execucao.Fase, execucao.Retomadas, execucao.CursorMes);
@@ -114,7 +124,10 @@ public sealed class EsusSgSincronizacaoService(
                 execucao.Requisicoes++;
                 if (cat.Mudou) logger.LogInformation("ESUS SG: catálogo atualizado ({Lidos} procedimentos).", cat.Lidos);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException and not EscritaNoEsusSgBloqueadaException)
+            // O ESUS que não responde a tempo (HttpClient.Timeout) também cai aqui: o catálogo é o de
+            // ontem, e a rodada segue. Só o desligamento do serviço interrompe.
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested
+                                       && ex is not EscritaNoEsusSgBloqueadaException)
             {
                 logger.LogWarning(ex, "ESUS SG: catálogo não atualizou nesta rodada; seguindo com a fila.");
             }
@@ -156,7 +169,7 @@ public sealed class EsusSgSincronizacaoService(
                 ? StatusVarreduraEsusSg.Parcial
                 : StatusVarreduraEsusSg.Concluida;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // Queda do serviço: fica retomável pelo cursor (o runner retoma na subida).
             execucao.Status = StatusVarreduraEsusSg.Interrompida;
@@ -164,12 +177,26 @@ public sealed class EsusSgSincronizacaoService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "ESUS SG: varredura {Execucao} falhou.", execucao.Id);
+            // O ESUS que não responde a tempo lança o MESMO tipo de exceção do desligamento
+            // (TaskCanceledException do HttpClient.Timeout). Até 21/10/2026 caía no ramo de cima: a
+            // rodada ficava "Interrompida" com o serviço no ar, ninguém a retomava, e ela segurava o
+            // disparo diário até o próximo deploy — houve dia sem sincronização nenhuma, e a tela
+            // dizia "desligamento do serviço". Agora é erro com nome, e o agendador tenta de novo.
+            var tempoEsgotado = ex is OperationCanceledException;
+            var mensagem = tempoEsgotado
+                ? $"O ESUS não respondeu a tempo na fase {NomeDaFase(execucao.Fase)} "
+                  + "(limite de 5 minutos por consulta). O agendador tenta de novo sozinho."
+                : ex.Message;
+            logger.LogError(ex, "ESUS SG: varredura {Execucao} falhou{Motivo}.", execucao.Id,
+                tempoEsgotado ? " — o ESUS não respondeu a tempo" : string.Empty);
             execucao.Status = StatusVarreduraEsusSg.Erro;
-            execucao.MensagemErro = Truncar(ex.Message, 2000);
+            execucao.MensagemErro = Truncar(mensagem, 2000);
             db.EsusSgVarreduraFalhas.Add(NovaFalha(execucao,
-                ex is EscritaNoEsusSgBloqueadaException ? TipoFalhaEsusSg.EscritaBloqueada : TipoFalhaEsusSg.ErroSessao,
-                null, null, ex.Message, ex.ToString()));
+                ex is EscritaNoEsusSgBloqueadaException ? TipoFalhaEsusSg.EscritaBloqueada
+                    : tempoEsgotado && execucao.Fase == FaseVarreduraEsusSg.Fila ? TipoFalhaEsusSg.ErroFila
+                    : tempoEsgotado && execucao.Fase == FaseVarreduraEsusSg.Agendados ? TipoFalhaEsusSg.ErroAgendados
+                    : TipoFalhaEsusSg.ErroSessao,
+                null, null, mensagem, ex.ToString()));
         }
         finally
         {
@@ -569,6 +596,7 @@ public sealed class EsusSgSincronizacaoService(
         a.Local = Truncar(l.Local, 200);
         a.DataAgendada = l.DataAgendada;
         a.DataHoraAgendadaTexto = Truncar(l.DataHoraAgendadaTexto, 40);
+        a.AgendamentoIdEsus = Truncar(l.AgendamentoIdEsus, 20);
         a.UsuarioAgendamento = Truncar(l.UsuarioAgendamento, 200);
         a.AgendamentoCadastradoEm = l.AgendamentoCadastradoEm;
         a.DataSaidaFila = l.DataSaidaFila;
@@ -587,6 +615,7 @@ public sealed class EsusSgSincronizacaoService(
         a.Local = null;
         a.DataAgendada = null;
         a.DataHoraAgendadaTexto = null;
+        a.AgendamentoIdEsus = null;
         a.UsuarioAgendamento = null;
         a.AgendamentoCadastradoEm = null;
         a.DataSaidaFila = null;
@@ -696,7 +725,10 @@ public sealed class EsusSgSincronizacaoService(
                 }
                 await db.SaveChangesAsync(cancellationToken);
             }
-            catch (Exception ex) when (ex is EsusSgRespostaErroException or HttpRequestException or FormatException)
+            // O ESUS que demora mais que o limite numa pessoa também fica para a próxima rodada: uma
+            // consulta lenta não derruba a varredura inteira (que já gravou fila e agendados).
+            catch (Exception ex) when (ex is EsusSgRespostaErroException or HttpRequestException or FormatException
+                                       || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
             {
                 falhas++;
                 // Descarta o que esta pessoa deixou pela metade (a execução continua rastreada: os
@@ -883,6 +915,14 @@ public sealed class EsusSgSincronizacaoService(
 
     private static string ChaveEvento(Guid solicitacao, DateTime data, string evento) =>
         $"{solicitacao:N}|{data.ToUniversalTime():O}|{evento.Trim().ToLowerInvariant()}";
+
+    /// <summary>Como a tela chama a fase ("fila", "agendados") — no texto que a equipe lê.</summary>
+    internal static string NomeDaFase(FaseVarreduraEsusSg fase) => fase switch
+    {
+        FaseVarreduraEsusSg.Fila => "fila",
+        FaseVarreduraEsusSg.Agendados => "agendados",
+        _ => "final",
+    };
 
     private static EsusSgVarreduraFalha NovaFalha(
         EsusSgVarreduraExecucao execucao, TipoFalhaEsusSg tipo, TipoRecursoEsusSg? recurso, DateOnly? mes,

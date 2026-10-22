@@ -6,14 +6,16 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  FileText,
   Hourglass,
   Landmark,
   MapPin,
   Stethoscope,
   X,
 } from 'lucide-react';
-import { api, type Agendamento, type MomentoAgendamento } from '@/lib/api';
-import { classificarErro } from '@/lib/httpClient';
+import { api, pdfUrls, type Agendamento, type MomentoAgendamento } from '@/lib/api';
+import { classificarErro, extrairMensagemDeErro } from '@/lib/httpClient';
+import { abrirDocumento } from '@/lib/pdf';
 import { Card, GhostButton, PrimaryButton } from '@/components/ui';
 import { Lista } from '@/components/Lista';
 import { Etiqueta } from '@/components/Etiqueta';
@@ -215,10 +217,43 @@ function AgendamentoCard({
         </div>
       </button>
 
+      {a.guiaDocumentoId && <BotaoGuia documentoId={a.guiaDocumentoId} />}
+
       {a.podeResponder && a.solicitacaoExameId && (
         <RespostaConfirmacao solicitacaoExameId={a.solicitacaoExameId} aoResponder={aoResponder} />
       )}
     </Card>
+  );
+}
+
+/**
+ * A guia do agendamento do SER/SERNIT/ESUS — o papel que o paciente apresenta no local. É o mesmo
+ * documento que aparece em Documentos (mesma URL, mesmo cache no aparelho).
+ */
+function BotaoGuia({ documentoId }: { documentoId: string }) {
+  const [abrindo, setAbrindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function abrir() {
+    setAbrindo(true);
+    setErro(null);
+    try {
+      await abrirDocumento(pdfUrls.guia(documentoId), 'guia-do-agendamento.pdf', 'application/pdf');
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setAbrindo(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <GhostButton type="button" onClick={abrir} disabled={abrindo} className="w-full">
+        <FileText className="h-4 w-4" />
+        {abrindo ? 'Abrindo…' : 'Ver guia do agendamento'}
+      </GhostButton>
+      {erro && <p className="mt-2 text-sm text-red-700">{erro}</p>}
+    </div>
   );
 }
 

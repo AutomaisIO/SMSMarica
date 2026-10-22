@@ -17,6 +17,10 @@ public enum OrigemDocumentoPaciente
 
     /// <summary>O próprio paciente enviou pelo app.</summary>
     AppCidadao = 4,
+
+    /// <summary>Guia de um agendamento do SER, do SERNIT ou do ESUS, buscada pelo sincronismo
+    /// (ADR-0076). A equipe não edita nem exclui: o pedido e o app apontam para ela.</summary>
+    GuiaAgendamento = 5,
 }
 
 /// <summary>

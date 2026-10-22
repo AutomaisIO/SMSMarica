@@ -169,7 +169,7 @@ public sealed class PainelInicioService(
             .Select(f => new ItemPendenciaImportacaoPainel(
                 f.Id, f.CodigoSolicitacao, f.NomePaciente, f.ProcedimentoTexto, f.DataAgendada,
                 f.Causa, f.Motivo, f.Tentativas,
-                f.Causa == CausaFalhaImportacao.CpfNaoResolvido,
+                f.Causa == CausaFalhaImportacao.CpfNaoResolvido || f.Causa == CausaFalhaImportacao.IdentidadeDivergente,
                 lente == LenteEscopoPainel.Municipio ? f.NomeExecutante : null))
             .ToListAsync(ct);
 

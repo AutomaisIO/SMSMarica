@@ -2157,6 +2157,14 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("identificador_dicom");
 
+                    b.Property<int>("Laudo")
+                        .HasColumnType("integer")
+                        .HasColumnName("origem_laudo");
+
+                    b.Property<int>("LiberacaoPaciente")
+                        .HasColumnType("integer")
+                        .HasColumnName("liberacao_paciente");
+
                     b.Property<string>("MedicoSolicitanteTag")
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)")
@@ -2187,6 +2195,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(8)")
                         .HasColumnName("unidade_tag");
 
+                    b.Property<bool>("UsaAnamnese")
+                        .HasColumnType("boolean")
+                        .HasColumnName("usa_anamnese");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ExcluidoEm")
@@ -2201,6 +2213,8 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("equipamento", "smsmarica", t =>
                         {
                             t.HasCheckConstraint("ck_equipamento_descricao_max", "descricao_max_caracteres BETWEEN 4 AND 64");
+
+                            t.HasCheckConstraint("ck_equipamento_liberacao_com_laudo", "liberacao_paciente <> 1 OR origem_laudo = 1");
                         });
                 });
 
@@ -2655,6 +2669,11 @@ namespace SMSMais.Data.Migrations
                     b.Property<DateOnly?>("AgendamentoCadastradoEm")
                         .HasColumnType("date")
                         .HasColumnName("agendamento_cadastrado_em");
+
+                    b.Property<string>("AgendamentoIdEsus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("agendamento_id_esus");
 
                     b.Property<DateTime?>("AtualizadoEm")
                         .HasColumnType("timestamp with time zone")
@@ -3323,6 +3342,14 @@ namespace SMSMais.Data.Migrations
                     b.Property<DateTime?>("IniciadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("iniciado_em");
+
+                    b.Property<DateTime?>("LiberadoPacienteEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("liberado_paciente_em");
+
+                    b.Property<Guid?>("LiberadoPacientePor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("liberado_paciente_por");
 
                     b.Property<int>("Ordem")
                         .ValueGeneratedOnAdd()
@@ -4401,6 +4428,59 @@ namespace SMSMais.Data.Migrations
                         .HasFilter("slug IS NOT NULL AND excluido_em IS NULL");
 
                     b.ToTable("ia_fonte", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ImagemInvalidada", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo");
+
+                    b.Property<string>("SopInstanceUID")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("sop_instance_uid");
+
+                    b.Property<string>("StudyInstanceUID")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("study_instance_uid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoPor");
+
+                    b.HasIndex("StudyInstanceUID");
+
+                    b.HasIndex("StudyInstanceUID", "SopInstanceUID")
+                        .IsUnique()
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.ToTable("imagem_invalidada", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Indicador", b =>
@@ -5827,6 +5907,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("motivo_cancelamento_paciente");
 
+                    b.Property<int?>("MotivoDesmarque")
+                        .HasColumnType("integer")
+                        .HasColumnName("motivo_desmarque");
+
                     b.Property<string>("NumeroExterno")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -5985,6 +6069,48 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("AtendimentoId", "OcorridoEm");
 
                     b.ToTable("atendimento_confirmacao_evento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.AvisoRegulacaoConfiguracao", b =>
+                {
+                    b.Property<int>("Sistema")
+                        .HasColumnType("integer")
+                        .HasColumnName("sistema");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<bool>("AvisoCancelamentoHabilitado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("aviso_cancelamento_habilitado");
+
+                    b.Property<DateTime?>("AvisoCancelamentoLigadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("aviso_cancelamento_ligado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<int>("LembreteDiasAntes")
+                        .HasColumnType("integer")
+                        .HasColumnName("lembrete_dias_antes");
+
+                    b.Property<bool>("LembreteHabilitado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("lembrete_habilitado");
+
+                    b.HasKey("Sistema");
+
+                    b.ToTable("aviso_regulacao_configuracao", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_aviso_regulacao_configuracao_dias", "lembrete_dias_antes BETWEEN 1 AND 30");
+                        });
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.Campanha", b =>
@@ -6252,6 +6378,145 @@ namespace SMSMais.Data.Migrations
                         .HasFilter("resolvido_em IS NULL");
 
                     b.ToTable("contato_comprometido", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.GuiaAgendamento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AgendamentoExternoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agendamento_externo_id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateOnly>("DataAtendimento")
+                        .HasColumnType("date")
+                        .HasColumnName("data_atendimento");
+
+                    b.Property<Guid?>("DocumentoPacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("documento_paciente_id");
+
+                    b.Property<DateTime?>("ObtidaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("obtida_em");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<DateTime?>("ProximaTentativaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("proxima_tentativa_em");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Sistema")
+                        .HasColumnType("integer")
+                        .HasColumnName("sistema");
+
+                    b.Property<int>("Situacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao");
+
+                    b.Property<Guid?>("SolicitacaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitacao_id");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentativas");
+
+                    b.Property<DateTime?>("UltimaTentativaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultima_tentativa_em");
+
+                    b.Property<string>("UltimoErro")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("ultimo_erro");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgendamentoExternoId")
+                        .IsUnique()
+                        .HasFilter("agendamento_externo_id IS NOT NULL");
+
+                    b.HasIndex("DocumentoPacienteId");
+
+                    b.HasIndex("PacienteId");
+
+                    b.HasIndex("SolicitacaoId", "DataAtendimento")
+                        .IsUnique()
+                        .HasFilter("solicitacao_id IS NOT NULL");
+
+                    b.HasIndex("Sistema", "Situacao", "DataAtendimento");
+
+                    b.ToTable("guia_agendamento", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_guia_agendamento_uma_ancora", "(agendamento_externo_id IS NOT NULL)::int + (solicitacao_id IS NOT NULL)::int = 1");
+                        });
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.GuiaFilaConfiguracao", b =>
+                {
+                    b.Property<int>("Sistema")
+                        .HasColumnType("integer")
+                        .HasColumnName("sistema");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<bool>("Habilitada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("habilitada");
+
+                    b.Property<TimeOnly>("JanelaFim")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("janela_fim");
+
+                    b.Property<TimeOnly>("JanelaInicio")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("janela_inicio");
+
+                    b.Property<string>("MotivoPausa")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("motivo_pausa");
+
+                    b.Property<DateTime?>("PausadaAte")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pausada_ate");
+
+                    b.Property<int>("PorHora")
+                        .HasColumnType("integer")
+                        .HasColumnName("por_hora");
+
+                    b.HasKey("Sistema");
+
+                    b.ToTable("guia_fila_configuracao", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_guia_fila_configuracao_por_hora", "por_hora BETWEEN 1 AND 3600");
+                        });
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.MensagemWhatsApp", b =>
@@ -17310,6 +17575,17 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Fonte");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.ImagemInvalidada", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Usuario", "CriadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CriadoPor")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CriadoPorUsuario");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Indicador", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Ia.IaFonte", "Fonte")
@@ -17592,6 +17868,24 @@ namespace SMSMais.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Unidade");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.GuiaAgendamento", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Notificacoes.AgendamentoExterno", null)
+                        .WithMany()
+                        .HasForeignKey("AgendamentoExternoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMais.Data.Entities.DocumentoPaciente", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentoPacienteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMais.Data.Entities.Solicitacao", null)
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.MensagemWhatsApp", b =>

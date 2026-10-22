@@ -28,8 +28,12 @@ public sealed class WhatsAppCliente(
     IMemoryCache memoryCache,
     PendenciasCadastro.IContatoNegadoService contatosNegados,
     Microsoft.Extensions.Options.IOptions<Comunicacao.ComunicacaoPacienteOptions> comunicacaoOptions,
-    ILogger<WhatsAppCliente> logger) : IWhatsAppCliente
+    ILogger<WhatsAppCliente> logger,
+    Conta.ISituacaoContaWhatsApp? situacaoConta = null) : IWhatsAppCliente
 {
+    /// <summary>Prefixo do erro de um envio que o freio segurou (conta do WhatsApp parada).</summary>
+    public const string CodigoContaParada = "CONTA_WHATSAPP_PARADA";
+
     private const string CacheKeyTemplates = "whatsapp:templates";
     /// <summary>
     /// Monta o componente de cabeçalho do envio — ou diz por que ele não pode ser montado.
@@ -543,6 +547,19 @@ public sealed class WhatsAppCliente(
         var carga = new { phone_number_id = ctx.PhoneNumberId, para = telefone, mensagem = body };
         var msg = NovaMensagem(telefone, template, conteudo, pacienteId);
 
+        // Conta parada (pagamento, bloqueio…): não se bate na porta fechada. Fica registrado na
+        // thread com o motivo, e quem chamou recebe um erro que diz que não é culpa do número.
+        if (situacaoConta is not null && !situacaoConta.PodeEnviar())
+        {
+            var motivo = $"{CodigoContaParada}: {situacaoConta.Parada?.Motivo ?? "conta do WhatsApp parada"}";
+            msg.Status = StatusMensagemWhatsApp.Falha;
+            msg.Conteudo = Truncar($"[SEGURADO] {conteudo}");
+            msg.ErroMeta = motivo.Length <= 500 ? motivo : motivo[..500];
+            db.MensagensWhatsApp.Add(msg);
+            await RegistrarEnvioAsync(msg, ct);
+            return new EnvioWhatsAppResultado(false, null, motivo);
+        }
+
         HttpStatusCode status;
         string corpo;
         try
@@ -576,12 +593,15 @@ public sealed class WhatsAppCliente(
             db.MensagensWhatsApp.Add(msg);
             await RegistrarEnvioAsync(msg, ct);
             logger.LogWarning("WhatsApp envio falhou {Status}: {Corpo}", status, corpo);
+            if (Conta.ErroContaWhatsApp.Classificar(erro) is { } erroConta)
+                situacaoConta?.Parar(erroConta, Conta.OrigemSituacaoConta.Envio, erro);
             return new EnvioWhatsAppResultado(false, null, erro);
         }
 
         msg.WaMessageId = ExtrairWamidZap(corpo);
         db.MensagensWhatsApp.Add(msg);
         await RegistrarEnvioAsync(msg, ct);
+        situacaoConta?.Liberar(Conta.OrigemSituacaoConta.Envio);
         return new EnvioWhatsAppResultado(true, msg.WaMessageId, null);
     }
 

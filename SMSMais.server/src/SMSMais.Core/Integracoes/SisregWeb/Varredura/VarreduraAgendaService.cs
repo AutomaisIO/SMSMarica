@@ -265,7 +265,9 @@ public sealed class VarreduraAgendaService(
         var agenda = await db.SisregVarreduraAgendas.FirstOrDefaultAsync(x => x.UnidadeId == unidade.Id, ct);
         if (agenda is null)
         {
-            agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id };
+            // Nasce LIGADO desde 20/10/2026 (reverte o opt-in de 03/08/2026); o request abaixo
+            // ainda pode sobrescrever se o admin escolher explicitamente.
+            agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id, EnviarConfirmacao = true };
             db.SisregVarreduraAgendas.Add(agenda);
         }
 
@@ -423,7 +425,9 @@ public sealed class VarreduraAgendaService(
         {
             // A linha pode não existir: a unidade nunca configurou varredura diária. O histórico não
             // depende disso — cria a linha desligada para a diária e ligada só para o passado.
-            agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id, Ativo = false };
+            // Diária nasce desligada (Ativo=false), mas o aviso nasce LIGADO (desde 20/10/2026,
+            // reverte o opt-in de 03/08/2026) para quando a unidade ativar a diária.
+            agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id, Ativo = false, EnviarConfirmacao = true };
             db.SisregVarreduraAgendas.Add(agenda);
         }
 
@@ -1217,13 +1221,6 @@ public sealed class VarreduraAgendaService(
 
         var porCpf = existentes.ToDictionary(p => p.Cpf, StringComparer.Ordinal);
 
-        // Quem já avisa, por código, na unidade inteira — a régua que a linha nova herda.
-        var avisaPorCodigo = existentes
-            .SelectMany(p => p.Procedimentos)
-            .Where(x => x.EnviarConfirmacao)
-            .Select(x => x.Codigo)
-            .ToHashSet(StringComparer.Ordinal);
-
         var agora = DateTime.UtcNow;
         var profissionaisNovos = 0;
         var procedimentosNovos = 0;
@@ -1281,7 +1278,11 @@ public sealed class VarreduraAgendaService(
                         Codigo = porCodigo.Key,
                         Nome = porCodigo.First().ProcedimentoTexto ?? "(não informado)",
                         Habilitado = false,
-                        EnviarConfirmacao = avisaPorCodigo.Contains(porCodigo.Key),
+                        // Nasce LIGADO desde 20/10/2026 (reverte o opt-in de 03/08/2026): todo
+                        // procedimento novo já avisa por padrão. Antes herdava a régua da unidade
+                        // (avisaPorCodigo) — o que deixava código novo nascer mudo. Opt-out continua:
+                        // desligar o procedimento depois grava false e sincroniza as linhas do código.
+                        EnviarConfirmacao = true,
                         Grupo = porCodigo.Key.EndsWith("000", StringComparison.Ordinal),
                         VistoEm = agora,
                     });

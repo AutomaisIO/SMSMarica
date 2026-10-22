@@ -45,6 +45,17 @@ outro recurso.
    (`FalhaEnvio → EnviadaAoSistema`, nova transição do agente).
 6. **Anexos pela regra que a tela do SER declara:** até 2 arquivos de 5 MB; com mais, a plataforma junta
    tudo num PDF; acima de 5 MB é recusa antes de tocar o SER.
+   *Atualização 21/10/2026:* desde 15/10 (ticket #167, `0099abe`) imagem JPEG/PNG acima de 5 MB é
+   comprimida (SkiaSharp) e o PDF agrupado é refeito com as imagens menores; PDF avulso acima de
+   5 MB continua recusado. Em produção, quem estoura são justamente os PDFs (2 de 12 anexos da
+   regulação em 21/10). Desde 21/10 o PDF também é comprimido: avulso ou agrupado, passa pelo
+   Ghostscript instalado na VM (receita e cuidados de segurança na skill `operar-servidor`), numa
+   escada de 300 a 150 dpi em que a busca binária acha o degrau mais fiel que cabe em até 3
+   passadas. O limite por arquivo deixou de ser fixo: cada destino tem o seu na aba de configuração
+   dele (SER e SERNIT), guardado no `ParametrosJson` da credencial, com padrão de 4,5 MB, abaixo das
+   duas leituras de "5 MB". A prévia mostra "comprimido de X MB (N dpi) para caber no limite de Y MB",
+   e o original continua intacto no armazenamento. Sem Ghostscript no servidor, vale o comportamento
+   anterior.
 7. **O SERNIT pelo mesmo motor** (08/10/2026). SER-RJ e SERNIT são a mesma aplicação (JSF 1.2 +
    RichFaces 3.3 + Seam) em instâncias diferentes; o motor da tela de criação recebe um transporte
    (a sessão de cada um) e um perfil com o que muda — medido na aba real do SERNIT:

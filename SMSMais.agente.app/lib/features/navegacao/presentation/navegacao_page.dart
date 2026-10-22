@@ -1,13 +1,27 @@
 import 'dart:async';
 
 import 'package:agente/app/theme.dart';
+import 'package:agente/features/deslocamento/application/deslocamento_controller.dart';
 import 'package:agente/features/navegacao/data/navegacao_repository.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
 import 'package:agente/features/navegacao/presentation/widgets/confirmacao_parada_sheet.dart';
 import 'package:agente/features/navegacao/presentation/widgets/painel_passageiro.dart';
+import 'package:agente/features/ocorrencia/domain/ocorrencia.dart'
+    show novoIdLocal;
+import 'package:agente/features/ocorrencia/presentation/botao_report.dart';
+import 'package:agente/features/resgate/presentation/resgates_page.dart';
+import 'package:agente/features/rota/data/rota_repository.dart';
+import 'package:agente/features/viagem/application/viagem_controller.dart';
+import 'package:agente/features/viagem/data/viagem_repository.dart';
+import 'package:agente/features/viagem/domain/viagem.dart';
+import 'package:agente/shared/auth/sessao_controller.dart';
+import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
+import 'package:agente/shared/plataforma/canal_dispositivo.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 
 /// Tela de navegação assistida do translado, com o Google Navigation SDK.
@@ -18,6 +32,11 @@ import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 /// manobras do SDK no topo. A rota é **uma só sessão** com as paradas como
 /// waypoints; a cada chegada o app comuta para a confirmação (assentos) e
 /// **continua a mesma sessão** para o próximo waypoint (1 rota = 1 cobrança).
+///
+/// Ao desembarcar na unidade, abre a lista **Pacientes disponíveis para
+/// resgate** e o carro não segue sozinho para lugar nenhum: as paradas do
+/// resgate só entram quando o motorista (ou a central) marca alguém. Sem
+/// paradas pendentes, ele resgata mais alguém ou **encerra a rota**.
 class NavegacaoPage extends ConsumerStatefulWidget {
   const NavegacaoPage({super.key});
 
@@ -33,6 +52,16 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   TransladoNavegacao? _translado;
   final Set<String> _concluidas = {};
 
+  /// Pessoas (paciente ou acompanhante) que faltaram na coleta.
+  final Set<String> _ausentes = {};
+
+  /// Onde a viagem está para a central (guardado no tablet): começa com o
+  /// que ficou da última vez e com o que a central já recebeu.
+  AndamentoViagem? _andamento;
+
+  /// Simulação ligada (teste com o tablet parado): retoma a cada parada.
+  bool _simulando = false;
+
   bool _sessaoPronta = false;
   bool _confirmando = false;
   bool _painelVisivel = true;
@@ -40,8 +69,30 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   String? _erro;
   String _status = 'Preparando navegação…';
 
+  /// Cada [_preparar] invalida o anterior: resposta tardia do SDK a uma
+  /// tentativa antiga é ignorada.
+  int _tentativa = 0;
+
+  /// Termos sem resposta depois de [_prazoTermos]: oferece "Tentar de novo".
+  /// Não cancela a espera — o motorista pode estar lendo a janela.
+  Timer? _termosTimer;
+  bool _termosDemorando = false;
+
+  /// Calculando a rota há muito tempo sem posição: avisa que falta o GPS.
+  Timer? _gpsTimer;
+  static const _prazoGps = Duration(seconds: 20);
+  static const _prazoTermos = Duration(seconds: 20);
+
+  /// Já está no local da próxima busca (o resgate na mesma unidade em que
+  /// desembarcou): abre a conferência direto, sem rota até o mesmo ponto.
+  static const _raioNoLocal = 150.0;
+
   /// Tempo que o painel do passageiro fica visível antes de se auto-ocultar.
   static const _tempoAutoOcultar = Duration(seconds: 9);
+
+  static const _msgSemChave =
+      'Este app foi gerado sem a chave do Google Maps e a navegação não '
+      'funciona sem ela. Avise o suporte (MAPS_API_KEY ausente no build).';
 
   @override
   void initState() {
@@ -52,13 +103,35 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   @override
   void dispose() {
     _autoOcultarTimer?.cancel();
+    _termosTimer?.cancel();
+    _gpsTimer?.cancel();
     _arrivalSub?.cancel();
-    try {
-      GoogleMapsNavigator.cleanup();
-    } on Object catch (_) {
-      // Sessão pode não estar inicializada — ignorar.
-    }
+    unawaited(_encerrarSessao());
     super.dispose();
+  }
+
+  /// Encerra a sessão do SDK ao sair. Sem sessão iniciada (termos recusados,
+  /// sem chave) o `cleanup` falha com SessionNotInitializedException — e falha
+  /// depois, de forma assíncrona: por isso o `await` dentro do `try`.
+  static Future<void> _encerrarSessao() async {
+    try {
+      await GoogleMapsNavigator.cleanup();
+    } on Object catch (_) {}
+  }
+
+  void _pararVigiaTermos() {
+    _termosTimer?.cancel();
+    _termosTimer = null;
+    if (_termosDemorando && mounted) setState(() => _termosDemorando = false);
+  }
+
+  void _tentarDeNovo() {
+    _pararVigiaTermos();
+    setState(() {
+      _erro = null;
+      _status = 'Preparando navegação…';
+    });
+    unawaited(_preparar());
   }
 
   void _agendarAutoOcultar() {
@@ -117,10 +190,13 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     } on Object catch (_) {}
   }
 
+  /// Paradas com o andamento: concluídas marcadas e, no destino, só quem
+  /// embarcou (destino sem ninguém fica dispensado).
   List<ParadaNavegacao> get _paradas =>
-      _translado?.paradas
-          .map((p) => p.copyWith(concluida: _concluidas.contains(p.id)))
-          .toList() ??
+      _translado?.paradasComAndamento(
+        concluidas: _concluidas,
+        ausentes: _ausentes,
+      ) ??
       const [];
 
   ParadaNavegacao? get _proxima {
@@ -138,19 +214,54 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   }
 
   Future<void> _preparar() async {
+    final tentativa = ++_tentativa;
+    bool vigente() => mounted && tentativa == _tentativa;
     try {
-      final translado =
-          await ref.read(navegacaoRepositoryProvider).obterTransladoAtual();
-      if (!mounted) return;
-      setState(() => _translado = translado);
+      final rota =
+          await ref.read(navegacaoRepositoryProvider).obterRotaAtual();
+      if (!vigente()) return;
+      final guardado =
+          await ref.read(andamentoLocalProvider).ler(rota.rotaId);
+      if (!vigente()) return;
+      final andamento = (guardado ?? AndamentoViagem(rotaId: rota.rotaId))
+          .unir(rota.andamento);
+      setState(() {
+        _translado = rota.translado;
+        _andamento = andamento;
+        _concluidas
+          ..clear()
+          ..addAll(andamento.concluidas);
+        _ausentes
+          ..clear()
+          ..addAll(andamento.ausentes);
+      });
+      unawaited(_registrarInicio());
 
-      // 1) Termos de uso do Navigation SDK (exigência do Google).
+      // 0) Sem a chave do Google o SDK só registra "Authorization failure" e
+      //    a sessão falha como se os termos não tivessem sido aceitos.
+      if (!await const CanalDispositivo().temChaveMaps()) {
+        if (vigente()) setState(() => _erro = _msgSemChave);
+        return;
+      }
+
+      // 1) Termos de uso do Navigation SDK (exigência do Google). Se o SDK
+      //    não mostrar a janela nem responder, a tela oferece "Tentar de novo".
+      if (!vigente()) return;
       setState(() => _status = 'Verificando termos de uso…');
-      final termsOk = await GoogleMapsNavigator.areTermsAccepted() ||
-          await GoogleMapsNavigator.showTermsAndConditionsDialog(
-            'SMS Maricá — Agente',
-            'Prefeitura de Maricá',
-          );
+      _termosTimer = Timer(_prazoTermos, () {
+        if (vigente()) setState(() => _termosDemorando = true);
+      });
+      final bool termsOk;
+      try {
+        termsOk = await GoogleMapsNavigator.areTermsAccepted() ||
+            await GoogleMapsNavigator.showTermsAndConditionsDialog(
+              'SMS Maricá — Agente',
+              'Prefeitura de Maricá',
+            );
+      } finally {
+        if (vigente()) _pararVigiaTermos();
+      }
+      if (!vigente()) return;
       if (!termsOk) {
         setState(() => _erro = 'Os termos do Navigation não foram aceitos.');
         return;
@@ -159,6 +270,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       // 2) Permissão de localização.
       setState(() => _status = 'Permissão de localização…');
       final locOk = await const PermissoesLocalizacao().solicitarForeground();
+      if (!vigente()) return;
       if (!locOk) {
         setState(() => _erro = 'Permissão de localização negada.');
         return;
@@ -167,42 +279,87 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       // 3) Inicializa a sessão e ouve as chegadas.
       setState(() => _status = 'Iniciando sessão de navegação…');
       await GoogleMapsNavigator.initializeNavigationSession();
+      if (!vigente()) return;
       _arrivalSub = GoogleMapsNavigator.setOnArrivalListener(_aoChegar);
 
       // 4) Lança a rota única (todas as paradas como waypoints) e guia.
       setState(() => _status = 'Calculando a rota…');
+      await _posicaoDeTesteSemGps();
+      _gpsTimer?.cancel();
+      _gpsTimer = Timer(_prazoGps, () {
+        final semGps = ref.read(gpsAoVivoProvider) == null;
+        if (vigente() && !_sessaoPronta && semGps) {
+          setState(() => _status = 'Aguardando o sinal de GPS para calcular a '
+              'rota. Em lugar fechado ele demora: vá para um lugar aberto.');
+        }
+      });
       await _definirRotaEGuide();
+      _gpsTimer?.cancel();
 
-      if (!mounted) return;
+      if (!vigente()) return;
       setState(() => _sessaoPronta = true);
+      // Distância e tempo do translado contam sozinhos a partir daqui.
+      ref.read(deslocamentoProvider.notifier).iniciarSeParado();
     } on SessionInitializationException catch (e) {
-      if (mounted) setState(() => _erro = _msgInit(e.code));
+      if (vigente()) setState(() => _erro = _msgInit(e.code));
+    } on SemTransladoHoje catch (e) {
+      if (vigente()) setState(() => _erro = e.toString());
     } on Object catch (e) {
-      if (mounted) setState(() => _erro = 'Falha ao preparar navegação: $e');
+      if (vigente()) setState(() => _erro = 'Falha ao preparar navegação: $e');
     }
   }
 
   String _msgInit(SessionInitializationError code) => switch (code) {
         SessionInitializationError.termsNotAccepted =>
-          'Termos do Navigation não aceitos.',
+          'O Google ainda não registrou o aceite dos termos de uso. '
+              'Toque em Tentar de novo.',
         SessionInitializationError.locationPermissionMissing =>
           'Falta permissão de localização.',
         SessionInitializationError.notAuthorized =>
-          'Chave de API ausente/sem autorização para o Navigation SDK.',
+          'O Google recusou a chave do mapa para este app. Avise o suporte '
+              '(pacote ou assinatura sem autorização no Google Cloud).',
       };
+
+  /// Só nos builds de teste: sem sinal de GPS (tablet parado, dentro de casa)
+  /// o Google espera a posição para sempre e a rota não sai. Põe o carro
+  /// perto da primeira parada, para dar para testar e usar o "Simular".
+  Future<void> _posicaoDeTesteSemGps() async {
+    if (kReleaseMode || ref.read(gpsAoVivoProvider) != null) return;
+    final primeira =
+        _paradas.where((p) => !p.concluida && p.temPonto).firstOrNull;
+    if (primeira == null) return;
+    try {
+      await GoogleMapsNavigator.simulator.setUserLocation(
+        LatLng(
+          latitude: primeira.latitude! + 0.01,
+          longitude: primeira.longitude!,
+        ),
+      );
+    } on Object catch (_) {}
+  }
 
   Future<void> _definirRotaEGuide() async {
     final pendentes = _paradas.where((p) => !p.concluida).toList();
     if (pendentes.isEmpty) return;
 
+    // Parada sem ponto no mapa fica fora da rota do GPS: o motorista vai pelo
+    // endereço (o painel avisa) e marca "Cheguei" do mesmo jeito.
     final waypoints = pendentes
+        .where((p) => p.temPonto)
         .map(
           (p) => NavigationWaypoint.withLatLngTarget(
             title: p.id,
-            target: LatLng(latitude: p.latitude, longitude: p.longitude),
+            target: LatLng(latitude: p.latitude!, longitude: p.longitude!),
           ),
         )
         .toList();
+    if (waypoints.isEmpty) {
+      if (mounted) {
+        setState(() => _erro = 'As paradas que faltam não têm ponto no mapa. '
+            'Siga pelos endereços e marque "Cheguei" em cada uma.');
+      }
+      return;
+    }
 
     final status = await GoogleMapsNavigator.setDestinations(
       Destinations(
@@ -223,10 +380,14 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
   void _aoChegar(OnArrivalEvent event) {
     final parada = _paradaPorId(event.waypoint.title);
-    if (parada != null) {
-      _mostrarPainel();
-      unawaited(_confirmarParada(parada));
+    if (parada == null) return;
+    if (parada.concluida) {
+      // Parada já resolvida (ex.: destino dispensado): segue sem parar.
+      unawaited(_seguirEConferirSeJaNoLocal());
+      return;
     }
+    _mostrarPainel();
+    unawaited(_confirmarParada(parada));
   }
 
   Future<void> _confirmarParada(ParadaNavegacao parada) async {
@@ -239,7 +400,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     } on Object catch (_) {}
 
     if (!mounted) return;
-    final ok = await showModalBottomSheet<bool>(
+    final marcas = await showModalBottomSheet<Map<String, bool>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -248,9 +409,27 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
     if (!mounted) return;
 
-    if (ok ?? false) {
-      setState(() => _concluidas.add(parada.id));
-      await _seguirProxima();
+    var aqui = false;
+    if (marcas != null) {
+      setState(() {
+        _concluidas.add(parada.id);
+        // Quem faltou na coleta não é esperado no destino. No resgate, quem
+        // não estava no local não é deixado em casa (a ida fica como foi).
+        if (parada.tipo == TipoParada.coleta) {
+          _ausentes.addAll([
+            for (final m in marcas.entries)
+              if (!m.value)
+                parada.resgate ? idAusenteNoResgate(m.key, parada.lote) : m.key,
+          ]);
+        }
+      });
+      await _registrarParada(parada, marcas);
+      // Desembarcou na unidade: a lista de resgate abre (decisão de 19/10).
+      final mudou =
+          parada.tipo == TipoParada.destino &&
+          !parada.resgate &&
+          await _abrirResgates(aoDesembarcar: true);
+      aqui = await _seguirProxima(refazer: mudou);
     } else {
       // Retoma a guidance na mesma parada.
       try {
@@ -258,27 +437,238 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       } on Object catch (_) {}
     }
     if (mounted) setState(() => _confirmando = false);
+    final proxima = _proxima;
+    if (aqui && proxima != null && mounted) {
+      unawaited(_confirmarParada(proxima));
+    }
   }
 
-  Future<void> _seguirProxima() async {
-    if (_proxima == null) {
-      // Fim do translado: encerra guidance e limpa destinos (mesma sessão).
+  /// A lista de resgate. Verdadeiro quando a marcação mudou: a rota foi
+  /// recarregada e a navegação precisa ser refeita.
+  Future<bool> _abrirResgates({bool aoDesembarcar = false}) async {
+    final a = _andamento;
+    if (a == null || !mounted) return false;
+    final mudou = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ResgatesPage(rotaId: a.rotaId, aoDesembarcar: aoDesembarcar),
+      ),
+    );
+    if (mudou != true || !mounted) return false;
+    await _recarregarRota();
+    return true;
+  }
+
+  /// Busca a rota de novo na central (paradas do resgate que entraram ou
+  /// saíram), mantendo o que o tablet já marcou.
+  Future<void> _recarregarRota() async {
+    try {
+      ref.invalidate(rotasDoDiaProvider);
+      final rota = await ref
+          .read(navegacaoRepositoryProvider)
+          .obterRotaAtual();
+      if (!mounted) return;
+      final andamento = (_andamento ?? AndamentoViagem(rotaId: rota.rotaId))
+          .unir(rota.andamento);
+      setState(() {
+        _translado = rota.translado;
+        _concluidas
+          ..clear()
+          ..addAll(andamento.concluidas);
+        _ausentes
+          ..clear()
+          ..addAll(andamento.ausentes);
+      });
+      await _salvarAndamento(andamento);
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não deu para atualizar a rota: $e')),
+        );
+      }
+    }
+  }
+
+  /// Fim do dia do carro: a central conclui a rota e devolve à lista de
+  /// resgate quem ela marcou e não buscou.
+  Future<void> _encerrarRota() async {
+    final a = _andamento;
+    if (a == null || a.encerrada) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Encerrar a rota?'),
+        content: const Text(
+          'Depois disso este carro não marca mais resgate nesta rota.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(false),
+            child: const Text('Continuar na rota'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(c).pop(true),
+            child: const Text('Encerrar a rota'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _salvarAndamento(a.copyWith(encerrada: true));
+    if (mounted) {
+      setState(() {});
+      ref.read(deslocamentoProvider.notifier).parar();
+    }
+    await ref
+        .read(viagemProvider.notifier)
+        .registrar([_evento(a.rotaId, TipoEventoViagem.conclusao)]);
+  }
+
+  /// O carro está a menos de [_raioNoLocal] da parada: pelo GPS do tablet
+  /// ou, sem sinal (teste parado), pela posição que o Google mostra.
+  Future<bool> _jaNoLocal(ParadaNavegacao p) async {
+    if (!p.temPonto) return false;
+    var lat = ref.read(gpsAoVivoProvider)?.latitude;
+    var lng = ref.read(gpsAoVivoProvider)?.longitude;
+    if (lat == null || lng == null) {
+      try {
+        final aqui = await _viewController?.getMyLocation();
+        lat = aqui?.latitude;
+        lng = aqui?.longitude;
+      } on Object catch (_) {}
+    }
+    if (lat == null || lng == null) return false;
+    return Geolocator.distanceBetween(lat, lng, p.latitude!, p.longitude!) <
+        _raioNoLocal;
+  }
+
+  Future<void> _seguirEConferirSeJaNoLocal() async {
+    final aqui = await _seguirProxima();
+    final proxima = _proxima;
+    if (aqui && proxima != null && mounted) {
+      unawaited(_confirmarParada(proxima));
+    }
+  }
+
+  /// O motorista foi conferido pelo rosto antes de abrir a navegação (Rota do
+  /// dia): daqui a viagem começa para a central. Uma vez por rota.
+  Future<void> _registrarInicio() async {
+    final a = _andamento;
+    if (a == null || a.iniciada) return;
+    await _salvarAndamento(a.copyWith(iniciada: true));
+    await ref
+        .read(viagemProvider.notifier)
+        .registrar([_evento(a.rotaId, TipoEventoViagem.inicio)]);
+  }
+
+  /// Leva à central quem embarcou, faltou ou desceu na parada. A rota só
+  /// acaba quando o motorista encerra (pode haver resgate depois). Sem rede,
+  /// fica na fila do tablet.
+  Future<void> _registrarParada(
+    ParadaNavegacao parada,
+    Map<String, bool> marcas,
+  ) async {
+    final a = _andamento;
+    if (a == null) return;
+    final fix = ref.read(gpsAoVivoProvider);
+    final eventos = eventosDaParada(
+      rotaId: a.rotaId,
+      parada: parada,
+      marcas: marcas,
+      novoId: novoIdLocal,
+      agora: DateTime.now(),
+      motoristaId: ref.read(sessaoProvider)?.motoristaId,
+      latitude: fix?.latitude,
+      longitude: fix?.longitude,
+      precisaoM: fix != null && fix.accuracy > 0 ? fix.accuracy : null,
+    );
+    await _salvarAndamento(
+      a.copyWith(concluidas: {..._concluidas}, ausentes: {..._ausentes}),
+    );
+    await ref.read(viagemProvider.notifier).registrar(eventos);
+  }
+
+  EventoViagemPendente _evento(String rotaId, TipoEventoViagem tipo) {
+    final fix = ref.read(gpsAoVivoProvider);
+    return EventoViagemPendente(
+      idLocal: novoIdLocal(),
+      rotaId: rotaId,
+      tipo: tipo,
+      ocorridoEm: DateTime.now().toUtc(),
+      motoristaId: ref.read(sessaoProvider)?.motoristaId,
+      latitude: fix?.latitude,
+      longitude: fix?.longitude,
+      precisaoM: fix != null && fix.accuracy > 0 ? fix.accuracy : null,
+    );
+  }
+
+  Future<void> _salvarAndamento(AndamentoViagem a) async {
+    _andamento = a;
+    await ref.read(andamentoLocalProvider).salvar(a);
+  }
+
+  /// Avança para a próxima parada pendente na MESMA sessão (sem nova
+  /// cobrança): tira do SDK a parada atual e as dispensadas no caminho
+  /// (destino de quem faltou). Se o SDK não tiver a parada esperada, refaz a
+  /// rota só com as pendentes — antes, um `waypoint == null` aqui deixava a
+  /// navegação parada sem rota. [refazer]: a rota mudou (resgate marcado ou
+  /// desmarcado) e os destinos do SDK são outros. Com a simulação ligada, o
+  /// carro segue sozinho. Verdadeiro quando o carro já está no local da
+  /// próxima busca: quem chamou abre a conferência, sem rota até o mesmo
+  /// ponto.
+  Future<bool> _seguirProxima({bool refazer = false}) async {
+    final proxima = _proxima;
+    if (proxima == null) {
+      // Sem parada pendente: para a guidance e limpa os destinos (mesma
+      // sessão). A rota segue aberta até o motorista encerrar.
+      _simulando = false;
       try {
         await GoogleMapsNavigator.stopGuidance();
         await GoogleMapsNavigator.clearDestinations();
       } on Object catch (_) {}
-      return;
+      return false;
     }
-    // Mesma sessão: avança ao próximo waypoint, sem recriar (sem nova cobra).
+    if (proxima.resgate &&
+        proxima.tipo == TipoParada.coleta &&
+        await _jaNoLocal(proxima)) {
+      try {
+        await GoogleMapsNavigator.stopGuidance();
+      } on Object catch (_) {}
+      if (refazer) await _definirRotaSemGuia();
+      return true;
+    }
+    if (refazer) {
+      await _definirRotaEGuide();
+      if (_simulando && mounted) await _simularTrajeto();
+      return false;
+    }
     try {
-      final resp = await GoogleMapsNavigator.continueToNextDestination();
-      if (resp.waypoint != null) {
+      var atual = (await GoogleMapsNavigator.continueToNextDestination())
+          .waypoint;
+      while (atual != null && atual.title != proxima.id) {
+        atual = (await GoogleMapsNavigator.continueToNextDestination())
+            .waypoint;
+      }
+      debugPrint('[navegacao] próxima=${proxima.id} sdk=${atual?.title}');
+      if (atual == null) {
+        await _definirRotaEGuide();
+      } else {
         await GoogleMapsNavigator.startGuidance();
       }
-    } on Object catch (_) {
-      // Fallback raro: redefine a rota com as paradas restantes (1 sessão).
+    } on Object catch (e) {
+      debugPrint('[navegacao] continuar falhou ($e): refazendo a rota');
       await _definirRotaEGuide();
     }
+    if (_simulando && mounted) await _simularTrajeto();
+    return false;
+  }
+
+  /// Destinos novos no SDK sem começar a guiar (o carro já está na busca).
+  Future<void> _definirRotaSemGuia() async {
+    await _definirRotaEGuide();
+    try {
+      await GoogleMapsNavigator.stopGuidance();
+    } on Object catch (_) {}
   }
 
   Future<void> _onViewCreated(GoogleNavigationViewController controller) async {
@@ -320,6 +710,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
           .simulateLocationsAlongExistingRouteWithOptions(
         SimulationOptions(speedMultiplier: 8),
       );
+      _simulando = true;
     } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -335,7 +726,16 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     if (_translado == null || !_sessaoPronta) return _telaCarregando();
 
     final proxima = _proxima;
-    final cam = proxima ?? _paradas.first;
+    // Câmera inicial na próxima parada com ponto no mapa (sem nenhuma, no
+    // centro de Maricá).
+    final comPonto = [if (proxima != null) proxima, ..._paradas]
+        .where((p) => p.temPonto);
+    final cam = comPonto.isEmpty
+        ? const LatLng(latitude: -22.9186, longitude: -42.8186)
+        : LatLng(
+            latitude: comPonto.first.latitude!,
+            longitude: comPonto.first.longitude!,
+          );
 
     return Scaffold(
       body: Stack(
@@ -349,10 +749,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
             child: GoogleMapsNavigationView(
               onViewCreated: _onViewCreated,
               initialCameraPosition: CameraPosition(
-                target: LatLng(
-                  latitude: cam.latitude,
-                  longitude: cam.longitude,
-                ),
+                target: cam,
                 zoom: 14,
               ),
             ),
@@ -384,8 +781,25 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
                 padding: const EdgeInsets.only(right: 8),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const BotaoReport(),
+                    const SizedBox(height: 16),
+                    _FabRedondo(
+                      icone: Icons.pan_tool_alt,
+                      rotulo: 'Resgate',
+                      onTap: () async {
+                        if (await _abrirResgates()) {
+                          final aqui = await _seguirProxima(refazer: true);
+                          final p = _proxima;
+                          if (aqui && p != null && mounted) {
+                            unawaited(_confirmarParada(p));
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     _FabRedondo(
                       icone: _modoNoite ? Icons.light_mode : Icons.dark_mode,
                       onTap: _alternarNoite,
@@ -414,7 +828,18 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
               right: 8,
               bottom: 8,
               child: SafeArea(
-                child: _TransladoConcluido(
+                child: _SemParadas(
+                  encerrada: _andamento?.encerrada ?? false,
+                  onResgates: () async {
+                    if (await _abrirResgates()) {
+                      final aqui = await _seguirProxima(refazer: true);
+                      final p = _proxima;
+                      if (aqui && p != null && mounted) {
+                        unawaited(_confirmarParada(p));
+                      }
+                    }
+                  },
+                  onEncerrar: _encerrarRota,
                   onVoltar: () => Navigator.of(context).maybePop(),
                 ),
               ),
@@ -452,23 +877,35 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   }
 
   Widget _telaCarregando() => Scaffold(
-        appBar: AppBar(title: const Text('Navegação')),
+        appBar: _barraComReport(),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(_status),
-            ],
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(_status),
+                if (_termosDemorando) ...[
+                  const SizedBox(height: 24),
+                  const Text(
+                    'A janela dos termos de uso não apareceu?',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  _botoesVoltarTentar(),
+                ],
+              ],
+            ),
           ),
         ),
       );
 
   Widget _telaErro(String msg) => Scaffold(
-        appBar: AppBar(title: const Text('Navegação')),
+        appBar: _barraComReport(),
         body: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -477,13 +914,46 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
                 const SizedBox(height: 12),
                 Text(msg, textAlign: TextAlign.center),
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: const Text('Voltar'),
-                ),
+                _botoesVoltarTentar(),
               ],
             ),
           ),
+        ),
+      );
+
+  /// Barra das telas de espera/erro: o REPORT continua à mão.
+  PreferredSizeWidget _barraComReport() => AppBar(
+        title: const Text('Navegação'),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.fromLTRB(0, 6, 12, 6),
+            child: BotaoReport(sobreBarra: true),
+          ),
+        ],
+      );
+
+  /// Voltar à rota + Tentar de novo, lado a lado (tablet em paisagem).
+  Widget _botoesVoltarTentar() => SizedBox(
+        width: 520,
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Voltar'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _tentarDeNovo,
+                child: const Text('Tentar de novo'),
+              ),
+            ),
+          ],
         ),
       );
 }
@@ -579,8 +1049,19 @@ class _FabPassageiro extends StatelessWidget {
   }
 }
 
-class _TransladoConcluido extends StatelessWidget {
-  const _TransladoConcluido({required this.onVoltar});
+/// Sem parada pendente: resgatar mais alguém ou encerrar a rota. Encerrada,
+/// só volta para a Rota do dia.
+class _SemParadas extends StatelessWidget {
+  const _SemParadas({
+    required this.encerrada,
+    required this.onResgates,
+    required this.onEncerrar,
+    required this.onVoltar,
+  });
+
+  final bool encerrada;
+  final VoidCallback onResgates;
+  final VoidCallback onEncerrar;
   final VoidCallback onVoltar;
 
   @override
@@ -596,14 +1077,53 @@ class _TransladoConcluido extends StatelessWidget {
           children: [
             const Icon(Icons.check_circle, color: Colors.green, size: 40),
             const SizedBox(height: 8),
-            const Text(
-              'Translado concluído',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            Text(
+              encerrada ? 'Rota encerrada' : 'Nenhuma parada pendente',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
+            if (!encerrada) ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Resgate mais alguém ou encerre a rota.',
+                style: TextStyle(color: Colors.black54),
+              ),
+            ],
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: onVoltar,
-              child: const Text('Voltar à rota'),
+            // Tablet em paisagem: os botões lado a lado.
+            SizedBox(
+              width: 640,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                      onPressed: onVoltar,
+                      child: const Text('Voltar à rota'),
+                    ),
+                  ),
+                  if (!encerrada) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        onPressed: onResgates,
+                        child: const Text('Pacientes disponíveis para resgate'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: onEncerrar,
+                        child: const Text('Encerrar a rota'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ),

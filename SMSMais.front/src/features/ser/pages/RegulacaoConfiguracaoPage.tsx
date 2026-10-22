@@ -1,4 +1,5 @@
 import { Settings2 } from 'lucide-react';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { AbaSerConfiguracao } from '@/features/ser/components/AbaSerConfiguracao';
 import { AbaSerConsultaDireta } from '@/features/ser/components/AbaSerConsultaDireta';
@@ -39,7 +40,10 @@ export function RegulacaoConfiguracaoPage() {
       <header className="flex items-center gap-3">
         <Settings2 className="size-6 text-red-600" />
         <div>
-          <h1 className="text-xl font-semibold">Configuração da Regulação</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold">Configuração da Regulação</h1>
+            <AjudaManual artigo="ser-configuracao" />
+          </div>
           <p className="text-sm text-slate-500">
             Credenciais e motores das fontes externas de regulação.
           </p>

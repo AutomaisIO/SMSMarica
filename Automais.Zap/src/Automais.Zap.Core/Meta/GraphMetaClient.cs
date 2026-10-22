@@ -170,6 +170,49 @@ public sealed partial class GraphMetaClient(
             Bonito(e)));
     }
 
+    /// <summary>
+    /// <c>health_status</c> do número. A Meta devolve o veredito geral e um item por elo (número,
+    /// WABA, empresa, App) com o erro que o trava — pagamento, bloqueio, verificação.
+    /// </summary>
+    public async Task<ResultadoMeta<SaudeNumeroMeta>> ObterSaudeAsync(string phoneNumberId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<SaudeNumeroMeta>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get, $"{phoneNumberId}?fields=health_status", creds!.TokenSistema!, null, ct);
+        return r.Sucesso
+            ? ResultadoMeta<SaudeNumeroMeta>.Ok(LerSaude(phoneNumberId, r.Valor!))
+            : ResultadoMeta<SaudeNumeroMeta>.Falha(r.Erro!);
+    }
+
+    public static SaudeNumeroMeta LerSaude(string phoneNumberId, JsonElement raiz)
+    {
+        var hs = raiz.TryGetProperty("health_status", out var h) ? h : default;
+        var entidades = new List<EntidadeSaudeMeta>();
+        if (hs.ValueKind == JsonValueKind.Object
+            && hs.TryGetProperty("entities", out var es) && es.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in es.EnumerateArray())
+            {
+                var tipo = Texto(e, "entity_type") ?? "?";
+                var id = Texto(e, "id");
+                var pode = Texto(e, "can_send_message") ?? "?";
+                var erros = e.TryGetProperty("errors", out var er) && er.ValueKind == JsonValueKind.Array
+                    ? er.EnumerateArray().ToList()
+                    : [];
+                if (erros.Count == 0)
+                {
+                    entidades.Add(new EntidadeSaudeMeta(tipo, id, pode, null, null, null));
+                    continue;
+                }
+                foreach (var x in erros)
+                    entidades.Add(new EntidadeSaudeMeta(tipo, id, pode,
+                        Texto(x, "error_code"), Texto(x, "error_description"), Texto(x, "possible_solution")));
+            }
+        }
+        return new SaudeNumeroMeta(phoneNumberId, Texto(hs, "can_send_message") ?? "?", entidades);
+    }
+
     public async Task<ResultadoMeta<IReadOnlyList<AppInscrito>>> ListarAppsInscritosAsync(string wabaId, CancellationToken ct = default)
     {
         var (creds, erro) = await CredenciaisSistemaAsync(ct);

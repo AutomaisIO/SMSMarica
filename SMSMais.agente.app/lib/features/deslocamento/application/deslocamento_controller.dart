@@ -80,6 +80,12 @@ class DeslocamentoController extends StateNotifier<EstadoDeslocamento> {
   /// Fix anterior (qualquer), para derivar velocidade quando o sensor não dá.
   Position? _anterior;
 
+  /// Liga o contador no início do translado. Não zera um translado já em
+  /// andamento: o motorista pode sair e voltar à navegação no meio do percurso.
+  void iniciarSeParado() {
+    if (!state.ativo) iniciar();
+  }
+
   void iniciar() {
     _ancora = null;
     state = state.copyWith(

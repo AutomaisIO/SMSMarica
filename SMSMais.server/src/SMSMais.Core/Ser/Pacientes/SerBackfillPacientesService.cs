@@ -8,7 +8,7 @@ namespace SMSMais.Core.Ser.Pacientes;
 
 public sealed record BackfillPacientesSerDto(
     int Pacientes, int Criados, int Enriquecidos, int Inalterados, int SemChave, int Falhas,
-    int DuracaoSegundos);
+    int DuracaoSegundos, int PessoaDiferente = 0);
 
 /// <summary>
 /// Alinhamento ÚNICO entre a base espelhada do SER e o hub FHIR.
@@ -59,7 +59,7 @@ public sealed class SerBackfillPacientesService(
     public async Task<BackfillPacientesSerDto> ExecutarAsync(int throttleMs, CancellationToken ct)
     {
         var inicio = DateTime.UtcNow;
-        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, falhas = 0, vistos = 0;
+        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, pessoaDiferente = 0, falhas = 0, vistos = 0;
 
         var ids = await IdsMaisRecentesPorPacienteAsync(ct);
         logger.LogInformation(
@@ -92,6 +92,7 @@ public sealed class SerBackfillPacientesService(
                         case ResultadoConciliacaoSer.Enriquecido: enriquecidos++; break;
                         case ResultadoConciliacaoSer.Inalterado: inalterados++; break;
                         case ResultadoConciliacaoSer.SemChave: semChave++; break;
+                        case ResultadoConciliacaoSer.PessoaDiferente: pessoaDiferente++; break;
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -128,14 +129,14 @@ public sealed class SerBackfillPacientesService(
         logger.LogInformation("SER/backfill de pacientes: terminado em {Seg}s.", duracao);
 
         return new BackfillPacientesSerDto(
-            ids.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
+            ids.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao, PessoaDiferente: pessoaDiferente);
     }
 
     public async Task<BackfillPacientesSerDto> ExecutarPendentesAsync(
         int limite, CancellationToken ct)
     {
         var inicio = DateTime.UtcNow;
-        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, falhas = 0;
+        int criados = 0, enriquecidos = 0, inalterados = 0, semChave = 0, pessoaDiferente = 0, falhas = 0;
 
         // Rastreadas (sem AsNoTracking): a marca é limpa aqui mesmo, e só depois do sucesso.
         var pendentes = await db.SerSolicitacoes
@@ -158,6 +159,7 @@ public sealed class SerBackfillPacientesService(
                     case ResultadoConciliacaoSer.Enriquecido: enriquecidos++; break;
                     case ResultadoConciliacaoSer.Inalterado: inalterados++; break;
                     case ResultadoConciliacaoSer.SemChave: semChave++; break;
+                    case ResultadoConciliacaoSer.PessoaDiferente: pessoaDiferente++; break;
                 }
 
                 // Guarda quem é a pessoa: é isto que liga a linha do SER ao resumo do
@@ -202,7 +204,7 @@ public sealed class SerBackfillPacientesService(
             pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
 
         return new BackfillPacientesSerDto(
-            pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
+            pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao, PessoaDiferente: pessoaDiferente);
     }
 
     /// <summary>

@@ -252,8 +252,9 @@ export function ErrosImportacao({ buscaInicial = '' }: { buscaInicial?: string }
                   <td className="px-3 py-2 text-xs text-gray-500">{f.tentativas}</td>
                   <td className="px-3 py-2 text-right">
                     {/* A ação depende da CAUSA: só faz sentido pedir CPF quando foi ele que
-                        faltou. As demais causas ou são transitórias (revalidar basta) ou não têm
-                        o dado na origem — ver ADR-0035. */}
+                        faltou, ou quando a ficha achada pelo CNS é de outra pessoa e alguém
+                        precisa dizer quem é o paciente. As demais causas ou são transitórias
+                        (revalidar basta) ou não têm o dado na origem — ver ADR-0035. */}
                     {f.podeInformarCpf ? (
                       <button
                         type="button"
@@ -309,6 +310,8 @@ export function ErrosImportacao({ buscaInicial = '' }: { buscaInicial?: string }
             pacienteNome: pendenciaCpf.nomePaciente,
             procedimento: pendenciaCpf.procedimentoTexto,
             codigoSolicitacao: pendenciaCpf.codigoSolicitacao,
+            causa: pendenciaCpf.causa,
+            motivo: pendenciaCpf.motivo,
           }
         }
         aoFechar={() => setPendenciaCpf(null)}

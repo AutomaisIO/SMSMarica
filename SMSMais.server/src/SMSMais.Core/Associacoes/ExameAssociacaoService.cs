@@ -22,8 +22,12 @@ public sealed class ExameAssociacaoService(
     Pacs.IPacsReescritorEstudoClient reescritor,
     Pacs.IResolvedorIdentidadeDicom identidades,
     IUsuarioAtualAccessor usuarioAtual,
-    ILogger<ExameAssociacaoService> logger) : IExameAssociacaoService
+    ILogger<ExameAssociacaoService> logger,
+    // Opcional: só precisa do banco, e os testes que montam o serviço à mão seguem compilando.
+    Equipamentos.IRegrasDoExameService? regrasDoExame = null) : IExameAssociacaoService
 {
+    private Equipamentos.IRegrasDoExameService RegrasDoExame => regrasDoExame ??= new Equipamentos.RegrasDoExameService(db);
+
     /// <summary>
     /// Corrige a identidade DENTRO do objeto DICOM do estudo "voando" e devolve o UID novo.
     ///
@@ -398,6 +402,11 @@ public sealed class ExameAssociacaoService(
             .Where(id => principaisComAnamnese.Contains(exameDaAnamnese[id]))
             .ToHashSet();
 
+        // O que o aparelho de cada exame diz sobre laudo e anamnese (ADR-0075).
+        var regras = await RegrasDoExame.ResolverAsync(todasSolIds, cancellationToken);
+        Equipamentos.RegraDoExame Regra(Guid exameId) =>
+            regras.TryGetValue(exameId, out var r) ? r : Equipamentos.RegraDoExame.SemAparelho;
+
         var resultado = new List<ExameAssociacaoDto>(explicitas.Count + implicitas.Count);
         foreach (var a in explicitas)
         {
@@ -408,7 +417,8 @@ public sealed class ExameAssociacaoService(
                 a.PacienteId, Nome(a.PacienteId), Explicita: true, a.Origem,
                 dados?.Prioridade ?? PrioridadeSolicitacao.Eletiva, comAnamnese.Contains(a.ExameImagemId),
                 dados?.TipoExameNome, dados?.Modalidade, dados?.UnidadeExecutante, dados?.UnidadeSolicitante,
-                dados?.CodigoSolicitacao));
+                dados?.CodigoSolicitacao,
+                Regra(a.ExameImagemId).LaudoNaPlataforma, Regra(a.ExameImagemId).UsaAnamnese));
         }
         foreach (var i in implicitas)
         {
@@ -416,7 +426,8 @@ public sealed class ExameAssociacaoService(
                 i.StudyInstanceUID, i.Id, i.AccessionNumber,
                 i.PacienteId, Nome(i.PacienteId), Explicita: false, Origem: null, i.Prioridade,
                 comAnamnese.Contains(i.Id),
-                i.TipoNome, i.Modalidade, i.Executante, i.Solicitante, i.CodigoSolicitacao));
+                i.TipoNome, i.Modalidade, i.Executante, i.Solicitante, i.CodigoSolicitacao,
+                Regra(i.Id).LaudoNaPlataforma, Regra(i.Id).UsaAnamnese));
         }
         return resultado;
     }
@@ -652,10 +663,12 @@ public sealed class ExameAssociacaoService(
         var exameDaAnamnese = await Solicitacoes.ExamesDoPedido.ExameDaAnamneseAsync(db, assoc.ExameImagemId, ct);
         var temAnamnese = await db.Anamneses.AsNoTracking()
             .AnyAsync(an => an.ExameImagemId == exameDaAnamnese, ct);
+        var regra = await RegrasDoExame.ResolverAsync(assoc.ExameImagemId, ct);
         return new ExameAssociacaoDto(
             assoc.StudyInstanceUID, assoc.ExameImagemId, sol?.AccessionNumber ?? string.Empty,
             assoc.PacienteId, paciente?.Nome, Explicita: true, assoc.Origem,
             sol?.Prioridade ?? PrioridadeSolicitacao.Eletiva, temAnamnese,
-            sol?.TipoNome, sol?.Modalidade, sol?.Executante, sol?.Solicitante, sol?.CodigoSolicitacao);
+            sol?.TipoNome, sol?.Modalidade, sol?.Executante, sol?.Solicitante, sol?.CodigoSolicitacao,
+            regra.LaudoNaPlataforma, regra.UsaAnamnese);
     }
 }

@@ -190,7 +190,7 @@ public sealed class CompletadorFichaSemCpf(
         try
         {
             var dto = await pacientes.ObterPorIdAsync(id, ct);
-            return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+            return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo, dto.DataNascimento);
         }
         catch (NaoEncontradoException)
         {

@@ -78,7 +78,8 @@ internal static class ConstrutorMwlItem
         int descricaoMax = Equipamento.DescricaoMaxPadrao,
         DestinoCodigoProcedimento codigoDestinos = DestinoCodigoProcedimento.Nenhum,
         string? codigoEsquema = null,
-        CamposOpcionaisWorklist? campos = null)
+        CamposOpcionaisWorklist? campos = null,
+        DadosClinicosWorklist? clinicos = null)
     {
         var tipo = s.TipoExame ?? throw new InvalidOperationException("TipoExame não carregado.");
         var quando = s.Solicitacao!.DataAgendada ?? DateTime.UtcNow;
@@ -138,6 +139,15 @@ internal static class ConstrutorMwlItem
             Texto(item, tagMedico, s.Solicitacao!.SolicitanteNome);
         if (campos?.UnidadeTag is { } tagUnidade)
             Texto(item, tagUnidade, NomeDaUnidade(s.Solicitacao!, campos.UnidadeOrigem));
+
+        // Altura, peso e fumante da anamnese do Holter — o CardioNet pede as três e, sem elas, a
+        // técnica as digitava no aparelho. Sem anamnese, nada entra: o item sai como antes.
+        if (clinicos?.AlturaMetros is { } altura)
+            item["00101020"] = ComVr("DS", Anamneses.AnamneseHolter.Ds(altura));   // Patient's Size (m)
+        if (clinicos?.PesoKg is { } peso)
+            item["00101030"] = ComVr("DS", Anamneses.AnamneseHolter.Ds(peso));     // Patient's Weight (kg)
+        if (clinicos?.SmokingStatus is { Length: > 0 } fumante)
+            item["001021A0"] = Cs(fumante);                                         // Smoking Status
 
         return item;
     }

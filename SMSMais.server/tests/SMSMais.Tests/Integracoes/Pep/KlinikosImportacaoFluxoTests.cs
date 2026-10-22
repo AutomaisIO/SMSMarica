@@ -69,6 +69,12 @@ public class KlinikosImportacaoFluxoTests
         /// <summary>Teto do MIN_ACTIVE_ROWVERSION simulado (default: sem transação em voo).</summary>
         public long CapRowversion { get; set; } = long.MaxValue - 1;
 
+        /// <summary>
+        /// Versão do banco que a sonda de esquema enxerga (default: a das UPAs). <c>null</c> simula
+        /// um esquema que não bate com nenhuma — a sonda responde tudo zero.
+        /// </summary>
+        internal KlinikosLayout? Layout { get; set; } = KlinikosLayout.U2025;
+
         public Task<bool> TestarConexaoAsync(CancellationToken ct = default) => Task.FromResult(Conectada);
 
         public Task<ResultadoConsulta> ExecutarAsync(
@@ -81,8 +87,22 @@ public class KlinikosImportacaoFluxoTests
                 return Task.FromResult(Tabela([new Dictionary<string, object?> { ["cap"] = CapRowversion }]));
             }
 
-            // Flag de atendimento: DISTINCT SPA_CODIGO das evoluções não-ESTORNO.
-            if (sql.Contains("DISTINCT SPA_CODIGO", StringComparison.OrdinalIgnoreCase))
+            // Sonda de esquema: a assinatura de cada versão, como o SQL Server responderia.
+            if (sql.Contains("COL_LENGTH", StringComparison.OrdinalIgnoreCase))
+            {
+                var k = Layout == KlinikosLayout.K2024 ? 1 : 0;
+                var u = Layout == KlinikosLayout.U2025 ? 1 : 0;
+                return Task.FromResult(Tabela([new Dictionary<string, object?>
+                {
+                    ["evo_spa"] = u, ["evo_atendamb"] = u | k, ["evo_inativa"] = k, ["evo_rascunho"] = k,
+                    ["tab_sinais"] = u, ["aco_vitais"] = k, ["spa_nome_social"] = k,
+                }]));
+            }
+
+            // Flag de atendimento: DISTINCT SPA_CODIGO das evoluções não-ESTORNO. Na K.2024 o
+            // SQL junta o atendimento para chegar ao boletim; as linhas do fake já vêm juntadas.
+            if (sql.Contains("DISTINCT SPA_CODIGO", StringComparison.OrdinalIgnoreCase)
+                || sql.Contains("DISTINCT aa.spa_codigo", StringComparison.OrdinalIgnoreCase))
             {
                 var lista = FiltroIn(sql).Valores;
                 var spas = Evolucoes
@@ -144,6 +164,9 @@ public class KlinikosImportacaoFluxoTests
             _ when sql.Contains("FROM Item_Prescricao_Medicamento", StringComparison.OrdinalIgnoreCase) => ItensPrescricao,
             _ when sql.Contains("FROM TB_CID", StringComparison.OrdinalIgnoreCase) => Cids,
             _ when sql.Contains("FROM atendimento_ambulatorial", StringComparison.OrdinalIgnoreCase) => Desfechos,
+            // K.2024: os sinais vêm de acolhimento + classificação + evolução num UNION só — tem
+            // de vir antes de UPA_Evolucao, que também aparece nesse SQL.
+            _ when sql.Contains("FROM UPA_ACOLHIMENTO", StringComparison.OrdinalIgnoreCase) => Sinais,
             _ when sql.Contains("FROM UPA_Evolucao", StringComparison.OrdinalIgnoreCase) => Evolucoes,
             _ when sql.Contains("FROM UPA_SinaisVitais", StringComparison.OrdinalIgnoreCase) => Sinais,
             _ => throw new InvalidOperationException($"SQL não previsto pelo fake: {sql[..Math.Min(80, sql.Length)]}"),
@@ -1567,6 +1590,64 @@ public class KlinikosImportacaoFluxoTests
     [InlineData("12", null)]          // abaixo do piso: não é número de conselho
     public void Regua_do_conselho(string bruto, string? esperado) =>
         Assert.Equal(esperado, SMSMais.Core.Integracoes.Pep.ConselhoPep.Normalizar(bruto));
+
+    // ---------------------------------------------------------------- Conde (K.2024)
+
+    /// <summary>
+    /// A versão do banco do Conde: a evolução chega ao boletim pelo atendimento e os sinais vêm
+    /// de acolhimento, classificação e evolução. O fake já entrega as linhas juntadas — o que
+    /// este teste prova é que o run inteiro roda na K.2024 e que cada medida tem identifier
+    /// próprio mesmo quando acolhimento e classificação têm o MESMO número.
+    /// </summary>
+    [Fact]
+    public async Task Conde_K2024__boletim_evolucao_e_sinais_das_tres_etapas_entram()
+    {
+        var origem = OrigemPadrao();
+        origem.Layout = KlinikosLayout.K2024;
+        origem.Sinais.Clear();
+        origem.Sinais.Add(SinalK2024("aco", 5, "B1", "143/63", 3000));
+        origem.Sinais.Add(SinalK2024("cr", 5, "B1", "150/91", 3100));
+        origem.Sinais.Add(SinalK2024("evo", 5, "B3", "120/80", 3200));
+        var hub = new HubFake();
+
+        var (ctx, p, _) = await RodarAsync(origem, hub);
+
+        Assert.Equal(0, p.FalhasTotal);
+        Assert.Equal(3, hub.Do<Encounter>().Count);
+        Assert.Equal(2, hub.Do<Condition>().Count);
+        var chavesPa = hub.Do<Observation>()
+            .SelectMany(o => o.Identifier).Select(i => i.Value)
+            .Where(v => v!.EndsWith(":pa", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal([$"{Slug}:aco-5:pa", $"{Slug}:cr-5:pa", $"{Slug}:evo-5:pa"], chavesPa.Order().ToList());
+        Assert.Equal(3200, ctx.Marca.Ponteiro("sinais-vitais"));
+    }
+
+    /// <summary>
+    /// Banco que não bate com nenhuma versão conhecida PARA antes de escrever qualquer coisa:
+    /// ler coluna que não existe derrubaria uma fase no meio, com metade do run gravado.
+    /// </summary>
+    [Fact]
+    public async Task Versao_desconhecida_do_banco_para_o_run_sem_gravar_nada()
+    {
+        var origem = OrigemPadrao();
+        origem.Layout = null;
+        var hub = new HubFake();
+
+        var ex = await Assert.ThrowsAsync<SMSMais.Core.Common.Excecoes.ValidacaoException>(
+            () => RodarAsync(origem, hub));
+
+        Assert.Contains("evo_spa=0", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(hub.Recursos);
+    }
+
+    private static Dictionary<string, object?> SinalK2024(string origem, long cod, string spa, string pa, long rv) => new()
+    {
+        ["origem"] = origem, ["sv_codigo"] = cod, ["spa_codigo"] = spa, ["data"] = "2026-08-01T10:20:00",
+        ["prof_codigo"] = null, ["pressaoarterial"] = pa, ["pulso"] = null, ["temperatura"] = null,
+        ["frequenciarespiratoria"] = null, ["hgt"] = null, ["saturacaoO2"] = null, ["peso"] = null,
+        ["rv"] = rv,
+    };
 
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]

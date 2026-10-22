@@ -9,8 +9,10 @@ import type {
   ResultadoVerificacaoDivergencias,
   ResumoDivergencias,
   SalvarAgendaPayload,
+  SalvarUsoKlinikosWeb,
   StatusDivergencia,
   StatusImportacao,
+  UsoKlinikosWeb,
 } from '@/features/pep-sincronizacao/types';
 
 export async function listarBasesPep(): Promise<BasePep[]> {
@@ -118,4 +120,15 @@ export async function reprocessarDivergenciasPep(
     { fonteId, ids: ids ?? null },
   );
   return data;
+}
+
+// ── Conector web do Klinikos: cadência e escrita por base (o uso; a conexão é em Fontes de dados) ──
+
+export async function listarUsoKlinikosWeb(): Promise<UsoKlinikosWeb[]> {
+  const { data } = await http.get<UsoKlinikosWeb[]>('/klinikos-web/uso');
+  return data;
+}
+
+export async function salvarUsoKlinikosWeb(fonteId: string, payload: SalvarUsoKlinikosWeb): Promise<void> {
+  await http.put(`/klinikos-web/uso/${fonteId}`, payload);
 }

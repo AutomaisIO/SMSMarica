@@ -9,6 +9,7 @@ import 'package:sms_mais_cidadao/shared/sessao/sair.dart';
 import 'package:sms_mais_cidadao/shared/theme/cores_marica.dart';
 import 'package:sms_mais_cidadao/shared/theme/tipografia.dart';
 import 'package:sms_mais_cidadao/shared/util/formatos.dart';
+import 'package:sms_mais_cidadao/shared/visualizador/visualizador.dart';
 import 'package:sms_mais_cidadao/shared/widgets/lista.dart';
 import 'package:sms_mais_cidadao/shared/widgets/ui.dart';
 
@@ -247,12 +248,62 @@ class AgendamentoCard extends StatelessWidget {
               ),
             ),
           ),
+          if (a.guiaDocumentoId != null) _BotaoGuia(documentoId: a.guiaDocumentoId!),
           if (a.podeResponder && a.solicitacaoExameId != null)
             _RespostaConfirmacao(solicitacaoExameId: a.solicitacaoExameId!, aoResponder: aoResponder),
         ],
       ),
     );
   }
+}
+
+/// A guia do agendamento do SER/SERNIT/ESUS — o papel que o paciente apresenta no local. É o mesmo
+/// documento que aparece em Documentos (mesma URL, mesmo cache no aparelho). `BotaoGuia` do PWA.
+class _BotaoGuia extends ConsumerStatefulWidget {
+  const _BotaoGuia({required this.documentoId});
+
+  final String documentoId;
+
+  @override
+  ConsumerState<_BotaoGuia> createState() => _BotaoGuiaState();
+}
+
+class _BotaoGuiaState extends ConsumerState<_BotaoGuia> {
+  bool _abrindo = false;
+  String? _erro;
+
+  Future<void> _abrir() async {
+    setState(() {
+      _abrindo = true;
+      _erro = null;
+    });
+    try {
+      await abrirDocumento(context, ref, UrlsConteudo.guia(widget.documentoId), nomePadrao: 'guia-do-agendamento.pdf');
+    } on Object catch (e) {
+      if (mounted) setState(() => _erro = extrairMensagemDeErro(e));
+    } finally {
+      if (mounted) setState(() => _abrindo = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BotaoFantasma(
+              rotulo: _abrindo ? 'Abrindo…' : 'Ver guia do agendamento',
+              icone: LucideIcons.fileText,
+              onPressed: _abrindo ? null : _abrir,
+            ),
+            if (_erro != null) ...[
+              const SizedBox(height: 8),
+              TextoErro(_erro!),
+            ],
+          ],
+        ),
+      );
 }
 
 String _rotuloEtiqueta(Agendamento a) => switch (a.statusConfirmacao) {

@@ -363,6 +363,7 @@ class Agendamento {
     this.naFila = false,
     this.momento,
     this.temHora = true,
+    this.guiaDocumentoId,
   });
 
   factory Agendamento.deJson(Json j) => Agendamento(
@@ -382,6 +383,7 @@ class Agendamento {
         momento: _s(j['momento']),
         // Servidor antigo não manda: as datas dele sempre traziam hora.
         temHora: j['temHora'] as bool? ?? true,
+        guiaDocumentoId: _s(j['guiaDocumentoId']),
       );
 
   final String id;
@@ -415,6 +417,9 @@ class Agendamento {
 
   /// false: a fonte só deu o dia — não mostrar "00:00".
   final bool temHora;
+
+  /// SER/SERNIT/ESUS: a guia do agendamento no acervo (a mesma de Documentos). Servidor antigo não manda.
+  final String? guiaDocumentoId;
 
   /// Parte da agenda, com o servidor antigo (sem [momento]): o que não está na fila era próximo.
   String get momentoEfetivo => momento ?? (naFila ? 'NaFila' : 'Proximo');

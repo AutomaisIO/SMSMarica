@@ -59,6 +59,11 @@ export type AssociacaoExame = {
   unidadeSolicitanteNome: string | null;
   /** Nº da solicitação no SISREG, quando veio de lá. */
   codigoSolicitacao: string | null;
+  /** O aparelho do exame lauda pela plataforma (ADR-0075). false = laudo feito fora ou que chega
+   *  junto com o exame (ultrassom, MAPA, Holter): a lista não oferece "Laudar". */
+  laudoNaPlataforma?: boolean;
+  /** O aparelho usa anamnese (ADR-0075). false = o "Laudar" não espera a anamnese. */
+  usaAnamnese?: boolean;
 };
 
 /**

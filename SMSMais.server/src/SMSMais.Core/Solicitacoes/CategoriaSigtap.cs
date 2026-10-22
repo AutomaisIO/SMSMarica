@@ -59,11 +59,29 @@ public static class CategoriaSigtap
     }
 
     /// <summary>
-    /// Se a categoria cria satélite de execução. "Não vai ao PACS" não é categoria — é a ausência
-    /// do satélite <c>ExameImagem</c> (ADR-0021).
+    /// Se o pedido ganha satélite de execução (<c>ExameImagem</c>: accession, Study, worklist).
+    /// "Não vai ao PACS" não é categoria — é a ausência do satélite (ADR-0021).
+    ///
+    /// <para><b>A categoria diz o que o exame É; a configuração diz COMO ele é executado</b>
+    /// (adendo de 20/10/2026 ao ADR-0021). Imagem tem satélite sempre — a invariante de 05/10
+    /// continua. Fora da imagem, o pedido só ganha satélite quando as DUAS coisas valem: o TIPO de
+    /// exame tem modalidade DICOM <b>e</b> a unidade executante o tem no escopo com o envio à
+    /// worklist ligado (ADR-0056) — é a unidade que está integrada a um aparelho. É o caso do Holter
+    /// (ECG) e do MAPA (OT) no CDT: seguem Gráfico/funcional, vão à worklist da cardiologia e recebem
+    /// o laudo em PDF pelo PACS, casado pelo accession/Study.</para>
+    ///
+    /// <para>Ficam sem: audiometria, EEG, ECG… (tipo sem modalidade); e a ressonância gravada como
+    /// "Outro" numa clínica com que não há integração (DIMAGEM — medido em 20/10/2026: só a
+    /// modalidade bastava, e o reparo deu exame a 178 delas).</para>
     /// </summary>
-    public static bool CriaSateliteImagem(CategoriaSolicitacao categoria) =>
-        categoria == CategoriaSolicitacao.Imagem;
+    /// <param name="modalidadeDoTipo">Modalidade do tipo de exame do pedido; null quando não há tipo.</param>
+    /// <param name="unidadeEnviaParaWorklist">A unidade executante tem o tipo no escopo, ativo, com o
+    /// envio à worklist ligado.</param>
+    public static bool CriaSatelite(
+        CategoriaSolicitacao categoria, ModalidadeDicom? modalidadeDoTipo, bool unidadeEnviaParaWorklist) =>
+        categoria == CategoriaSolicitacao.Imagem
+        || unidadeEnviaParaWorklist
+           && modalidadeDoTipo is { } modalidade && modalidade != ModalidadeDicom.Indefinida;
 
     private static string SoDigitos(string? s) =>
         string.IsNullOrEmpty(s) ? string.Empty : new string([.. s.Where(char.IsDigit)]);

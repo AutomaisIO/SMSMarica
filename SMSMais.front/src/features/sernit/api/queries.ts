@@ -27,8 +27,6 @@ import {
   obterResumoSernit,
   obterSolicitacaoSernit,
   obterStatusMotorSernit,
-  salvarCredencialSernit,
-  testarCredencialSernit,
   obterSessaoOperadorSernit,
   entrarNoSernit,
   sairDoSernit,
@@ -109,22 +107,6 @@ export function useDispararVarreduraSernit() {
       void qc.invalidateQueries({ queryKey: sernitKeys.status });
       void qc.invalidateQueries({ queryKey: sernitKeys.execucoes });
     },
-  });
-}
-
-export function useTestarCredencialSernit() {
-  return useMutation({
-    mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
-      testarCredencialSernit(usuario, senha),
-  });
-}
-
-export function useSalvarCredencialSernit() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
-      salvarCredencialSernit(usuario, senha),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: sernitKeys.status }),
   });
 }
 

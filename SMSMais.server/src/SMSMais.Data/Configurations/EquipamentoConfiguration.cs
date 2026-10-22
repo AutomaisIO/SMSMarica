@@ -41,6 +41,22 @@ internal sealed class EquipamentoConfiguration : IEntityTypeConfiguration<Equipa
             .HasConversion<int>()
             .HasDefaultValue(OrigemUnidadeWorklist.Executante)
             .IsRequired();
+        // O que acontece com o exame depois que chega (ADR-0075). O padrão (laudo na plataforma,
+        // retido até o laudo, com anamnese) vem da entidade, e não do banco: com default no banco o
+        // EF omite do INSERT o valor igual ao default do CLR — o false de UsaAnamnese — e o aparelho
+        // cadastrado sem anamnese nasceria com ela. O valor dos aparelhos que já existiam está na
+        // migration.
+        builder.Property(e => e.Laudo)
+            .HasColumnName("origem_laudo")
+            .HasConversion<int>()
+            .IsRequired();
+        builder.Property(e => e.LiberacaoPaciente)
+            .HasColumnName("liberacao_paciente")
+            .HasConversion<int>()
+            .IsRequired();
+        builder.Property(e => e.UsaAnamnese)
+            .HasColumnName("usa_anamnese")
+            .IsRequired();
         builder.Property(e => e.Ativo).HasColumnName("ativo").IsRequired();
 
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").IsRequired();
@@ -65,6 +81,13 @@ internal sealed class EquipamentoConfiguration : IEntityTypeConfiguration<Equipa
         builder.ToTable(t => t.HasCheckConstraint(
             "ck_equipamento_descricao_max",
             $"descricao_max_caracteres BETWEEN 4 AND {Equipamento.DescricaoMaxPadrao}"));
+
+        // "Só com o laudo assinado" com o laudo feito fora prenderia o exame para sempre: não há
+        // laudo nosso para soltá-lo. Trava no banco, como a de cima, para não entrar por script.
+        builder.ToTable(t => t.HasCheckConstraint(
+            "ck_equipamento_liberacao_com_laudo",
+            $"liberacao_paciente <> {(int)LiberacaoExamePaciente.ComLaudoAssinado} " +
+            $"OR origem_laudo = {(int)OrigemLaudo.Plataforma}"));
 
         builder.HasIndex(e => e.ExcluidoEm)
             .HasDatabaseName("ix_equipamento_excluido_em")

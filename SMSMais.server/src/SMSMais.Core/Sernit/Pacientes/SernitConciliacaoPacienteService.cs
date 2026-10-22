@@ -18,6 +18,9 @@ public enum ResultadoConciliacaoSernit
     Enriquecido = 2,
     /// <summary>Sem CPF válido e sem CNS: não há chave nenhuma. Fica de fora.</summary>
     SemChave = 3,
+    /// <summary>A chave achou no hub a ficha de OUTRA pessoa (primeiro nome e nascimento
+    /// discordam). Nada é escrito e o pedido fica SEM paciente — ver ConferenciaPessoa.</summary>
+    PessoaDiferente = 4,
 }
 
 public sealed record ConciliacaoSernitDto(
@@ -59,17 +62,28 @@ public sealed class SernitConciliacaoPacienteService(
         Resource? antes = null;
         var escreveu = false;
 
-        var id = await UpsertCanonicoPep.UpsertAsync(
-            ctx, "Patient", system, valor, novo,
-            // Ponte CNS→CPF (diferente do SER-RJ, que a desliga): no SERNIT o CNS vem já na FILA e o
-            // CPF só depois, no DETALHE. Quando a conciliação re-roda com o CPF recém-descoberto e
-            // ancora por CPF, passar o CNS como chave faz o upsert BUSCAR pelo CNS antes: se não há
-            // registro por CPF, REUSA o paciente que só tinha CNS e acrescenta o CPF (não duplica);
-            // se o CPF já é de OUTRO registro, sinaliza o prontuário partido para mesclagem manual.
-            systemCdInterno: SernitPacienteFhirMapper.SysCns,
-            ct,
-            fonteParcial: true,
-            aoEscrever: (atual, _) => { antes = atual; escreveu = true; });
+        string id;
+        try
+        {
+            id = await UpsertCanonicoPep.UpsertAsync(
+                ctx, "Patient", system, valor, novo,
+                // Ponte CNS→CPF (diferente do SER-RJ, que a desliga): no SERNIT o CNS vem já na FILA e o
+                // CPF só depois, no DETALHE. Quando a conciliação re-roda com o CPF recém-descoberto e
+                // ancora por CPF, passar o CNS como chave faz o upsert BUSCAR pelo CNS antes: se não há
+                // registro por CPF, REUSA o paciente que só tinha CNS e acrescenta o CPF (não duplica);
+                // se o CPF já é de OUTRO registro, sinaliza o prontuário partido para mesclagem manual.
+                systemCdInterno: SernitPacienteFhirMapper.SysCns,
+                ct,
+                fonteParcial: true,
+                aoEscrever: (atual, _) => { antes = atual; escreveu = true; });
+        }
+        catch (FusaoRecusadaException recusa)
+        {
+            // A chave achou a ficha de OUTRA pessoa: nada foi escrito, e o pedido fica sem
+            // paciente — ligá-lo ali é a mistura que a recusa existe para impedir.
+            await FusaoRecusada.RegistrarAsync(auditoria, logger, recusa, "SERNIT", $"Solicitação SERNIT {s.IdSernit}", ct);
+            return new ConciliacaoSernitDto(ResultadoConciliacaoSernit.PessoaDiferente, null, []);
+        }
 
         var pacienteId = Guid.TryParse(id, out var g) ? g : (Guid?)null;
 

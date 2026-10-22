@@ -1031,7 +1031,8 @@ public sealed class SisregMapeamentoLoteService(
 
             if (!agendas.TryGetValue(unidade.Id, out var agenda))
             {
-                agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id };
+                // Nasce LIGADO desde 20/10/2026 (reverte o opt-in de 03/08/2026).
+                agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id, EnviarConfirmacao = true };
                 db.SisregVarreduraAgendas.Add(agenda);
                 agendas[unidade.Id] = agenda;
             }

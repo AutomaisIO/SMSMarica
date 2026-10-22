@@ -3,27 +3,57 @@ import 'dart:async';
 import 'package:agente/features/deslocamento/application/deslocamento_controller.dart';
 import 'package:agente/features/dispositivo/application/dispositivo_controller.dart';
 import 'package:agente/features/dispositivo/data/dispositivo_repository.dart';
+import 'package:agente/features/dispositivo/data/fila_posicoes.dart';
 import 'package:agente/features/dispositivo/domain/veiculo_vinculado.dart';
 import 'package:agente/shared/gps/gps_ao_vivo.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Decide se o carro está andando pela velocidade do GPS, com tolerância para
+/// paradas curtas (semáforo, embarque) — senão o envio cairia para 60 s a cada
+/// sinal fechado e o Mapa da frota "congelaria" no meio do trajeto.
+class DetectorMovimento {
+  DetectorMovimento({
+    this.limiarKmh = 5,
+    this.tolerancia = const Duration(seconds: 30),
+  });
+
+  /// Acima disso está andando (parado, o GPS oscila entre 0 e ~3 km/h).
+  final double limiarKmh;
+  final Duration tolerancia;
+  DateTime? _ultimoMovimento;
+
+  bool emMovimento(double kmh, DateTime agora) {
+    if (kmh >= limiarKmh) _ultimoMovimento = agora;
+    final ultimo = _ultimoMovimento;
+    return ultimo != null && agora.difference(ultimo) < tolerancia;
+  }
+}
+
 /// Manda a posição do tablet para o Mapa da frota enquanto houver vínculo:
-/// a cada 5 s com deslocamento ativo, a cada 60 s parado. Sem rede, guarda até
-/// [maxFila] pontos em memória e reenvia em lote. 401 = desvinculado no painel.
+/// a cada 5 s com o carro andando, a cada 60 s parado — pela velocidade do
+/// GPS, sem depender de botão nem do contador do translado. Todo ponto passa
+/// pela [FilaPosicoes] em disco: sem rede, ou com o tablet reiniciado no
+/// meio, ele espera lá e sai em lotes de até [maxLote], do mais antigo ao
+/// mais novo, quando a rede volta. 401 = desvinculado no painel.
 class EnvioPosicoesService {
-  EnvioPosicoesService(this._ref);
+  EnvioPosicoesService(this._ref, this._fila);
 
   final Ref _ref;
+  final FilaPosicoes _fila;
+  final DetectorMovimento _movimento = DetectorMovimento();
 
-  static const int maxFila = 500;
+  /// Teto do servidor por envio.
+  static const int maxLote = 500;
   static const Duration tick = Duration(seconds: 5);
-  static const Duration intervaloAtivo = Duration(seconds: 5);
+  static const Duration intervaloEmMovimento = Duration(seconds: 5);
   static const Duration intervaloParado = Duration(seconds: 60);
+  static const _avisoDesvinculado =
+      'Tablet desvinculado no painel. Vincule de novo.';
 
-  final List<PontoDispositivo> _fila = <PontoDispositivo>[];
   Timer? _timer;
   DateTime? _ultimoEnfileirado;
   DateTime? _ultimoFixEnfileirado;
+  String? _veiculoDaFila;
   bool _enviando = false;
 
   void iniciar() {
@@ -36,42 +66,64 @@ class EnvioPosicoesService {
   }
 
   Future<void> _ciclo() async {
-    final token = _ref.read(dispositivoProvider).token;
+    final estado = _ref.read(dispositivoProvider);
+    final token = estado.token;
     if (token == null) return;
 
-    _enfileirarSeDevido();
-    if (_fila.isEmpty || _enviando) return;
+    try {
+      await _descartarSeTrocouDeVeiculo(estado.veiculo?.veiculoId);
+      await _enfileirarSeDevido();
+    } on Object catch (_) {
+      // Fila indisponível neste ciclo: o próximo tenta de novo.
+    }
+    if (_enviando) return;
 
     _enviando = true;
-    final lote = List<PontoDispositivo>.of(_fila);
     try {
-      await _ref.read(dispositivoRepositoryProvider).enviarPontos(token, lote);
-      _fila.removeRange(0, lote.length);
+      await _esvaziarFila(token);
     } on TokenDispositivoInvalido {
-      _fila.clear();
-      await _ref
-          .read(dispositivoProvider.notifier)
-          .desvincularLocal('Tablet desvinculado no painel. Vincule de novo.');
+      // Só desvincula se o token recusado ainda é o atual: o tablet pode ter
+      // sido vinculado de novo no meio do envio.
+      if (_ref.read(dispositivoProvider).token == token) {
+        await _descartarFila();
+        await _ref
+            .read(dispositivoProvider.notifier)
+            .desvincularLocal(_avisoDesvinculado);
+      }
     } on Object catch (_) {
-      // Sem rede/servidor fora: mantém na fila para o próximo ciclo.
+      // Sem rede/servidor fora: os pontos seguem na fila para o próximo ciclo.
     } finally {
       _enviando = false;
     }
   }
 
-  void _enfileirarSeDevido() {
+  /// Ponto de um carro não pode sair com o token de outro: vinculado a outro
+  /// veículo, a fila antiga é descartada.
+  Future<void> _descartarSeTrocouDeVeiculo(String? veiculoId) async {
+    if (veiculoId == null) return;
+    final anterior = _veiculoDaFila;
+    _veiculoDaFila = veiculoId;
+    if (anterior != null && anterior != veiculoId) await _fila.limpar();
+  }
+
+  Future<void> _enfileirarSeDevido() async {
     final fix = _ref.read(gpsAoVivoProvider);
     if (fix == null) return;
     // Mesmo fix já enfileirado (GPS sem atualização): não duplica.
     if (_ultimoFixEnfileirado == fix.timestamp) return;
 
     final desloc = _ref.read(deslocamentoProvider);
-    final intervalo = desloc.ativo ? intervaloAtivo : intervaloParado;
     final agora = DateTime.now();
+    final intervalo = _movimento.emMovimento(desloc.velocidadeAoVivoKmh, agora)
+        ? intervaloEmMovimento
+        : intervaloParado;
     final ultimo = _ultimoEnfileirado;
     if (ultimo != null && agora.difference(ultimo) < intervalo) return;
 
-    _fila.add(
+    // Marca antes de gravar, para o ciclo seguinte não repetir o fix.
+    _ultimoEnfileirado = agora;
+    _ultimoFixEnfileirado = fix.timestamp;
+    await _fila.adicionar(
       PontoDispositivo(
         latitude: fix.latitude,
         longitude: fix.longitude,
@@ -81,15 +133,34 @@ class EnvioPosicoesService {
         precisaoM: fix.accuracy > 0 ? fix.accuracy : null,
       ),
     );
-    if (_fila.length > maxFila) _fila.removeRange(0, _fila.length - maxFila);
-    _ultimoEnfileirado = agora;
-    _ultimoFixEnfileirado = fix.timestamp;
+  }
+
+  /// Manda a fila em lotes, do mais antigo ao mais novo, até esvaziar.
+  Future<void> _esvaziarFila(String token) async {
+    final repo = _ref.read(dispositivoRepositoryProvider);
+    while (_ref.read(dispositivoProvider).token == token) {
+      final lote = await _fila.lote(maxLote);
+      if (lote.isEmpty) return;
+      await repo.enviarPontos(token, [for (final item in lote) item.ponto]);
+      await _fila.removerAte(lote.last.id);
+      if (lote.length < maxLote) return;
+    }
+  }
+
+  /// Esvazia a fila sem deixar erro de disco impedir o desvínculo.
+  Future<void> _descartarFila() async {
+    try {
+      await _fila.limpar();
+    } on Object catch (_) {
+      // Banco indisponível agora: segue para o desvínculo mesmo assim.
+    }
   }
 }
 
 /// Criado na raiz do app (AgenteApp) — começa a rodar assim que lido.
 final envioPosicoesProvider = Provider<EnvioPosicoesService>((ref) {
-  final service = EnvioPosicoesService(ref)..iniciar();
+  final service = EnvioPosicoesService(ref, ref.watch(filaPosicoesProvider))
+    ..iniciar();
   ref.onDispose(service.parar);
   return service;
 });

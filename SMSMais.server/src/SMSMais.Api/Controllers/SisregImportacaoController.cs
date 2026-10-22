@@ -137,6 +137,9 @@ public sealed class SisregImportacaoController(
     /// do histórico de 08/09 gravou pedidos sem ele, e pedido sem exame não aparece na tela de
     /// Solicitações de Exame. Lote por cursor: repetir passando o <c>cursor</c> devolvido até
     /// <c>restantes</c> zerar. ESCRITA.
+    /// Também cria o exame de Holter/MAPA (fora da imagem, tipo com modalidade DICOM); com
+    /// <c>incluirAnteriores=true</c>, inclusive os já passados — o backfill do acervo retroativo. Na
+    /// imagem o corte "de hoje em diante" vale sempre.
     /// </summary>
     [HttpPost("reparar-exames-sem-satelite")]
     [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
@@ -145,8 +148,9 @@ public sealed class SisregImportacaoController(
         [FromServices] SMSMais.Core.Integracoes.SisregWeb.Importacao.ISateliteImagemSisreg satelite,
         CancellationToken cancellationToken,
         [FromQuery] int limite = 500,
-        [FromQuery] Guid? cursor = null)
-        => await satelite.RepararAsync(limite, cursor, cancellationToken);
+        [FromQuery] Guid? cursor = null,
+        [FromQuery] bool incluirAnteriores = false)
+        => await satelite.RepararAsync(limite, cursor, incluirAnteriores, cancellationToken);
 
     /// <summary>
     /// Backfill das fichas que só têm CNS: consulta o CADSUS (porta configurada) e carimba o CPF —

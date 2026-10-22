@@ -61,10 +61,11 @@ public sealed class DownloadTokenService(
     public async Task<DownloadLinkDto> GerarExameCompletoAsync(
         Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
-        // Valida que a solicitação existe (lança NaoEncontrado se não) e tem exame de imagem — o
-        // link baixa capa + imagens do PACS, que consulta não tem.
+        // Valida que a solicitação existe (lança NaoEncontrado se não) e tem exame (satélite) — o
+        // link baixa capa + o que está no PACS, que consulta não tem. Holter/MAPA são
+        // Gráfico/funcional e têm exame: o laudo em PDF volta pelo PACS (adendo ADR-0021).
         var solicitacao = await solicitacoes.ObterPorIdAsync(solicitacaoExameId, cancellationToken);
-        if (solicitacao.Categoria != CategoriaSolicitacao.Imagem)
+        if (string.IsNullOrEmpty(solicitacao.AccessionNumber))
             throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
 
         var cfg = await configuracaoLaudo.ObterAsync(cancellationToken);

@@ -29,6 +29,18 @@ public interface IDocumentosPacienteService
     Task<IReadOnlyList<ItemAcervoDto>> ListarAsync(
         Guid pacienteId, bool incluirPendentes, CancellationToken ct = default);
 
+    /// <summary>
+    /// O que o PACIENTE vê do próprio acervo (app do cidadão): o de <see cref="ListarAsync"/>, com o
+    /// que ele mesmo enviou e ainda espera conferência, e sem as imagens de exame retido até o laudo
+    /// (ADR-0075). A equipe continua vendo tudo por <see cref="ListarAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<ItemAcervoDto>> ListarParaPacienteAsync(Guid pacienteId, CancellationToken ct = default);
+
+    /// <summary>Conteúdo de um item para o PACIENTE: inclui o que ele enviou (pendente) e barra as
+    /// imagens de exame retido até o laudo (ADR-0075).</summary>
+    Task<ConteudoAcervo> ObterConteudoParaPacienteAsync(
+        Guid pacienteId, TipoItemAcervo tipo, Guid id, CancellationToken ct = default);
+
     /// <summary>Conteúdo de um item, conferindo que é do paciente. Pendente só com <paramref name="permitirPendente"/>.</summary>
     Task<ConteudoAcervo> ObterConteudoAsync(
         Guid pacienteId, TipoItemAcervo tipo, Guid id, bool permitirPendente, CancellationToken ct = default);
@@ -96,8 +108,25 @@ public sealed class DocumentosPacienteService(
         MimePdf, "image/jpeg", "image/png", "image/webp", "image/gif",
     };
 
-    public async Task<IReadOnlyList<ItemAcervoDto>> ListarAsync(
-        Guid pacienteId, bool incluirPendentes, CancellationToken ct = default)
+    public Task<IReadOnlyList<ItemAcervoDto>> ListarAsync(
+        Guid pacienteId, bool incluirPendentes, CancellationToken ct = default) =>
+        ListarAsync(pacienteId, incluirPendentes, visaoDoPaciente: false, ct);
+
+    public Task<IReadOnlyList<ItemAcervoDto>> ListarParaPacienteAsync(Guid pacienteId, CancellationToken ct = default) =>
+        ListarAsync(pacienteId, incluirPendentes: true, visaoDoPaciente: true, ct);
+
+    public async Task<ConteudoAcervo> ObterConteudoParaPacienteAsync(
+        Guid pacienteId, TipoItemAcervo tipo, Guid id, CancellationToken ct = default)
+    {
+        // Mesma régua da lista do app: o link direto não abre o que a lista esconde.
+        if (tipo == TipoItemAcervo.ImagensExame
+            && (await clinico.ListarExamesAsync(pacienteId, visaoDaEquipe: false, ct)).All(e => e.Id != id))
+            throw new NaoEncontradoException("Exame de imagem", id);
+        return await ObterConteudoAsync(pacienteId, tipo, id, permitirPendente: true, ct);
+    }
+
+    private async Task<IReadOnlyList<ItemAcervoDto>> ListarAsync(
+        Guid pacienteId, bool incluirPendentes, bool visaoDoPaciente, CancellationToken ct)
     {
         var itens = new List<ItemAcervoDto>();
         var hashes = new HashSet<string>(StringComparer.Ordinal);
@@ -133,7 +162,7 @@ public sealed class DocumentosPacienteService(
 
         // 3) Exames de imagem: o PDF das imagens e o laudo assinado (a lista do app do cidadão
         //    já resolve o study efetivo e a assinatura — mesma regra nos dois lados).
-        var exames = await clinico.ListarExamesAsync(pacienteId, ct);
+        var exames = await clinico.ListarExamesAsync(pacienteId, visaoDaEquipe: !visaoDoPaciente, ct);
         var laudosVistos = new HashSet<Guid>();
         foreach (var e in exames)
         {
@@ -347,6 +376,7 @@ public sealed class DocumentosPacienteService(
         Guid pacienteId, Guid documentoId, EditarDocumentoPacienteRequest req, CancellationToken ct = default)
     {
         var doc = await ExigirAsync(pacienteId, documentoId, ct);
+        ExigirEditavel(doc);
         AplicarTexto(doc, req);
         doc.AtualizadoEm = DateTime.UtcNow;
         doc.AtualizadoPor = usuarioAtual.UsuarioId;
@@ -375,6 +405,7 @@ public sealed class DocumentosPacienteService(
     public async Task ExcluirAsync(Guid pacienteId, Guid documentoId, CancellationToken ct = default)
     {
         var doc = await ExigirAsync(pacienteId, documentoId, ct);
+        ExigirEditavel(doc);
 
         // O registro fica (auditoria); o arquivo sai do armazenamento — é dado de paciente, e as
         // solicitações que usaram este documento guardaram a própria cópia.
@@ -395,6 +426,17 @@ public sealed class DocumentosPacienteService(
         await armazenamento.ExcluirAsync(doc.ChaveArmazenamento, ct);
         doc.ExcluidoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A guia do agendamento é do sincronismo: o pedido e o app apontam para ela (ADR-0076).</summary>
+    private static void ExigirEditavel(DocumentoPaciente doc)
+    {
+        if (doc.Origem == OrigemDocumentoPaciente.GuiaAgendamento)
+        {
+            throw new ConflitoException(
+                "documento.guia_agendamento",
+                "A guia do agendamento vem do sistema de regulação e não se edita nem se exclui.");
+        }
     }
 
     public Task<int> ContarPendentesAsync(Guid pacienteId, CancellationToken ct = default) =>
@@ -522,7 +564,9 @@ public sealed class DocumentosPacienteService(
     private static ItemAcervoDto Mapear(DocumentoPaciente d) => new(
         Chave(TipoItemAcervo.Documento, d.Id), TipoItemAcervo.Documento, d.Id,
         d.Titulo, d.Descricao, d.MimeType, d.TamanhoBytes, null, d.CriadoEm,
-        RotuloOrigem(d.Origem), d.Situacao, Editavel: true);
+        RotuloOrigem(d.Origem), d.Situacao,
+        // A guia é do sincronismo: o pedido e o app apontam para ela (ADR-0076).
+        Editavel: d.Origem != OrigemDocumentoPaciente.GuiaAgendamento);
 
     private static string RotuloOrigem(OrigemDocumentoPaciente o) => o switch
     {
@@ -530,6 +574,7 @@ public sealed class DocumentosPacienteService(
         OrigemDocumentoPaciente.Solicitacao => "Solicitação",
         OrigemDocumentoPaciente.WhatsApp => "WhatsApp",
         OrigemDocumentoPaciente.AppCidadao => "Enviado pelo paciente",
+        OrigemDocumentoPaciente.GuiaAgendamento => "Guia do agendamento",
         _ => "—",
     };
 }

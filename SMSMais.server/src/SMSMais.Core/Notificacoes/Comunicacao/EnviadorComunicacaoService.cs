@@ -20,7 +20,8 @@ namespace SMSMais.Core.Notificacoes.Comunicacao;
 public sealed class EnviadorComunicacaoService(
     IServiceScopeFactory scopeFactory,
     IOptions<ComunicacaoPacienteOptions> options,
-    ILogger<EnviadorComunicacaoService> logger)
+    ILogger<EnviadorComunicacaoService> logger,
+    WhatsApp.Conta.ISituacaoContaWhatsApp? situacaoConta = null)
     : BackgroundService
 {
     private readonly ComunicacaoPacienteOptions _options = options.Value;
@@ -84,6 +85,23 @@ public sealed class EnviadorComunicacaoService(
         return [.. lista];
     }
 
+    /// <summary>
+    /// O mesmo para os agendamentos do SER/SERNIT/ESUS SG (21/10/2026): o lembrete e o aviso de
+    /// cancelamento deles têm chave própria, por regulação — basta uma ligada para a finalidade ser
+    /// buscada; a chave de CADA linha é conferida no envio (que segura na fila a de chave desligada).
+    /// </summary>
+    private FinalidadeComunicacao[] FinalidadesExternasHabilitadas(
+        IReadOnlyDictionary<SistemaRegulacao, AgendamentosExternos.AvisoRegulacaoRegras> regras)
+    {
+        var lista = new List<FinalidadeComunicacao>(3);
+        if (_options.EnviarConfirmacaoAgendamento) lista.Add(FinalidadeComunicacao.ConfirmacaoAgendamento);
+        if (_options.EnviarLembreteAgendamento && regras.Values.Any(r => r.LembreteHabilitado))
+            lista.Add(FinalidadeComunicacao.LembreteAgendamento);
+        if (regras.Values.Any(r => r.AvisoCancelamentoHabilitado))
+            lista.Add(FinalidadeComunicacao.CancelamentoAgendamento);
+        return [.. lista];
+    }
+
     /// <summary>Mensagem sobre a AGENDA (confirmação, lembrete, aviso de cancelamento e a régua de
     /// reforço) respeita a janela de horário — a régua ainda mais: sem ela sairia às 22h; o
     /// cancelamento que a conciliação acha às 7h (releitura do dia anterior) espera a janela abrir
@@ -96,6 +114,12 @@ public sealed class EnviadorComunicacaoService(
 
     private async Task ExecutarUmaPassagemAsync(CancellationToken ct)
     {
+        // Conta do WhatsApp parada (pagamento, bloqueio…): a fila espera inteira, sem gastar
+        // tentativa. Na hora da sonda sai UMA — se ela passar, a conta volta e a próxima passagem
+        // já vem cheia.
+        var contaParada = situacaoConta?.Parada is not null;
+        if (contaParada && !situacaoConta!.SondaDisponivel) return;
+
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var servico = scope.ServiceProvider.GetRequiredService<IComunicacaoPacienteService>();
@@ -109,7 +133,9 @@ public sealed class EnviadorComunicacaoService(
             .GetRequiredService<Confirmacoes.IConfirmacaoConfiguracaoService>().ObterAsync(ct);
 
         var habilitadas = FinalidadesHabilitadas(regras);
-        if (habilitadas.Length == 0) return;
+        var externas = FinalidadesExternasHabilitadas(await scope.ServiceProvider
+            .GetRequiredService<AgendamentosExternos.IAvisoRegulacaoConfiguracaoService>().RegrasExternasAsync(ct));
+        if (habilitadas.Length == 0 && externas.Length == 0) return;
         var max = Math.Clamp(regras.MaximoPorPassagem,
             1, Confirmacoes.ConfirmacaoConfiguracaoService.MaximoPorPassagemTeto);
         var janelaAberta = Confirmacoes.JanelaEnvioConfirmacao.Dentro(
@@ -122,18 +148,19 @@ public sealed class EnviadorComunicacaoService(
         // tradutor. O resultado era o pior tipo de falha: o enviador se matava de minuto em
         // minuto justamente no horário em que só devia sair o que ignora a janela (laudo, TFD),
         // e o sintoma era um log repetido que ninguém lia — nada deixava de "estar ligado".
-        var sobreAgendamento = habilitadas.Where(EhSobreAgendamento).ToArray();
+        var sobreAgendamento = habilitadas.Concat(externas).Distinct().Where(EhSobreAgendamento).ToArray();
 
         var pendentes = await db.ComunicacoesPaciente.AsNoTracking()
             .Where(n => n.Status == StatusComunicacao.Pendente
                         && n.ProximaTentativaEm != null
                         && n.ProximaTentativaEm <= agora
-                        && habilitadas.Contains(n.Finalidade)
+                        && ((n.AgendamentoExternoId == null && habilitadas.Contains(n.Finalidade))
+                            || (n.AgendamentoExternoId != null && externas.Contains(n.Finalidade)))
                         && (janelaAberta
                             || !sobreAgendamento.Contains(n.Finalidade)
                             || n.IgnorarJanelaHorario))
             .OrderBy(n => n.ProximaTentativaEm)
-            .Take(max)
+            .Take(contaParada ? 1 : max)
             .Select(n => n.Id)
             .ToListAsync(ct);
 

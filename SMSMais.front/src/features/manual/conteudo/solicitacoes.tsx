@@ -15,6 +15,10 @@ import type { Artigo } from '@/features/manual/tipos';
  * SituacaoSolicitacao) e no backend (`SolicitacoesService.ListarAsync`, `AutorizarAsync`,
  * `CancelarAsync`; `SolicitacoesController` para as permissões). Pedido com mais de um código
  * interno (ADR-0074): `SolicitacoesService.LinhasDoPedido`, `SateliteImagemSisreg`, `SeloVinculado`.
+ * "Tem exame" ≠ "é imagem" (adendo de 20/10/2026 ao ADR-0021): `CategoriaSigtap.CriaSatelite` no
+ * backend e `temExame()` em `features/solicitacoes/types.ts`.
+ * Exame retido até o laudo (ADR-0075): `RetidoAteLaudo` no DTO, cadeado na lista e
+ * `CardEnvioManual` ("Liberar antes do laudo") no detalhe; `ComunicacaoPacienteService.EnviarManualAsync`.
  */
 export const artigoSolicitacoes: Artigo = {
   slug: 'solicitacoes',
@@ -25,7 +29,7 @@ export const artigoSolicitacoes: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/solicitacoes',
   publico: 'Recepção das unidades e quem acompanha os agendamentos',
-  atualizadoEm: '2026-10-16',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'diagnóstico inicial',
     'CID',
@@ -70,12 +74,30 @@ export const artigoSolicitacoes: Artigo = {
     'código interno',
     'accession com sufixo',
     'procedimentos deste pedido',
+    'holter',
+    'MAPA',
+    'pressão arterial',
+    'eletrocardiograma',
+    'ECG',
+    'tem exame',
+    'modalidade DICOM',
+    'retido',
+    'retido até o laudo',
+    'cadeado',
+    'liberar antes do laudo',
+    'enviar exame',
+    'enviar laudo',
+    'exame liberado',
+    'laudo pronto',
+    'paciente não vê o exame',
+    'app do cidadão',
   ],
   secoes: () => [
     {
       id: 'para-que-serve',
       titulo: 'Para que serve',
-      busca: 'lista única exames de imagem consultas laboratório cirurgia regulado SISREG uma tela só',
+      busca:
+        'lista única exames de imagem consultas laboratório cirurgia regulado SISREG uma tela só tem exame holter MAPA eletrocardiograma ECG modalidade DICOM gráfico funcional worklist integrada escopo ressonância outro',
       conteudo: (
         <>
           <P>
@@ -89,11 +111,28 @@ export const artigoSolicitacoes: Artigo = {
             <BotaoRef>Nova solicitação</BotaoRef>, que cria um pedido de exame de imagem à mão — e só
             aparece para quem tem essa permissão específica.
           </P>
-          <Callout tipo="regra" titulo="O exame de imagem tem mais coisas que o resto">
-            Só o exame de imagem vai para o aparelho (worklist), volta do PACS e ganha laudo. Por
-            isso a linha e o detalhe dele têm botões que a consulta não tem. O resto da tela — busca,
-            situação, chegada, cancelamento, mensagens ao paciente — é igual para todos.
+          <Callout tipo="regra" titulo="O pedido com exame tem mais coisas que o resto">
+            Só o pedido com <strong>exame</strong> vai para o aparelho (worklist), volta do PACS e
+            ganha laudo. Por isso a linha e o detalhe dele têm botões que a consulta não tem. O resto
+            da tela — busca, situação, chegada, cancelamento, mensagens ao paciente — é igual para
+            todos.
           </Callout>
+          <Sub>Quem tem exame</Sub>
+          <P>
+            Todo exame de imagem tem. Fora da imagem, só quando as duas coisas estão configuradas: o
+            tipo de exame tem uma <strong>modalidade DICOM</strong> (em Tipos de Exame) e a unidade que
+            executa tem esse exame no escopo com o <strong>envio à worklist ligado</strong> — ou seja, a
+            unidade está integrada a um aparelho. Hoje, o <strong>Holter</strong> e o{' '}
+            <strong>MAPA</strong> no CDT. Eles continuam sendo do tipo{' '}
+            <strong>Gráfico/funcional</strong>, que é o que são, mas ganham nº do pedido e vão para o
+            aparelho da cardiologia como um exame de imagem, e o laudo volta pelo PACS.
+          </P>
+          <P>
+            O <strong>eletrocardiograma</strong> não tem exame: a máquina imprime o traçado na hora e
+            ele é entregue ao paciente, sem nada a mandar nem a receber. Audiometria, espirometria e
+            os demais métodos gráficos também seguem sem — e também o pedido que chega com o tipo
+            errado (ex.: uma ressonância marcada como “Outro”) numa clínica com que não há integração.
+          </P>
         </>
       ),
     },
@@ -119,7 +158,7 @@ export const artigoSolicitacoes: Artigo = {
               {
                 termo: 'Status',
                 descricao:
-                  'Solicitada, Agendada, Realizada e Cancelada valem para todos os tipos. Enviada ao PACS, Recebida, Em execução e Laudada só existem no exame de imagem.',
+                  'Solicitada, Agendada, Realizada e Cancelada valem para todos os tipos. Enviada ao PACS, Recebida, Em execução e Laudada só existem no pedido com exame (imagem, Holter, MAPA).',
               },
               {
                 termo: 'Data inicial / final e Hoje',
@@ -146,39 +185,44 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'como-ler',
       titulo: 'Como ler uma linha',
-      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada vinculado a selo',
+      busca: 'seta recebida enviada pedido procedimento situação aguardando confirmado atrasado falta autorizado linha laranja vermelha apagada vinculado a selo cadeado retido até o laudo anamnese aguardando a anamnese do Holter altura peso fumante',
       conteudo: (
         <>
           <Sub>As colunas</Sub>
           <Lista>
             <Item>
               <strong>Pedido</strong> — a seta verde (para dentro) é o que a sua unidade recebe para
-              realizar; a azul (para fora), o que ela pediu. No exame de imagem aparece o nº do
+              realizar; a azul (para fora), o que ela pediu. No pedido com exame aparece o nº do
               pedido e, embaixo, o do SISREG. Na consulta não existe nº do pedido: o nº do SISREG
               ocupa o lugar. O selo <strong>vinculado a</strong> marca um pedido com mais de um
               procedimento — ver a seção <em>Pedido com mais de um procedimento</em>, abaixo.
             </Item>
             <Item>
-              <strong>Procedimento</strong> — no exame, o tipo de exame com a modalidade (MG, US…);
-              nos demais, a especialidade com um selo do tipo (Consulta, Laboratório…). Embaixo, a
-              unidade que executa.
+              <strong>Procedimento</strong> — no exame, o tipo de exame com a modalidade (MG, US… e,
+              no Holter e no MAPA, ECG e OT); nos demais, a especialidade com um selo do tipo
+              (Consulta, Laboratório…). Embaixo, a unidade que executa.
             </Item>
             <Item>
               <strong>Situação</strong> — enquanto o paciente não chegou, a tela mostra a situação
               “de fora”: <em>Aguardando</em> (sem resposta), <em>Confirmado</em> (respondeu que vem),
               <em> Atrasado</em> (passou uma hora do horário), <em>Falta</em> (passou das 18h do dia),
               <em> Autorizado</em> (chegada registrada) ou <em>Cancelado</em> (avisou que não vem). Ao
-              lado, os checks das mensagens de WhatsApp.
+              lado, os checks das mensagens de WhatsApp — e um <strong>cadeado</strong> âmbar quando o
+              exame realizado está <em>retido até o laudo</em> (ver a seção seguinte).
             </Item>
             <Item>
-              <strong>Ações</strong> — anamnese, declaração, imagens e laudo. Só existem no exame de
-              imagem; na consulta a coluna fica vazia.
+              <strong>Ações</strong> — anamnese, declaração, imagens e laudo. Só existem no pedido
+              com exame; na consulta a coluna fica vazia. A anamnese não aparece no exame de aparelho
+              que não a usa (MAPA). No <strong>Holter</strong> ela é o que manda o exame ao aparelho:
+              enquanto a técnica não salva a altura, o peso e se o paciente fuma, o exame fica em{' '}
+              <em>Aguardando a anamnese do Holter</em> e não aparece na worklist (ver o artigo
+              Anamnese).
             </Item>
           </Lista>
           <Sub>As cores da linha</Sub>
           <Lista>
             <Item>
-              <strong>Laranja</strong> — exame de imagem cujo paciente veio do SISREG sem CPF. Ao
+              <strong>Laranja</strong> — pedido com exame cujo paciente veio do SISREG sem CPF. Ao
               clicar, a tela pede o CPF antes de abrir: sem ele o exame não vai para o aparelho.
               Consulta não pede, porque não passa pelo PACS.
             </Item>
@@ -211,11 +255,58 @@ export const artigoSolicitacoes: Artigo = {
             de rastreamento de neoplasias</em>). Quando o pedido não traz CID, a linha não aparece.
           </P>
           <P>
-            Só no exame de imagem aparecem o <strong>ciclo do exame</strong> (Solicitada → Enviada →
+            Só no pedido com exame aparecem o <strong>ciclo do exame</strong> (Solicitada → Enviada →
             Recebida → Em execução → Realizada → Laudada), o equipamento de destino, a troca de
             unidade executante, o reenvio à worklist, o envio do resultado por WhatsApp, a correção
             de identidade e os botões de declaração, imagens e laudo.
           </P>
+          <P>
+            No Holter e no MAPA o cabeçalho continua com o selo <strong>Gráfico/funcional</strong>{' '}
+            — o selo diz o que o pedido é; o ciclo do exame embaixo diz que ele vai ao aparelho.
+          </P>
+        </>
+      ),
+    },
+    {
+      id: 'resultado-ao-paciente',
+      titulo: 'Quando o paciente recebe o exame',
+      busca:
+        'paciente recebe exame app do cidadão whatsapp exame liberado laudo pronto retido até o laudo cadeado liberar antes do laudo enviar exame enviar laudo regra do aparelho só com o laudo assinado assim que chegar uma mensagem só',
+      conteudo: (
+        <>
+          <P>
+            Quem decide quando o exame chega ao paciente — no app do cidadão e no aviso de WhatsApp — é
+            o <strong>aparelho</strong> em que ele foi feito (ver <em>Equipamentos → Depois que o exame
+            chega</em>). No ultrassom, a imagem vai assim que chega. Na mamografia, na densitometria e no
+            raio-X, laudados aqui, ela fica <strong>retida até o laudo</strong>: a médica revê a imagem
+            depois do exame, e ela ainda pode mudar.
+          </P>
+          <Lista>
+            <Item>
+              Na lista, o exame retido mostra um <strong>cadeado</strong> âmbar ao lado dos checks.
+            </Item>
+            <Item>
+              No detalhe, o card <strong>Enviar ao paciente</strong> avisa que o exame está retido e por
+              qual aparelho.
+            </Item>
+            <Item>
+              Quando o laudo é aprovado, imagem e laudo chegam juntos, numa mensagem só (o aviso “Laudo
+              pronto”) — não é preciso fazer nada. O aviso “Exame liberado” não sai separado.
+            </Item>
+          </Lista>
+          <Sub>Liberar antes do laudo</Sub>
+          <P>
+            No exame retido, o botão <BotaoRef>Enviar exame</BotaoRef> vira{' '}
+            <BotaoRef>Liberar antes do laudo</BotaoRef>. Ele pede confirmação, porque não se desfaz: o
+            paciente passa a ver a imagem no app e recebe o “Exame liberado” na hora, antes da revisão da
+            médica. Fica registrado quem liberou. Se o telefone do paciente não está verificado, o mesmo
+            modal pede que você assuma o risco do número. O resultado — liberado ou o motivo da falha —
+            aparece no próprio modal.
+          </P>
+          <Callout tipo="atencao" titulo="Reenviar não é liberar">
+            O “Reenviar” do histórico de mensagens não solta exame retido: ele explica e aponta para o{' '}
+            <em>Liberar antes do laudo</em>. Assim ninguém libera uma imagem sem saber que estava liberando.
+          </Callout>
         </>
       ),
     },
@@ -292,7 +383,8 @@ export const artigoSolicitacoes: Artigo = {
               <BotaoRef>Registrar chegada</BotaoRef> e basta a chave.
             </Item>
             <Item>
-              No <strong>exame de imagem</strong>, o botão é <BotaoRef>Autorizar e enviar</BotaoRef>{' '}
+              No <strong>pedido com exame</strong> (imagem, Holter, MAPA), o botão é{' '}
+              <BotaoRef>Autorizar e enviar</BotaoRef>{' '}
               e ele também libera o envio ao aparelho. Por isso exige CPF, telefone verificado (ou a
               dispensa registrada) e, quando a unidade tem mais de uma sala, a escolha do
               equipamento. Num pedido com mais de um procedimento, um clique envia todos os exames
@@ -315,7 +407,7 @@ export const artigoSolicitacoes: Artigo = {
           <P>
             <BotaoRef>Cancelar</BotaoRef> pede um motivo — é o que responde, semanas depois, por que
             a vaga foi cancelada. A consulta pode ser cancelada enquanto estiver Solicitada ou
-            Agendada; o exame de imagem, antes de ser executado, e nesse caso o item também sai da
+            Agendada; o pedido com exame, antes de ser executado, e nesse caso o item também sai da
             worklist do aparelho. Num pedido com mais de um procedimento, cancela o pedido inteiro —
             como o SISREG faz.
           </P>
@@ -343,11 +435,11 @@ export const artigoSolicitacoes: Artigo = {
             </Item>
             <Item>
               <strong>Edição</strong> — registrar a chegada, cancelar, informar o CPF, reenviar
-              mensagens, registrar contato e, no exame de imagem, mexer em equipamento, unidade e
+              mensagens, registrar contato e, no pedido com exame, mexer em equipamento, unidade e
               worklist.
             </Item>
             <Item>
-              <strong>Exclusão</strong> — excluir um pedido de exame de imagem ainda não executado.
+              <strong>Exclusão</strong> — excluir um pedido com exame ainda não executado.
             </Item>
           </Lista>
           <P>
@@ -360,7 +452,8 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'onde está a tela de consultas favoritos sem número do pedido declaração de comparecimento consulta',
+      busca:
+        'onde está a tela de consultas favoritos sem número do pedido declaração de comparecimento consulta holter MAPA eletrocardiograma antigo sem exame paciente não vê o exame no app mamografia retido cadeado',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -376,7 +469,22 @@ export const artigoSolicitacoes: Artigo = {
             },
             {
               termo: 'Não aparece declaração de comparecimento na consulta.',
-              descricao: 'Por enquanto a declaração sai só para exame de imagem realizado.',
+              descricao: 'Por enquanto a declaração sai só para pedido com exame (imagem, Holter, MAPA) já realizado.',
+            },
+            {
+              termo: 'Por que o Holter tem nº do pedido e o eletrocardiograma não?',
+              descricao:
+                'O Holter e o MAPA vão ao aparelho da cardiologia e o laudo volta pelo PACS — para isso precisam do nº do pedido. O eletrocardiograma sai impresso na hora e é entregue ao paciente: não há o que mandar nem o que receber.',
+            },
+            {
+              termo: 'Um Holter ou MAPA antigo aparece sem nº do pedido.',
+              descricao:
+                'Os agendados para antes desta mudança (outubro de 2026) podem ainda estar sem exame e aparecem como um gráfico/funcional comum. Os de agora em diante já chegam com exame.',
+            },
+            {
+              termo: 'O paciente fez o exame e diz que não aparece no app.',
+              descricao:
+                'Veja se a linha tem o cadeado: o exame está retido até o laudo, pela regra do aparelho. Ele aparece, junto com o laudo, quando o laudo for aprovado. Se precisar entregar antes, abra o pedido e use “Liberar antes do laudo”.',
             },
           ]}
         />

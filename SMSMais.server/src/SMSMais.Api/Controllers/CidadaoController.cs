@@ -217,7 +217,7 @@ public sealed class CidadaoController(
     [HttpGet("exames")]
     [ProducesResponseType<IEnumerable<ExameResumoDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<ExameResumoDto>>> Exames(CancellationToken ct) =>
-        Ok(await clinico.ListarExamesAsync(PacienteId(), ct));
+        Ok(await clinico.ListarExamesAsync(PacienteId(), cancellationToken: ct));
 
     /// <summary>Baixa um documento escaneado (PDF) anexado a um exame do paciente.</summary>
     [HttpGet("anexos/{anexoId:guid}/conteudo")]
@@ -240,7 +240,7 @@ public sealed class CidadaoController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ImagensPdf(Guid solicitacaoExameId, CancellationToken ct)
     {
-        var pdf = await clinico.ObterImagensPdfAsync(PacienteId(), solicitacaoExameId, ct);
+        var pdf = await clinico.ObterImagensPdfAsync(PacienteId(), solicitacaoExameId, cancellationToken: ct);
         return pdf is null
             ? NotFound()
             : File(pdf, "application/pdf", $"exame-imagens-{solicitacaoExameId}.pdf");
@@ -256,14 +256,14 @@ public sealed class CidadaoController(
     [ProducesResponseType<IReadOnlyList<ItemAcervoDto>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<ItemAcervoDto>> Documentos(
         [FromServices] IDocumentosPacienteService acervo, CancellationToken ct) =>
-        acervo.ListarAsync(PacienteId(), incluirPendentes: true, ct);
+        acervo.ListarParaPacienteAsync(PacienteId(), ct);
 
     [HttpGet("documentos/{tipo}/{id:guid}/conteudo")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DocumentoConteudo(
         TipoItemAcervo tipo, Guid id, [FromServices] IDocumentosPacienteService acervo, CancellationToken ct)
     {
-        var c = await acervo.ObterConteudoAsync(PacienteId(), tipo, id, permitirPendente: true, ct);
+        var c = await acervo.ObterConteudoParaPacienteAsync(PacienteId(), tipo, id, ct);
         return File(c.Conteudo, c.MimeType, c.NomeArquivo);
     }
 

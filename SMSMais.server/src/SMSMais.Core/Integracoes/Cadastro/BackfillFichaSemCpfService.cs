@@ -95,7 +95,7 @@ public sealed class BackfillFichaSemCpfService(
         var cns = new string([.. (ficha.Cns ?? string.Empty).Where(char.IsDigit)]);
         if (cns.Length != 15) return new(id, "SemCns", null, 0);
 
-        var existencia = new PacienteExistenciaDto(ficha.Id, ficha.NomeCompleto, ficha.Cpf, ficha.Ativo);
+        var existencia = new PacienteExistenciaDto(ficha.Id, ficha.NomeCompleto, ficha.Cpf, ficha.Ativo, ficha.DataNascimento);
         var resultado = await completador.CompletarAsync(existencia, cns, ct);
 
         if (resultado.PacienteId == ficha.Id)

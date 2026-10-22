@@ -152,6 +152,10 @@ public class EsusSgSolicitacao
     /// <summary>Data e hora do atendimento como o ESUS formata ("06/10/2026 13:15:00").</summary>
     public string? DataHoraAgendadaTexto { get; set; }
 
+    /// <summary>O <c>eap_id</c> do agendamento mostrado (o "principal" do pedido): é o que pede o
+    /// comprovante (a guia, ADR-0076). Um pedido pode ter várias sessões; este é o da data acima.</summary>
+    public string? AgendamentoIdEsus { get; set; }
+
     /// <summary>Operador de São Gonçalo que marcou.</summary>
     public string? UsuarioAgendamento { get; set; }
 

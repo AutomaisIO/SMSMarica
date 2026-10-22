@@ -1,8 +1,8 @@
 import { cn } from '@/shared/lib/cn';
-import type {
-  CategoriaSolicitacao,
-  StatusConfirmacaoPaciente,
-  StatusSolicitacao,
+import {
+  temExame,
+  type StatusConfirmacaoPaciente,
+  type StatusSolicitacao,
 } from '@/features/solicitacoes/types';
 
 type Situacao = { rotulo: string; classe: string };
@@ -35,7 +35,7 @@ function dezoitoHorasBrasiliaDoDia(exameMs: number): number {
  */
 export function derivarSituacao(
   s: {
-    categoria: CategoriaSolicitacao;
+    accessionNumber: string;
     status: StatusSolicitacao;
     statusConfirmacao: StatusConfirmacaoPaciente;
     autorizadoEm: string | null;
@@ -44,9 +44,9 @@ export function derivarSituacao(
   },
   agoraMs: number = Date.now(),
 ): Situacao | null {
-  // Sem exame de imagem, "Agendada" é o estado de chegada do SISREG (o equivalente ao
-  // "Solicitada" do exame), não um passo no aparelho: a situação de fora continua valendo.
-  const agendadaSemExame = s.status === 'Agendada' && s.categoria !== 'Imagem';
+  // Sem exame, "Agendada" é o estado de chegada do SISREG (o equivalente ao "Solicitada" do
+  // exame), não um passo no aparelho: a situação de fora continua valendo.
+  const agendadaSemExame = s.status === 'Agendada' && !temExame(s);
   if (OPERACIONAL.has(s.status) && !agendadaSemExame) return null;
 
   if (s.statusConfirmacao === 'Cancelada')
