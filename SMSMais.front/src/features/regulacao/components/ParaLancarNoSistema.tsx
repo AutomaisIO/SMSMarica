@@ -37,7 +37,8 @@ export function ParaLancarNoSistema({ s }: { s: SolicitacaoRegulacao }) {
 
   const linhas = campos
     .map((c) => {
-      let valor = texto(valores[c.chave]);
+      // Valor fixo vale mesmo no rascunho gravado antes da trava (NAR com "É retorno?" = Sim).
+      let valor = c.valorFixo ?? texto(valores[c.chave]);
       if (CHAVES_OBSERVACOES.includes(c.chave)) valor = observacoesComCids(valor, cids);
       if (idPendente(valor)) valor = '(médico aguardando cadastro — resolva o cartão acima)';
       // Opção de lista: o técnico procura pelo texto da opção, não pelo código.

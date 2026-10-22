@@ -592,6 +592,38 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         s.Fluxo.Should().Be(FluxoRegulacao.Nar);
         s.SistemaDestino.Should().Be(SistemaRegulacao.Sisreg);
     }
+
+    [Fact]
+    public async Task Nar_grava_nao_e_retorno_mesmo_quando_a_tela_manda_sim()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, form, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
+
+        // O formulário do NAR traz o "É retorno?" com valor fixo "N".
+        form.ObterOuGerarAsync(Arg.Any<Guid>(), Arg.Any<FluxoRegulacao>(), Arg.Any<CancellationToken>())
+            .Returns(new RegulacaoFormularioDto(versaoId, "sisreg.inclusao",
+            [
+                new CampoFormularioDto("retorno", "É retorno?", "radio", false, null, [SistemaRegulacao.Sisreg], 0, "N"),
+                new CampoFormularioDto("observacao", "Observação", "textarea", false, null, [SistemaRegulacao.Sisreg], 1),
+            ]));
+
+        var s = await servico.CriarAsync(
+            new CriarRegulacaoSolicitacaoRequest(
+                FluxoRegulacao.Nar, procedimentoId, pacienteId, unidadeId, null, null),
+            CancellationToken.None);
+        s.Formulario.GetProperty("retorno").GetString().Should().Be("N");
+
+        var daTela = JsonDocument.Parse("""{"retorno":"S","observacao":"dor no peito"}""").RootElement;
+        var depois = await servico.AtualizarAsync(
+            s.Id, new AtualizarRegulacaoSolicitacaoRequest(null, daTela, null), CancellationToken.None);
+
+        depois.Formulario.GetProperty("retorno").GetString().Should().Be("N");
+        depois.Formulario.GetProperty("observacao").GetString().Should().Be("dor no peito");
+    }
+
     [Fact]
     public async Task Nar_em_nome_de_unidade_sem_cnes_e_recusado()
     {

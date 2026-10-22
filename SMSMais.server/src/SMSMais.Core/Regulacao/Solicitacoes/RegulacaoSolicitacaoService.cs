@@ -447,7 +447,11 @@ public sealed class RegulacaoSolicitacaoService(
             ProcedimentoId = req.ProcedimentoId,
             SistemaDestino = destino,
             FormularioVersaoId = formulario.VersaoId,
-            FormularioJson = """{"canonico":{}}""",
+            // Já nasce com os valores fixos (o "não é retorno" do NAR): é o que a tela mostra.
+            FormularioJson = JsonSerializer.Serialize(new
+            {
+                canonico = RegulacaoFormularioService.ComValoresFixos(ObjetoVazio, formulario),
+            }),
             Status = StatusRegulacao.Rascunho,
             Observacoes = req.Observacoes,
             CriadoEm = DateTime.UtcNow,
@@ -699,9 +703,14 @@ public sealed class RegulacaoSolicitacaoService(
             s.SistemaDestino = req.SistemaDestino;
         }
 
-        if (req.Formulario is { } f)
+        if (req.Formulario is { } enviado)
         {
             var canonicoAntes = LerCanonico(s.FormularioJson);
+
+            // Campo de valor fixo (o "É retorno?" do NAR) grava o fixo, venha o que vier. Com troca
+            // de fluxo/procedimento, a versão já foi gerada por `AplicarFormularioAsync`.
+            var vigente = formularioAtual ?? await formularios.ObterOuGerarAsync(s.ProcedimentoId, s.Fluxo, ct);
+            var f = RegulacaoFormularioService.ComValoresFixos(enviado, vigente);
 
             // O regulador corrige (a Classificação de risco, o CID), não esvazia: campo que a
             // unidade foi obrigada a preencher não volta em branco pela mão de quem regula — o
@@ -1388,6 +1397,17 @@ public sealed class RegulacaoSolicitacaoService(
                 if (chavesNovas.Contains(campo.Name)) preservadas[campo.Name] = valor;
                 else descartadas[campo.Name] = new { de = valor, para = (string?)null };
             }
+        }
+
+        // Campo de valor fixo no formulário novo (virou NAR: "não é retorno") leva o fixo; a troca
+        // de um valor diferente entra na trilha junto com o que caiu.
+        foreach (var campo in formulario.Campos.Where(c => c.ValorFixo is not null))
+        {
+            if (preservadas.TryGetValue(campo.Chave, out var antes) && antes != campo.ValorFixo)
+            {
+                descartadas[campo.Chave] = new { de = antes, para = campo.ValorFixo };
+            }
+            preservadas[campo.Chave] = campo.ValorFixo;
         }
 
         s.ProcedimentoId = procedimentoId;

@@ -61,6 +61,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'NAR',
     'em nome de',
     'agendamento indireto',
+    'é retorno',
     'CNES',
     'conferência no sistema',
     'divergência',
@@ -384,7 +385,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'formulario',
       titulo: 'O formulário do destino Externo (SER e SERNIT)',
       busca:
-        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente procurar médico já usado no sisreg cpf do profissional nome do profissional cadastro de médicos do sisreg aguardando cadastro cid secundário cids secundários observações lista classificação de risco prioridade p1 p2 p3 p4 emergência urgência prioridade não urgente baixa complexidade não classificado cor badge hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
+        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente procurar médico já usado no sisreg cpf do profissional nome do profissional cadastro de médicos do sisreg aguardando cadastro cid secundário cids secundários observações lista classificação de risco prioridade p1 p2 p3 p4 emergência urgência prioridade não urgente baixa complexidade não classificado cor badge hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo é retorno retorno nar sempre não desativado',
       conteudo: (
         <>
           <P>
@@ -437,10 +438,14 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             “Sem as opções deste campo. Recopie o catálogo…” quer dizer que a lista daquele sistema ainda
             não foi copiada. Quem configura a regulação resolve em Configurações.
           </Callout>
-          <Sub>Interno (SISREG)</Sub>
+          <Sub>Interno e NAR (SISREG)</Sub>
           <P>
-            O formulário do Interno é o do SISREG: CPF e nome do profissional solicitante (obrigatórios),
-            CID, “É retorno?” e observação.
+            O formulário do Interno e do NAR é o do SISREG: CPF e nome do profissional solicitante
+            (obrigatórios), CID, “É retorno?” e observação.
+          </P>
+          <P>
+            No <strong>NAR</strong>, “É retorno?” vem sempre marcado <strong>Não</strong> e desativado:
+            não dá para trocar, e é “Não” que aparece em “Para lançar no SISREG”.
           </P>
           <P>
             O SISREG não tem lista de médicos: o CPF e o nome são digitados. Para não redigitar, use{' '}
