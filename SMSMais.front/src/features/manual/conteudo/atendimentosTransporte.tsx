@@ -24,7 +24,7 @@ export const artigoAtendimentosTransporte: Artigo = {
   icone: CalendarClock,
   rota: '/app/tratamentos',
   publico: 'Quem organiza o transporte de pacientes',
-  atualizadoEm: '2026-09-29',
+  atualizadoEm: '2026-10-16',
   palavrasChave: [
     'atendimento',
     'tratamento',
@@ -57,6 +57,11 @@ export const artigoAtendimentosTransporte: Artigo = {
     'data de nascimento',
     'app do paciente',
     'tempo médio',
+    'tablet',
+    'realizada',
+    'não realizada',
+    'corrigir',
+    'faturamento',
   ],
   secoes: () => [
     {
@@ -248,7 +253,7 @@ export const artigoAtendimentosTransporte: Artigo = {
     {
       id: 'sessoes',
       titulo: 'As sessões (viagens)',
-      busca: 'sessões viagens tabela busca prevista status alocado translado editar cancelar confirmar realização adicionar sessão avulsa',
+      busca: 'sessões viagens tabela busca prevista status alocado translado editar cancelar confirmar realização adicionar sessão avulsa tablet realizada não realizada corrigir faturamento',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -270,6 +275,18 @@ export const artigoAtendimentosTransporte: Artigo = {
             Para uma data fora da agenda, use <BotaoRef variante="outline">Adicionar sessão</BotaoRef>.
             Sessão realizada não se edita — só se confirma de novo.
           </P>
+          <Sub>Realizada pelo tablet, corrigida aqui</Sub>
+          <P>
+            Quem marca a viagem é o tablet do veículo: quando o paciente desce no destino, a sessão
+            fica <strong>realizada</strong> (com motorista, veículo e horários) e entra no Faturamento;
+            se ele não estava na coleta, fica <strong>não realizada</strong>. O que conta é o
+            transporte feito, não o atendimento lá dentro.
+          </P>
+          <Callout tipo="regra" titulo="Vale o que a central confirmar">
+            Se o tablet registrou errado, <BotaoRef variante="ghost">Confirmar</BotaoRef> corrige — a
+            janela já abre com o que o tablet registrou. Depois disso o tablet não muda mais aquela
+            viagem, e uma sessão corrigida para não realizada sai dos totais do Faturamento.
+          </Callout>
         </>
       ),
     },

@@ -148,8 +148,17 @@ Play Services (`client version: 0`).
   muito tempo parado; "Tentar de novo" resolve (visto em 15/10, com internet normal).
 - **Confirmação por pessoa**: paciente e acompanhante conferidos separadamente
   (Embarcou / Ausente); a rota segue para a próxima parada e quem ficou ausente sai do
-  desembarque (`paradasComAndamento`). Ainda só no app — persistir no servidor é
-  pendência abaixo.
+  desembarque (`paradasComAndamento`). Cada marcação vai à central
+  (`POST /rastreamento/dispositivos/viagem/eventos`, token do veículo) por uma fila cifrada
+  que espera a rede: **início** ao abrir a navegação, **embarque/ausência** na coleta,
+  **desembarque** no destino e **conclusão** na última parada. O andamento fica no tablet e
+  também volta na rota do dia (`situacao` por pessoa, `concluida` por parada): reiniciar o app
+  retoma de onde parou.
+- **O que conta é o translado** (decisão de 16/10): o desembarque do paciente marca a sessão
+  como **realizada** e a contabiliza no faturamento; a ausência na coleta, como **não
+  realizada**. O painel corrige em Atendimentos ▸ Confirmar — e o que a central confirmou o
+  tablet não muda mais (`ConfirmadaPorUsuarioId`); o evento atrasado fica registrado como
+  "não aplicado". Acompanhante só registra (não muda a sessão nem o faturamento).
 - **Quem está dirigindo**: antes de abrir a navegação, o tablet confere de novo o rosto
   do motorista da sessão ([ADR-0073](../../adr/0073-login-facial-motorista-tablet.md)).
 - O contador de distância/tempo do Deslocamento liga sozinho com a sessão de navegação
@@ -165,11 +174,10 @@ item da mesma seção. Ver [memória de integrações de credenciais].
 
 ## Pendências / decisões para o backend
 
-- `GET /rotas/{id}` precisa entregar, por alocação: **lat/long** das paradas,
-  **assento** do paciente e do acompanhante, e o **estado de confirmação** de
-  cada um (paciente + acompanhante).
+- ~~`GET /rotas/{id}` com lat/long, assentos e confirmação por pessoa~~ — feito como
+  `GET /rastreamento/dispositivos/rotas-do-dia` (etapa 1).
 - Endpoint/serviço de **otimização de rota** (Routes API) server-side,
   devolvendo a ordem dos waypoints já resolvida.
 - Canal de **mensagens** translado (paciente ↔ motorista) + push.
-- Marcar **embarque/ausência** por pessoa na parada (persistência) — a tela já
-  confere por pessoa; falta o servidor guardar.
+- ~~Marcar **embarque/ausência** por pessoa na parada (persistência)~~ — feito (etapa 2,
+  `translado_evento_viagem`).

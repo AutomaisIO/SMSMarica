@@ -26,7 +26,7 @@ namespace SMSMais.Tests.Rastreamento;
 /// condição. Pacientes fictícios (nada de dado real).
 /// </summary>
 [Collection(nameof(PostgresCollection))]
-public class RotaTabletServiceTests(PostgresFixture fixture)
+public partial class RotaTabletServiceTests(PostgresFixture fixture)
 {
     private readonly IPacienteResolver _resolver = Substitute.For<IPacienteResolver>();
     private readonly IPacientesService _pacientes = Substitute.For<IPacientesService>();

@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Translado;
 using SMSMais.Core.Translado.Dtos;
+using SMSMais.Core.Translado.Viagem;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
 
 [ApiController]
 [Route("rotas")]
-public sealed class TransladoController(ITransladoService service) : ControllerBase
+public sealed class TransladoController(ITransladoService service, IViagemService viagem) : ControllerBase
 {
     private readonly ITransladoService _service = service;
 
@@ -58,6 +59,15 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
         await _service.AtualizarAsync(id, request, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>A viagem como o tablet registrou (início, embarques, ausências, desembarques, conclusão),
+    /// na ordem em que aconteceu, com o que foi aplicado e o que a correção do painel segurou.</summary>
+    [HttpGet("{id:guid}/viagem")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<EventoViagemDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IReadOnlyList<EventoViagemDto>> Viagem(Guid id, CancellationToken cancellationToken) =>
+        viagem.ListarDaRotaAsync(id, cancellationToken);
 
     [HttpPost("{id:guid}/iniciar")]
     [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Edicao)]

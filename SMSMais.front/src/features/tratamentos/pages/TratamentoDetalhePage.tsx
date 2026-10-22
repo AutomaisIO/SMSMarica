@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CalendarClock, CalendarPlus, CheckCircle2, FilePen, Pencil, Trash2, XCircle } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { descreverDias } from '@/shared/lib/diasSemana';
@@ -70,6 +70,16 @@ export function TratamentoDetalhePage() {
   const [erroCancelar, setErroCancelar] = useState<string | null>(null);
 
   const sessoes = useMemo(() => detalhe.data?.sessoes ?? [], [detalhe.data]);
+
+  // Vindo da viagem do tablet (Translados ▸ "Corrigir"): abre a confirmação daquela sessão.
+  const [busca, setBusca] = useSearchParams();
+  const sessaoDaBusca = busca.get('sessao');
+  useEffect(() => {
+    if (!sessaoDaBusca || sessoes.length === 0) return;
+    const alvo = sessoes.find((s) => s.id === sessaoDaBusca);
+    if (alvo && podeEditar && statusSessaoDeNumero(alvo.status) !== 'Cancelada') setSessaoConfirmando(alvo);
+    setBusca((b) => { b.delete('sessao'); return b; }, { replace: true });
+  }, [sessaoDaBusca, sessoes, podeEditar, setBusca]);
 
   const colunas: Coluna<Sessao>[] = [
     {

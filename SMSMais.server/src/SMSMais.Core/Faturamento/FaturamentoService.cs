@@ -7,6 +7,7 @@ using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Tfd;
 
 namespace SMSMais.Core.Faturamento;
@@ -60,6 +61,8 @@ public sealed class FaturamentoService(
         else
         {
             reg.AtualizadoEm = DateTime.UtcNow;
+            // Cancelado por uma correção e realizado de novo: volta a contar.
+            if (reg.Status == StatusFaturamento.Cancelado) reg.Status = StatusFaturamento.Pendente;
         }
 
         reg.PacienteId = trat.PacienteId;
@@ -81,6 +84,22 @@ public sealed class FaturamentoService(
         return MapDto(reg, nomes.TryGetValue(reg.PacienteId, out var p) ? p.Nome : string.Empty, unidade?.Nome ?? string.Empty);
     }
 
+    public async Task CancelarDaSessaoAsync(Guid sessaoId, CancellationToken ct = default)
+    {
+        var reg = await db.RegistrosFaturamento.FirstOrDefaultAsync(x => x.SessaoId == sessaoId, ct);
+        if (reg is null || reg.Status == StatusFaturamento.Cancelado) return;
+        if (reg.Status != StatusFaturamento.Pendente)
+        {
+            throw new ConflitoException("faturamento.ja_enviado",
+                "Este translado já foi para o BPA ou foi faturado. Para dizer que ele não aconteceu, " +
+                "tire-o do faturamento antes.");
+        }
+
+        reg.Status = StatusFaturamento.Cancelado;
+        reg.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlyList<RegistroFaturamentoDto>> ListarAsync(
         int? competencia, DateOnly? de, DateOnly? ate, CancellationToken ct = default)
     {
@@ -100,7 +119,10 @@ public sealed class FaturamentoService(
     public async Task<ResumoFaturamentoDto> ResumoAsync(
         DimensaoFaturamento dimensao, int? competencia, DateOnly? de, DateOnly? ate, CancellationToken ct = default)
     {
-        var regs = await Filtrar(competencia, de, ate).ToListAsync(ct);
+        // Cancelado (viagem que não aconteceu) aparece na lista, mas não soma.
+        var regs = await Filtrar(competencia, de, ate)
+            .Where(r => r.Status != StatusFaturamento.Cancelado)
+            .ToListAsync(ct);
 
         Func<RegistroFaturamento, Guid?> chave = dimensao switch
         {

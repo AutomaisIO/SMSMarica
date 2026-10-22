@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import {
@@ -24,6 +25,7 @@ import {
 import { ListaSessoesElegiveis } from '@/features/translados/components/ListaSessoesElegiveis';
 import { MapaDeAssentosAlocavel } from '@/features/translados/components/MapaDeAssentosAlocavel';
 import { ModalEscolherSessao } from '@/features/translados/components/ModalEscolherSessao';
+import { ViagemDoTablet } from '@/features/translados/components/ViagemDoTablet';
 import type { AlocacaoDto, SessaoElegivel, StatusRota } from '@/features/translados/types';
 import { useVeiculoPorId } from '@/features/veiculos/api/queries';
 import { IlustracaoVeiculo } from '@/features/veiculos/components/IlustracaoVeiculo';
@@ -198,6 +200,7 @@ export function TransladoDetalhePage() {
               <h1 className="text-2xl font-semibold text-gray-900">
                 Translado · {formatarData(r.data)}
               </h1>
+              <AjudaManual artigo="translados" />
               <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${CORES_STATUS[r.status]}`}>
                 {ROTULOS_STATUS[r.status]}
               </span>
@@ -310,6 +313,10 @@ export function TransladoDetalhePage() {
           ) : null}
         </div>
       )}
+
+      {r.status !== 'Planejada' ? (
+        <ViagemDoTablet rotaId={r.id} status={r.status} alocacoes={r.alocacoes} />
+      ) : null}
 
       <ModalEscolherSessao
         aberto={Boolean(modalAssento)}

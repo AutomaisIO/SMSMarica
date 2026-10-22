@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SMSMais.Core.Geo;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.Translado.Viagem;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -27,7 +28,9 @@ public sealed record RotaTabletDto(
     IReadOnlyList<ParadaTabletDto> Paradas);
 
 /// <summary>Coleta (uma por paciente, na casa dele) ou destino (uma por unidade de atendimento).
-/// <paramref name="Latitude"/>/<paramref name="Longitude"/> nulos = endereço sem ponto no mapa.</summary>
+/// <paramref name="Latitude"/>/<paramref name="Longitude"/> nulos = endereço sem ponto no mapa.
+/// <paramref name="Concluida"/>: o tablet já resolveu a parada (todos marcados na coleta; no destino,
+/// todos desembarcados ou ausentes).</summary>
 public sealed record ParadaTabletDto(
     string Id,
     int Ordem,
@@ -38,10 +41,12 @@ public sealed record ParadaTabletDto(
     double? Longitude,
     TimeOnly? HorarioPrevisto,
     string? Observacoes,
-    IReadOnlyList<PassageiroTabletDto> Passageiros);
+    IReadOnlyList<PassageiroTabletDto> Passageiros,
+    bool Concluida = false);
 
 /// <summary>Paciente da parada, com os acompanhantes dele. <paramref name="Confirmacao"/>:
-/// Confirmado, Aguardando ou Cancelado.</summary>
+/// Confirmado, Aguardando ou Cancelado. <paramref name="Situacao"/>: a última marcação do tablet
+/// (Embarcou, Ausente, Desembarcou) ou nula, ainda sem marcação.</summary>
 public sealed record PassageiroTabletDto(
     Guid SessaoId,
     string Nome,
@@ -52,14 +57,19 @@ public sealed record PassageiroTabletDto(
     string? TipoTratamento,
     int? TempoMedioMinutos,
     string? UnidadeAtendimento,
-    IReadOnlyList<AcompanhanteTabletDto> Acompanhantes);
+    IReadOnlyList<AcompanhanteTabletDto> Acompanhantes,
+    string? Situacao = null);
 
+/// <summary><paramref name="Id"/> nulo quando a sessão não tem a lista de acompanhantes (nome antigo
+/// ou só o assento reservado).</summary>
 public sealed record AcompanhanteTabletDto(
     string Nome,
     ParentescoAcompanhante? Parentesco,
     string? Telefone,
     string Confirmacao,
-    AssentoTabletDto? Assento);
+    AssentoTabletDto? Assento,
+    Guid? Id = null,
+    string? Situacao = null);
 
 public sealed record AssentoTabletDto(int Fileira, int Numero, TipoAssento Tipo);
 
@@ -89,6 +99,10 @@ public sealed class RotaTabletService(
     public const string Confirmado = "Confirmado";
     public const string Aguardando = "Aguardando";
     public const string Cancelado = "Cancelado";
+
+    public const string Embarcou = "Embarcou";
+    public const string Ausente = "Ausente";
+    public const string Desembarcou = "Desembarcou";
 
     public async Task<IReadOnlyList<RotaTabletDto>> RotasDoDiaAsync(
         DispositivoVeiculo dispositivo, CancellationToken ct = default)
@@ -132,12 +146,13 @@ public sealed class RotaTabletService(
                 where sessaoIds.Contains(sa.SessaoId)
                 join ac in db.Acompanhantes.AsNoTracking() on sa.AcompanhanteId equals ac.Id
                 orderby ac.Nome
-                select new { sa.SessaoId, ac.Nome, ac.Parentesco, ac.Telefone }).ToListAsync(ct))
+                select new { sa.SessaoId, ac.Id, ac.Nome, ac.Parentesco, ac.Telefone }).ToListAsync(ct))
             .ToLookup(x => x.SessaoId);
 
         var pacienteIds = alocacoes.Select(a => a.PacienteId).Distinct().ToList();
         var resumos = await ResumosAsync(pacienteIds, ct);
         var enderecos = new Dictionary<Guid, (string? Texto, string? Referencia, Coordenada? Ponto)>();
+        var marcacoes = await ViagemService.UltimasMarcacoesAsync(db, rotaIds, ct);
 
         var resultado = new List<RotaTabletDto>();
         foreach (var rota in rotas)
@@ -164,8 +179,11 @@ public sealed class RotaTabletService(
             foreach (var s in sessoes)
             {
                 var p = s.Paciente;
+                string? Situacao(int ordem) => marcacoes.TryGetValue((rota.Id, p.SessaoId, ordem), out var t)
+                    ? NomeDaSituacao(t) : null;
                 var passageiro = Passageiro(p, s.AssentosAcompanhante, acompanhantes[p.SessaoId].Select(
-                    a => (a.Nome, a.Parentesco, (string?)a.Telefone)).ToList(), resumos.GetValueOrDefault(p.PacienteId));
+                    a => ((Guid?)a.Id, a.Nome, a.Parentesco, (string?)a.Telefone)).ToList(),
+                    resumos.GetValueOrDefault(p.PacienteId), Situacao);
 
                 if (!enderecos.TryGetValue(p.PacienteId, out var end))
                 {
@@ -175,7 +193,8 @@ public sealed class RotaTabletService(
                 var ponto = doPlano.GetValueOrDefault(p.SessaoId) ?? end.Ponto;
                 paradas.Add(new ParadaTabletDto(
                     $"coleta:{p.SessaoId}", paradas.Count + 1, TipoParada.Coleta, passageiro.Nome, end.Texto,
-                    ponto?.Latitude, ponto?.Longitude, p.HoraPrevistaBusca, end.Referencia, [passageiro]));
+                    ponto?.Latitude, ponto?.Longitude, p.HoraPrevistaBusca, end.Referencia, [passageiro],
+                    Concluida: passageiro.Situacao is not null));
 
                 var destino = porUnidade.FindIndex(d => d.Linha.UnidadeId == p.UnidadeId);
                 if (destino < 0) porUnidade.Add((p, [passageiro]));
@@ -187,7 +206,8 @@ public sealed class RotaTabletService(
             {
                 paradas.Add(new ParadaTabletDto(
                     $"destino:{u.UnidadeId}", paradas.Count + 1, TipoParada.Destino, u.UnidadeNome,
-                    Formatar(u.UnidadeEndereco), u.UnidadeLat, u.UnidadeLng, null, u.UnidadeObservacoes, quem));
+                    Formatar(u.UnidadeEndereco), u.UnidadeLat, u.UnidadeLng, null, u.UnidadeObservacoes, quem,
+                    Concluida: quem.All(x => x.Situacao is Ausente or Desembarcou)));
             }
 
             resultado.Add(new RotaTabletDto(
@@ -200,8 +220,9 @@ public sealed class RotaTabletService(
     private static PassageiroTabletDto Passageiro(
         LinhaAlocacao p,
         List<AssentoTabletDto> assentosAcompanhante,
-        List<(string Nome, ParentescoAcompanhante? Parentesco, string? Telefone)> escolhidos,
-        PacienteResumo? resumo)
+        List<(Guid? Id, string Nome, ParentescoAcompanhante? Parentesco, string? Telefone)> escolhidos,
+        PacienteResumo? resumo,
+        Func<int, string?> situacao)
     {
         var confirmacaoPaciente = p.Status switch
         {
@@ -218,21 +239,28 @@ public sealed class RotaTabletService(
 
         // Quem vai: os escolhidos da sessão; sem lista, o nome antigo da sessão; com assento reservado
         // e sem nome nenhum, "Acompanhante". Cada um pega um assento de acompanhante, na ordem.
-        List<(string Nome, ParentescoAcompanhante? Parentesco, string? Telefone)> nomes = escolhidos.Count > 0
+        List<(Guid? Id, string Nome, ParentescoAcompanhante? Parentesco, string? Telefone)> nomes = escolhidos.Count > 0
             ? escolhidos
             : !string.IsNullOrWhiteSpace(p.NomeAcompanhante)
-                ? [(p.NomeAcompanhante!, (ParentescoAcompanhante?)null, (string?)null)]
-                : [.. assentosAcompanhante.Select(_ => ("Acompanhante", (ParentescoAcompanhante?)null, (string?)null))];
+                ? [((Guid?)null, p.NomeAcompanhante!, (ParentescoAcompanhante?)null, (string?)null)]
+                : [.. assentosAcompanhante.Select(_ => ((Guid?)null, "Acompanhante", (ParentescoAcompanhante?)null, (string?)null))];
         var acompanhantes = nomes.Select((a, i) => new AcompanhanteTabletDto(
             a.Nome, a.Parentesco, a.Telefone, confirmacaoAcomp,
-            i < assentosAcompanhante.Count ? assentosAcompanhante[i] : null)).ToList();
+            i < assentosAcompanhante.Count ? assentosAcompanhante[i] : null, a.Id, situacao(i + 1))).ToList();
 
         var nome = resumo?.Nome;
         return new PassageiroTabletDto(
             p.SessaoId, string.IsNullOrWhiteSpace(nome) ? "Paciente" : nome,
             resumo?.Celular, confirmacaoPaciente, p.Assento, p.Condicao, p.TipoTratamento,
-            p.TempoMedioMinutos, p.UnidadeNome, acompanhantes);
+            p.TempoMedioMinutos, p.UnidadeNome, acompanhantes, situacao(0));
     }
+
+    private static string NomeDaSituacao(TipoEventoViagem t) => t switch
+    {
+        TipoEventoViagem.Embarque => Embarcou,
+        TipoEventoViagem.Ausencia => Ausente,
+        _ => Desembarcou,
+    };
 
     private async Task<IReadOnlyDictionary<Guid, PacienteResumo>> ResumosAsync(List<Guid> ids, CancellationToken ct)
     {
