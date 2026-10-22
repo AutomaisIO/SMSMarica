@@ -78,7 +78,10 @@ public sealed record PacienteDto(
     /// <summary>Número NEGADO ("não sou essa pessoa" — marcador no telecom FHIR), se houver.
     /// É o alerta ❗: mensagens para este número chegam à pessoa errada.</summary>
     string? TelefoneNegado = null,
-    DateTime? TelefoneNegadoEm = null);
+    DateTime? TelefoneNegadoEm = null,
+    /// <summary>Cadastro que absorveu este numa unificação de duplicados (link replaced-by do
+    /// hub). Preenchido = este cadastro é lápide: a pessoa está no outro.</summary>
+    Guid? UnificadoEm = null);
 
 /// <summary>Identificador FHIR (system + valor) — ex.: CPF, CNS, RG, prontuário.</summary>
 public sealed record IdentificadorDto(string Sistema, string Valor);

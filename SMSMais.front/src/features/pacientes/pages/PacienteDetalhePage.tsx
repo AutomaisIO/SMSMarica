@@ -1311,6 +1311,20 @@ export function PacienteDetalhePage() {
         </Button>
       </header>
 
+      {/* Lápide de unificação: quem chega aqui por link antigo é levado ao cadastro que ficou. */}
+      {p?.unificadoEm ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <span>Este cadastro foi unificado com outro da mesma pessoa e não é mais usado.</span>
+          <button
+            type="button"
+            onClick={() => navigate(`/app/pacientes/${p.unificadoEm}`)}
+            className="font-medium underline hover:text-amber-950"
+          >
+            Abrir o cadastro unificado
+          </button>
+        </div>
+      ) : null}
+
       {detalhe.isLoading ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : detalhe.isError ? (

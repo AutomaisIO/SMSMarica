@@ -335,4 +335,51 @@ public class UnificacaoPacienteTests
 
         Assert.Empty(semRotulo);
     }
+
+    private void HubBuscaDevolve(params Patient[] pacientes)
+    {
+        var bundle = new Bundle { Type = Bundle.BundleType.Searchset };
+        foreach (var p in pacientes) bundle.Entry.Add(new Bundle.EntryComponent { Resource = p });
+        _hub.BuscarAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(bundle);
+    }
+
+    [Fact]
+    public async Task Cadastro_unificado_nao_aparece_na_busca_por_nome()
+    {
+        // FERNANDA (22/10/2026): a lápide sem CPF vinha em 1º lugar na lista, e era ela que se abria.
+        var s = Guid.CreateVersion7();
+        var a = Guid.CreateVersion7();
+        HubBuscaDevolve(UnificadoEm(Paciente(a), s), Paciente(s, cpf: "11111111111"));
+
+        var r = await Criar().BuscarAsync("FULANO DE TESTE");
+
+        Assert.Equal([s], r.Select(x => x.Id));
+    }
+
+    [Fact]
+    public async Task Cadastro_unificado_nao_responde_pelo_telefone()
+    {
+        // O webhook do WhatsApp pega o PRIMEIRO paciente do número: a lápide na frente pendurava a
+        // mensagem nova no cadastro desativado.
+        var s = Guid.CreateVersion7();
+        var a = Guid.CreateVersion7();
+        HubBuscaDevolve(UnificadoEm(Paciente(a), s), Paciente(s, cpf: "11111111111"));
+
+        var achado = await Criar().ObterPorTelefoneAsync("21933334444");
+        var lista = await Criar().ListarPorTelefoneAsync("21933334444");
+
+        Assert.Equal(s, achado!.Id);
+        Assert.Equal([s], lista.Select(x => x.Id));
+    }
+
+    [Fact]
+    public void Ficha_do_cadastro_unificado_diz_para_onde_foi()
+    {
+        var s = Guid.CreateVersion7();
+        var a = Guid.CreateVersion7();
+
+        Assert.Equal(s, PacienteFhirMapper.ParaDto(UnificadoEm(Paciente(a), s)).UnificadoEm);
+        Assert.Null(PacienteFhirMapper.ParaDto(Paciente(s, cpf: "11111111111")).UnificadoEm);
+    }
 }

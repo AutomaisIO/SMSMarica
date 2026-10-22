@@ -132,6 +132,8 @@ export type Paciente = {
   nomeConjuge?: string | null;
   /** Sistema de origem do recurso no hub (FHIR Meta.source). */
   fonte?: string | null;
+  /** Cadastro que absorveu este numa unificação: preenchido = este é lápide, a pessoa está no outro. */
+  unificadoEm?: string | null;
   /** Dados crus da fonte (ex.: códigos Salux: cor, religião, etnia, escolaridade). */
   dadosFonte?: Record<string, string> | null;
 };

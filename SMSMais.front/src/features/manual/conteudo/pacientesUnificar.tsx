@@ -176,7 +176,7 @@ export const artigoPacientesUnificar: Artigo = {
     {
       id: 'o-que-e-movido',
       titulo: 'O que vem junto e o registro',
-      busca: 'laudos solicitações agendamentos guias regulação conversas acervo histórico clínico app do cidadão auditoria histórico de alterações aplicar de novo',
+      busca: 'laudos solicitações agendamentos guias regulação conversas acervo histórico clínico app do cidadão auditoria histórico de alterações aplicar de novo sai da busca lista telefone whatsapp link antigo abrir o cadastro unificado',
       conteudo: (
         <>
           <P>
@@ -194,8 +194,10 @@ export const artigoPacientesUnificar: Artigo = {
           <Lista>
             <Item>
               O outro cadastro <strong>não é apagado</strong>: fica desativado e apontando para o
-              unificado, para que qualquer link antigo continue achando a pessoa certa. Ele não pode ser
-              unificado de novo.
+              unificado. Ele <strong>sai das buscas</strong> (por nome, CPF e telefone — inclusive a do
+              WhatsApp, que passa a achar só o unificado) e não pode ser unificado de novo. Quem o abrir
+              por um link antigo vê um aviso com o botão{' '}
+              <BotaoRef variante="ghost">Abrir o cadastro unificado</BotaoRef>.
             </Item>
             <Item>
               Se os dois cadastros tinham acesso ao <strong>app do cidadão</strong>, vale o do

@@ -366,7 +366,21 @@ internal static class PacienteFhirMapper
             identificadores, obito, conjuge, fonte, dadosFonte,
             confirmado?.Numero, confirmado?.Em?.UtcDateTime,
             confirmado is null ? null : PatientMergeFhir.VinculoContatoConfirmado(p).ToString(),
-            negado?.Numero, negado?.Em?.UtcDateTime);
+            negado?.Numero, negado?.Em?.UtcDateTime,
+            UnificadoEm(p));
+    }
+
+    /// <summary>
+    /// Para quem este Patient foi unificado (o <c>link replaced-by</c> que o <c>$merge</c> do hub
+    /// grava), ou null se ele nunca foi absorvido. Link ilegível ainda conta como unificado
+    /// (<see cref="Guid.Empty"/>): é lápide do mesmo jeito.
+    /// </summary>
+    public static Guid? UnificadoEm(Patient p)
+    {
+        var referencia = p.Link?.FirstOrDefault(l => l.Type == Patient.LinkType.ReplacedBy)?.Other?.Reference;
+        if (referencia is null) return null;
+        var id = referencia[(referencia.LastIndexOf('/') + 1)..];
+        return Guid.TryParse(id, out var g) ? g : Guid.Empty;
     }
 
     private static IReadOnlyDictionary<string, string>? LerExtras(Patient p)
