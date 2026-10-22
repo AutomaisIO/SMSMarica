@@ -12,8 +12,10 @@ public sealed record UnificarPacientesRequest(
     /// <summary>
     /// Demografia final escolhida na tela (os valores que "ficam"). Aplicada ao sobrevivente pelo
     /// caminho de edição normal — portanto auditada campo a campo. Nulo = mantém o sobrevivente
-    /// como está. Nome/CPF/nascimento não entram aqui (nome vem em <see cref="NomeFinal"/>; CPF e
-    /// nascimento são identidade e não se trocam por esta tela nesta fase).
+    /// como está. Nome, CNS e nascimento não entram aqui (vêm em <see cref="NomeFinal"/>,
+    /// <see cref="CnsFinal"/> e <see cref="NascimentoFinal"/>). O CPF não se escolhe: o cadastro
+    /// que fica é o dono do CPF escolhido na tela. Telefones e e-mail também não: os do absorvido
+    /// são SOMADOS ao sobrevivente (contato só acumula).
     /// </summary>
     AtualizarPacienteRequest? DadosFinais = null,
     /// <summary>Nome oficial final escolhido, quando o operador decidir trocar o do sobrevivente.</summary>
@@ -23,7 +25,23 @@ public sealed record UnificarPacientesRequest(
     /// é a mesma pessoa. Sem isso a unificação é recusada no caso divergente (risco de fundir
     /// duas pessoas distintas — ADR-0041).
     /// </summary>
-    bool ConfirmaChavesDivergentes = false);
+    bool ConfirmaChavesDivergentes = false,
+    /// <summary>
+    /// CNS que vira o oficial do cadastro unificado. Tem de ser o CNS de um dos dois cadastros; o
+    /// outro continua guardado como antigo (segue achando a pessoa). Nulo = mantém o do sobrevivente.
+    /// </summary>
+    string? CnsFinal = null,
+    /// <summary>
+    /// Data de nascimento do cadastro unificado. Tem de ser a de um dos dois cadastros. Nulo =
+    /// mantém a do sobrevivente.
+    /// </summary>
+    DateOnly? NascimentoFinal = null,
+    /// <summary>
+    /// Telefones (dígitos) que o operador DESLIGOU na tela. O do absorvido não é importado; o do
+    /// sobrevivente é aposentado (vira histórico). O verificado nunca sai, mesmo que venha aqui.
+    /// Nulo/vazio = todos os telefones dos dois ficam (contato acumula).
+    /// </summary>
+    IReadOnlyList<string>? TelefonesDescartados = null);
 
 /// <summary>Prévia (dry-run) da unificação: os dois cadastros, as divergências e o que será movido.</summary>
 public sealed record PreviaUnificacaoDto(
@@ -51,4 +69,8 @@ public sealed record ResultadoUnificacaoDto(
     Guid AbsorvidoId,
     int ReferenciasRepontadas,
     int ClinicoRepontado,
-    int IdentificadoresAbsorvidos);
+    int IdentificadoresAbsorvidos,
+    /// <summary>Telefones/e-mails do absorvido que entraram no sobrevivente.</summary>
+    int ContatosSomados = 0,
+    /// <summary>Telefones do sobrevivente que o operador desligou e foram aposentados.</summary>
+    int TelefonesRetirados = 0);

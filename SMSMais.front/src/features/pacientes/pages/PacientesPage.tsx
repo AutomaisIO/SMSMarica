@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Eye, Merge, Pencil, Plus, Search, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, Eye, Merge, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
@@ -14,6 +14,7 @@ import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { UnificarPacientesModal } from '@/features/pacientes/components/UnificarPacientesModal';
 import {
   useBuscarPacientes,
   useDesativarPaciente,
@@ -50,6 +51,37 @@ export function PacientesPage() {
 
   const [paraDesativar, setParaDesativar] = useState<PacienteListItem | null>(null);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
+
+  // Unificar paciente: o botão liga o modo (fica na URL, ?unificar=1) e a lista ganha checkbox.
+  // O 1º marcado fica esmaecido e guardado — dá para buscar de novo até achar o outro; o 2º abre
+  // o modal com os dois.
+  const [params, setParams] = useSearchParams();
+  const modoUnificar = params.get('unificar') === '1';
+  const [primeiro, setPrimeiro] = useState<PacienteListItem | null>(null);
+  const [segundo, setSegundo] = useState<PacienteListItem | null>(null);
+
+  function alternarModoUnificar() {
+    const proximo = new URLSearchParams(params);
+    if (modoUnificar) proximo.delete('unificar');
+    else proximo.set('unificar', '1');
+    setParams(proximo, { replace: true });
+    setPrimeiro(null);
+    setSegundo(null);
+  }
+
+  function marcar(p: PacienteListItem) {
+    if (primeiro?.id === p.id) setPrimeiro(null);
+    else if (!primeiro) setPrimeiro(p);
+    else setSegundo(p);
+  }
+
+  function concluirUnificacao() {
+    setSegundo(null);
+    setPrimeiro(null);
+    const proximo = new URLSearchParams(params);
+    proximo.delete('unificar');
+    setParams(proximo, { replace: true });
+  }
 
   const colunas: Coluna<PacienteListItem>[] = useMemo(() => [
     {
@@ -121,6 +153,21 @@ export function PacientesPage() {
     },
   ], [navigate]);
 
+  const colunaMarcar: Coluna<PacienteListItem> = {
+    chave: 'marcar',
+    cabecalho: '',
+    className: 'w-10',
+    render: (p) => (
+      <input
+        type="checkbox"
+        checked={primeiro?.id === p.id || segundo?.id === p.id}
+        onChange={() => marcar(p)}
+        aria-label={`Marcar ${p.nomeCompleto} para unificar`}
+        className="h-4 w-4 cursor-pointer rounded border-gray-300 accent-green-600"
+      />
+    ),
+  };
+
   async function confirmarDesativar() {
     if (!paraDesativar) return;
     setErroAcao(null);
@@ -150,9 +197,9 @@ export function PacientesPage() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button variante="outline" onClick={() => navigate('/app/pacientes/unificar')}>
-            <Merge className="h-4 w-4" />
-            Unificar paciente
+          <Button variante="outline" onClick={alternarModoUnificar}>
+            {modoUnificar ? <X className="h-4 w-4" /> : <Merge className="h-4 w-4" />}
+            {modoUnificar ? 'Cancelar unificação' : 'Unificar paciente'}
           </Button>
           <Button onClick={() => navigate('/app/pacientes/novo')}>
             <Plus className="h-4 w-4" />
@@ -173,6 +220,32 @@ export function PacientesPage() {
         />
       </div>
 
+      {modoUnificar ? (
+        // Altura mínima fixa: a faixa cresce ao marcar o 1º e empurraria a tabela para baixo — o
+        // clique seguinte, rápido, cairia na linha errada.
+        <div className="flex min-h-[3.5rem] flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+          {primeiro ? (
+            <>
+              <span>
+                Marcado: <strong>{primeiro.nomeCompleto}</strong>
+                {primeiro.cpf ? ` · CPF ${formatarCpf(primeiro.cpf)}` : ''}. Agora marque o outro
+                cadastro da mesma pessoa — se ele não estiver na lista, busque de novo.
+              </span>
+              <button
+                type="button"
+                onClick={() => setPrimeiro(null)}
+                className="font-medium text-green-800 underline hover:text-green-950"
+              >
+                Desmarcar
+              </button>
+            </>
+          ) : (
+            <span>Marque os dois cadastros da mesma pessoa.</span>
+          )}
+          <AjudaManual artigo="pacientes-unificar" />
+        </div>
+      ) : null}
+
       {busca.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {extrairMensagemDeErro(busca.error)}
@@ -180,9 +253,12 @@ export function PacientesPage() {
       ) : null}
 
       <Tabela
-        colunas={colunas}
+        colunas={modoUnificar ? [colunaMarcar, ...colunas] : colunas}
         dados={busca.data ?? []}
         chaveLinha={(p) => p.id}
+        aoClicarLinha={modoUnificar ? marcar : undefined}
+        dicaLinha="Clique para marcar"
+        classeLinha={(p) => (modoUnificar && primeiro?.id === p.id ? 'opacity-50' : undefined)}
         carregando={busca.isLoading || (busca.isFetching && !busca.data)}
         vazio={
           semResultado
@@ -210,6 +286,15 @@ export function PacientesPage() {
           setErroAcao(null);
         }}
       />
+
+      {primeiro && segundo ? (
+        <UnificarPacientesModal
+          key={`${primeiro.id}-${segundo.id}`}
+          ids={[primeiro.id, segundo.id]}
+          aoFechar={() => setSegundo(null)}
+          aoConcluir={concluirUnificacao}
+        />
+      ) : null}
 
       {erroAcao ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

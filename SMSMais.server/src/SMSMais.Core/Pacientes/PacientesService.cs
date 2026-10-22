@@ -498,8 +498,15 @@ public sealed class PacientesService(
             throw new ValidacaoException(
                 "paciente.unificar_mesmo", "Escolha dois cadastros diferentes para unificar.");
 
-        var sobrevivente = await ObterPorIdAsync(sobreviventeId, cancellationToken);
-        var absorvido = await ObterPorIdAsync(absorvidoId, cancellationToken);
+        var patientS = await fhir.ObterAsync(sobreviventeId, cancellationToken)
+            ?? throw new NaoEncontradoException("Paciente", sobreviventeId);
+        var patientA = await fhir.ObterAsync(absorvidoId, cancellationToken)
+            ?? throw new NaoEncontradoException("Paciente", absorvidoId);
+        // A tela fica sabendo ANTES de o operador escolher os dados, não no Aplicar.
+        GarantirUnificavel(patientS, patientA, sobreviventeId);
+
+        var sobrevivente = PacienteFhirMapper.ParaDto(patientS);
+        var absorvido = PacienteFhirMapper.ParaDto(patientA);
 
         var cpfDiverge = ChaveDivergente(sobrevivente.Cpf, absorvido.Cpf);
         var cnsDiverge = ChaveDivergente(sobrevivente.Cns, absorvido.Cns);
@@ -529,15 +536,7 @@ public sealed class PacientesService(
         var absorvido = await fhir.ObterAsync(request.AbsorvidoId, cancellationToken)
             ?? throw new NaoEncontradoException("Paciente", request.AbsorvidoId);
 
-        // Já unificado antes? O hub marca o absorvido com active=false + link replaced-by. Unir de
-        // novo embaralharia o histórico — barra aqui com mensagem clara.
-        if (absorvido.Active == false
-            || (absorvido.Link?.Any(l => l.Type == Patient.LinkType.ReplacedBy) ?? false))
-        {
-            throw new ConflitoException(
-                "paciente.ja_unificado",
-                "Este cadastro já foi unificado em outro anteriormente e não pode ser unificado de novo.");
-        }
+        var retomada = GarantirUnificavel(sobrevivente, absorvido, request.SobreviventeId);
 
         // Caso perigoso: CPF e/ou CNS preenchidos nos dois e DIFERENTES. Podem ser pessoas distintas
         // (ADR-0041). Só segue com a confirmação explícita que a tela coleta.
@@ -551,28 +550,78 @@ public sealed class PacientesService(
                 + "de unificar — unir pessoas diferentes mistura dois prontuários.");
         }
 
+        // CNS e nascimento escolhidos na tela têm de ser de um dos dois cadastros — esta tela junta
+        // o que já existe, não é porta para digitar identidade nova. Conferido ANTES de escrever.
+        var cnsFinal = Digitos(request.CnsFinal);
+        if (cnsFinal.Length > 0 && !CnsDosDois(sobrevivente, absorvido).Contains(cnsFinal))
+        {
+            throw new ValidacaoException(
+                "paciente.unificar_cns", "O CNS escolhido não é de nenhum dos dois cadastros.");
+        }
+        if (request.NascimentoFinal is DateOnly nascFinal
+            && nascFinal != PacienteFhirMapper.ParaDto(sobrevivente).DataNascimento
+            && nascFinal != PacienteFhirMapper.ParaDto(absorvido).DataNascimento)
+        {
+            throw new ValidacaoException(
+                "paciente.unificar_nascimento", "A data de nascimento escolhida não é de nenhum dos dois cadastros.");
+        }
+
+        // A ordem protege contra a parada no meio. O que é repetível vem antes da fusão no hub (que
+        // é a única etapa que não se refaz): se a fusão falhar, refazer a unificação passa de novo
+        // por tudo sem efeito duplicado e tenta a fusão outra vez.
+
         // 1) Resolução campo a campo escolhida na tela → aplicada ao SOBREVIVENTE pelo caminho de
         // edição normal, que já audita cada campo alterado (Histórico de alterações).
         if (!string.IsNullOrWhiteSpace(request.NomeFinal))
             await AtualizarNomeAsync(
                 request.SobreviventeId, new AtualizarNomePacienteRequest(request.NomeFinal.Trim()), cancellationToken);
         if (request.DadosFinais is not null)
-            await AtualizarAsync(request.SobreviventeId, request.DadosFinais, cancellationToken);
+            await AtualizarAsync(
+                request.SobreviventeId,
+                SemTelefonesDesligados(request.DadosFinais, request.TelefonesDescartados, sobrevivente, absorvido),
+                cancellationToken);
 
-        // 2) Fusão no hub FHIR: move identifiers, cria Patient.link, marca o absorvido active=false
-        // e reaponta o clínico de fhir.* (encounter, condition, observation, medicação, documentos).
-        var hub = await fhir.FundirAsync(request.SobreviventeId, request.AbsorvidoId, cancellationToken);
+        // 2) Contatos: os telefones e e-mails do absorvido entram no sobrevivente (o $merge do hub
+        // move só identificadores — sem isto, os números ficariam presos na lápide), menos os que o
+        // operador desligou; desligado do próprio sobrevivente vira histórico. Verificado nunca sai.
+        var contatosSomados = 0;
+        IReadOnlyList<string> telefonesRetirados = [];
+        await AtualizarComRetryAsync(request.SobreviventeId, patient =>
+        {
+            (contatosSomados, telefonesRetirados) = PatientMergeFhir.UnirContatosDaUnificacao(
+                patient, absorvido, request.TelefonesDescartados);
+            return contatosSomados > 0 || telefonesRetirados.Count > 0;
+        }, cancellationToken);
 
-        // 3) A outra metade: reaponta smsmarica.* (laudo, solicitação, regulação, conversa, acervo…)
-        // do absorvido para o sobrevivente. Idempotente, em transação.
+        // 3) Reaponta smsmarica.* (laudo, solicitação, agendamento, regulação, conversa, acervo…)
+        // do absorvido para o sobrevivente. Idempotente, em transação única: ou vai tudo, ou nada.
         var referencias = await repontador.RepontarAsync(
             request.SobreviventeId, request.AbsorvidoId, cancellationToken);
         var totalReferencias = referencias.Sum(r => r.Linhas);
 
-        // 4) Trilha: registra nos DOIS cadastros (aparece no Histórico de alterações de cada um).
+        // 4) Fusão no hub FHIR: move identifiers, cria Patient.link, marca o absorvido active=false
+        // e reaponta o clínico de fhir.* (encounter, condition, observation, medicação, documentos).
+        // Na retomada ela já aconteceu — o hub recusaria a segunda.
+        var hub = retomada
+            ? new ResultadoFusaoHub(0, 0, 0, 0, 0, 0, 0)
+            : await fhir.FundirAsync(request.SobreviventeId, request.AbsorvidoId, cancellationToken);
+
+        // 5) CNS oficial e nascimento escolhidos. Depois da fusão, porque o CNS do absorvido só passa
+        // a ser do sobrevivente quando o hub o move (como antigo); aqui ele vira o oficial.
+        if (cnsFinal.Length > 0 && cnsFinal != Digitos(PacienteFhirMapper.CnsDe(sobrevivente)))
+            await TrocarCnsPrincipalAsync(request.SobreviventeId, cnsFinal, cancellationToken);
+        if (request.NascimentoFinal is DateOnly nascimento
+            && nascimento != PacienteFhirMapper.ParaDto(sobrevivente).DataNascimento)
+            await CorrigirNascimentoAsync(request.SobreviventeId, nascimento, cancellationToken);
+
+        // 6) Trilha: registra nos DOIS cadastros (aparece no Histórico de alterações de cada um).
         var resumo =
             $"Clínico no hub: {hub.TotalClinicoRepontado} • Cadastros no painel: {totalReferencias} "
-            + $"• Identificadores absorvidos: {hub.IdentifiersAbsorvidos}";
+            + $"• Identificadores absorvidos: {hub.IdentifiersAbsorvidos} • Contatos somados: {contatosSomados}"
+            + (telefonesRetirados.Count > 0
+                ? $" • Telefones retirados: {string.Join(", ", telefonesRetirados)}"
+                : "")
+            + (retomada ? " • Retomada de unificação interrompida" : "");
         await auditoria.RegistrarAsync(
             "Paciente", request.SobreviventeId.ToString(), "UnificacaoPaciente",
             $"Absorveu o cadastro {request.AbsorvidoId}", resumo, cancellationToken);
@@ -582,13 +631,81 @@ public sealed class PacientesService(
 
         logger.LogInformation(
             "Unificação de paciente: sobrevivente {Sobrevivente} absorveu {Absorvido} — "
-            + "clínico {Clinico}, cadastros {Cadastros}, identificadores {Ids}.",
+            + "clínico {Clinico}, cadastros {Cadastros}, identificadores {Ids}, contatos {Contatos}, retomada {Retomada}.",
             request.SobreviventeId, request.AbsorvidoId, hub.TotalClinicoRepontado,
-            totalReferencias, hub.IdentifiersAbsorvidos);
+            totalReferencias, hub.IdentifiersAbsorvidos, contatosSomados, retomada);
 
         return new ResultadoUnificacaoDto(
             request.SobreviventeId, request.AbsorvidoId,
-            totalReferencias, hub.TotalClinicoRepontado, hub.IdentifiersAbsorvidos);
+            totalReferencias, hub.TotalClinicoRepontado, hub.IdentifiersAbsorvidos, contatosSomados,
+            telefonesRetirados.Count);
+    }
+
+    /// <summary>
+    /// Já unificado antes? O hub marca o absorvido com <c>link replaced-by</c>. Para OUTRO cadastro,
+    /// unir de novo embaralharia o histórico — barra com mensagem clara. Para ESTE mesmo, é uma
+    /// unificação que parou no meio (a fusão no hub passou e algo depois dela falhou): devolve
+    /// <c>true</c> (retomada) para completar o que falta sem fundir de novo. Desativado sem o link
+    /// não é unificação — é um cadastro excluído, e pode ser unificado normalmente.
+    /// </summary>
+    private static bool GarantirUnificavel(Patient sobrevivente, Patient absorvido, Guid sobreviventeId)
+    {
+        const string mensagem = "Um dos dois cadastros já foi unificado com outro e não pode ser unificado de novo.";
+        if (SubstituidoPor(sobrevivente) is not null)
+            throw new ConflitoException("paciente.ja_unificado", mensagem);
+        var destinoAnterior = SubstituidoPor(absorvido);
+        if (destinoAnterior is Guid outro && outro != sobreviventeId)
+            throw new ConflitoException("paciente.ja_unificado", mensagem);
+        return destinoAnterior == sobreviventeId;
+    }
+
+    /// <summary>
+    /// Para quem este Patient foi unificado (o <c>link replaced-by</c> que o <c>$merge</c> do hub
+    /// grava), ou null se ele nunca foi absorvido.
+    /// </summary>
+    private static Guid? SubstituidoPor(Patient p)
+    {
+        var referencia = p.Link?.FirstOrDefault(l => l.Type == Patient.LinkType.ReplacedBy)?.Other?.Reference;
+        if (referencia is null) return null;
+        var id = referencia[(referencia.LastIndexOf('/') + 1)..];
+        // Link ilegível ainda é unificação: Guid.Empty nunca bate com um sobrevivente e cai na recusa.
+        return Guid.TryParse(id, out var g) ? g : Guid.Empty;
+    }
+
+    /// <summary>Todo CNS (oficial e antigos) dos dois cadastros, só dígitos.</summary>
+    private static HashSet<string> CnsDosDois(Patient a, Patient b) =>
+        [.. new[] { a, b }
+            .SelectMany(p => p.Identifier ?? [])
+            .Where(i => i.System == PatientMergeFhir.SystemCns)
+            .Select(i => Digitos(i.Value))
+            .Where(d => d.Length > 0)];
+
+    /// <summary>
+    /// Telefone desligado na tela também sai dos campos de telefone da demografia final. Sem isto, o
+    /// número aposentado no telecom voltaria pela cópia do cadastro (o DTO lê o telecom e, quando ele
+    /// não tem o número, cai na cópia). O verificado nunca sai — a mesma régua de
+    /// <see cref="PatientMergeFhir.UnirContatosDaUnificacao"/>.
+    /// </summary>
+    private static AtualizarPacienteRequest SemTelefonesDesligados(
+        AtualizarPacienteRequest dados, IReadOnlyList<string>? descartados, Patient sobrevivente, Patient absorvido)
+    {
+        var verificados = new[] { PatientMergeFhir.TelefoneConfirmado(sobrevivente), PatientMergeFhir.TelefoneConfirmado(absorvido) }
+            .Where(c => c is not null)
+            .Select(c => c!.Value.Numero)
+            .ToList();
+        var fora = (descartados ?? [])
+            .Select(Digitos)
+            .Where(d => d.Length >= 8 && !verificados.Any(v => MesmoNumero(v, d)))
+            .ToList();
+        if (fora.Count == 0) return dados;
+
+        string? Limpo(string? v) => fora.Any(d => MesmoNumero(Digitos(v), d)) ? null : v;
+        return dados with
+        {
+            TelefonePrincipal = Limpo(dados.TelefonePrincipal),
+            TelefoneCelular = Limpo(dados.TelefoneCelular),
+            TelefoneResidencial = Limpo(dados.TelefoneResidencial),
+        };
     }
 
     /// <summary>Duas chaves nacionais preenchidas e diferentes (comparadas só por dígitos).</summary>

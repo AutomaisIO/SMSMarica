@@ -676,6 +676,85 @@ public static class PatientMergeFhir
     }
 
     /// <summary>
+    /// Unificação de cadastros: soma ao <paramref name="sobrevivente"/> todo telefone e e-mail do
+    /// <paramref name="absorvido"/> que ele ainda não tem. Contato acumula por padrão (regra de
+    /// 10/08/2026) — sem isto, os números do cadastro que sai ficariam presos na lápide, porque o
+    /// <c>$merge</c> do hub move só os identificadores.
+    ///
+    /// <para><b>Quem remove é gente decidindo:</b> <paramref name="descartados"/> são os números
+    /// que o operador DESLIGOU na tela. O do absorvido simplesmente não é importado; o do próprio
+    /// sobrevivente é aposentado (<c>period.end</c>, como o resto do arquivo faz) — vira histórico,
+    /// não some. O que a tela não mostrou não está na lista e segue a regra de acumular.</para>
+    ///
+    /// <para><b>Número verificado nunca sai nem é sobrescrito</b>, mesmo que venha na lista. A régua
+    /// é de um verificado por pessoa: se o sobrevivente já tem o dele, o do absorvido entra como
+    /// número comum; se não tem, o verificado do absorvido passa a ser o dele — mesmo quando o
+    /// número já estava lá sem a marca.</para>
+    ///
+    /// <para>Clona o <c>ContactPoint</c> inteiro, então as marcas viajam junto: número negado
+    /// continua negado, origem e período ficam. Idempotente (o que já está representado não volta
+    /// duplicado; aposentado não é aposentado de novo). Devolve quantos contatos entraram e os
+    /// números (dígitos) do sobrevivente que foram aposentados.</para>
+    /// </summary>
+    public static (int Somados, IReadOnlyList<string> Retirados) UnirContatosDaUnificacao(
+        Patient sobrevivente, Patient absorvido,
+        IReadOnlyCollection<string>? descartados = null, DateTimeOffset? agora = null)
+    {
+        sobrevivente.Telecom ??= [];
+        var em = agora ?? DateTimeOffset.UtcNow;
+        var confirmadoDoSobrevivente = TelefoneConfirmado(sobrevivente);
+        var confirmadoDoAbsorvido = TelefoneConfirmado(absorvido);
+
+        var fora = (descartados ?? [])
+            .Select(Digitos)
+            .Where(d => d.Length >= 8)
+            .Where(d => !(confirmadoDoSobrevivente is { } cs && MesmoNumero(cs.Numero, d))
+                        && !(confirmadoDoAbsorvido is { } ca && MesmoNumero(ca.Numero, d)))
+            .ToList();
+        bool desligado(ContactPoint t) =>
+            t.System == ContactPoint.ContactPointSystem.Phone
+            && fora.Any(d => MesmoNumero(Digitos(t.Value), d));
+
+        // 1) Desligados do próprio sobrevivente: viram histórico, não somem.
+        var retirados = new List<string>();
+        foreach (var t in sobrevivente.Telecom.Where(t => desligado(t) && !EhConfirmado(t) && !EhAposentado(t)))
+        {
+            t.Period ??= new Period();
+            t.Period.EndElement = new FhirDateTime(em);
+            t.Rank = null; // aposentado nunca é o principal
+            retirados.Add(Digitos(t.Value));
+        }
+
+        // 2) Do absorvido entra tudo o que não foi desligado.
+        var origem = new Patient { Telecom = [.. (absorvido.Telecom ?? []).Where(t => !desligado(t))] };
+        var antes = sobrevivente.Telecom.Count;
+        PreservarContatos(sobrevivente, origem);
+        var novos = sobrevivente.Telecom.Skip(antes).ToList();
+
+        // Os clones carregam a marca de confirmado do absorvido; quem decide se ela fica é a régua
+        // abaixo, não a cópia.
+        foreach (var t in novos)
+        {
+            t.RemoveExtension(ExtContatoConfirmado);
+            t.RemoveExtension(ExtContatoVinculo);
+        }
+
+        if (confirmadoDoSobrevivente is null && confirmadoDoAbsorvido is { } conf)
+        {
+            var original = (absorvido.Telecom ?? []).FirstOrDefault(t =>
+                t.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(t)
+                && MesmoNumero(Digitos(t.Value), conf.Numero));
+            var vinculo = (original?.GetExtension(ExtContatoVinculo)?.Value as FhirString)?.Value is { } v
+                && Enum.TryParse<Data.Entities.Enums.VinculoContatoVerificado>(v, out var lido)
+                    ? lido
+                    : Data.Entities.Enums.VinculoContatoVerificado.Proprio;
+            MarcarTelefoneConfirmado(sobrevivente, conf.Numero, conf.Em ?? em, vinculo);
+        }
+
+        return (novos.Count, retirados);
+    }
+
+    /// <summary>
     /// O contato do hub já está no recurso que vai ser gravado? Telefone casa por dígitos
     /// (tolerando DDI, como no resto do arquivo); e-mail, por texto normalizado. Comparar por
     /// dígitos e não por objeto é o que impede o mesmo número de voltar duplicado em slots

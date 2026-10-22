@@ -28,7 +28,7 @@ export const artigoPacientes: Artigo = {
   icone: Users,
   rota: '/app/pacientes',
   publico: 'Quem atende, regula ou acompanha o paciente e precisa da ficha dele',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-22',
   palavrasChave: [
     'paciente',
     'pacientes',
@@ -170,7 +170,7 @@ export const artigoPacientes: Artigo = {
     {
       id: 'buscar',
       titulo: 'Achar um paciente',
-      busca: 'buscar procurar nome CPF dez últimos cadastros sem CPF identidade incompleta ver editar',
+      busca: 'buscar procurar nome CPF dez últimos cadastros sem CPF identidade incompleta ver editar unificar duplicado repetido',
       conteudo: (
         <>
           <P>
@@ -182,7 +182,9 @@ export const artigoPacientes: Artigo = {
           <Callout tipo="atencao" titulo="O selo “sem CPF”">
             Aparece no cadastro que veio de um prontuário de origem sem CPF. Sem CPF não há como unir
             esse cadastro ao do mesmo cidadão em outras bases, então a mesma pessoa pode aparecer mais
-            de uma vez. Confirme a identidade antes de usar o cadastro para algo definitivo.
+            de uma vez. Confirme a identidade antes de usar o cadastro para algo definitivo. Achou a
+            mesma pessoa duas vezes? Junte os cadastros pelo botão{' '}
+            <BotaoRef variante="outline">Unificar paciente</BotaoRef> (artigo “Unificar paciente”).
           </Callout>
           <P>
             <BotaoRef variante="ghost">Excluir</BotaoRef> tira o paciente das buscas, mas o histórico
@@ -244,7 +246,7 @@ export const artigoPacientes: Artigo = {
               {
                 termo: <SeloRef>Inativo</SeloRef>,
                 descricao:
-                  'O prontuário de onde o cadastro veio (o do hospital, por exemplo) o mandou como inativo, ou o cadastro foi absorvido numa unificação de duplicados e só aponta para o que ficou. Inativo não é excluído: o cadastro e o histórico continuam lá.',
+                  'O prontuário de onde o cadastro veio (o do hospital, por exemplo) o mandou como inativo, ou o cadastro foi unificado com outro e só aponta para ele. Inativo não é excluído: o cadastro e o histórico continuam lá.',
               },
               {
                 termo: <SeloRef cor="escuro">Óbito em 12/03/2024</SeloRef>,
