@@ -18,6 +18,13 @@ public interface IArmazenamentoArquivos
     /// </summary>
     string MontarChaveDocumento(Guid pacienteId, Guid documentoId, string extensao = "pdf");
 
+    /// <summary>
+    /// Chave de um anexo da Comunicação interna (ADR-0079):
+    /// <c>{prefixo}/comunicacao-interna/{conversaId}/{mensagemId}.{extensao}</c> — pasta própria, fora
+    /// das pastas de paciente. Não toca o armazenamento.
+    /// </summary>
+    string MontarChaveComunicacaoInterna(Guid conversaId, Guid mensagemId, string extensao);
+
     /// <summary>Persiste o conteúdo sob a chave, criando diretórios/contêineres conforme necessário.</summary>
     Task SalvarAsync(string chave, byte[] conteudo, CancellationToken cancellationToken = default);
 

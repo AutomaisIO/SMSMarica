@@ -952,6 +952,12 @@ public sealed class RegulacaoSolicitacaoService(
             // igual. O campo obrigatório é o que faz a devolução andar.
             throw new ValidacaoException("motivo", "Diga à unidade o que precisa ser corrigido.");
         }
+        // A tela pré-preenche com a resposta do SER/SERNIT depois de uma falha no envio: texto longo
+        // é provável, e passar da coluna estouraria como erro 500 em vez de dizer o limite.
+        if (motivo.Trim().Length > 2000)
+        {
+            throw new ValidacaoException("motivo", "O motivo cabe em até 2.000 caracteres.");
+        }
 
         var s = await CarregarNoEscopoAsync(id, ct, rastrear: true, comoAgente: true);
         await TransitarAsync(

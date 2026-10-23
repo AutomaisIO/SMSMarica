@@ -17,6 +17,8 @@ namespace SMSMais.Core.Identidade.Dtos;
 /// <param name="NotificacoesSerTecnicos">Técnicos reguladores (chave = nome normalizado de quem incluiu a solicitação) marcados no filtro das Notificações do SER. Salvo no usuário: quem filtra "o que é meu" não quer refazer a seleção a cada login. Lista vazia = todos.</param>
 /// <param name="NotificacoesSernitTecnicos">O mesmo para as Notificações do SERNIT — separado do SER porque os nomes e as filas são de sistemas diferentes.</param>
 /// <param name="NotificacoesEsusSgTecnicos">O mesmo para as Notificações do ESUS de São Gonçalo (técnico = quem incluiu na fila do ESUS).</param>
+/// <param name="SomComunicacaoInternaSilenciado">Som de mensagem nova da Comunicação interna (ADR-0079) silenciado? Separado do bip da Central de Atendimento: quem silencia um não necessariamente quer silenciar o outro. Ausente/false = som ligado.</param>
+/// <param name="ComunicacaoInternaNaoAbrirSozinho">Desliga o "pulo" do chat interno: com false/ausente, mensagem nova abre o painel sozinho já na conversa (ADR-0079 §6); com true, só o balão, o som e a notificação avisam.</param>
 /// <param name="NotificacoesSerRecursos">Recursos (procedimento/especialidade) marcados no filtro por recurso das Notificações do SER. Salvo no usuário, como o filtro por técnico: cada um configura a própria tela. Lista vazia = todos.</param>
 public sealed record PreferenciasUiDto(
     Dictionary<string, string>? MenuDefaults,
@@ -31,4 +33,6 @@ public sealed record PreferenciasUiDto(
     List<string>? NotificacoesSerTecnicos = null,
     List<string>? NotificacoesSernitTecnicos = null,
     List<string>? NotificacoesEsusSgTecnicos = null,
-    List<string>? NotificacoesSerRecursos = null);
+    List<string>? NotificacoesSerRecursos = null,
+    bool? SomComunicacaoInternaSilenciado = null,
+    bool? ComunicacaoInternaNaoAbrirSozinho = null);

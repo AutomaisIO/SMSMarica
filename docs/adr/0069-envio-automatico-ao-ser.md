@@ -54,7 +54,9 @@ outro recurso.
    passadas. O limite por arquivo deixou de ser fixo: cada destino tem o seu na aba de configuração
    dele (SER e SERNIT), guardado no `ParametrosJson` da credencial, com padrão de 4,5 MB, abaixo das
    duas leituras de "5 MB". A prévia mostra "comprimido de X MB (N dpi) para caber no limite de Y MB",
-   e o original continua intacto no armazenamento. Sem Ghostscript no servidor, vale o comportamento
+   e o que está no armazenamento continua intacto (desde 23/10/2026 já é a cópia compactada na
+   entrada — [ADR-0080](./0080-anexo-da-regulacao-compactado-na-entrada.md)). Sem Ghostscript no
+   servidor, vale o comportamento
    anterior.
 7. **O SERNIT pelo mesmo motor** (08/10/2026). SER-RJ e SERNIT são a mesma aplicação (JSF 1.2 +
    RichFaces 3.3 + Seam) em instâncias diferentes; o motor da tela de criação recebe um transporte

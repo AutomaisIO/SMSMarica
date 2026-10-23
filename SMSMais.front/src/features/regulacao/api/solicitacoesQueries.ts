@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
-  anexarArquivo,
-  garantirAnexosGerais,
   assumirSolicitacao,
   cancelarSolicitacao,
   devolverSolicitacao,
@@ -117,31 +115,6 @@ export function useAtualizarSolicitacao() {
 export function useEnviarParaFila() {
   const invalidar = useInvalidar();
   return useMutation({ mutationFn: enviarParaFila, onSuccess: invalidar });
-}
-
-export function useAnexarArquivo() {
-  const invalidar = useInvalidar();
-  return useMutation({
-    mutationFn: (p: { solicitacaoId: string; exigenciaId: string; arquivo: File }) =>
-      anexarArquivo(p.solicitacaoId, p.exigenciaId, p.arquivo),
-    onSuccess: invalidar,
-  });
-}
-
-/**
- * A regulação pendura um documento (a guia de agendamento) na solicitação já enviada: garante a
- * caixinha "Anexos gerais" e sobe o arquivo nela. A unidade vê e baixa pela própria plataforma —
- * e a trilha registra quem baixou.
- */
-export function useAnexarGuiaRegulacao() {
-  const invalidar = useInvalidar();
-  return useMutation({
-    mutationFn: async (p: { solicitacaoId: string; arquivo: File; titulo?: string }) => {
-      const caixinha = await garantirAnexosGerais(p.solicitacaoId);
-      await anexarArquivo(p.solicitacaoId, caixinha.id, p.arquivo, p.titulo);
-    },
-    onSuccess: invalidar,
-  });
 }
 
 export function useRemoverArquivo() {

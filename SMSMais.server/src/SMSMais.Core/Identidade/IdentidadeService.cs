@@ -255,6 +255,11 @@ public sealed class IdentidadeService(
             query = query.Where(u => _db.UsuarioUnidades.Any(v => v.UsuarioId == u.Id && v.UnidadeId == unidadeId));
         }
 
+        if (filtro.SemUnidadePadrao)
+        {
+            query = query.Where(u => !_db.UsuarioUnidades.Any(v => v.UsuarioId == u.Id && v.Principal));
+        }
+
         // A lista tende a crescer — limita (clamp 1..500, default 50).
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         var usuarios = await query
@@ -484,7 +489,9 @@ public sealed class IdentidadeService(
             preferencias.NotificacoesSerTecnicos ?? atual.NotificacoesSerTecnicos,
             preferencias.NotificacoesSernitTecnicos ?? atual.NotificacoesSernitTecnicos,
             preferencias.NotificacoesEsusSgTecnicos ?? atual.NotificacoesEsusSgTecnicos,
-            preferencias.NotificacoesSerRecursos ?? atual.NotificacoesSerRecursos);
+            preferencias.NotificacoesSerRecursos ?? atual.NotificacoesSerRecursos,
+            preferencias.SomComunicacaoInternaSilenciado ?? atual.SomComunicacaoInternaSilenciado,
+            preferencias.ComunicacaoInternaNaoAbrirSozinho ?? atual.ComunicacaoInternaNaoAbrirSozinho);
         u.PreferenciasUi = JsonSerializer.Serialize(mesclado, PreferenciasJson);
         await _db.SaveChangesAsync(cancellationToken);
     }

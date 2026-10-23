@@ -1099,6 +1099,50 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Depois_de_uma_falha_no_envio_o_regulador_devolve_e_a_unidade_reenvia()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.RegistrarFalhaEnvioAsync(
+            c.SolicitacaoA, "O SER recusou o pedido: \"Telefone é obrigatório\". Nada foi criado lá.",
+            gravarAcionado: false, CancellationToken.None);
+
+        // O dado que falta é da unidade: devolve direto da falha, sem passar por "Em análise".
+        var devolvida = await agente.DevolverAsync(
+            c.SolicitacaoA, "Falha no envio ao SER: telefone é obrigatório. Corrija e reenvie.", CancellationToken.None);
+
+        devolvida.Status.Should().Be(StatusRegulacao.Devolvida);
+        devolvida.StatusMotivo.Should().StartWith("Falha no envio ao SER",
+            "a unidade lê o que o agente escreveu, não o aviso técnico da falha");
+        var devolucao = (await agente.EventosAsync(c.SolicitacaoA, CancellationToken.None)).Last();
+        devolucao.Tipo.Should().Be(TipoEventoRegulacao.Devolucao);
+        devolucao.De.Should().Be(StatusRegulacao.FalhaEnvio);
+
+        var ponta = Montar(db, c.UsuarioA, c.UnidadeA, c.VersaoId, ehAgente: false);
+        var reenviada = await ponta.EnviarParaFilaAsync(c.SolicitacaoA, CancellationToken.None);
+        reenviada.Status.Should().Be(StatusRegulacao.PendenteRegulacao);
+        reenviada.StatusMotivo.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Devolver_com_motivo_maior_que_a_coluna_diz_o_limite()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var acao = () => agente.DevolverAsync(c.SolicitacaoA, new string('x', 2001), CancellationToken.None);
+
+        await acao.Should().ThrowAsync<ValidacaoException>();
+        (await agente.ObterAsync(c.SolicitacaoA, CancellationToken.None)).Status
+            .Should().Be(StatusRegulacao.EmAnalise);
+    }
+
+    [Fact]
     public async Task Enviar_para_a_fila_grava_a_versao_do_formulario_que_acabou_de_ser_conferida()
     {
         await using var db = fixture.CriarDbContext();

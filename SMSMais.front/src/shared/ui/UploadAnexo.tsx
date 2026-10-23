@@ -12,6 +12,13 @@ import {
 
 import { formatarTamanhoBytes } from '@/features/anamnese/lib/anexos';
 import { DialogoDocumento, tituloDoArquivo } from '@/shared/acervo/DialogoDocumento';
+import {
+  PreviaCompactacao,
+  resumoCompactacao,
+  type ArquivoPreparado,
+  type CompactacaoNaEntrada,
+} from '@/shared/acervo/PreviaCompactacao';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { cn } from '@/shared/lib/cn';
 
 export type ArquivoResumo = {
@@ -30,6 +37,9 @@ export type ArquivoResumo = {
 /** O que quem anexou disse do documento — vai junto com o arquivo. */
 export type InfoDocumento = { titulo: string; descricao: string | null };
 
+/** Uma prévia em andamento: o que o servidor compactou e o nome do arquivo escolhido. */
+type Preparo = { preparado: ArquivoPreparado; nomeOriginal: string };
+
 type Props = {
   titulo?: string;
   /** Texto da crítica, quando o sistema de regulação recusou o documento. */
@@ -40,8 +50,14 @@ type Props = {
   accept: string[];
   limiteMb: number;
   arquivos: ArquivoResumo[];
-  /** Com `pedirTitulo`, recebe um arquivo por vez junto com o nome e a descrição. */
-  onEnviar: (files: File[], info?: InfoDocumento) => Promise<void>;
+  /** Com `pedirTitulo`, recebe um arquivo por vez junto com o nome e a descrição. Sem uso com `compactar`. */
+  onEnviar?: (files: File[], info?: InfoDocumento) => Promise<void>;
+  /**
+   * Compactação na entrada: o arquivo vai ao servidor, volta compactado numa prévia e só entra
+   * quando a pessoa confere que ficou legível. Um arquivo por vez; com `pedirTitulo`, o nome é
+   * pedido depois da prévia aceita.
+   */
+  compactar?: CompactacaoNaEntrada;
   onRemover?: (id: string) => Promise<void>;
   /** Abre o arquivo no visualizador (o item da lista vira clicável). */
   onAbrir?: (arquivo: ArquivoResumo) => void;
@@ -75,6 +91,7 @@ export function UploadAnexo({
   onAbrir,
   onAnexarDoCadastro,
   pedirTitulo,
+  compactar,
   disabled,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,12 +99,18 @@ export function UploadAnexo({
   const [aguardandoTitulo, setAguardandoTitulo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [removendo, setRemovendo] = useState<string | null>(null);
+  /** Compactado pelo servidor, esperando a pessoa conferir. */
+  const [previa, setPrevia] = useState<Preparo | null>(null);
+  /** Prévia aceita, esperando o nome do documento (com `pedirTitulo`). */
+  const [nomeando, setNomeando] = useState<Preparo | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const limiteBytes = limiteMb * 1024 * 1024;
 
   async function aoEscolher(lista: FileList | null) {
     if (!lista?.length) return;
     setErro(null);
+    setAviso(null);
 
     const escolhidos = Array.from(lista);
     const grande = escolhidos.find((f) => f.size > limiteBytes);
@@ -101,6 +124,21 @@ export function UploadAnexo({
       return;
     }
 
+    if (compactar) {
+      const arquivo = escolhidos[0];
+      setEnviando(true);
+      try {
+        setPrevia({ preparado: await compactar.preparar(arquivo), nomeOriginal: arquivo.name });
+      } catch (e) {
+        // Recusa de regra (tipo, tamanho) é 4xx e não passa pelo aviso geral: aparece aqui.
+        setErro(extrairMensagemDeErro(e));
+      } finally {
+        setEnviando(false);
+        if (inputRef.current) inputRef.current.value = '';
+      }
+      return;
+    }
+
     if (pedirTitulo) {
       // O nome vem antes do envio: é ele que faz o documento ser achado depois no cadastro.
       setAguardandoTitulo(escolhidos[0]);
@@ -110,7 +148,7 @@ export function UploadAnexo({
 
     setEnviando(true);
     try {
-      await onEnviar(escolhidos);
+      await onEnviar?.(escolhidos);
     } catch {
       // O interceptor do httpClient já mostra a mensagem do servidor.
     } finally {
@@ -118,6 +156,25 @@ export function UploadAnexo({
       // Zera o input para permitir reenviar o MESMO arquivo depois de um erro.
       if (inputRef.current) inputRef.current.value = '';
     }
+  }
+
+  async function aceitarPrevia() {
+    if (!previa || !compactar) return;
+    if (pedirTitulo) {
+      setNomeando(previa);
+      setPrevia(null);
+      return;
+    }
+    await compactar.aceitar(previa.preparado, null, null);
+    setPrevia(null);
+  }
+
+  /** Recusou (ou fechou) a prévia ou o nome: o servidor esquece o arquivo; nada fica guardado. */
+  function descartar(alvo: Preparo) {
+    void compactar?.descartar(alvo.preparado).catch(() => {
+      // Expira sozinho em 30 min — não vale incomodar ninguém por isso.
+    });
+    setAviso('Arquivo descartado — nada foi anexado.');
   }
 
   async function aoRemover(id: string) {
@@ -227,7 +284,7 @@ export function UploadAnexo({
         ref={inputRef}
         type="file"
         className="hidden"
-        multiple={multiple && !pedirTitulo}
+        multiple={multiple && !pedirTitulo && !compactar}
         accept={accept.join(',')}
         onChange={(e) => aoEscolher(e.target.files)}
       />
@@ -238,7 +295,13 @@ export function UploadAnexo({
         className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
       >
         {enviando ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
-        {enviando ? 'Enviando…' : arquivos.length ? 'Anexar mais' : 'Anexar arquivo'}
+        {enviando
+          ? compactar
+            ? 'Compactando…'
+            : 'Enviando…'
+          : arquivos.length
+            ? 'Anexar mais'
+            : 'Anexar arquivo'}
       </button>
       {onAnexarDoCadastro ? (
         <button
@@ -254,9 +317,41 @@ export function UploadAnexo({
       ) : null}
       <p className="mt-1 text-[11px] text-slate-400">
         Até {limiteMb} MB por arquivo. Foto do celular serve.
+        {compactar ? ' O arquivo é compactado e você confere se ficou legível antes de anexar.' : null}
       </p>
 
       {erro ? <p className="mt-1 text-xs font-medium text-red-600">{erro}</p> : null}
+      {aviso ? <p className="mt-1 text-xs text-slate-500">{aviso}</p> : null}
+
+      {previa && compactar ? (
+        <PreviaCompactacao
+          preparado={previa.preparado}
+          caminho={compactar.caminhoConteudo(previa.preparado)}
+          rotuloAceitar={pedirTitulo ? 'continuar' : 'anexar'}
+          aoAceitar={aceitarPrevia}
+          aoDescartar={() => {
+            descartar(previa);
+            setPrevia(null);
+          }}
+        />
+      ) : null}
+
+      <DialogoDocumento
+        aberto={nomeando !== null}
+        tituloModal={titulo ? `Anexar em "${titulo}"` : 'Anexar documento'}
+        descricaoModal={nomeando ? resumoCompactacao(nomeando.preparado) : undefined}
+        tituloInicial={nomeando ? tituloDoArquivo(nomeando.nomeOriginal) : ''}
+        rotuloConfirmar="Anexar"
+        aoFechar={() => {
+          if (nomeando) descartar(nomeando);
+          setNomeando(null);
+        }}
+        aoConfirmar={async (t, d) => {
+          if (!nomeando || !compactar) return;
+          await compactar.aceitar(nomeando.preparado, t, d);
+          setNomeando(null);
+        }}
+      />
 
       <DialogoDocumento
         aberto={aguardandoTitulo !== null}
@@ -269,7 +364,7 @@ export function UploadAnexo({
           if (!aguardandoTitulo) return;
           setEnviando(true);
           try {
-            await onEnviar([aguardandoTitulo], { titulo: t, descricao: d });
+            await onEnviar?.([aguardandoTitulo], { titulo: t, descricao: d });
             setAguardandoTitulo(null);
           } finally {
             setEnviando(false);

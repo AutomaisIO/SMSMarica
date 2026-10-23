@@ -16,4 +16,13 @@ internal static class ChavesArmazenamento
         var p = string.IsNullOrWhiteSpace(prefixo) ? string.Empty : prefixo.Trim('/') + "/";
         return string.Create(CultureInfo.InvariantCulture, $"{p}{pacienteId:D}/{documentoId:D}.{ext}");
     }
+
+    /// <summary><c>{prefixo}/comunicacao-interna/{conversaId}/{mensagemId}.{extensao}</c>; sem extensão, sem ponto.</summary>
+    public static string ComunicacaoInterna(string? prefixo, Guid conversaId, Guid mensagemId, string? extensao)
+    {
+        var ext = (extensao ?? string.Empty).Trim('.', ' ');
+        var p = string.IsNullOrWhiteSpace(prefixo) ? string.Empty : prefixo.Trim('/') + "/";
+        var sufixo = string.IsNullOrEmpty(ext) ? string.Empty : "." + ext;
+        return string.Create(CultureInfo.InvariantCulture, $"{p}comunicacao-interna/{conversaId:D}/{mensagemId:D}{sufixo}");
+    }
 }

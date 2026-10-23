@@ -27,7 +27,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/regulacao/gestao-fila',
   publico: 'Quem avalia e regula as solicitações (agente regulador)',
-  atualizadoEm: '2026-10-22',
+  atualizadoEm: '2026-10-23',
   palavrasChave: [
     'anexar documento',
     'guia de agendamento',
@@ -106,6 +106,8 @@ export const artigoRegulacaoGestaoFila: Artigo = {
     'número do sistema',
     'devolver',
     'devolver à unidade',
+    'devolver depois da falha no envio',
+    'motivo da falha',
     'recusar',
     'motivo',
     'OK interno',
@@ -316,7 +318,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'decidir',
       titulo: 'Decidir: assumir, aceitar, devolver ou recusar',
       busca:
-        'decidir decisão assumir aceitar e enviar ao ser aceitar e registrar envio já lancei no ser número gerado sistema devolver à unidade recusar motivo obrigatório ok já está no sisreg interno nar outro agente assumiu número repetido duplicado resultado modal conferência na hora',
+        'decidir decisão assumir aceitar e enviar ao ser aceitar e registrar envio já lancei no ser número gerado sistema devolver à unidade recusar motivo obrigatório ok já está no sisreg interno nar outro agente assumiu número repetido duplicado resultado modal conferência na hora devolver depois da falha no envio motivo da falha já preenchido editável',
       conteudo: (
         <>
           <Passos
@@ -356,7 +358,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: <BotaoRef variante="outline">Devolver à unidade</BotaoRef>,
                 descricao:
-                  'Quando falta ou está errado algo que a unidade pode corrigir. Escreva o que precisa ser corrigido (obrigatório): é o que a unidade lê para acertar e reenviar. Sem isso, o pedido volta igual.',
+                  'Quando falta ou está errado algo que a unidade pode corrigir. Escreva o que precisa ser corrigido (obrigatório): é o que a unidade lê para acertar e reenviar. Sem isso, o pedido volta igual. O botão também aparece em “Falha no envio”: aí o campo já vem com o motivo da falha (o que o SER/SERNIT respondeu) — ajuste o texto antes de devolver, se precisar.',
               },
               {
                 termo: <BotaoRef variante="outline">Recusar</BotaoRef>,
@@ -550,7 +552,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado agrupamento quais arquivos serão agrupados confirmar o agrupamento conferi pode juntar imagem comprimida automaticamente foto acima de 5 mb reduzida compressão de imagem pdf comprimido automaticamente pdf acima de 5 mb compressão de pdf escaneado dpi comprimido de tamanho original nem comprimido coube separar em dois arquivos versão menor tamanho máximo por arquivo limite do destino sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente telefone confirmado celular do sernit aviso ao paciente não confirmado tentar de novo quadro cadastro do paciente cadsus e-sus campo município é obrigatório telefone celular para contato é obrigatório município uf celular nome da mãe logradouro o sernit não tinha médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
+        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número devolver depois da falha motivo da falha já preenchido dois anexos 5 mb pdf juntado agrupamento quais arquivos serão agrupados confirmar o agrupamento conferi pode juntar imagem comprimida automaticamente foto acima de 5 mb reduzida compressão de imagem pdf comprimido automaticamente pdf acima de 5 mb compressão de pdf escaneado dpi comprimido de tamanho original nem comprimido coube separar em dois arquivos versão menor tamanho máximo por arquivo limite do destino sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente telefone confirmado celular do sernit aviso ao paciente não confirmado tentar de novo quadro cadastro do paciente cadsus e-sus campo município é obrigatório telefone celular para contato é obrigatório município uf celular nome da mãe logradouro o sernit não tinha médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
       conteudo: (
         <>
           <p>
@@ -594,12 +596,12 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: 'Erro antes de gravar',
                 descricao:
-                  'Recurso que o SER não oferece mais, CPF/CNS que é de outra pessoa no SER, médico escolhido que sumiu da lista do SER, CID que o recurso não aceita, campo obrigatório vazio: a janela diz qual, e nada foi gravado. Classificação de risco e CID você corrige aqui mesmo, no quadro “Classificação de risco e CID”; o resto, devolva à unidade. Depois, tente de novo.',
+                  'Recurso que o SER não oferece mais, CPF/CNS que é de outra pessoa no SER, médico escolhido que sumiu da lista do SER, CID que o recurso não aceita, campo obrigatório vazio: a janela diz qual, e nada foi gravado. Classificação de risco e CID você corrige aqui mesmo, no quadro “Classificação de risco e CID”, e tenta de novo; o resto (telefone, documento, dado do paciente que só a unidade tem), devolva à unidade pelo “Devolver à unidade” do pedido em “Falha no envio”.',
               },
               {
                 termo: '“Falha no envio”',
                 descricao:
-                  'Se o envio não termina, o pedido fica como “Falha no envio”, com o motivo em amarelo. Quando o motivo diz que o Gravar chegou ao SER, procure o pedido no SER ANTES de qualquer coisa: se ele existe, use “Registrar número (já está no sistema)”; se não existe, “Enviar ao SER de novo”. Se o motivo é o risco ou o CID, altere no quadro e envie de novo. Registrado o número, o aviso amarelo sai (o motivo da falha continua na linha do tempo).',
+                  'Se o envio não termina, o pedido fica como “Falha no envio”, com o motivo em amarelo. Quando o motivo diz que o Gravar chegou ao SER, procure o pedido no SER ANTES de qualquer coisa: se ele existe, use “Registrar número (já está no sistema)”; se não existe, “Enviar ao SER de novo”. Se o motivo é o risco ou o CID, altere no quadro e envie de novo. Se falta um dado que só a unidade tem, use “Devolver à unidade”: o motivo da falha já vem escrito no campo, e você pode editar antes de devolver. Se o Gravar chegou ao SER, a janela avisa para conferir lá primeiro. Registrado o número, o aviso amarelo sai (o motivo da falha continua na linha do tempo).',
               },
             ]}
           />
@@ -679,7 +681,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'anexar-documento',
       titulo: 'Anexar um documento para a unidade (guia de agendamento)',
       busca:
-        'anexar documento guia de agendamento autorização autorizacao regulação enviar para a unidade download baixar abrir quem baixou pegou retirou trilha linha do tempo sem e-mail email arquivo pdf anexos',
+        'anexar documento guia de agendamento autorização autorizacao regulação enviar para a unidade download baixar abrir quem baixou pegou retirou trilha linha do tempo sem e-mail email arquivo pdf anexos compactar compactado prévia legível descartar',
       conteudo: (
         <>
           <P>
@@ -694,8 +696,11 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               escolha o arquivo.
             </Item>
             <Item>
-              Clique em <BotaoRef>Anexar</BotaoRef>. O documento passa a aparecer no quadro{' '}
-              <strong>Anexos</strong>, logo abaixo.
+              Clique em <BotaoRef>Anexar</BotaoRef>. O sistema compacta o arquivo e abre a{' '}
+              <strong>prévia</strong>: confira se dá para ler e clique em{' '}
+              <BotaoRef>Está legível — anexar</BotaoRef> (ou descarte e escolha outro). Só então o documento
+              aparece no quadro <strong>Anexos</strong>, logo abaixo — e fica guardada só a cópia
+              compactada.
             </Item>
             <Item>
               A unidade abre a solicitação e <strong>baixa o documento pela própria plataforma</strong>{' '}
@@ -820,7 +825,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
       busca:
-        'dúvidas não vejo o pedido unidade topo assumi por engano soltar outro agente não consigo registrar envio médico pendente falta documento procedimento errado trocar procedimento fila da regulação sumiu menu risco errado cid errado sem classificação de risco',
+        'dúvidas não vejo o pedido unidade topo assumi por engano soltar outro agente não consigo registrar envio médico pendente falta documento procedimento errado trocar procedimento fila da regulação sumiu menu risco errado cid errado sem classificação de risco falha no envio e agora devolver à unidade motivo da falha',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -847,7 +852,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             {
               termo: 'Ficou “Falha no envio”. E agora?',
               descricao:
-                'Leia o motivo em amarelo. Se diz que o Gravar chegou ao SER, procure o pedido no SER primeiro — achou, registre o número; não achou, envie de novo. Se diz “Nada foi gravado no SER”, corrija o que ele aponta e envie de novo.',
+                'Leia o motivo em amarelo. Se diz que o Gravar chegou ao SER, procure o pedido no SER primeiro — achou, registre o número; não achou, envie de novo. Se diz “Nada foi gravado no SER”, corrija o que ele aponta e envie de novo — ou, se o que falta é da unidade, use “Devolver à unidade”: o motivo da falha já vem no campo, editável.',
             },
             {
               termo: 'Não consigo registrar o envio.',

@@ -43,6 +43,9 @@ public sealed class ArmazenamentoSpaces : IArmazenamentoArquivos, IDisposable
     public string MontarChaveDocumento(Guid pacienteId, Guid documentoId, string extensao = "pdf")
         => ChavesArmazenamento.Documento(_prefixo, pacienteId, documentoId, extensao);
 
+    public string MontarChaveComunicacaoInterna(Guid conversaId, Guid mensagemId, string extensao)
+        => ChavesArmazenamento.ComunicacaoInterna(_prefixo, conversaId, mensagemId, extensao);
+
     /// <summary>true se a credencial 'digitalocean_spaces' está completa e ativa (decide o provedor).</summary>
     public async Task<bool> DisponivelAsync(CancellationToken ct = default)
         => await LerConfigAsync(ct) is not null;

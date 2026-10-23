@@ -164,6 +164,7 @@ public class ConversaAbasTests(PostgresFixture fixture)
         {
             UsuarioId = u.Id,
             UnidadeId = unidadeId,
+            Principal = true, // a unidade padrão é obrigatória (ADR-0081)
             CriadoEm = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();

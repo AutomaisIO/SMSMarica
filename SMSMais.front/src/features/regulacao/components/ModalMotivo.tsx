@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
@@ -25,6 +25,8 @@ export function ModalMotivo({
   rotuloConfirmar,
   desfecho,
   perigo,
+  motivoInicial = '',
+  aviso,
   aoConfirmar,
   aoFechar,
 }: {
@@ -36,11 +38,15 @@ export function ModalMotivo({
   desfecho: string;
   /** Ação sem volta: o botão de confirmar sai em vermelho. */
   perigo?: boolean;
+  /** Texto que o campo já traz ao abrir — continua editável. */
+  motivoInicial?: string;
+  /** O que conferir antes de confirmar, em amarelo acima do campo. */
+  aviso?: ReactNode;
   /** Lançar = o erro aparece aqui e o texto digitado fica. */
   aoConfirmar: (motivo: string) => Promise<unknown>;
   aoFechar: () => void;
 }) {
-  const [motivo, setMotivo] = useState('');
+  const [motivo, setMotivo] = useState(motivoInicial);
   const [fase, setFase] = useState<'escrevendo' | 'gravando' | 'feito'>('escrevendo');
   const [erro, setErro] = useState<string | null>(null);
 
@@ -71,6 +77,13 @@ export function ModalMotivo({
         </div>
       ) : (
         <div className="space-y-3">
+          {aviso && (
+            <p className="flex gap-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <span>{aviso}</span>
+            </p>
+          )}
+
           <Campo label={pergunta} htmlFor="motivo-regulacao" required>
             <textarea
               id="motivo-regulacao"

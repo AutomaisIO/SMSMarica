@@ -80,6 +80,13 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
         var acessor = new UsuarioAtualAccessorFake(usuarioId);
         var config = new RegulacaoConfiguracaoService(
             db, new MemoryCache(new MemoryCacheOptions()), acessor);
+        var escopo = new RegulacaoEscopo(db, acessor, IdentidadeDeAgente());
+        var eventos = new RegulacaoEventoService(db, acessor);
+        return new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo, eventos);
+    }
+
+    private static IIdentidadeService IdentidadeDeAgente()
+    {
         var identidade = Substitute.For<IIdentidadeService>();
         identidade.ObterPermissoesResolvidasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new PermissoesResolvidasDto(
@@ -91,9 +98,32 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
                     new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaInterna, AcoesPermissao.Consulta),
                     new PermissaoModuloDto(ModuloPermissao.RegulacaoFilaIntermunicipal, AcoesPermissao.Consulta),
                 ]));
-        var escopo = new RegulacaoEscopo(db, acessor, identidade);
+        return identidade;
+    }
+
+    /// <summary>"Compacta" cortando o arquivo pela metade e trocando para .jpg — o teste é do fluxo da
+    /// prévia, não da compressão (essa está em <c>CompactadorAnexoTests</c>).</summary>
+    private sealed class CompactadorFake : ICompactadorAnexo
+    {
+        public Task<AnexoCompactado> CompactarAsync(
+            string nome, string contentType, byte[] conteudo, CancellationToken ct) =>
+            Task.FromResult(new AnexoCompactado(
+                Path.ChangeExtension(nome, ".jpg"), "image/jpeg", conteudo[..(conteudo.Length / 2)], conteudo.LongLength));
+    }
+
+    /// <summary>Serviço com compactação de entrada e prévia. Com <paramref name="usuarioId"/>, o
+    /// usuário logado é agente (escopo "tudo"); sem, é como um job.</summary>
+    private static (RegulacaoExigenciaService Servico, StoreFake Store) ServicoComPrevia(
+        SmsMaisDbContext db, IMemoryCache previas, Guid? usuarioId = null)
+    {
+        var store = new StoreFake();
+        var acessor = new UsuarioAtualAccessorFake(usuarioId);
+        var config = new RegulacaoConfiguracaoService(db, new MemoryCache(new MemoryCacheOptions()), acessor);
+        var escopo = new RegulacaoEscopo(db, acessor, usuarioId is null ? Substitute.For<IIdentidadeService>() : IdentidadeDeAgente());
         var eventos = new RegulacaoEventoService(db, acessor);
-        return new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo, eventos);
+        var servico = new RegulacaoExigenciaService(
+            db, store, config, acessor, escopo, eventos, acervo: null, new CompactadorFake(), previas);
+        return (servico, store);
     }
 
     private static byte[] Bytes(int tamanho) => Encoding.UTF8.GetBytes(new string('x', tamanho));
@@ -347,5 +377,126 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
         eventos.Should().ContainSingle("duas aberturas do mesmo usuário geram um único evento");
         eventos[0].UsuarioId.Should().Be(usuarioId);
         eventos[0].Papel.Should().Be(PapelEventoRegulacao.Agente);
+    }
+
+    // ---------------------------------------------------------------- compactação na entrada + prévia
+
+    [Fact]
+    public async Task Previa_nao_grava_nada_ate_aceitar_e_aceitar_grava_so_o_compactado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var s = await SolicitacaoAsync(db);
+        var e = await CaixinhaDeRegraAsync(db, s.Id);
+        var (servico, store) = ServicoComPrevia(db, new MemoryCache(new MemoryCacheOptions()));
+
+        var previa = await servico.PrepararAsync(s.Id, e.Id, "foto.png", "image/png", Bytes(1000), CancellationToken.None);
+
+        previa.TamanhoOriginal.Should().Be(1000);
+        previa.Tamanho.Should().Be(500);
+        previa.Nome.Should().Be("foto.jpg");
+        store.Arquivos.Should().BeEmpty("a prévia vive só na memória até a pessoa aceitar");
+        (await db.RegulacaoExigenciaArquivos.AsNoTracking().CountAsync(a => a.ExigenciaId == e.Id)).Should().Be(0);
+        (await servico.ObterPreparadoAsync(s.Id, previa.Token, CancellationToken.None)).Conteudo.Should().HaveCount(500);
+
+        var a = await servico.AceitarPreparadoAsync(s.Id, previa.Token, "Laudo", "de outubro", CancellationToken.None);
+
+        a.Tamanho.Should().Be(500);
+        a.ContentType.Should().Be("image/jpeg");
+        a.Titulo.Should().Be("Laudo");
+        store.Arquivos.Values.Should().ContainSingle().Which.Should().HaveCount(500, "o original não é guardado");
+        (await db.RegulacaoSolicitacaoExigencias.AsNoTracking().FirstAsync(x => x.Id == e.Id))
+            .Situacao.Should().Be(SituacaoExigenciaRegulacao.Atendida);
+    }
+
+    [Fact]
+    public async Task Aceitar_duas_vezes_grava_uma_vez_so()
+    {
+        await using var db = fixture.CriarDbContext();
+        var s = await SolicitacaoAsync(db);
+        var e = await CaixinhaDeRegraAsync(db, s.Id);
+        var (servico, store) = ServicoComPrevia(db, new MemoryCache(new MemoryCacheOptions()));
+        var previa = await servico.PrepararAsync(s.Id, e.Id, "laudo.pdf", "application/pdf", Bytes(100), CancellationToken.None);
+
+        await servico.AceitarPreparadoAsync(s.Id, previa.Token, null, null, CancellationToken.None);
+        var deNovo = () => servico.AceitarPreparadoAsync(s.Id, previa.Token, null, null, CancellationToken.None);
+
+        await deNovo.Should().ThrowAsync<ConflitoException>();
+        store.Arquivos.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Descartar_esquece_a_previa_sem_guardar_nada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var s = await SolicitacaoAsync(db);
+        var e = await CaixinhaDeRegraAsync(db, s.Id);
+        var (servico, store) = ServicoComPrevia(db, new MemoryCache(new MemoryCacheOptions()));
+        var previa = await servico.PrepararAsync(s.Id, e.Id, "foto.jpg", "image/jpeg", Bytes(100), CancellationToken.None);
+
+        await servico.DescartarPreparadoAsync(s.Id, previa.Token, CancellationToken.None);
+        // Descartar de novo (fechou a prévia duas vezes) não é erro.
+        await servico.DescartarPreparadoAsync(s.Id, previa.Token, CancellationToken.None);
+        var aceitar = () => servico.AceitarPreparadoAsync(s.Id, previa.Token, null, null, CancellationToken.None);
+
+        await aceitar.Should().ThrowAsync<ConflitoException>();
+        store.Arquivos.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Previa_so_serve_a_quem_preparou_e_na_propria_solicitacao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var s = await SolicitacaoAsync(db);
+        var outra = await SolicitacaoAsync(db);
+        var e = await CaixinhaDeRegraAsync(db, s.Id);
+        var autor = Guid.CreateVersion7();
+        s.CriadoPorUsuarioId = autor;
+        await db.SaveChangesAsync();
+        var previas = new MemoryCache(new MemoryCacheOptions());
+        var (doAutor, _) = ServicoComPrevia(db, previas, autor);
+        var (deOutraPessoa, store) = ServicoComPrevia(db, previas, Guid.CreateVersion7());
+
+        var previa = await doAutor.PrepararAsync(s.Id, e.Id, "foto.jpg", "image/jpeg", Bytes(100), CancellationToken.None);
+
+        var pelaOutraSolicitacao = () => doAutor.ObterPreparadoAsync(outra.Id, previa.Token, CancellationToken.None);
+        var porOutraPessoa = () => deOutraPessoa.AceitarPreparadoAsync(s.Id, previa.Token, null, null, CancellationToken.None);
+
+        await pelaOutraSolicitacao.Should().ThrowAsync<ConflitoException>();
+        await porOutraPessoa.Should().ThrowAsync<ConflitoException>();
+        store.Arquivos.Should().BeEmpty();
+        (await doAutor.ObterPreparadoAsync(s.Id, previa.Token, CancellationToken.None)).Conteudo
+            .Should().HaveCount(50, "a tentativa alheia não consome a prévia de quem preparou");
+    }
+
+    [Fact]
+    public async Task Previa_recusa_tipo_e_tamanho_como_o_anexo_direto()
+    {
+        await using var db = fixture.CriarDbContext();
+        var s = await SolicitacaoAsync(db);
+        var e = await CaixinhaDeRegraAsync(db, s.Id);
+        var (servico, _) = ServicoComPrevia(db, new MemoryCache(new MemoryCacheOptions()));
+
+        var tipo = () => servico.PrepararAsync(s.Id, e.Id, "x.zip", "application/zip", Bytes(10), CancellationToken.None);
+        // O limite vale para o arquivo como chegou: 16 MB que compactariam para 8 continuam recusados.
+        var grande = () => servico.PrepararAsync(
+            s.Id, e.Id, "foto.jpg", "image/jpeg", Bytes(16 * 1024 * 1024), CancellationToken.None);
+
+        await tipo.Should().ThrowAsync<ValidacaoException>();
+        await grande.Should().ThrowAsync<ValidacaoException>();
+    }
+
+    [Fact]
+    public async Task Anexar_direto_tambem_guarda_so_o_compactado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var s = await SolicitacaoAsync(db);
+        var e = await CaixinhaDeRegraAsync(db, s.Id);
+        var (servico, store) = ServicoComPrevia(db, new MemoryCache(new MemoryCacheOptions()));
+
+        var a = await servico.AnexarAsync(s.Id, e.Id, "guia.png", "image/png", Bytes(200), CancellationToken.None);
+
+        a.Tamanho.Should().Be(100);
+        a.Nome.Should().Be("guia.jpg");
+        store.Arquivos.Values.Should().ContainSingle().Which.Should().HaveCount(100);
     }
 }

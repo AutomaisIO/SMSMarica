@@ -11,6 +11,7 @@ import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import {
   useDesativarUsuario,
   useListarUsuarios,
@@ -29,6 +30,9 @@ function formatarCpf(cpf: string | null): string {
   if (d.length !== 11) return cpf;
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
+
+/** Valor do select de unidade que pede "quem não tem unidade padrão". */
+const SEM_PADRAO = 'sem-padrao';
 
 export function UsuariosPage() {
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroUsuarios>({ limite: LIMITE });
@@ -102,7 +106,10 @@ export function UsuariosPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Usuários</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-gray-900">Usuários</h1>
+            <AjudaManual artigo="usuarios" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">Contas com acesso ao ecossistema SMS Maricá.</p>
         </div>
         <Button onClick={() => setEstado({ tipo: 'criar' })}>
@@ -126,12 +133,18 @@ export function UsuariosPage() {
         <Campo label="Unidade" htmlFor="unidade">
           <Select
             id="unidade"
-            value={filtroDigitado.unidadeId ?? ''}
-            onChange={(e) =>
-              setFiltroDigitado((f) => ({ ...f, unidadeId: e.target.value || undefined }))
-            }
+            value={filtroDigitado.semUnidadePadrao ? SEM_PADRAO : (filtroDigitado.unidadeId ?? '')}
+            onChange={(e) => {
+              const v = e.target.value;
+              setFiltroDigitado((f) =>
+                v === SEM_PADRAO
+                  ? { ...f, unidadeId: undefined, semUnidadePadrao: true }
+                  : { ...f, unidadeId: v || undefined, semUnidadePadrao: undefined },
+              );
+            }}
           >
             <option value="">Todas</option>
+            <option value={SEM_PADRAO}>— Sem unidade padrão —</option>
             {(unidades.data ?? [])
               .filter((u) => u.ativo)
               .map((u) => (
@@ -145,7 +158,7 @@ export function UsuariosPage() {
           <Button type="submit">
             <Search className="h-4 w-4" /> Buscar
           </Button>
-          {(filtroAplicado.busca || filtroAplicado.unidadeId) ? (
+          {(filtroAplicado.busca || filtroAplicado.unidadeId || filtroAplicado.semUnidadePadrao) ? (
             <Button type="button" variante="ghost" onClick={limpar}>
               Limpar
             </Button>

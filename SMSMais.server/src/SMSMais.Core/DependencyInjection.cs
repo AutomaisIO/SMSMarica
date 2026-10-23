@@ -81,6 +81,12 @@ public static class DependencyInjection
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<Tickets.ITicketService, Tickets.TicketService>();
 
+        // Comunicação interna (ADR-0079): presença em memória (singleton — uma instância por
+        // município) + notificador no-op, sobrescrito pela Api com o SignalR.
+        services.AddSingleton<ComunicacaoInterna.IPresencaInterna, ComunicacaoInterna.PresencaInterna>();
+        services.AddScoped<ComunicacaoInterna.IComunicacaoInternaNotificador, ComunicacaoInterna.NotificadorComunicacaoInternaNulo>();
+        services.AddScoped<ComunicacaoInterna.IComunicacaoInternaService, ComunicacaoInterna.ComunicacaoInternaService>();
+
         // Ouvidoria (ADR-0060)
         services.AddScoped<Ouvidoria.IOuvidoriaCatalogoService, Ouvidoria.OuvidoriaCatalogoService>();
         services.AddScoped<Ouvidoria.IOuvidoriaManifestacaoService, Ouvidoria.OuvidoriaManifestacaoService>();
@@ -1202,6 +1208,8 @@ public static class DependencyInjection
         services.AddHostedService<Regulacao.Catalogo.CatalogosRegulacaoDiarioScheduler>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoProcedimentoBuscaService, Regulacao.Catalogo.RegulacaoProcedimentoBuscaService>();
         services.AddScoped<Regulacao.Anexos.IArquivoExigenciaStore, Regulacao.Anexos.ArquivoExigenciaStoreSpaces>();
+        // Anexo da regulação é compactado na entrada (23/10/2026): só a cópia enxuta é guardada.
+        services.AddSingleton<Regulacao.Anexos.ICompactadorAnexo, Regulacao.Anexos.CompactadorAnexo>();
         services.AddScoped<Regulacao.Anexos.IRegulacaoExigenciaService, Regulacao.Anexos.RegulacaoExigenciaService>();
         services.AddScoped<Regulacao.Pacientes.IRegulacaoPacienteService, Regulacao.Pacientes.RegulacaoPacienteService>();
         services.AddScoped<Regulacao.Formularios.IRegulacaoFormularioService, Regulacao.Formularios.RegulacaoFormularioService>();

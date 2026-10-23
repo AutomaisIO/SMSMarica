@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0079 — Comunicação interna: chat entre unidades e entre pessoas, dentro do painel</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0079 — Comunicação interna: chat entre unidades e entre pessoas, dentro do painel</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-23 · <strong>Implementação:</strong> branch <code>feat/chat-interno</code> <strong>Relacionado:</strong> <a href="./0047-posse-de-conversa-filas.md">ADR-0047</a> (Central de Atendimento — o chat com o cidadão, que <strong>não</strong> muda) · <a href="./0043-instancia-por-municipio.md">ADR-0043</a> (uma instância por município: presença em memória basta) · <a href="./0064-extensao-chrome-distribuida-pela-plataforma.md">ADR-0064</a> (extensão do Chrome — a fase 2 do "trazer a janela para frente") · <a href="./0066-acervo-do-paciente-e-midia-do-whatsapp.md">ADR-0066</a> (anexos no armazenamento de objeto)</p>
+<h2>Contexto</h2>
+<p>As unidades da rede (UPAs, hospital, policlínicas, regulação, transporte) conversam hoje por WhatsApp pessoal e telefone. O que se combina ali — vaga, paciente a caminho, exame liberado — some do registro da Secretaria, mistura número pessoal com assunto de trabalho e frequentemente carrega dado de paciente fora de qualquer controle.</p>
+<p>Pedido do Bernardo (23/10/2026): um chat <strong>dentro do painel</strong> para as unidades falarem entre si, "tipo um WhatsApp" — balão próprio (laranja, acima do balão da Central de Atendimento), escolher a unidade de destino e mandar para <strong>todos</strong> dela ou para <strong>uma pessoa</strong>, ver quem está com o painel aberto, a janela "pula" quando chega mensagem (ou notificação do Windows), tudo registrado e buscável, anexos, áudio, emojis (populares e corporativos) e som com opção de desligar.</p>
+<h2>Decisão</h2>
+<h3>1. Módulo próprio, separado da Central de Atendimento</h3>
+<p><code>ModuloPermissao.ComunicacaoInterna = 86</code>. <strong>Consulta</strong> = ver e ler; <strong>Inclusão</strong> = enviar. A Central de Atendimento (módulo <code>Conversas</code>, chat com o cidadão pelo WhatsApp) não é tocada: outro hub, outras tabelas, outro balão. Misturar os dois faria a regra de posse/fila do ADR-0047 vazar para uma conversa entre colegas.</p>
+<p>A migration concede o 86 (Consulta + Inclusão) a <strong>todo perfil existente</strong> — o pedido é que as unidades conversem, e um módulo que nasce desligado em todo lugar não é usado. O recorte (tirar de um perfil) é feito na tela de Perfis. Não é seed institucional: vale igual em qualquer instância.</p>
+<h3>2. Dois tipos de conversa, uma sessão por par</h3>
+<div class="tw"><table><thead><tr><th>Tipo</th><th>Quem participa</th><th>Chave</th></tr></thead><tbody>
+<tr><td><strong>Unidade ↔ unidade</strong> ("Todos da unidade")</td><td>todos que têm qualquer das duas como <strong>unidade padrão</strong> (<code>usuario_unidade.principal</code>) — ver a nota do ADR-0081 abaixo</td><td>par <strong>não ordenado</strong> de unidades — A→B e B→A são a mesma sessão</td></tr>
+<tr><td><strong>Direta</strong> (pessoa ↔ pessoa)</td><td>as duas pessoas</td><td>par não ordenado de usuários</td></tr>
+</tbody></table></div>
+<ul>
+<li><strong>A sessão é única por par</strong>, como no WhatsApp: escrever de novo para a mesma unidade cai no mesmo</li>
+</ul>
+<p>  histórico, e a busca encontra tudo num lugar só.</p>
+<ul>
+<li><strong>Unidade de origem</strong> = a unidade em que a pessoa está (cabeçalho <code>X-Unidade-Id</code>), ou a principal; quem</li>
+</ul>
+<p>  tem mais de uma escolhe ("falando como"). Sem vínculo com unidade, só conversa direta.</p>
+<p>&gt; <strong>Mudou em 23/10/2026 — <a href="./0081-unidade-padrao-obrigatoria.md">ADR-0081</a>.</strong> No chat cada pessoa é de &gt; uma unidade só: a <strong>unidade padrão</strong> (obrigatória). Participação, lista de pessoas, grupo do hub e &gt; unidade de origem vêm dela; os demais vínculos (escopo de dados) não contam aqui. O "falando como" &gt; saiu. Motivo: o técnico de regulação, vinculado às 56 unidades para enxergar os pedidos, aparecia na &gt; equipe de todas elas.</p>
+<ul>
+<li><strong>Origem = destino</strong> é permitido: vira o canal da própria equipe.</li>
+<li><strong>Participação é derivada na hora</strong>, não copiada: quem entra na equipe vê o histórico da unidade (é a</li>
+</ul>
+<p>  continuidade do plantão); quem sai deixa de ver. <code>Usuario.AcessoGlobal</code> <strong>não</strong> dá acesso a conversa de   unidade — não existe "ver tudo" nesta fase.</p>
+<h3>3. Nada se apaga</h3>
+<p>Mensagem não é editada nem excluída (fase 1). "Fica tudo registrado" é requisito; com dado de paciente circulando, a trilha vale mais que a conveniência de apagar.</p>
+<h3>4. Anexos e áudio no armazenamento de objeto</h3>
+<p>Arquivo e áudio vão para <code>IArmazenamentoArquivos</code> (Spaces), chave <code>{prefixo}/comunicacao-interna/{conversaId}/{mensagemId}.{ext}</code>, teto de <strong>25 MB</strong>. Um arquivo por mensagem (vários selecionados = várias mensagens, como no WhatsApp). O áudio é gravado no navegador (<code>MediaRecorder</code>, webm/opus) e é um anexo com <code>duracao_segundos</code>. O download passa <strong>sempre</strong> pelo backend, que confere se quem pede participa da conversa.</p>
+<h3>5. Tempo real e presença</h3>
+<ul>
+<li>Hub próprio <code>/hubs/comunicacao-interna</code>, conectado em qualquer tela do painel. Grupos</li>
+</ul>
+<p>  <code>ci:usuario:{id}</code> e <code>ci:unidade:{id}</code>; a mensagem vai para os grupos das duas unidades (ou dos dois   usuários). O hub só entra nos grupos se a pessoa tem o módulo 86 — o gate do front é cosmético.</p>
+<ul>
+<li><strong>Presença em memória</strong> (singleton): online = ao menos uma aba do painel conectada ao hub. É o "está com</li>
+</ul>
+<p>  o navegador aberto" do pedido. Uma instância por município (ADR-0043) torna isso suficiente; se um dia a   API rodar em mais de uma instância, a presença precisa de backplane — <strong>esta é a premissa a revisitar</strong>.</p>
+<ul>
+<li>"Digitando…" e confirmação de leitura (✓✓ na conversa direta) saem do mesmo hub. A leitura vive em</li>
+</ul>
+<p>  <code>conversa_interna_leitura</code> (<code>lida_ate</code> por pessoa), que também guarda o "silenciar esta conversa".</p>
+<h3>6. Chamar a atenção sem roubar o foco</h3>
+<p>O navegador <strong>não deixa</strong> uma página trazer a própria janela para frente nem abrir janela sem clique. O que a fase 1 faz:</p>
+<ol>
+<li><strong>A janela pula dentro do painel</strong>: o chat abre sozinho, encaixado no canto, já na conversa que chegou</li>
+</ol>
+<p>   (sem tirar o cursor de onde a pessoa está digitando). Desligável ("abrir sozinho").</p>
+<ol>
+<li><strong>Notificação do Windows</strong> quando a aba não está visível; o clique abre a conversa.</li>
+<li><strong>Som próprio</strong> (diferente do bip da Central), liga/desliga persistido no usuário.</li>
+<li>Título da aba e balão laranja com contador.</li>
+</ol>
+<p>A fase 2 — trazer a janela do Chrome para frente de verdade (<code>chrome.windows.update</code> com <code>focused</code> / <code>drawAttention</code>) — é da <strong>extensão</strong> (ADR-0064) e só sai publicada com OK.</p>
+<h3>7. Busca</h3>
+<p><code>f_unaccent(texto) ILIKE</code> com índice trigram (como a Central, ver <code>ConversasBuscaTrgm</code>), sempre restrita às conversas que a pessoa enxerga. Também acha pelo nome do arquivo anexado.</p>
+<h3>8. Emojis e selos</h3>
+<p>Seletor próprio, sem biblioteca: os emojis mais usados por categoria + uma categoria "Trabalho e saúde". E <strong>selos</strong> — figurinhas corporativas desenhadas pela plataforma ("Recebido", "Em análise", "Urgente", "Resolvido", "Me liga", "Paciente a caminho"…), que viajam no texto como código <code>:selo:&lt;nome&gt;:</code> e o front desenha. Viajar como texto mantém o selo buscável e não exige tabela.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Três tabelas novas em <code>smsmarica</code>: <code>conversa_interna</code>, <code>mensagem_interna</code>, <code>conversa_interna_leitura</code>.</li>
+<li>Conversa entre unidades pode conter dado de paciente: o acesso é só de participante e o download só pelo</li>
+</ul>
+<p>  backend. Auditoria de leitura por terceiros não existe porque não há leitura por terceiros.</p>
+<ul>
+<li>Presença some num restart da API (todo mundo aparece offline até reconectar, segundos depois).</li>
+<li>Fase 2, fora deste ADR: extensão trazendo a janela para frente; responder citando mensagem; encaminhar;</li>
+</ul>
+<p>  supervisão/auditoria das conversas.</p>
+</main>
+</body>
+</html>

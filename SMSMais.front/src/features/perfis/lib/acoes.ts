@@ -158,6 +158,12 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string; grupo: GrupoPermiss
     rotulo: 'Notificações no app do cidadão',
     ajuda: 'Na ficha do paciente: ver os aparelhos com notificação ativa e o histórico (Consulta) e enviar uma notificação ao celular (Edição).',
   },
+  {
+    id: 'ComunicacaoInterna',
+    grupo: 'atendimento',
+    rotulo: 'Comunicação interna',
+    ajuda: 'O chat entre as unidades e entre as pessoas da equipe (balão laranja). Só participa quem é da unidade ou da conversa.',
+  },
 
   // ---- Transporte
   { id: 'Tratamentos', grupo: 'transporte', rotulo: 'Atendimentos', ajuda: 'Atendimentos do transporte, com os acompanhantes do paciente.' },
@@ -247,6 +253,11 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   NotificacaoAppCidadao: {
     Consulta: 'Ver os aparelhos e o histórico de notificações',
     Edicao: 'Enviar notificação ao celular do paciente',
+  },
+  // Só Consulta e Inclusão valem: ler as conversas de que participa e enviar mensagem.
+  ComunicacaoInterna: {
+    Consulta: 'Ver e ler as conversas internas',
+    Inclusao: 'Enviar mensagem, anexo e áudio',
   },
   // O que se edita aqui aparece na tela de login, no PDF de laudo e na página pública de
   // verificação — inclusive para quem NÃO está autenticado. Não é configuração operacional.

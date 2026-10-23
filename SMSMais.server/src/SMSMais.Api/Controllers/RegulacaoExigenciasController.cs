@@ -52,6 +52,55 @@ public sealed class RegulacaoExigenciasController(IRegulacaoExigenciaService ser
             cancellationToken, titulo, descricao);
     }
 
+    /// <summary>
+    /// Compacta o arquivo e o guarda <b>só em memória</b> por 30 minutos, para quem anexou conferir
+    /// se ficou legível. Nada entra na solicitação até <see cref="AceitarPreparado"/>.
+    /// </summary>
+    [HttpPost("{exigenciaId:guid}/arquivos/preparar")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
+    [RequestSizeLimit(LimiteCorpoBytes)]
+    [ProducesResponseType<ArquivoPreparadoDto>(StatusCodes.Status200OK)]
+    public async Task<ArquivoPreparadoDto> Preparar(
+        Guid solicitacaoId, Guid exigenciaId, IFormFile arquivo, CancellationToken cancellationToken)
+    {
+        using var ms = new MemoryStream();
+        await arquivo.CopyToAsync(ms, cancellationToken);
+
+        return await servico.PrepararAsync(
+            solicitacaoId, exigenciaId, arquivo.FileName, arquivo.ContentType, ms.ToArray(), cancellationToken);
+    }
+
+    /// <summary>O arquivo compactado, para a prévia.</summary>
+    [HttpGet("preparados/{token:guid}/conteudo")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ConteudoPreparado(
+        Guid solicitacaoId, Guid token, CancellationToken cancellationToken)
+    {
+        var a = await servico.ObterPreparadoAsync(solicitacaoId, token, cancellationToken);
+        return File(a.Conteudo, a.ContentType, a.Nome, enableRangeProcessing: false);
+    }
+
+    /// <summary>Quem anexou conferiu a prévia e aceitou: o arquivo compactado entra na caixinha.</summary>
+    [HttpPost("preparados/{token:guid}/aceitar")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ArquivoExigenciaDto>(StatusCodes.Status200OK)]
+    public Task<ArquivoExigenciaDto> AceitarPreparado(
+        Guid solicitacaoId, Guid token, [FromBody] AceitarArquivoPreparadoRequest req,
+        CancellationToken cancellationToken) =>
+        servico.AceitarPreparadoAsync(solicitacaoId, token, req.Titulo, req.Descricao, cancellationToken);
+
+    /// <summary>Quem anexou recusou a prévia: nada fica guardado.</summary>
+    [HttpDelete("preparados/{token:guid}")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DescartarPreparado(
+        Guid solicitacaoId, Guid token, CancellationToken cancellationToken)
+    {
+        await servico.DescartarPreparadoAsync(solicitacaoId, token, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Anexa um documento que o paciente já tem no cadastro, sem novo upload.</summary>
     [HttpPost("{exigenciaId:guid}/do-acervo")]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]

@@ -13,12 +13,20 @@ type Props = {
 
 /**
  * Seção de vínculo usuário↔unidades (multitenant): checkbox por unidade ativa +
- * marcação de "principal" (máx. 1 — vira a unidade default ao entrar no sistema).
- * Estado controlado pelo pai; o caller persiste via PUT /usuarios/{id}/unidades.
+ * marcação da unidade PADRÃO — obrigatória, uma só (ADR-0081). No backend é o campo
+ * `principal`. A primeira unidade marcada já vira a padrão; tirar a padrão passa a marca
+ * para a primeira que sobrar. Estado controlado pelo pai; o caller persiste via
+ * PUT /usuarios/{id}/unidades.
  */
 export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
   const unidades = useListarUnidades();
   const ativas = (unidades.data ?? []).filter((u) => u.ativo);
+
+  const padraoId = selecionadas.find((s) => s.principal)?.unidadeId ?? null;
+  // Pode ser uma unidade inativa (não aparece na grade): mostra o nome que der.
+  const padraoNome = padraoId
+    ? ((unidades.data ?? []).find((u) => u.id === padraoId)?.nome ?? 'unidade inativa')
+    : null;
 
   const todasMarcadas =
     ativas.length > 0 && ativas.every((u) => selecionadas.some((s) => s.unidadeId === u.id));
@@ -29,12 +37,20 @@ export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
     if (todasRef.current) todasRef.current.indeterminate = algumasMarcadas;
   }, [algumasMarcadas]);
 
+  /** Garante a padrão quando há unidade marcada: se nenhuma tem, a primeira vira. */
+  function comPadrao(lista: UnidadeSelecionada[]): UnidadeSelecionada[] {
+    if (lista.length === 0 || lista.some((s) => s.principal)) return lista;
+    return lista.map((s, i) => ({ ...s, principal: i === 0 }));
+  }
+
   function alternar(unidadeId: string) {
     const existente = selecionadas.find((s) => s.unidadeId === unidadeId);
     aoMudar(
-      existente
-        ? selecionadas.filter((s) => s.unidadeId !== unidadeId)
-        : [...selecionadas, { unidadeId, principal: false }],
+      comPadrao(
+        existente
+          ? selecionadas.filter((s) => s.unidadeId !== unidadeId)
+          : [...selecionadas, { unidadeId, principal: false }],
+      ),
     );
   }
 
@@ -44,10 +60,12 @@ export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
     aoMudar(
       todasMarcadas
         ? []
-        : ativas.map((u) => ({
-            unidadeId: u.id,
-            principal: selecionadas.find((s) => s.unidadeId === u.id)?.principal ?? false,
-          })),
+        : comPadrao(
+            ativas.map((u) => ({
+              unidadeId: u.id,
+              principal: selecionadas.find((s) => s.unidadeId === u.id)?.principal ?? false,
+            })),
+          ),
     );
   }
 
@@ -61,8 +79,24 @@ export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
         <h3 className="mb-1 text-sm font-semibold text-gray-900">Unidades do usuário</h3>
         <p className="text-xs text-gray-500">
           O usuário só enxerga os dados das unidades vinculadas (ex.: solicitações da unidade
-          executora). Sem nenhum vínculo, vê todas. A unidade <strong>principal</strong> é a
-          selecionada automaticamente ao entrar.
+          executora); sem nenhum vínculo, não vê nada. A <strong>unidade padrão</strong> é
+          obrigatória: é onde a pessoa está lotada — é só nela que ela aparece na Comunicação
+          interna. Ao entrar no sistema, quem tem uma unidade começa nela; quem tem várias começa
+          em &ldquo;Todas as unidades&rdquo;.
+        </p>
+        <p
+          className={cn(
+            'mt-2 rounded-md px-3 py-1.5 text-xs',
+            padraoNome ? 'bg-gray-50 text-gray-700' : 'bg-amber-50 text-amber-800',
+          )}
+        >
+          {padraoNome ? (
+            <>
+              Unidade padrão: <strong>{padraoNome}</strong>
+            </>
+          ) : (
+            'Sem unidade padrão — marque ao menos uma unidade e escolha a padrão.'
+          )}
         </p>
       </div>
 
@@ -115,12 +149,12 @@ export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
                     >
                       <input
                         type="radio"
-                        name="unidade-principal"
+                        name="unidade-padrao"
                         checked={sel.principal}
                         onChange={() => marcarPrincipal(u.id)}
                         disabled={desabilitado}
                       />
-                      Principal
+                      Unidade padrão
                     </label>
                   )}
                 </div>

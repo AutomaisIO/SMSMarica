@@ -1319,6 +1319,162 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("translado_compartilhamento_localizacao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoInterna.ConversaInterna", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<DateTime?>("UltimaMensagemEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultima_mensagem_em");
+
+                    b.Property<Guid?>("UnidadeAId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unidade_a_id");
+
+                    b.Property<Guid?>("UnidadeBId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unidade_b_id");
+
+                    b.Property<Guid?>("UsuarioAId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_a_id");
+
+                    b.Property<Guid?>("UsuarioBId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_b_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UnidadeBId");
+
+                    b.HasIndex("UsuarioBId");
+
+                    b.HasIndex("UnidadeAId", "UnidadeBId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_conversa_interna_unidades")
+                        .HasFilter("tipo = 1");
+
+                    b.HasIndex("UsuarioAId", "UsuarioBId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_conversa_interna_usuarios")
+                        .HasFilter("tipo = 2");
+
+                    b.ToTable("conversa_interna", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_conversa_interna_par", "(tipo = 1 AND unidade_a_id IS NOT NULL AND unidade_b_id IS NOT NULL AND unidade_a_id <= unidade_b_id AND usuario_a_id IS NULL AND usuario_b_id IS NULL) OR (tipo = 2 AND usuario_a_id IS NOT NULL AND usuario_b_id IS NOT NULL AND usuario_a_id < usuario_b_id AND unidade_a_id IS NULL AND unidade_b_id IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoInterna.ConversaInternaLeitura", b =>
+                {
+                    b.Property<Guid>("ConversaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversa_id");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<DateTime?>("LidaAte")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lida_ate");
+
+                    b.Property<bool>("Silenciada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("silenciada");
+
+                    b.HasKey("ConversaId", "UsuarioId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("conversa_interna_leitura", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoInterna.MensagemInterna", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AnexoChave")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("anexo_chave");
+
+                    b.Property<int?>("AnexoDuracaoSegundos")
+                        .HasColumnType("integer")
+                        .HasColumnName("anexo_duracao_segundos");
+
+                    b.Property<bool>("AnexoEhAudio")
+                        .HasColumnType("boolean")
+                        .HasColumnName("anexo_eh_audio");
+
+                    b.Property<string>("AnexoMime")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("anexo_mime");
+
+                    b.Property<string>("AnexoNome")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("anexo_nome");
+
+                    b.Property<long?>("AnexoTamanhoBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("anexo_tamanho_bytes");
+
+                    b.Property<Guid>("AutorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("autor_id");
+
+                    b.Property<Guid?>("AutorUnidadeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("autor_unidade_id");
+
+                    b.Property<Guid>("ConversaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversa_id");
+
+                    b.Property<DateTime>("EnviadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enviada_em");
+
+                    b.Property<string>("Texto")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("texto");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutorId");
+
+                    b.HasIndex("AutorUnidadeId");
+
+                    b.HasIndex("ConversaId", "EnviadaEm")
+                        .HasDatabaseName("ix_mensagem_interna_conversa_enviada");
+
+                    b.ToTable("mensagem_interna", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_mensagem_interna_conteudo", "texto IS NOT NULL OR anexo_chave IS NOT NULL");
+                        });
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoPaciente", b =>
                 {
                     b.Property<Guid>("Id")
@@ -17566,6 +17722,80 @@ namespace SMSMais.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoInterna.ConversaInterna", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Unidade", "UnidadeA")
+                        .WithMany()
+                        .HasForeignKey("UnidadeAId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMais.Data.Entities.Unidade", "UnidadeB")
+                        .WithMany()
+                        .HasForeignKey("UnidadeBId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMais.Data.Entities.Usuario", "UsuarioA")
+                        .WithMany()
+                        .HasForeignKey("UsuarioAId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMais.Data.Entities.Usuario", "UsuarioB")
+                        .WithMany()
+                        .HasForeignKey("UsuarioBId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("UnidadeA");
+
+                    b.Navigation("UnidadeB");
+
+                    b.Navigation("UsuarioA");
+
+                    b.Navigation("UsuarioB");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoInterna.ConversaInternaLeitura", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.ComunicacaoInterna.ConversaInterna", "Conversa")
+                        .WithMany()
+                        .HasForeignKey("ConversaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversa");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoInterna.MensagemInterna", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Usuario", "Autor")
+                        .WithMany()
+                        .HasForeignKey("AutorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Unidade", "AutorUnidade")
+                        .WithMany()
+                        .HasForeignKey("AutorUnidadeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMais.Data.Entities.ComunicacaoInterna.ConversaInterna", "Conversa")
+                        .WithMany("Mensagens")
+                        .HasForeignKey("ConversaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Autor");
+
+                    b.Navigation("AutorUnidade");
+
+                    b.Navigation("Conversa");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoPaciente", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Notificacoes.AgendamentoExterno", "AgendamentoExterno")
@@ -19720,6 +19950,11 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Consentimentos");
 
                     b.Navigation("Sessoes");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoInterna.ConversaInterna", b =>
+                {
+                    b.Navigation("Mensagens");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Conversas.Conversa", b =>
