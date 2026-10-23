@@ -142,7 +142,7 @@ public sealed class ViagemService(
         db.EventosViagem.Add(evento);
 
         // Embarcou (ou não estava na coleta): a posição do celular dele deixa de valer e é apagada junto
-        // com esta marcação (ADR-0079).
+        // com esta marcação (ADR-0082).
         if (sessao is not null && efeito.Aplicado && pessoa == PessoaViagem.Paciente
             && Localizacao.CompartilhamentoLocalizacaoService.FimNaViagem(evento) is { } fim)
         {

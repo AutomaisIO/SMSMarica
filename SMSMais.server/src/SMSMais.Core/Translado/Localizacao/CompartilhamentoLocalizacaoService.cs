@@ -13,7 +13,7 @@ namespace SMSMais.Core.Translado.Localizacao;
 
 /// <summary>
 /// O paciente compartilha a localização do celular com o motorista enquanto espera um embarque de hoje
-/// (ADR-0079). Só a última posição, só durante a espera, só para o tablet do carro da viagem; o painel vê
+/// (ADR-0082). Só a última posição, só durante a espera, só para o tablet do carro da viagem; o painel vê
 /// apenas o estado.
 /// </summary>
 public interface ICompartilhamentoLocalizacaoService

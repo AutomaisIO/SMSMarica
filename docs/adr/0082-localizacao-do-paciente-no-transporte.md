@@ -1,4 +1,4 @@
-# ADR-0079 — Localização do paciente no dia da viagem do TFD, compartilhada pelo app com o motorista
+# ADR-0082 — Localização do paciente no dia da viagem do TFD, compartilhada pelo app com o motorista
 
 - **Status:** Aceito (23/10/2026)
 - **Data:** 2026-10-23

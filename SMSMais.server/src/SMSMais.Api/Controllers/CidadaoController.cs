@@ -204,7 +204,7 @@ public sealed class CidadaoController(
 
     /// <summary>O embarque que o paciente espera agora (a ida de hoje, a partir de 2 h antes da busca, ou o
     /// resgate depois de descer na unidade) e se ele está compartilhando a localização com o motorista.
-    /// 204 fora da espera (ADR-0079).</summary>
+    /// 204 fora da espera (ADR-0082).</summary>
     [HttpGet("localizacao")]
     [EnableRateLimiting(PoliticaLocalizacao)]
     [ProducesResponseType<SMSMais.Core.Translado.Localizacao.LocalizacaoViagemDto>(StatusCodes.Status200OK)]
@@ -305,7 +305,7 @@ public sealed class CidadaoController(
     /// <summary>
     /// Compartilhar a localização é do próprio paciente, entrando com o código: a equipe pelo Sandbox não
     /// compartilha por ele, e o link do WhatsApp pode ter chegado a outra pessoa — que levaria o motorista
-    /// até ela (ADR-0079 §7).
+    /// até ela (ADR-0082 §7).
     /// </summary>
     private void GarantirLocalizacaoPeloProprio()
     {

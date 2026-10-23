@@ -73,7 +73,7 @@ public sealed class TransladoController(
         viagem.ListarDaRotaAsync(id, cancellationToken);
 
     /// <summary>Quem da rota está compartilhando a localização com o motorista agora: desde quando, a idade
-    /// e a precisão da última posição. Sem a coordenada — ela é só do tablet do carro (ADR-0079 §5).</summary>
+    /// e a precisão da última posição. Sem a coordenada — ela é só do tablet do carro (ADR-0082 §5).</summary>
     [HttpGet("{id:guid}/localizacao-pacientes")]
     [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<SMSMais.Core.Translado.Localizacao.CompartilhamentoDaRotaDto>>(StatusCodes.Status200OK)]

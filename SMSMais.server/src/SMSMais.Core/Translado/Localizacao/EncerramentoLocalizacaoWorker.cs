@@ -6,7 +6,7 @@ namespace SMSMais.Core.Translado.Localizacao;
 
 /// <summary>
 /// A cada minuto, encerra (e apaga a posição de) quem compartilha a localização mas saiu da espera por um
-/// caminho que não passa pelo tablet: viagem cancelada no painel, outro dia, já em casa (ADR-0079 §4).
+/// caminho que não passa pelo tablet: viagem cancelada no painel, outro dia, já em casa (ADR-0082 §4).
 /// Embarque e ausência encerram na hora, na própria marcação do tablet.
 /// </summary>
 public sealed class EncerramentoLocalizacaoWorker(

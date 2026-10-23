@@ -574,7 +574,7 @@ public sealed class ResgateService(
     }
 
     /// <summary>Desceu na unidade hoje e ainda não embarcou na volta: está na lista de resgate. A mesma
-    /// regra decide quando o paciente pode compartilhar a localização no resgate (ADR-0079).</summary>
+    /// regra decide quando o paciente pode compartilhar a localização no resgate (ADR-0082).</summary>
     internal static bool EstaNaUnidade(SessaoDeTratamento s, DateOnly hoje) =>
         s.DataPrevista == hoje
         && (s.Status == StatusSessao.AguardandoRetorno || (s.Status == StatusSessao.Realizada && s.HoraChegadaUnidade is not null))

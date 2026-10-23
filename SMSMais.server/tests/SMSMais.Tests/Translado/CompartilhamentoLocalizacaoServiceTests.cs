@@ -18,7 +18,7 @@ using SMSMais.Tests.Infraestrutura;
 namespace SMSMais.Tests.Translado;
 
 /// <summary>
-/// Localização do paciente no dia da viagem (ADR-0079): quando ele pode compartilhar, quem vê, quando a
+/// Localização do paciente no dia da viagem (ADR-0082): quando ele pode compartilhar, quem vê, quando a
 /// posição é apagada e as travas de posse. Pacientes fictícios (nada de dado real).
 /// </summary>
 [Collection(nameof(PostgresCollection))]

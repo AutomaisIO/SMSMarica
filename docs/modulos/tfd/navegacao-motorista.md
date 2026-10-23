@@ -186,7 +186,7 @@ Play Services (`client version: 0`).
   `HoraChegadaResidencia`; não estava no local → sai do resgate da rota e volta para a lista, sem o
   aviso. Encerrar ou cancelar a rota devolve à lista quem ela marcou e não buscou. O resgate não muda
   o faturamento (contado na ida).
-- **Localização do paciente** ([ADR-0079](../../adr/0079-localizacao-do-paciente-no-transporte.md), 23/10):
+- **Localização do paciente** ([ADR-0082](../../adr/0082-localizacao-do-paciente-no-transporte.md), 23/10):
   enquanto espera um embarque de hoje (a ida, de 2 h antes da busca ou do início da rota até embarcar;
   o resgate, de quando desce na unidade até embarcar na volta), o paciente pode compartilhar a
   localização do celular pelo app ou PWA, **só com o app aberto** e com um aceite por viagem. O tablet

@@ -1,6 +1,6 @@
 namespace SMSMais.Data.Entities.Enums;
 
-/// <summary>Por que o paciente deixou de compartilhar a localização com o motorista (ADR-0079).</summary>
+/// <summary>Por que o paciente deixou de compartilhar a localização com o motorista (ADR-0082).</summary>
 public enum MotivoFimCompartilhamento
 {
     /// <summary>O paciente tocou em "Parar" no app.</summary>

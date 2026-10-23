@@ -132,7 +132,7 @@ public sealed class DispositivosVeiculoController(
     /// <summary>
     /// Os passageiros das rotas de hoje deste veículo que estão compartilhando a localização do celular
     /// enquanto esperam o embarque (a coleta na ida, o resgate marcado por este carro): a última posição,
-    /// quando foi medida, a precisão e se o aparelho disse que é simulada (ADR-0079). O tablet consulta
+    /// quando foi medida, a precisão e se o aparelho disse que é simulada (ADR-0082). O tablet consulta
     /// na tela de navegação e mantém a posição só em memória.
     /// </summary>
     [HttpGet("rastreamento/dispositivos/localizacao-passageiros")]

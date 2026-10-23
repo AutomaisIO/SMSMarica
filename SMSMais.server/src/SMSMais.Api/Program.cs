@@ -298,7 +298,7 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
-    // Localização do paciente no dia da viagem (ADR-0079): o app manda a cada 15 s; folga para o GET
+    // Localização do paciente no dia da viagem (ADR-0082): o app manda a cada 15 s; folga para o GET
     // e para quem abre o app duas vezes. Por sessão do app (jti), não por IP (rede móvel compartilha IP).
     options.AddPolicy(SMSMais.Api.Controllers.CidadaoController.PoliticaLocalizacao, httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(

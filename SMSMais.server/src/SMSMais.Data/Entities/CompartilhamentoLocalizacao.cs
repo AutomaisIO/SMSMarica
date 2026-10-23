@@ -4,7 +4,7 @@ namespace SMSMais.Data.Entities;
 
 /// <summary>
 /// O paciente compartilhando a localização do celular com o motorista enquanto espera um embarque
-/// (ADR-0079). Uma linha por sessão e trecho, com só a ÚLTIMA posição, sem trajeto. Ao encerrar
+/// (ADR-0082). Uma linha por sessão e trecho, com só a ÚLTIMA posição, sem trajeto. Ao encerrar
 /// (embarque, ausência, "Parar", fim da espera), os campos de posição são apagados e ficam só o
 /// começo e o fim. O aceite do paciente vai para a trilha de auditoria.
 /// </summary>
