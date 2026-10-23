@@ -53,31 +53,54 @@ public sealed class ConsultarAgendamentosComando(
 
     public async Task<RoboComandoResultado> ExecutarAsync(RoboComandoContexto ctx, CancellationToken ct)
     {
-        var cpf = GateIdentidade.LerString(ctx.Args, "cpf");
-        var mes = GateIdentidade.LerInt(ctx.Args, "mesNascimento");
-        var ano = GateIdentidade.LerInt(ctx.Args, "anoNascimento");
+        Guid alvo;
 
-        // FASE 1 — sem NENHUM dado: responde só SE existe, e o que fazer em seguida.
-        if (string.IsNullOrWhiteSpace(cpf) && mes is null && ano is null)
-            return await VerificarExistenciaAsync(ctx, ct);
+        // BYPASS de identidade (decisão do Bernardo, 23/10/2026): se o telefone da conversa já é
+        // VERIFICADO, ou se a identidade JÁ foi conferida NESTA conversa (ConsultarCadastro /
+        // VerificarCadastro com sucesso), não se repede CPF+nascimento — resolve pelo paciente da
+        // conversa e já lista. Fora disso, segue o gate normal (4 primeiros do CPF + mês/ano).
+        Guid? bypassAlvo = null;
+        if (ctx.PacienteId is { } pacienteConversa)
+        {
+            var pc = await pacientes.ObterPorIdAsync(pacienteConversa, ct);
+            if (GateIdentidade.NumeroVerificado(pc.TelefoneVerificado, ctx.TelefoneCanonical)
+                || await IdentidadeConferidaNestaConversaAsync(ctx.ConversaId, ct))
+                bypassAlvo = pc.Id;
+        }
 
-        // Dados parciais: falta ≠ erro — peça o que falta, não conclua nada.
-        if (string.IsNullOrWhiteSpace(cpf) || GateIdentidade.SoDigitos(cpf).Length < 4)
-            return new(false, "Faltam os dígitos do CPF. Peça os *4 primeiros dígitos do CPF* do paciente, "
-                + "todos de uma vez, e chame de novo. NÃO conclua nada sobre agendamento.");
-        if (mes is null || ano is null)
-            return new(false, "Falta a data de nascimento. Peça o MÊS e o ANO de nascimento do paciente e "
-                + "chame de novo. NÃO conclua nada sobre agendamento.");
+        if (bypassAlvo is { } liberado)
+        {
+            alvo = liberado;
+        }
+        else
+        {
+            var cpf = GateIdentidade.LerString(ctx.Args, "cpf");
+            var mes = GateIdentidade.LerInt(ctx.Args, "mesNascimento");
+            var ano = GateIdentidade.LerInt(ctx.Args, "anoNascimento");
 
-        var alvo = await ResolverPacienteAsync(ctx, cpf, mes, ano, ct);
-        if (alvo is null)
-            return new(false,
-                "Não consegui conferir a identidade para ver agendamentos. NÃO diga que a pessoa não tem "
-                + "agendamento — você não chegou a consultar. Peça os dados novamente ou encaminhe.");
+            // FASE 1 — sem NENHUM dado: responde só SE existe, e o que fazer em seguida.
+            if (string.IsNullOrWhiteSpace(cpf) && mes is null && ano is null)
+                return await VerificarExistenciaAsync(ctx, ct);
+
+            // Dados parciais: falta ≠ erro — peça o que falta, não conclua nada.
+            if (string.IsNullOrWhiteSpace(cpf) || GateIdentidade.SoDigitos(cpf).Length < 4)
+                return new(false, "Faltam os dígitos do CPF. Peça os *4 primeiros dígitos do CPF* do paciente, "
+                    + "todos de uma vez, e chame de novo. NÃO conclua nada sobre agendamento.");
+            if (mes is null || ano is null)
+                return new(false, "Falta a data de nascimento. Peça o MÊS e o ANO de nascimento do paciente e "
+                    + "chame de novo. NÃO conclua nada sobre agendamento.");
+
+            var resolvido = await ResolverPacienteAsync(ctx, cpf, mes, ano, ct);
+            if (resolvido is null)
+                return new(false,
+                    "Não consegui conferir a identidade para ver agendamentos. NÃO diga que a pessoa não tem "
+                    + "agendamento — você não chegou a consultar. Peça os dados novamente ou encaminhe.");
+            alvo = resolvido.Value;
+        }
 
         var agora = DateTime.UtcNow;
         var futuros = await db.Solicitacoes.AsNoTracking()
-            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+            .Where(s => s.PacienteId == alvo && s.ExcluidoEm == null
                 // Cancelado não é agendamento de pé: listá-lo como ativo fazia o robô
                 // "confirmar" uma vaga que a equipe acabara de derrubar.
                 && s.Status != StatusSolicitacao.Cancelada
@@ -100,7 +123,7 @@ public sealed class ConsultarAgendamentosComando(
         // cancelar). Regra perene: quando a pessoa pergunta por que cancelou, o robô LÊ esse
         // motivo — não manda "perguntar no posto" se a resposta está registrada.
         var cancelados = await db.Solicitacoes.AsNoTracking()
-            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+            .Where(s => s.PacienteId == alvo && s.ExcluidoEm == null
                 && s.Status == StatusSolicitacao.Cancelada
                 && s.CanceladoEm != null && s.CanceladoEm >= agora.AddDays(-JanelaCanceladosDias))
             .OrderByDescending(s => s.CanceladoEm)
@@ -127,7 +150,7 @@ public sealed class ConsultarAgendamentosComando(
         // cidadão: pedidos NA FILA (em fila ou pendentes, sem distinção) e agendados com data futura.
         // Regra do Bernardo (30/09/2026): na fila é "está na fila" e nada mais — nunca o motivo da
         // pendência, a posição, a prioridade ou previsão.
-        var regulacao = await agendamentosPaciente.RegulacaoParaPacienteAsync(alvo.Value, ct);
+        var regulacao = await agendamentosPaciente.RegulacaoParaPacienteAsync(alvo, ct);
         var regulacaoAgendados = regulacao
             .Where(r => r.Situacao != Pacientes.Agendamentos.Dtos.SituacaoAgendamentoPaciente.EmFila)
             .Take(Maximo).ToList();
@@ -296,4 +319,11 @@ public sealed class ConsultarAgendamentosComando(
         }
         return false;
     }
+
+    /// <summary>A identidade já foi conferida NESTA conversa? Verdadeiro quando ConsultarCadastro ou
+    /// VerificarCadastro rodou com sucesso nela — ambos checam os 4 primeiros dígitos do CPF + mês/ano.
+    /// É o que habilita o bypass "já verificou na sessão" sem repedir os dados.</summary>
+    private Task<bool> IdentidadeConferidaNestaConversaAsync(Guid conversaId, CancellationToken ct) =>
+        db.RoboAcoes.AsNoTracking().AnyAsync(a => a.ConversaId == conversaId && a.Sucesso
+            && (a.Comando == ComandoRobo.ConsultarCadastro || a.Comando == ComandoRobo.VerificarCadastro), ct);
 }
