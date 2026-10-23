@@ -1,4 +1,4 @@
-@page "/admin/templates"
+﻿@page "/admin/templates"
 @model Automais.Zap.Api.Pages.Admin.TemplatesModel
 @{
     ViewData["Title"] = "Templates";
@@ -306,6 +306,17 @@ else
                 <input id="tpl-cabecalho" type="text" name="cabecalho" style="width:100%" />
             </div>
             <div style="flex:1;min-width:300px">
+                <label for="tpl-imagem">Ou foto no cabeçalho (uma das Artes)</label>
+                <select id="tpl-imagem" name="imagemId" style="width:100%">
+                    <option value="">— sem foto —</option>
+                    @foreach (var a in Model.ArtesDisponiveis)
+                    {
+                        <option value="@a.Id">@a.NomeArquivo</option>
+                    }
+                </select>
+                <div class="ajuda-campo">vai à Meta como exemplo e já fica escolhida como a arte dos envios; com foto, o cabeçalho de texto é ignorado</div>
+            </div>
+            <div style="flex:1;min-width:300px">
                 <label for="tpl-rodape">Rodapé (opcional)</label>
                 <input id="tpl-rodape" type="text" name="rodape" style="width:100%" />
             </div>
@@ -317,6 +328,11 @@ else
         <div style="margin-top:12px">
             <label for="tpl-exemplos">Exemplos das variáveis, separados por | (a Meta exige um para cada variável)</label>
             <input id="tpl-exemplos" type="text" name="exemplos" style="width:100%" placeholder="Maria | 12/09 às 14h" />
+        </div>
+        <div style="margin-top:12px">
+            <label for="tpl-botoes">Botões (opcional), um por linha, na ordem em que aparecem</label>
+            <textarea id="tpl-botoes" name="botoes" rows="3" style="width:100%" placeholder="Link: Confirmar | https://app.exemplo/entrar/{{1}} | https://app.exemplo/entrar/abc123&#10;Resposta: Não poderei ir"></textarea>
+            <div class="ajuda-campo">"Resposta: texto" para resposta rápida; "Link: texto | endereço | exemplo" para link — o exemplo só é preciso quando o endereço termina em {{1}} (muda a cada envio)</div>
         </div>
         <div style="margin-top:16px">
             <button class="acao" type="submit">Enviar para aprovação da Meta</button>

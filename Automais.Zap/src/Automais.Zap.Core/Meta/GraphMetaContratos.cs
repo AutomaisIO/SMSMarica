@@ -1,4 +1,4 @@
-namespace Automais.Zap.Core.Meta;
+﻿namespace Automais.Zap.Core.Meta;
 
 /// <summary>
 /// Resultado de uma chamada à Graph API. A Meta responde erro com corpo estruturado e
@@ -144,7 +144,27 @@ public sealed record NovoTemplate(
     string Corpo,
     string? Cabecalho,
     string? Rodape,
-    IReadOnlyList<string> ExemplosCorpo);
+    IReadOnlyList<string> ExemplosCorpo)
+{
+    /// <summary>
+    /// Foto do cabeçalho. A Meta exige uma imagem de EXEMPLO para aprovar modelo com foto — ela sobe
+    /// pela Upload API e vai como <c>header_handle</c>. A foto de cada envio continua sendo a arte
+    /// escolhida no painel. Com foto, o cabeçalho de texto é ignorado (é um ou outro).
+    /// </summary>
+    public ImagemCabecalhoNova? ImagemCabecalho { get; init; }
+
+    /// <summary>Botões, na ordem em que aparecem — a mesma do <c>index</c> que o envio usa.</summary>
+    public IReadOnlyList<NovoBotaoTemplate> Botoes { get; init; } = [];
+}
+
+/// <summary>A imagem de exemplo do cabeçalho de um template novo (JPEG ou PNG).</summary>
+public sealed record ImagemCabecalhoNova(byte[] Conteudo, string MimeType, string NomeArquivo);
+
+/// <summary>Um botão de template novo.</summary>
+/// <param name="Tipo"><c>QUICK_REPLY</c> (resposta rápida) ou <c>URL</c>.</param>
+/// <param name="Url">Só no <c>URL</c>. Terminando em <c>{{1}}</c>, é dinâmico: cada envio completa o fim.</param>
+/// <param name="ExemploUrl">URL dinâmica: um endereço completo de exemplo — a Meta exige.</param>
+public sealed record NovoBotaoTemplate(string Tipo, string Texto, string? Url = null, string? ExemploUrl = null);
 
 /// <summary>
 /// Perfil comercial do número, como aparece para o cidadão no WhatsApp. Tudo aqui é
