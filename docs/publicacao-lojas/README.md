@@ -18,6 +18,11 @@ Os dois seguem o padrão ofício do Manual de Redação da Presidência da Repú
 - **Emissor:** o Município de Maricá, CNPJ 29.131.075/0001-93, por meio da Secretaria Municipal de Saúde.
 - **Assinatura:** o secretário.
 - **Autorizada:** a AutoMais, com a razão social da Receita e da D&B (sem "-ME").
+- **Propriedade:** o app é **da AutoMais**, publicado na conta de desenvolvedor dela. O que a Secretaria
+  autoriza é a publicação em nome dela e o uso do nome "Saúde Maricá" e da marca da Prefeitura.
+- **Revogação:** se a autorização for revogada, a AutoMais tem 30 dias para tirar o nome e a marca e
+  deixar de apresentar o app como serviço da Secretaria. O documento não prevê transferência do app nem
+  retirada obrigatória da loja.
 - **Contato oficial do app:** dev@automais.com, o mesmo e-mail público do desenvolvedor no Play.
 
 ## O que a Secretaria preenche
