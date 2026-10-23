@@ -177,6 +177,82 @@ class ResgateDoPaciente {
   final String? proximaPerguntaAs;
 }
 
+/// O embarque de hoje em que o paciente pode compartilhar a localização com o motorista (ADR-0082;
+/// `LocalizacaoViagem` do `api.ts`): a ida, a partir de 2 h antes da busca, ou o resgate, depois de
+/// descer na unidade.
+class LocalizacaoViagem {
+  const LocalizacaoViagem({
+    required this.sessaoId,
+    required this.trecho,
+    required this.unidade,
+    this.horaBusca,
+    this.compartilhando = false,
+    this.desde,
+    this.ultimoEnvioEm,
+  });
+
+  factory LocalizacaoViagem.deJson(Json j) => LocalizacaoViagem(
+        sessaoId: j['sessaoId'] as String,
+        trecho: _s(j['trecho']) ?? 'Ida',
+        unidade: _s(j['unidade']) ?? '',
+        horaBusca: _s(j['horaBusca']),
+        compartilhando: _b(j['compartilhando']),
+        desde: _s(j['desde']),
+        ultimoEnvioEm: _s(j['ultimoEnvioEm']),
+      );
+
+  final String sessaoId;
+
+  /// `Ida` ou `Resgate`.
+  final String trecho;
+
+  /// O destino da ida ou o lugar do resgate.
+  final String unidade;
+
+  /// "HH:mm:ss": a busca prevista da ida.
+  final String? horaBusca;
+  final bool compartilhando;
+
+  /// Desde quando compartilha (ISO, UTC).
+  final String? desde;
+
+  /// Quando a última posição chegou ao servidor (ISO, UTC).
+  final String? ultimoEnvioEm;
+
+  /// A mesma espera, já sem compartilhar (o "Parar" vale na hora, sem esperar o servidor).
+  LocalizacaoViagem semCompartilhar() =>
+      LocalizacaoViagem(sessaoId: sessaoId, trecho: trecho, unidade: unidade, horaBusca: horaBusca);
+}
+
+/// Uma posição do celular, como o servidor recebe (`PosicaoCelular` do `api.ts`).
+class PosicaoCelular {
+  const PosicaoCelular({
+    required this.latitude,
+    required this.longitude,
+    required this.capturadaEm,
+    this.precisaoM,
+    this.simulada = false,
+  });
+
+  final double latitude;
+  final double longitude;
+  final double? precisaoM;
+
+  /// Quando o aparelho mediu.
+  final DateTime capturadaEm;
+
+  /// O Android diz que veio de um app de GPS falso: o tablet mostra o aviso.
+  final bool simulada;
+
+  Json paraJson() => {
+        'latitude': latitude,
+        'longitude': longitude,
+        'precisaoM': precisaoM,
+        'capturadaEm': capturadaEm.toUtc().toIso8601String(),
+        'simulada': simulada,
+      };
+}
+
 class ViagemParaAvaliar {
   const ViagemParaAvaliar({
     required this.sessaoId,

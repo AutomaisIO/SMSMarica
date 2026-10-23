@@ -37,6 +37,8 @@
 	<string>Para escolher da galeria a foto do seu perfil ou a foto de um documento que você envia para a equipe da Saúde.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Para salvar no aparelho os exames e documentos que você baixa pelo app.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Para o motorista do transporte achar você no dia da viagem. A localização só é enviada enquanto você espera o carro, com o app aberto, e para quando você embarca.</string>
 	<key>UIFileSharingEnabled</key>
 	<false/>
 	<key>UIApplicationSceneManifest</key>

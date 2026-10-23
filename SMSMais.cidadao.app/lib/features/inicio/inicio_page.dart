@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:sms_mais_cidadao/features/perfil/perfil_provider.dart';
+import 'package:sms_mais_cidadao/features/transporte/compartilhar_localizacao.dart';
 import 'package:sms_mais_cidadao/shared/api/api.dart';
 import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
 import 'package:sms_mais_cidadao/shared/theme/cores_marica.dart';
@@ -103,6 +104,8 @@ class _InicioPageState extends ConsumerState<InicioPage> {
                 ),
               ),
             ),
+            // No dia da viagem, o convite para compartilhar a localização com o motorista (ADR-0082).
+            const CompartilharLocalizacao(margem: EdgeInsets.only(bottom: 16)),
             _CartaoCidadao(nome: nome, foto: perfil?.fotoBase64, cpf: cpf, cns: perfil?.cns),
           ],
         ),

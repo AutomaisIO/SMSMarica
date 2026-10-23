@@ -14,14 +14,14 @@ Versão **nativa (Flutter, Android + iOS)** do **App do Cidadão** — o mesmo a
 |---|---|---|
 | Entrar | `/login` → `/login/telefone` → `/login/codigo` | CPF + data de nascimento; a pessoa escolhe o seu WhatsApp entre os números que a Saúde já conhece (só o final aparece) e recebe o código nele — nunca num número digitado. "Nenhum desses é meu" procura no e-SUS (se ligado para o canal) ou orienta ir ao posto ([ADR-0078](../docs/adr/0078-entrada-cidadao-cpf-nascimento.md)) |
 | Termo LGPD | (antes de tudo) | Aceite do consentimento vigente — bloqueante |
-| Início | `/` | Cartão do Cidadão + atalhos (com aviso de exames a confirmar) |
+| Início | `/` | Cartão do Cidadão + atalhos (com aviso de exames a confirmar); no dia da viagem, o convite para compartilhar a localização |
 | Consultas / Exames agendados | `/agendados/consultas`, `/agendados/exames` | Agendados e na fila da regulação; confirmar presença / avisar ausência |
 | Ticket do exame | `/agendados/exames/:id` | Local, solicitante, protocolo, chave de acesso (só no dia), QR |
 | Meus atendimentos | `/atendimentos` | Histórico com documentos clínicos (receituário etc.) |
 | Exames | `/exames?exame=:id` | Laudo assinado, PDF das imagens e anexos |
 | Documentos | `/documentos` | Acervo completo + envio de foto/PDF (fica "em conferência") |
 | Chat | `/chat` | Abre o WhatsApp oficial da Secretaria |
-| Transporte (TFD) | `/transporte` | Viagens + "Meus acompanhantes" |
+| Transporte (TFD) | `/transporte` | Viagens + "Meus acompanhantes"; no dia da viagem, compartilhar a localização com o motorista |
 | Meu perfil | `/perfil` | Foto (com recorte), cadastro oficial, contatos, troca de celular por código |
 | Links do WhatsApp | `/entrar/:token`, `/documento/:token` | Magic link (com desafio de CPF para resultados) e download de uso único |
 
@@ -38,6 +38,7 @@ lib/
   shared/
     api/          cliente HTTP, modelos (espelho de src/lib/api.ts) e o modo demonstração
     cache/        cache de dados (shared_preferences) e de documentos (arquivos, LRU 40)
+    localizacao/  localização no dia da viagem: o controle (espelho do store/localizacao.ts) e o GPS
     push/         notificações (Firebase): registro do aparelho, toque → tela, lista fixa de destinos
     sessao/       sessão do cidadão (JWT no armazenamento seguro) e saída com limpeza
     theme/        cores, raios, sombras e tipografia — os tokens do tailwind.config.ts do PWA
@@ -75,6 +76,44 @@ números" acrescenta um "do e-SUS". Qualquer código serve, menos `000000` (simu
 
 Toda chamada leva o cabeçalho `X-App-Canal: nativo` (o PWA manda `pwa`): é por ele que o servidor
 sabe se a busca do telefone no e-SUS está ligada para este canal (Sistema → App do cidadão).
+
+## Localização no dia da viagem
+
+O paciente pode compartilhar a posição do celular com o motorista enquanto espera um embarque de hoje
+([ADR-0082](../docs/adr/0082-localizacao-do-paciente-no-transporte.md)), igual ao PWA:
+
+- **Quando aparece:** o servidor diz (`GET /auth/paciente/localizacao`) se há uma espera agora: a ida, a
+  partir de 2 h antes da busca, ou o resgate, depois de descer na unidade. O app consulta a cada minuto,
+  só com o app na tela. Fora disso, nada aparece.
+- **Aceite por viagem:** o convite ("Ajude o motorista a achar você"), no Início e no Transporte, explica
+  quem vê, quando para e que só envia com o app aberto. Só depois do **Compartilhar** o app registra o
+  aceite (`POST`) e o Android/iOS pede a permissão.
+- **Só com o app aberto:** permissão "durante o uso" (`ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION`;
+  no iOS, `NSLocationWhenInUseUsageDescription`). **Sem segundo plano:** não há
+  `ACCESS_BACKGROUND_LOCATION`. O app saiu da tela, o GPS desliga; voltou, liga de novo sem perguntar.
+- **Duas armadilhas do Android (achadas no emulador, os testes de unidade não pegam):**
+  - o `GeolocatorLocationService` do plugin **tem de ficar** no manifesto: sem ele o fluxo de posições
+    não começa (no logcat: `Location background service has not started correctly`). Ele fica sem o
+    `foregroundServiceType` (`tools:remove`); só é vinculado, nunca vai para o primeiro plano, e a Play
+    não pede a declaração de serviço em primeiro plano. Conferir no manifesto final
+    (`build/app/intermediates/merged_manifest/`): nenhum `foregroundServiceType` nem `FOREGROUND_SERVICE`;
+  - com a "Precisão do local" do Google desligada, o cliente do Google Play Services mostra o aviso do
+    Google ao ligar o GPS. Recusado, o plugin devolve erro e o app passaria a mostrar o aviso a cada
+    consulta. Por isso o `GpsDoAparelho` segue pelo LocationManager do Android
+    (`forceLocationManager`) até o app fechar.
+- **Envio:** no máximo a cada 15 s, ou antes disso se andou 20 m, e nunca antes de 10 s (`PUT`). Vai
+  junto o aviso do Android de posição simulada (app de GPS falso). Com a permissão só aproximada, envia
+  assim mesmo e a faixa avisa.
+- **Para:** no embarque (o servidor responde 409 e o app desliga sozinho), no **Parar** da faixa
+  (`DELETE`) e no Sair. Permissão negada ou localização desligada: a faixa explica e oferece **Permitir**
+  ou as configurações.
+- **Não atrapalha o resto:** servidor sem a função (404) esconde tudo e para de consultar; qualquer
+  outro erro só esconde ou espera a próxima consulta.
+- **Demonstração:** o `DemoAdapter` simula o resgate de hoje na janela e guarda as posições no próprio
+  aparelho (nada vai à rede). O pedido de permissão é o de verdade, para a revisão das lojas ver.
+
+O controle fica em `lib/shared/localizacao/` (o GPS atrás da interface `FonteGps`, que os testes trocam
+por um falso); o cartão e a faixa, em `lib/features/transporte/`. Testes: `test/localizacao_test.dart`.
 
 ## Notificações (push)
 
@@ -206,6 +245,10 @@ O CPF tem os 11 dígitos iguais: é inválido por regra, então nunca é de ning
 ao servidor. Sair da conta desliga a demonstração. Estes dados podem ir no Play Console sem risco: com
 eles não se chega a nada real.
 
+Para a revisão ver a localização: no Início, **Ajude o motorista a achar você → Compartilhar minha
+localização → Compartilhar**. O aparelho pede a permissão e a faixa "Compartilhando sua localização
+com o motorista" aparece, com o **Parar**. Na demonstração, a posição não sai do aparelho.
+
 ### Exclusão da conta e Segurança dos dados
 
 A Play exige, de app em que se entra com conta, um jeito de **pedir a exclusão** dentro do app e fora
@@ -218,9 +261,12 @@ prontuário fica, por obrigação legal. Mudou o processo, mudam a página e a d
 
 Na Segurança dos dados, o declarado é o que o app **manda** ao servidor: CPF e nascimento (seus e dos
 acompanhantes), e-mail e telefones do Perfil, foto, exames enviados (arquivo e foto), confirmação e
-cancelamento de exame, avaliação da viagem e o token do push. Nada é "compartilhado" no sentido da Play
-(WhatsApp e Firebase são prestadores de serviço); não há localização, ID de anúncio nem relatório de
-falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa declaração.
+cancelamento de exame, avaliação da viagem, o token do push e, desde a 1.0.2, a **localização exata**
+(coletada, não compartilhada, opcional, para a funcionalidade do app: só no dia da viagem, depois do
+Compartilhar, e apagada no embarque). Nada é "compartilhado" no sentido da Play (WhatsApp e Firebase são
+prestadores de serviço; o motorista é o próprio serviço de transporte); não há ID de anúncio nem
+relatório de falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa
+declaração.
 
 ### Gerar o pacote da loja
 

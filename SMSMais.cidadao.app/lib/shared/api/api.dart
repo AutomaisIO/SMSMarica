@@ -165,6 +165,25 @@ class ApiCidadao {
   Future<void> responderResgate(String sessaoId, {required bool disponivel}) =>
       _dio.post<void>('/auth/paciente/resgate/$sessaoId/resposta', data: {'disponivel': disponivel});
 
+  /// O embarque que o paciente espera agora (ADR-0082); nulo fora da espera. Sem cache: muda na hora.
+  Future<LocalizacaoViagem?> localizacao() async {
+    // Sem `get<Json>`: o 204 chega sem corpo e sem Content-Type, e o Dio entrega '' (não nulo) — o
+    // cast para Map quebraria e a espera antiga ficaria na tela depois do embarque.
+    final r = await _dio.get<Object?>('/auth/paciente/localizacao');
+    final dados = r.data;
+    return r.statusCode == 204 || dados is! Json ? null : LocalizacaoViagem.deJson(dados);
+  }
+
+  /// O aceite para compartilhar a localização nesta viagem (idempotente).
+  Future<LocalizacaoViagem> iniciarLocalizacao(String sessaoId) async =>
+      LocalizacaoViagem.deJson((await _dio.post<Json>('/auth/paciente/localizacao/$sessaoId')).data!);
+
+  Future<void> enviarLocalizacao(String sessaoId, PosicaoCelular posicao) =>
+      _dio.put<void>('/auth/paciente/localizacao/$sessaoId', data: posicao.paraJson());
+
+  /// "Parar": o servidor encerra e apaga a posição.
+  Future<void> pararLocalizacao(String sessaoId) => _dio.delete<void>('/auth/paciente/localizacao/$sessaoId');
+
   /// Viagens recentes para avaliar (sem cache: a nota muda na hora).
   Future<List<ViagemParaAvaliar>> viagensParaAvaliar() async =>
       _lista(ViagemParaAvaliar.deJson)(await _get('/auth/paciente/viagens-para-avaliar'));
