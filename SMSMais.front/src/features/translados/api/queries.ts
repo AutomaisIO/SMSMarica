@@ -167,7 +167,7 @@ export function useViagemDaRota(rotaId: string | null, emAndamento: boolean) {
   });
 }
 
-/** Quem compartilha a localização pelo app (ADR-0079), a cada 30 s com a rota planejada ou em andamento.
+/** Quem compartilha a localização pelo app (ADR-0082), a cada 30 s com a rota planejada ou em andamento.
  * Servidor sem a função (404) ou sem permissão: o quadro só não aparece — sem insistir. */
 export function useLocalizacaoPacientes(rotaId: string | null, ativa: boolean) {
   return useQuery({

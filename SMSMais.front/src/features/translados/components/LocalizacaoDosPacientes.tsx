@@ -27,7 +27,7 @@ type Props = {
 };
 
 /**
- * Quem da rota compartilha a localização pelo app enquanto espera o embarque (ADR-0079): há quanto
+ * Quem da rota compartilha a localização pelo app enquanto espera o embarque (ADR-0082): há quanto
  * tempo e com que precisão — sem a coordenada. Onde o paciente está, só o motorista vê, no mapa do
  * tablet; a central fala com ele pelo telefone. Some quando ninguém compartilha (e no servidor sem a
  * função).

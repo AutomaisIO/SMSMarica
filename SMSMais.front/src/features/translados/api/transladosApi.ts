@@ -78,7 +78,7 @@ export async function listarViagem(rotaId: string): Promise<EventoViagem[]> {
   return data;
 }
 
-/** Quem da rota compartilha a localização pelo app agora (ADR-0079), sem a coordenada. */
+/** Quem da rota compartilha a localização pelo app agora (ADR-0082), sem a coordenada. */
 export async function listarLocalizacaoPacientes(rotaId: string): Promise<CompartilhamentoDaRota[]> {
   const { data } = await http.get<CompartilhamentoDaRota[]>(`/rotas/${rotaId}/localizacao-pacientes`);
   return data;

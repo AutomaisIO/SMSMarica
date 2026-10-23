@@ -255,7 +255,7 @@ export type Resgates = {
   carro: CarroAgora | null;
 };
 
-/** Quem da rota compartilha a localização pelo app agora (ADR-0079): só o estado, sem a coordenada —
+/** Quem da rota compartilha a localização pelo app agora (ADR-0082): só o estado, sem a coordenada —
  * a posição só o tablet do carro vê. */
 export type CompartilhamentoDaRota = {
   sessaoId: string;

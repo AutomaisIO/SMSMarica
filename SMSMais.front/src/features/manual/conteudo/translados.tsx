@@ -20,7 +20,7 @@ import type { Artigo } from '@/features/manual/tipos';
  * `FaturamentoService` — cancelado sai dos totais; `GeoController` — permissão de Unidades;
  * `ResgateService` + `LotacaoDaRota` — lista de resgate, aviso "no local", marcação só se couber agora;
  * `TransladoService.CriarAlocacaoAsync` — acompanhantes ganham lugar, condição do paciente;
- * `CompartilhamentoLocalizacaoService` — localização do paciente na espera do embarque, ADR-0079).
+ * `CompartilhamentoLocalizacaoService` — localização do paciente na espera do embarque, ADR-0082).
  */
 export const artigoTranslados: Artigo = {
   slug: 'translados',

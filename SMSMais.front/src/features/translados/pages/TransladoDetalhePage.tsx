@@ -329,7 +329,7 @@ export function TransladoDetalhePage() {
         </div>
       )}
 
-      {/* No dia da viagem, quem espera o embarque e compartilha a localização pelo app (ADR-0079). */}
+      {/* No dia da viagem, quem espera o embarque e compartilha a localização pelo app (ADR-0082). */}
       {r.status === 'Planejada' || r.status === 'EmAndamento' ? (
         <LocalizacaoDosPacientes rotaId={r.id} alocacoes={r.alocacoes} />
       ) : null}
