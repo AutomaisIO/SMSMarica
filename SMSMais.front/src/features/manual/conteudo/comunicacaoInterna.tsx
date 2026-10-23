@@ -42,6 +42,11 @@ export const artigoComunicacaoInterna: Artigo = {
     'áudio',
     'gravar áudio',
     'microfone',
+    'ouvir áudio',
+    'áudio não toca',
+    'transcrever',
+    'transcrição',
+    'áudio em texto',
     'emoji',
     'selo',
     'figurinha',
@@ -175,7 +180,7 @@ export const artigoComunicacaoInterna: Artigo = {
       id: 'escrever',
       titulo: 'Escrever, anexar, gravar áudio',
       busca:
-        'enter shift enter quebrar linha anexar arquivo clipe colar print ctrl+v 25 MB áudio microfone gravar descartar',
+        'enter shift enter quebrar linha anexar arquivo clipe colar print ctrl+v 25 MB áudio microfone gravar descartar ouvir tocar velocidade transcrever transcrição texto do áudio',
       conteudo: (
         <>
           <Lista>
@@ -191,6 +196,17 @@ export const artigoComunicacaoInterna: Artigo = {
               Com a caixa vazia, o botão da direita é o <strong>microfone</strong>: clique para gravar,
               clique na seta para enviar ou na lixeira para descartar. Na primeira vez o navegador
               pede licença para usar o microfone.
+            </Item>
+            <Item>
+              Para ouvir um áudio, clique no <strong>play</strong> laranja. A barra mostra quanto já tocou
+              e o botão <strong>1×</strong> troca a velocidade (1×, 1,5×, 2×). Se o navegador não
+              conseguir tocar, aparece o aviso e o botão <BotaoRef variante="outline">Baixar</BotaoRef>.
+            </Item>
+            <Item>
+              Embaixo de cada áudio fica o botão <BotaoRef variante="outline">Transcrever</BotaoRef>: ele
+              transforma a fala em texto. A transcrição <strong>fica guardada na mensagem</strong> e aparece
+              para todos da conversa — quem pedir depois já encontra pronta. O texto transcrito também
+              entra na <strong>busca</strong>.
             </Item>
             <Item>
               Foto, áudio e PDF abrem na própria conversa. Outros tipos de arquivo aparecem com o
@@ -291,12 +307,13 @@ export const artigoComunicacaoInterna: Artigo = {
     {
       id: 'buscar',
       titulo: 'Achar o que foi combinado',
-      busca: 'buscar busca pesquisar histórico mensagem antiga acento nome do arquivo',
+      busca: 'buscar busca pesquisar histórico mensagem antiga acento nome do arquivo áudio transcrito',
       conteudo: (
         <>
           <P>
             A caixa <strong>Buscar nas conversas</strong>, no topo da lista, procura em todas as conversas
-            de que você participa — no texto das mensagens e no nome dos arquivos — sem ligar para acento
+            de que você participa — no texto das mensagens, no nome dos arquivos e nos áudios já
+            transcritos — sem ligar para acento
             ou maiúscula. Clique num resultado para abrir a conversa já na mensagem, destacada.
           </P>
         </>

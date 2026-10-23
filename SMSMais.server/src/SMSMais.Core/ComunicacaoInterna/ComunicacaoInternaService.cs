@@ -6,6 +6,7 @@ using SMSMais.Core.Armazenamento;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.ComunicacaoInterna.Dtos;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Integracoes.ElevenLabs;
 using SMSMais.Data;
 using SMSMais.Data.Entities.ComunicacaoInterna;
 using SMSMais.Data.Entities.Conversas;
@@ -25,6 +26,7 @@ public sealed class ComunicacaoInternaService(
     IPresencaInterna presenca,
     IArmazenamentoArquivos armazenamento,
     IComunicacaoInternaNotificador notificador,
+    IElevenLabsTranscricaoService transcricao,
     ILogger<ComunicacaoInternaService> logger) : IComunicacaoInternaService
 {
     /// <summary>Teto de um anexo (arquivo ou áudio). A Api aplica o mesmo no tamanho da requisição.</summary>
@@ -245,13 +247,24 @@ public sealed class ComunicacaoInternaService(
         {
             var mime = NormalizarMime(anexo.Mime);
             var nome = NomeSeguro(anexo.Nome, anexo.EhAudio);
+            if (anexo.TamanhoDeclarado is { } declarado && declarado != anexo.Conteudo.LongLength)
+            {
+                logger.LogWarning(
+                    "Comunicação interna: anexo chegou com {Recebido} B, o navegador disse {Declarado} B (usuário {Usuario}, {Mime}, início {Inicio}).",
+                    anexo.Conteudo.LongLength, declarado, eu, mime,
+                    Convert.ToHexString(anexo.Conteudo.AsSpan(0, Math.Min(8, anexo.Conteudo.Length))));
+            }
+            var conteudo = RepararWebmSemPrimeiroByte(anexo.Conteudo, mime, anexo.EhAudio, out var reparado);
+            if (reparado)
+                logger.LogWarning("Comunicação interna: WebM chegou sem o primeiro byte (0x1A) e foi consertado (usuário {Usuario}).", eu);
+
             var chave = armazenamento.MontarChaveComunicacaoInterna(conversaId, mensagem.Id, Extensao(nome, mime));
-            await armazenamento.SalvarAsync(chave, anexo.Conteudo, ct);
+            await armazenamento.SalvarAsync(chave, conteudo, ct);
 
             mensagem.AnexoChave = chave;
             mensagem.AnexoNome = nome;
             mensagem.AnexoMime = mime;
-            mensagem.AnexoTamanhoBytes = anexo.Conteudo.LongLength;
+            mensagem.AnexoTamanhoBytes = conteudo.LongLength;
             mensagem.AnexoEhAudio = anexo.EhAudio;
             mensagem.AnexoDuracaoSegundos = anexo.EhAudio ? Math.Clamp(anexo.DuracaoSegundos ?? 0, 0, 3600) : null;
         }
@@ -332,14 +345,66 @@ public sealed class ComunicacaoInternaService(
 
         var anexo = await db.MensagensInternas.AsNoTracking()
             .Where(m => m.Id == mensagemId && m.AnexoChave != null && visiveis.Contains(m.ConversaId))
-            .Select(m => new { m.AnexoChave, m.AnexoNome, m.AnexoMime })
+            .Select(m => new { m.AnexoChave, m.AnexoNome, m.AnexoMime, m.AnexoEhAudio })
             .FirstOrDefaultAsync(ct)
             ?? throw new NaoEncontradoException("Anexo", mensagemId);
 
         var conteudo = await armazenamento.LerAsync(anexo.AnexoChave!, ct)
             ?? throw new NaoEncontradoException("Anexo", mensagemId);
+        // O que foi gravado sem o primeiro byte antes do conserto na entrada volta a tocar.
+        conteudo = RepararWebmSemPrimeiroByte(conteudo, NormalizarMime(anexo.AnexoMime), anexo.AnexoEhAudio, out _);
 
         return new ConteudoAnexoInterno(anexo.AnexoNome ?? "arquivo", MimeParaServir(anexo.AnexoMime), conteudo);
+    }
+
+    public async Task<MensagemInternaDto> TranscreverAsync(Guid mensagemId, CancellationToken ct = default)
+    {
+        var eu = Eu;
+        var minhas = await MinhasUnidadesAsync(eu, ct);
+        // SEM AsNoTracking aqui: o EF aplica o AsNoTracking de uma subconsulta à consulta INTEIRA, e a
+        // mensagem viria solta — o SaveChanges abaixo não gravaria nada (pego pelo teste em 23/10/2026).
+        var visiveis = Visiveis(db.ConversasInternas, eu, minhas).Select(c => c.Id);
+
+        var mensagem = await db.MensagensInternas
+            .Include(m => m.Conversa)
+            .FirstOrDefaultAsync(m => m.Id == mensagemId && visiveis.Contains(m.ConversaId), ct)
+            ?? throw new NaoEncontradoException("Mensagem", mensagemId);
+
+        var mime = NormalizarMime(mensagem.AnexoMime);
+        if (mensagem.AnexoChave is null || !(mensagem.AnexoEhAudio || mime.StartsWith("audio/", StringComparison.Ordinal)))
+            throw new ValidacaoException("mensagem", "Só dá para transcrever áudio.");
+
+        // Já transcrito por alguém da conversa: devolve o que está guardado (sem novo custo).
+        if (string.IsNullOrWhiteSpace(mensagem.Transcricao))
+        {
+            var conteudo = await armazenamento.LerAsync(mensagem.AnexoChave, ct)
+                ?? throw new NaoEncontradoException("Anexo", mensagemId);
+            conteudo = RepararWebmSemPrimeiroByte(conteudo, mime, mensagem.AnexoEhAudio, out _);
+
+            var r = await transcricao.TranscreverAsync(conteudo, mime, ct, mensagem.AnexoNome);
+            if (string.IsNullOrWhiteSpace(r.Texto))
+            {
+                logger.LogWarning("Comunicação interna: transcrição da mensagem {Id} falhou: {Erro}", mensagemId, r.Erro);
+                throw new ValidacaoException("transcricao", r.Erro == "transcrição vazia"
+                    ? "Não foi possível entender a fala deste áudio."
+                    : "Não foi possível transcrever agora. Tente de novo em instantes.");
+            }
+
+            mensagem.Transcricao = r.Texto;
+            mensagem.TranscritaEm = DateTime.UtcNow;
+            mensagem.TranscritaPor = eu;
+            await db.SaveChangesAsync(ct);
+
+            await NotificarAsync(() => notificador.TranscricaoAsync(
+                new TranscricaoInternaEventoDto(mensagem.ConversaId, mensagem.Id, r.Texto!),
+                Audiencia(mensagem.Conversa!, eu),
+                ct));
+        }
+
+        return await db.MensagensInternas.AsNoTracking()
+            .Where(m => m.Id == mensagemId)
+            .Select(ProjecaoMensagem)
+            .FirstAsync(ct);
     }
 
     // ---------------------------------------------------------------- Seletor de destino
@@ -399,16 +464,17 @@ public sealed class ComunicacaoInternaService(
         var visiveis = Visiveis(db.ConversasInternas.AsNoTracking(), eu, minhas).Select(c => c.Id);
 
         // f_unaccent (IMMUTABLE) nos dois lados: atendida pelo GIN trigram da migration, como a
-        // busca da Central (ver ConversaService). Acha no texto e no nome do arquivo anexado.
+        // busca da Central (ver ConversaService). Acha no texto, no nome do arquivo e no áudio transcrito.
         var padrao = $"%{termo}%";
         var achados = await db.MensagensInternas.AsNoTracking()
             .Where(m => visiveis.Contains(m.ConversaId))
             .Where(m =>
                 (m.Texto != null && EF.Functions.ILike(SmsMaisDbContext.FUnaccent(m.Texto), SmsMaisDbContext.FUnaccent(padrao)))
-                || (m.AnexoNome != null && EF.Functions.ILike(SmsMaisDbContext.FUnaccent(m.AnexoNome), SmsMaisDbContext.FUnaccent(padrao))))
+                || (m.AnexoNome != null && EF.Functions.ILike(SmsMaisDbContext.FUnaccent(m.AnexoNome), SmsMaisDbContext.FUnaccent(padrao)))
+                || (m.Transcricao != null && EF.Functions.ILike(SmsMaisDbContext.FUnaccent(m.Transcricao), SmsMaisDbContext.FUnaccent(padrao))))
             .OrderByDescending(m => m.EnviadaEm)
             .Take(LimiteBusca)
-            .Select(m => new { m.Id, m.ConversaId, Autor = m.Autor!.NomeCompleto, m.Texto, m.AnexoNome, m.EnviadaEm })
+            .Select(m => new { m.Id, m.ConversaId, Autor = m.Autor!.NomeCompleto, m.Texto, m.AnexoNome, m.Transcricao, m.EnviadaEm })
             .ToListAsync(ct);
         if (achados.Count == 0) return [];
 
@@ -420,7 +486,7 @@ public sealed class ComunicacaoInternaService(
         return achados
             .Select(a => new ResultadoBuscaInternaDto(
                 a.Id, a.ConversaId, titulos.GetValueOrDefault(a.ConversaId) ?? "Conversa", a.Autor,
-                Trecho(a.Texto ?? a.AnexoNome ?? string.Empty, termo), a.EnviadaEm))
+                Trecho(OndeAchou(a.Texto, a.AnexoNome, a.Transcricao, termo), termo), a.EnviadaEm))
             .ToList();
     }
 
@@ -467,7 +533,8 @@ public sealed class ComunicacaoInternaService(
                     m.AnexoMime ?? "application/octet-stream",
                     m.AnexoTamanhoBytes ?? 0,
                     m.AnexoDuracaoSegundos,
-                    m.AnexoEhAudio));
+                    m.AnexoEhAudio,
+                    m.Transcricao));
 
     /// <summary>A minha unidade no chat: só a padrão (lista de 0 ou 1, no formato que o recorte usa).</summary>
     private Task<List<Guid?>> MinhasUnidadesAsync(Guid eu, CancellationToken ct) =>
@@ -695,6 +762,39 @@ public sealed class ComunicacaoInternaService(
         DateTimeKind.Local => d.ToUniversalTime(),
         _ => DateTime.SpecifyKind(d, DateTimeKind.Utc),
     };
+
+    /// <summary>
+    /// WebM (EBML) sem o primeiro byte: começa em <c>45 DF A3</c> em vez de <c>1A 45 DF A3</c>, e nenhum
+    /// navegador abre. Visto em produção em 23/10/2026 num áudio gravado pelo painel — o resto do arquivo
+    /// íntegro (com o <c>0x1A</c> de volta, toca). A origem não apareceu: o mesmo fluxo na bancada chega
+    /// inteiro, e os prints de ticket em produção também. Por isso o conserto vale na entrada E na leitura.
+    /// Só para áudio/vídeo WebM: nenhum formato válido começa com esses três bytes.
+    /// </summary>
+    internal static byte[] RepararWebmSemPrimeiroByte(byte[] conteudo, string mime, bool ehAudio, out bool reparado)
+    {
+        reparado = false;
+        var candidato = ehAudio || mime.Contains("webm", StringComparison.Ordinal);
+        if (!candidato || conteudo.Length < 4 || conteudo[0] != 0x45 || conteudo[1] != 0xDF || conteudo[2] != 0xA3)
+            return conteudo;
+
+        var consertado = new byte[conteudo.Length + 1];
+        consertado[0] = 0x1A;
+        conteudo.CopyTo(consertado, 1);
+        reparado = true;
+        return consertado;
+    }
+
+    /// <summary>Qual campo mostrar no trecho do resultado: o primeiro que contém o termo.</summary>
+    private static string OndeAchou(string? texto, string? anexoNome, string? transcricao, string termo)
+    {
+        foreach (var campo in new[] { texto, transcricao, anexoNome })
+        {
+            if (campo is not null
+                && Comparador.IndexOf(campo, termo, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0)
+                return ReferenceEquals(campo, transcricao) ? "🎤 " + campo : campo;
+        }
+        return texto ?? transcricao ?? anexoNome ?? string.Empty;
+    }
 
     private static string NormalizarMime(string? mime)
     {

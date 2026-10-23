@@ -4,8 +4,9 @@ import { Download, Eye, FileText, Image as ImageIcon, Loader2, X } from 'lucide-
 import { baixarArquivo } from '@/shared/acervo/api';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { caminhoAnexo } from '@/features/comunicacao-interna/api/comunicacaoInternaApi';
-import { duracaoFmt, formaDoAnexo, tamanhoFmt } from '@/features/comunicacao-interna/lib/formatar';
+import { formaDoAnexo, tamanhoFmt } from '@/features/comunicacao-interna/lib/formatar';
 import type { AnexoInterno as Anexo } from '@/features/comunicacao-interna/types';
+import { PlayerAudioInterno } from '@/features/comunicacao-interna/components/PlayerAudioInterno';
 
 /** Miniatura só até 8 MB: cada miniatura é um download com o token (vem como blob). */
 const LIMITE_MINIATURA_BYTES = 8 * 1024 * 1024;
@@ -149,22 +150,14 @@ export function AnexoInterno({ mensagemId, anexo }: { mensagemId: string; anexo:
 
   if (forma === 'audio') {
     return (
-      <div className="flex min-w-[15rem] items-center gap-2">
-        {audio.url ? (
-          <audio controls preload="metadata" src={audio.url} className="h-9 w-full max-w-[17rem]" />
-        ) : audio.erro ? (
-          <span className="text-xs text-red-600">Não foi possível carregar o áudio.</span>
-        ) : (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando áudio…
-          </span>
-        )}
-        {anexo.duracaoSegundos != null && (
-          <span className="shrink-0 font-mono text-[11px] tabular-nums text-gray-500">
-            {duracaoFmt(anexo.duracaoSegundos)}
-          </span>
-        )}
-      </div>
+      <PlayerAudioInterno
+        mensagemId={mensagemId}
+        anexo={anexo}
+        url={audio.url}
+        carregando={audio.carregando}
+        erroDownload={audio.erro}
+        botaoBaixar={<BotaoBaixar mensagemId={mensagemId} nome={anexo.nome} />}
+      />
     );
   }
 

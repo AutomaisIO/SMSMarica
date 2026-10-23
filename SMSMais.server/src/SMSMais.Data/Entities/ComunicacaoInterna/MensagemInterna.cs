@@ -28,6 +28,11 @@ public sealed class MensagemInterna
 
     public DateTime EnviadaEm { get; set; }
 
+    /// <summary>Texto do áudio, pedido por alguém da conversa (ElevenLabs). Guardado: vale para todos e entra na busca.</summary>
+    public string? Transcricao { get; set; }
+    public DateTime? TranscritaEm { get; set; }
+    public Guid? TranscritaPor { get; set; }
+
     public ConversaInterna? Conversa { get; set; }
     public Usuario? Autor { get; set; }
     public Unidade? AutorUnidade { get; set; }

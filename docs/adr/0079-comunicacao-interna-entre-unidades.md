@@ -112,3 +112,28 @@ desenha. Viajar como texto mantém o selo buscável e não exige tabela.
 - Presença some num restart da API (todo mundo aparece offline até reconectar, segundos depois).
 - Fase 2, fora deste ADR: extensão trazendo a janela para frente; responder citando mensagem; encaminhar;
   supervisão/auditoria das conversas.
+
+## Adendo — 23/10/2026: áudio que não tocava e transcrição
+
+**O que aconteceu.** No primeiro uso em produção, um áudio de 4 s gravado pelo painel não tocava. O
+arquivo guardado chegou **sem o primeiro byte**: o WebM começava em `45 DF A3` em vez de `1A 45 DF A3`, e
+nenhum navegador abre isso. O resto do arquivo estava íntegro: com o `0x1A` recolocado, ele toca. A origem
+não apareceu. O mesmo fluxo na bancada local, do botão de gravar ao download, chega byte a byte; os prints
+de ticket em produção também chegam inteiros; e nada na API "espia" o corpo da requisição.
+
+**Decisões.**
+- **Conserto na entrada e na leitura.** WebM de áudio que chega começando em `45 DF A3` ganha o `0x1A` de
+  volta antes de ir para o armazenamento, e o download faz o mesmo com o que já estava gravado assim.
+  Nenhum formato válido começa com esses três bytes, então o conserto não altera arquivo certo.
+- **Diagnóstico.** O navegador manda `tamanhoBytes` junto do arquivo. Se não bater com o que o servidor
+  recebeu, fica no log (`Comunicação interna: anexo chegou com…`) com os primeiros bytes. É por esse aviso
+  que se acha a origem na próxima vez.
+- **Player próprio.** O WebM do `MediaRecorder` não traz a duração no cabeçalho, e o player nativo mostrava
+  `0:00` com a barra parada, dando a impressão de que não tocava. O painel passou a ter play/pausa,
+  barra com a duração que o servidor guarda (`duracaoSegundos`), velocidade 1×/1,5×/2× e aviso + Baixar
+  quando o navegador recusa.
+- **Transcrição sob demanda.** O botão "Transcrever" usa a mesma fala-para-texto dos áudios do WhatsApp
+  (ElevenLabs, `IElevenLabsTranscricaoService`). O texto fica **guardado na mensagem**
+  (`mensagem_interna.transcricao`, com `transcrita_em`/`transcrita_por`), aparece para todos da conversa
+  pelo hub (`transcricaoInterna`) e entra na busca (GIN trigram próprio). Quem pedir depois recebe o
+  texto guardado, sem novo custo. Só quem participa da conversa pode pedir.

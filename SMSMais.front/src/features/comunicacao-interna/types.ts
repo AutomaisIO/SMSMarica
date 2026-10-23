@@ -53,6 +53,8 @@ export type AnexoInterno = {
   tamanhoBytes: number;
   duracaoSegundos: number | null;
   ehAudio: boolean;
+  /** Texto do áudio, depois que alguém da conversa pediu "Transcrever" (fica guardado para todos). */
+  transcricao?: string | null;
 };
 
 export type MensagemInterna = {
@@ -96,3 +98,5 @@ export type LeituraInternaEvento = { conversaId: string; usuarioId: string; lida
 export type PresencaInternaEvento = { usuarioId: string; online: boolean };
 
 export type DigitandoInternoEvento = { conversaId: string; usuarioId: string; nome: string };
+
+export type TranscricaoInternaEvento = { conversaId: string; mensagemId: string; transcricao: string };

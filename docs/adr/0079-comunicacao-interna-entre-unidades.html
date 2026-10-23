@@ -98,6 +98,25 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>Fase 2, fora deste ADR: extensão trazendo a janela para frente; responder citando mensagem; encaminhar;</li>
 </ul>
 <p>  supervisão/auditoria das conversas.</p>
+<h2>Adendo — 23/10/2026: áudio que não tocava e transcrição</h2>
+<p><strong>O que aconteceu.</strong> No primeiro uso em produção, um áudio de 4 s gravado pelo painel não tocava. O arquivo guardado chegou <strong>sem o primeiro byte</strong>: o WebM começava em <code>45 DF A3</code> em vez de <code>1A 45 DF A3</code>, e nenhum navegador abre isso. O resto do arquivo estava íntegro: com o <code>0x1A</code> recolocado, ele toca. A origem não apareceu. O mesmo fluxo na bancada local, do botão de gravar ao download, chega byte a byte; os prints de ticket em produção também chegam inteiros; e nada na API "espia" o corpo da requisição.</p>
+<p><strong>Decisões.</strong></p>
+<ul>
+<li><strong>Conserto na entrada e na leitura.</strong> WebM de áudio que chega começando em <code>45 DF A3</code> ganha o <code>0x1A</code> de</li>
+</ul>
+<p>  volta antes de ir para o armazenamento, e o download faz o mesmo com o que já estava gravado assim.   Nenhum formato válido começa com esses três bytes, então o conserto não altera arquivo certo.</p>
+<ul>
+<li><strong>Diagnóstico.</strong> O navegador manda <code>tamanhoBytes</code> junto do arquivo. Se não bater com o que o servidor</li>
+</ul>
+<p>  recebeu, fica no log (<code>Comunicação interna: anexo chegou com…</code>) com os primeiros bytes. É por esse aviso   que se acha a origem na próxima vez.</p>
+<ul>
+<li><strong>Player próprio.</strong> O WebM do <code>MediaRecorder</code> não traz a duração no cabeçalho, e o player nativo mostrava</li>
+</ul>
+<p>  <code>0:00</code> com a barra parada, dando a impressão de que não tocava. O painel passou a ter play/pausa,   barra com a duração que o servidor guarda (<code>duracaoSegundos</code>), velocidade 1×/1,5×/2× e aviso + Baixar   quando o navegador recusa.</p>
+<ul>
+<li><strong>Transcrição sob demanda.</strong> O botão "Transcrever" usa a mesma fala-para-texto dos áudios do WhatsApp</li>
+</ul>
+<p>  (ElevenLabs, <code>IElevenLabsTranscricaoService</code>). O texto fica <strong>guardado na mensagem</strong>   (<code>mensagem_interna.transcricao</code>, com <code>transcrita_em</code>/<code>transcrita_por</code>), aparece para todos da conversa   pelo hub (<code>transcricaoInterna</code>) e entra na busca (GIN trigram próprio). Quem pedir depois recebe o   texto guardado, sem novo custo. Só quem participa da conversa pode pedir.</p>
 </main>
 </body>
 </html>

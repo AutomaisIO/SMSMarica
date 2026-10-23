@@ -74,7 +74,11 @@ export type NovaMensagemInterna = {
 export async function enviarMensagem(m: NovaMensagemInterna): Promise<MensagemInterna> {
   const form = new FormData();
   if (m.texto) form.append('texto', m.texto);
-  if (m.arquivo) form.append('arquivo', m.arquivo, m.arquivo.name);
+  if (m.arquivo) {
+    form.append('arquivo', m.arquivo, m.arquivo.name);
+    // Diagnóstico: o servidor compara com o que recebeu e registra se não bater (áudio de 23/10/2026).
+    form.append('tamanhoBytes', String(m.arquivo.size));
+  }
   if (m.audio) {
     form.append('ehAudio', 'true');
     form.append('duracaoSegundos', String(m.audio.duracaoSegundos));
@@ -82,6 +86,12 @@ export async function enviarMensagem(m: NovaMensagemInterna): Promise<MensagemIn
   const { data } = await http.post<MensagemInterna>(`${BASE}/conversas/${m.conversaId}/mensagens`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return data;
+}
+
+/** Transcreve o áudio (ElevenLabs, a mesma dos áudios do WhatsApp); se alguém já pediu, vem o guardado. */
+export async function transcreverMensagem(mensagemId: string): Promise<MensagemInterna> {
+  const { data } = await http.post<MensagemInterna>(`${BASE}/mensagens/${mensagemId}/transcricao`);
   return data;
 }
 

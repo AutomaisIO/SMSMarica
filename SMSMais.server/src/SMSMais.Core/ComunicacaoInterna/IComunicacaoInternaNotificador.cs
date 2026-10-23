@@ -18,6 +18,8 @@ public interface IComunicacaoInternaNotificador
     Task MensagemAsync(MensagemInternaEventoDto evt, AudienciaInterna audiencia, CancellationToken ct = default);
 
     Task LeituraAsync(LeituraInternaEventoDto evt, AudienciaInterna audiencia, CancellationToken ct = default);
+
+    Task TranscricaoAsync(TranscricaoInternaEventoDto evt, AudienciaInterna audiencia, CancellationToken ct = default);
 }
 
 public sealed class NotificadorComunicacaoInternaNulo : IComunicacaoInternaNotificador
@@ -26,5 +28,8 @@ public sealed class NotificadorComunicacaoInternaNulo : IComunicacaoInternaNotif
         Task.CompletedTask;
 
     public Task LeituraAsync(LeituraInternaEventoDto evt, AudienciaInterna audiencia, CancellationToken ct = default) =>
+        Task.CompletedTask;
+
+    public Task TranscricaoAsync(TranscricaoInternaEventoDto evt, AudienciaInterna audiencia, CancellationToken ct = default) =>
         Task.CompletedTask;
 }
