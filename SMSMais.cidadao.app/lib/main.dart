@@ -11,6 +11,7 @@ import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  exigirHttpsNoBuildDeLoja();
   await initializeDateFormatting('pt_BR');
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(

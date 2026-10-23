@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só no debug: HTTP liberado (backend local em http://10.0.2.2:5080 ou pelo `adb reverse`) e
+     certificados do usuário aceitos (proxy de depuração). O release usa src/main/res/xml. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

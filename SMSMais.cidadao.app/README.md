@@ -225,11 +225,32 @@ falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda ess
 ### Gerar o pacote da loja
 
 ```powershell
-flutter build appbundle --release --dart-define-from-file=firebase.json
+flutter build appbundle --release --dart-define-from-file=firebase.json --obfuscate --split-debug-info=build/app/simbolos
 ```
 
 Sai em `build/app/outputs/bundle/release/app-release.aab`. A versão vem do `pubspec.yaml`
 (`version: <nome>+<código>`): cada envio à Play precisa de um **código maior** que o anterior.
+
+O `--obfuscate` embaralha os nomes do código Dart no pacote (dificulta a engenharia reversa). Os
+símbolos para ler uma pilha de erro ficam em `build/app/simbolos`: **guarde a pasta de cada versão**
+fora do repositório, junto da cópia da chave. Sem ela, a pilha daquela versão não se lê
+(`flutter symbolize -i <pilha> -d build/app/simbolos/app.android-arm64.symbols`).
+
+### Segurança do app
+
+Do pentest VULTUS (fev/2026, projeto Aeromais) e da revisão de 23/10/2026:
+
+- **Backup desligado** (`allowBackup`, `fullBackupContent`, `dataExtractionRules`): o cache offline
+  tem dados de saúde e não vai ao backup do Google nem passa para outro aparelho.
+- **Só HTTPS no build de loja:** `exigirHttpsNoBuildDeLoja()` (em `lib/shared/api/http.dart`) impede
+  o app de abrir se a API não for `https`. Essa trava é necessária porque o cliente HTTP do Dart não
+  obedece ao `network_security_config.xml`. O config continua valendo para as bibliotecas nativas e
+  aceita só certificados do sistema (o debug libera HTTP e certificados do usuário).
+- **Sessão no cofre do aparelho** (`flutter_secure_storage`). O cache é limpo ao sair da conta.
+- **Pendente:**
+  - **Play Integrity** conferido no servidor, no lugar de detecção caseira de root/emulador. Precisa
+    ligar um projeto do Google Cloud no Play Console.
+  - **iOS:** excluir o cache do backup do iCloud antes da App Store.
 
 ## Pendências para publicar
 

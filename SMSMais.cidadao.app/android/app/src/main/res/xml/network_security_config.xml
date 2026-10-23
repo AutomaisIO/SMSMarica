@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release: só HTTPS e só certificados do sistema (um certificado instalado pelo usuário não intercepta
+     o app). Vale para as bibliotecas nativas (Firebase, abrir links); a API, que vai pelo cliente HTTP do
+     Dart, é travada em `exigirHttpsNoBuildDeLoja` (lib/shared/api/http.dart). O debug sobrescreve este
+     arquivo em src/debug/res/xml para falar com o backend local. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
