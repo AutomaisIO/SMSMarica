@@ -69,6 +69,9 @@ public static class DependencyInjection
         services.AddScoped<Translado.Resgate.IResgateService, Translado.Resgate.ResgateService>();
         services.AddScoped<Translado.IAvisoAoPacienteTransporte, Translado.AvisoAoPacientePorPush>();
         services.AddHostedService<Translado.Resgate.PerguntaResgateWorker>();
+        // Localização do paciente no dia da viagem, para o motorista (ADR-0082)
+        services.AddScoped<Translado.Localizacao.ICompartilhamentoLocalizacaoService, Translado.Localizacao.CompartilhamentoLocalizacaoService>();
+        services.AddHostedService<Translado.Localizacao.EncerramentoLocalizacaoWorker>();
         services.AddScoped<Rastreamento.Ocorrencias.IOcorrenciaVeiculoService, Rastreamento.Ocorrencias.OcorrenciaVeiculoService>();
         // Login do motorista no tablet pelo rosto (ADR-0073)
         services.AddScoped<Rastreamento.Biometria.IBiometriaTabletService, Rastreamento.Biometria.BiometriaTabletService>();

@@ -186,6 +186,16 @@ Play Services (`client version: 0`).
   `HoraChegadaResidencia`; não estava no local → sai do resgate da rota e volta para a lista, sem o
   aviso. Encerrar ou cancelar a rota devolve à lista quem ela marcou e não buscou. O resgate não muda
   o faturamento (contado na ida).
+- **Localização do paciente** ([ADR-0082](../../adr/0082-localizacao-do-paciente-no-transporte.md), 23/10):
+  enquanto espera um embarque de hoje (a ida, de 2 h antes da busca ou do início da rota até embarcar;
+  o resgate, de quando desce na unidade até embarcar na volta), o paciente pode compartilhar a
+  localização do celular pelo app ou PWA, **só com o app aberto** e com um aceite por viagem. O tablet
+  do carro da viagem consulta `GET /rastreamento/dispositivos/localizacao-passageiros` (só os
+  passageiros das rotas de hoje do veículo: coleta na ida, resgate que este carro marcou) e mostra o
+  pino com a idade e a precisão da posição, e "posição simulada" quando o aparelho avisa. A posição fica
+  só em memória no tablet. O servidor guarda só a última e a apaga na marcação de embarque ou ausência,
+  no "Parar" e, a cada minuto, de quem saiu da espera por outro caminho. O painel vê só se o paciente
+  está compartilhando (`GET /rotas/{id}/localizacao-pacientes`), sem a coordenada.
 - **Avaliação do motorista** (decisão de 19/10): ao desembarcar na clínica o paciente avalia o
   motorista da **ida**, e ao chegar em casa o do **resgate** — até 5 estrelas, uma vez por trecho
   (`Avaliacao.Trecho`, único por sessão + trecho), cada nota com o motorista, o veículo e a rota daquele

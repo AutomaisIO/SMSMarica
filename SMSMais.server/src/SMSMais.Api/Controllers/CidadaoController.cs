@@ -43,8 +43,12 @@ public sealed class CidadaoController(
     IAcompanhantesService acompanhantes,
     IPushCidadaoService push,
     IAvaliacoesService avaliacoes,
-    SMSMais.Core.Translado.Resgate.IResgateService resgates) : ControllerBase
+    SMSMais.Core.Translado.Resgate.IResgateService resgates,
+    SMSMais.Core.Translado.Localizacao.ICompartilhamentoLocalizacaoService localizacao) : ControllerBase
 {
+    /// <summary>Limite dos envios de localização, por sessão do app (ver Program.cs).</summary>
+    public const string PoliticaLocalizacao = "localizacao-cidadao";
+
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
     [HttpGet("consentimento")]
     [PermiteSemConsentimento]
@@ -198,6 +202,62 @@ public sealed class CidadaoController(
         return NoContent();
     }
 
+    /// <summary>O embarque que o paciente espera agora (a ida de hoje, a partir de 2 h antes da busca, ou o
+    /// resgate depois de descer na unidade) e se ele está compartilhando a localização com o motorista.
+    /// 204 fora da espera (ADR-0082).</summary>
+    [HttpGet("localizacao")]
+    [EnableRateLimiting(PoliticaLocalizacao)]
+    [ProducesResponseType<SMSMais.Core.Translado.Localizacao.LocalizacaoViagemDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Localizacao(CancellationToken ct)
+    {
+        var r = await localizacao.DoPacienteAsync(PacienteId(), ct);
+        return r is null ? NoContent() : Ok(r);
+    }
+
+    /// <summary>O aceite do paciente para compartilhar a localização nesta viagem: abre o compartilhamento
+    /// (idempotente) e registra o aceite na auditoria. 409 <c>localizacao.fora_da_janela</c> fora da espera.
+    /// Pelo Sandbox ou pela sessão do link do WhatsApp não compartilha: o motorista iria até a posição de
+    /// outra pessoa.</summary>
+    [HttpPost("localizacao/{sessaoId:guid}")]
+    [EnableRateLimiting(PoliticaLocalizacao)]
+    [ProducesResponseType<SMSMais.Core.Translado.Localizacao.LocalizacaoViagemDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<SMSMais.Core.Translado.Localizacao.LocalizacaoViagemDto> IniciarLocalizacao(
+        Guid sessaoId, CancellationToken ct)
+    {
+        GarantirLocalizacaoPeloProprio();
+        var sessaoApp = Jti() ?? throw new UnauthorizedAccessException("Token sem sessão.");
+        var canal = SMSMais.Core.Cidadao.Entrada.CanalAppCidadao.Normalizar(
+            Request.Headers[SMSMais.Core.Cidadao.Entrada.CanalAppCidadao.Cabecalho].ToString());
+        return await localizacao.IniciarAsync(PacienteId(), sessaoApp, canal, sessaoId, ct);
+    }
+
+    /// <summary>A posição do celular, a cada 15 s ou 20 m com o app aberto. 409
+    /// <c>localizacao.fora_da_janela</c> quando a espera acabou (embarcou, cancelou): o app para.</summary>
+    [HttpPut("localizacao/{sessaoId:guid}")]
+    [EnableRateLimiting(PoliticaLocalizacao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> EnviarLocalizacao(
+        Guid sessaoId, [FromBody] SMSMais.Core.Translado.Localizacao.AtualizarLocalizacaoRequest req, CancellationToken ct)
+    {
+        GarantirLocalizacaoPeloProprio();
+        await localizacao.AtualizarAsync(PacienteId(), sessaoId, req, ct);
+        return NoContent();
+    }
+
+    /// <summary>"Parar": encerra o compartilhamento e apaga a posição. Parar vale de qualquer sessão.</summary>
+    [HttpDelete("localizacao/{sessaoId:guid}")]
+    [EnableRateLimiting(PoliticaLocalizacao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> PararLocalizacao(Guid sessaoId, CancellationToken ct)
+    {
+        await localizacao.PararAsync(PacienteId(), sessaoId, ct);
+        return NoContent();
+    }
+
     [HttpGet("me/acompanhantes")]
     [ProducesResponseType<IReadOnlyList<AcompanhanteCidadaoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AcompanhanteCidadaoDto>> MeusAcompanhantes(CancellationToken ct) =>
@@ -240,6 +300,20 @@ public sealed class CidadaoController(
         GarantirSessaoPorCodigo();
         await acompanhantes.RemoverAsync(PacienteId(), acompanhanteId, OrigemCadastroAcompanhante.App, ct);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Compartilhar a localização é do próprio paciente, entrando com o código: a equipe pelo Sandbox não
+    /// compartilha por ele, e o link do WhatsApp pode ter chegado a outra pessoa — que levaria o motorista
+    /// até ela (ADR-0082 §7).
+    /// </summary>
+    private void GarantirLocalizacaoPeloProprio()
+    {
+        GarantirNaoPersonificada("localizacao.personificacao", "compartilhar a localização pelo paciente");
+        if (string.Equals(User.FindFirst("canal")?.Value, "magic-link", StringComparison.Ordinal))
+            throw new SMSMais.Core.Common.Excecoes.ConflitoException(
+                "localizacao.sessao_por_link",
+                "Para compartilhar a sua localização, entre no aplicativo com o código enviado por WhatsApp.");
     }
 
     /// <summary>
