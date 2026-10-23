@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:agente/app/theme.dart';
 import 'package:agente/features/deslocamento/application/deslocamento_controller.dart';
+import 'package:agente/features/navegacao/application/localizacao_passageiros_controller.dart';
 import 'package:agente/features/navegacao/data/navegacao_repository.dart';
+import 'package:agente/features/navegacao/domain/posicao_passageiro.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
 import 'package:agente/features/navegacao/presentation/widgets/confirmacao_parada_sheet.dart';
 import 'package:agente/features/navegacao/presentation/widgets/painel_passageiro.dart';
@@ -61,6 +64,12 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
 
   /// Simulação ligada (teste com o tablet parado): retoma a cada parada.
   bool _simulando = false;
+
+  /// Pinos de quem compartilha a localização pelo app (ADR-0079), por
+  /// [PosicaoPassageiro.chave]. Só em memória, como a posição.
+  final Map<String, Marker> _pinos = {};
+  ImageDescriptor? _iconePaciente;
+  bool _sincronizandoPinos = false;
 
   bool _sessaoPronta = false;
   bool _confirmando = false;
@@ -424,6 +433,8 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
         }
       });
       await _registrarParada(parada, marcas);
+      // Embarcou: o pino dele sai agora (a central já apagou a posição).
+      unawaited(_sincronizarPinos(ref.read(localizacaoPassageirosProvider)));
       // Desembarcou na unidade: a lista de resgate abre (decisão de 19/10).
       final mudou =
           parada.tipo == TipoParada.destino &&
@@ -701,6 +712,121 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
       await _aplicarPadding();
     });
     _agendarAutoOcultar();
+    // Mapa novo, sem pinos: os antigos eram do mapa anterior.
+    _pinos.clear();
+    unawaited(_sincronizarPinos(ref.read(localizacaoPassageirosProvider)));
+  }
+
+  /// O pino do paciente: um ponto azul-petróleo com halo, diferente dos pinos
+  /// vermelhos das paradas. Desenhado uma vez; sem ele, vale o pino padrão.
+  Future<ImageDescriptor> _obterIconePaciente() async {
+    final pronto = _iconePaciente;
+    if (pronto != null) return pronto;
+    try {
+      const lado = 72.0;
+      const centro = Offset(lado / 2, lado / 2);
+      final gravador = ui.PictureRecorder();
+      Canvas(gravador)
+        ..drawCircle(
+          centro,
+          lado / 2,
+          Paint()
+            ..color = PainelPassageiro.corPosicao.withValues(alpha: 0.22),
+        )
+        ..drawCircle(centro, lado / 4 + 4, Paint()..color = Colors.white)
+        ..drawCircle(
+          centro,
+          lado / 4,
+          Paint()..color = PainelPassageiro.corPosicao,
+        );
+      final imagem = await gravador.endRecording().toImage(
+            lado.toInt(),
+            lado.toInt(),
+          );
+      final png = await imagem.toByteData(format: ui.ImageByteFormat.png);
+      if (png == null) return ImageDescriptor.defaultImage;
+      return _iconePaciente = await registerBitmapImage(
+        bitmap: png,
+        imagePixelRatio: 2,
+      );
+    } on Object catch (_) {
+      return ImageDescriptor.defaultImage;
+    }
+  }
+
+  /// Pinos de quem compartilha a localização pelo app (ADR-0079), só nas
+  /// buscas que faltam: some quando o paciente embarca ou para de
+  /// compartilhar. A posição nunca sai da memória.
+  Future<void> _sincronizarPinos(
+    Map<String, PosicaoPassageiro> posicoes,
+  ) async {
+    final mapa = _viewController;
+    if (mapa == null || _sincronizandoPinos || !mounted) return;
+    _sincronizandoPinos = true;
+    try {
+      final icone = await _obterIconePaciente();
+      final desejados = <String, MarkerOptions>{};
+      for (final parada in _paradas) {
+        if (parada.concluida || parada.tipo != TipoParada.coleta) continue;
+        for (final passageiro in parada.passageiros) {
+          final posicao =
+              posicoes[chavePosicao(passageiro.id, resgate: parada.resgate)];
+          if (posicao == null) continue;
+          desejados[posicao.chave] = MarkerOptions(
+            position: LatLng(
+              latitude: posicao.latitude,
+              longitude: posicao.longitude,
+            ),
+            icon: icone,
+            anchor: const MarkerAnchor(u: 0.5, v: 0.5),
+            zIndex: 10,
+            infoWindow: InfoWindow(
+              title: passageiro.nome,
+              snippet: descreverPosicao(posicao),
+            ),
+          );
+        }
+      }
+
+      final sairam = [
+        for (final e in _pinos.entries)
+          if (!desejados.containsKey(e.key)) e.value,
+      ];
+      if (sairam.isNotEmpty) {
+        await mapa.removeMarkers(sairam);
+        _pinos.removeWhere((chave, _) => !desejados.containsKey(chave));
+      }
+
+      final mudaram = <String, Marker>{
+        for (final e in desejados.entries)
+          if (_pinos[e.key] case final pino? when pino.options != e.value)
+            e.key: pino.copyWith(options: e.value),
+      };
+      if (mudaram.isNotEmpty) {
+        final atualizados = await mapa.updateMarkers(mudaram.values.toList());
+        final chaves = mudaram.keys.toList();
+        for (var i = 0; i < chaves.length && i < atualizados.length; i++) {
+          final pino = atualizados[i];
+          if (pino != null) _pinos[chaves[i]] = pino;
+        }
+      }
+
+      final novos = [
+        for (final e in desejados.entries)
+          if (!_pinos.containsKey(e.key)) e,
+      ];
+      if (novos.isNotEmpty) {
+        final criados = await mapa.addMarkers([for (final e in novos) e.value]);
+        for (var i = 0; i < novos.length && i < criados.length; i++) {
+          final pino = criados[i];
+          if (pino != null) _pinos[novos[i].key] = pino;
+        }
+      }
+    } on Object catch (_) {
+      // Mapa descartado durante o await: a próxima consulta refaz os pinos.
+    } finally {
+      _sincronizandoPinos = false;
+    }
   }
 
   /// Simula o trajeto para testar sem dirigir (tablet parado). Apenas teste.
@@ -724,6 +850,14 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   Widget build(BuildContext context) {
     if (_erro != null) return _telaErro(_erro!);
     if (_translado == null || !_sessaoPronta) return _telaCarregando();
+
+    // Quem das buscas compartilha a localização pelo app: a cada 15 s,
+    // enquanto o mapa está aberto (ADR-0079).
+    final posicoes = ref.watch(localizacaoPassageirosProvider);
+    ref.listen<Map<String, PosicaoPassageiro>>(
+      localizacaoPassageirosProvider,
+      (_, atuais) => unawaited(_sincronizarPinos(atuais)),
+    );
 
     final proxima = _proxima;
     // Câmera inicial na próxima parada com ponto no mapa (sem nenhuma, no
@@ -854,6 +988,13 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
                   parada: proxima,
                   onCheguei: () => _confirmarParada(proxima),
                   onOcultar: _ocultarPainel,
+                  posicao: proxima.tipo == TipoParada.coleta &&
+                          proxima.passageiros.isNotEmpty
+                      ? posicoes[chavePosicao(
+                          proxima.passageiros.first.id,
+                          resgate: proxima.resgate,
+                        )]
+                      : null,
                 ),
               ),
             )

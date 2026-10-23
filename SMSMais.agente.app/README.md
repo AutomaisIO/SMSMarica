@@ -64,6 +64,27 @@ Credenciais do login são **mockadas** em A1 — qualquer usuário/senha válido
 
 Plano detalhado: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md` (trilho A).
 
+## Localização do paciente na navegação
+
+Quando o paciente compartilha a localização pelo app do cidadão, enquanto espera o embarque
+([ADR-0079](../docs/adr/0079-localizacao-do-paciente-no-transporte.md)), a tela de navegação mostra
+onde ele está:
+
+- **Consulta** `GET /rastreamento/dispositivos/localizacao-passageiros` (token do veículo) a cada 15 s,
+  só com o mapa aberto (`localizacaoPassageirosProvider`, que some ao fechar a tela). A posição fica
+  **só em memória**: nunca entra no cache cifrado da rota.
+- **Pino** azul-petróleo com halo, diferente dos pinos vermelhos das paradas. Só aparece nas buscas que
+  faltam (a ida em casa ou o resgate na unidade). Tocando nele aparecem o nome e "compartilhando · há X
+  min · ±Y m". Ele some quando o paciente embarca (a central apaga a posição no mesmo registro) ou para
+  de compartilhar.
+- **Painel do passageiro:** "compartilhando · há X min · ±Y m" e, em laranja, "posição simulada", quando
+  o celular avisa que a posição veio de um app de GPS falso. O aviso não bloqueia nada.
+- **Servidor antigo** (404): para de consultar, e a navegação segue como antes.
+
+Código: `lib/features/navegacao/{domain/posicao_passageiro,data/localizacao_passageiros_repository,application/localizacao_passageiros_controller}.dart`;
+testes em `test/features/navegacao/localizacao_passageiros_test.dart`. O pino em si só se confere no
+tablet com o build autorizado (a chave do Google é restrita ao pacote e à assinatura de release).
+
 ## Distribuição pelo MDM (quiosque)
 
 Os tablets do TFD recebem o app pelo MDM da Automais.IO, que instala, atualiza e trava o tablet

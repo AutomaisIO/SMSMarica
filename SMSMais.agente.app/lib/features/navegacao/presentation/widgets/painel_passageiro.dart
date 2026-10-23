@@ -1,4 +1,5 @@
 import 'package:agente/app/theme.dart';
+import 'package:agente/features/navegacao/domain/posicao_passageiro.dart';
 import 'package:agente/features/navegacao/domain/translado_navegacao.dart';
 import 'package:agente/features/navegacao/presentation/widgets/chat_translado_sheet.dart';
 import 'package:agente/features/navegacao/presentation/widgets/status_confirmacao_chip.dart';
@@ -14,14 +15,22 @@ class PainelPassageiro extends StatelessWidget {
     required this.parada,
     required this.onCheguei,
     this.onOcultar,
+    this.posicao,
     super.key,
   });
+
+  /// Azul-petróleo do pino do paciente no mapa.
+  static const corPosicao = Color(0xFF0E7C7B);
 
   final ParadaNavegacao parada;
   final VoidCallback onCheguei;
 
   /// Se informado, mostra um botão para ocultar o painel (vira FAB no mapa).
   final VoidCallback? onOcultar;
+
+  /// O paciente compartilha a localização pelo app (ADR-0079): há quanto
+  /// tempo e com que precisão — o pino fica no mapa.
+  final PosicaoPassageiro? posicao;
 
   bool get _isColeta => parada.tipo == TipoParada.coleta;
 
@@ -136,6 +145,25 @@ class PainelPassageiro extends StatelessWidget {
                     ),
                 ],
               ),
+              if (posicao case final posicao?) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.my_location, size: 15, color: corPosicao),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        descreverPosicao(posicao),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: posicao.simulada ? Colors.orange : corPosicao,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (principal.observacao != null) ...[
                 const SizedBox(height: 8),
                 Row(
