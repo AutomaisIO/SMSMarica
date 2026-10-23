@@ -14,9 +14,11 @@ import 'package:sms_mais_cidadao/shared/util/documentos_br.dart';
 import 'package:sms_mais_cidadao/shared/util/formatos.dart';
 import 'package:sms_mais_cidadao/shared/widgets/lista.dart';
 import 'package:sms_mais_cidadao/shared/widgets/ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Meu perfil (`Perfil.tsx`): foto, cadastro oficial (somente leitura) e contatos editáveis. O
-/// celular só troca por código enviado ao número NOVO.
+/// celular só troca por código enviado ao número NOVO. No fim, o link para pedir a exclusão da conta
+/// (exigência das lojas), que abre a página pública no navegador.
 class PerfilPage extends ConsumerStatefulWidget {
   const PerfilPage({super.key});
 
@@ -247,6 +249,11 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
               onPressed: _salvar,
             ),
           ],
+        ),
+
+        LinkDiscreto(
+          rotulo: 'Excluir minha conta',
+          onTap: () => launchUrl(Uri.parse('$appWebUrl/exclusao-de-conta/'), mode: LaunchMode.externalApplication),
         ),
       ],
     );
