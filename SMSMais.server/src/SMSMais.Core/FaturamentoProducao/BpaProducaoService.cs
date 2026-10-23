@@ -158,7 +158,7 @@ public sealed class BpaProducaoService(
             var sexoOk = pac?.Sexo is Sexo.Masculino or Sexo.Feminino;
             if (pac is not null && !sexoOk) item.Motivos.Add("Sexo do paciente não informado");
             if (cpfProf.Length == 0) item.Motivos.Add("Sem CPF do profissional executante");
-            else if (prof is null) item.Motivos.Add("CNS do profissional ainda não conciliado no e-SUS (rotina da madrugada)");
+            else if (prof is null) item.Motivos.Add("CNS do profissional ainda não conciliado no e-SUS");
             else if (string.IsNullOrWhiteSpace(prof.Cbo)) item.Motivos.Add("CBO do profissional não encontrado no e-SUS");
 
             if (item.Motivos.Count == 0 && pac is not null)

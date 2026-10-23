@@ -245,17 +245,28 @@ public sealed class EsusPecCliente : IDisposable
     /// <summary>Escolhe o acesso (lotação). Vazio = o único acesso do usuário, se houver só um.</summary>
     public async Task SelecionarAcessoAsync(string? acessoId, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(acessoId))
+        // Tenta o acesso configurado; se não vier, ou se não pertencer a ESTE usuário (ex.: a credencial
+        // foi trocada e o id ficou de outra pessoa → "Acesso não permitido"), escolhe sozinho um acesso
+        // válido do próprio usuário. As consultas que usamos (cidadão, profissional) são município-inteiro,
+        // então qualquer lotação do usuário serve.
+        if (!string.IsNullOrWhiteSpace(acessoId))
         {
-            var sessao = await GraphQlAsync(QSessao, null, "Sessao", login: false, ct);
-            var acessos = sessao["sessao"]?["profissional"]?["acessos"]?.AsArray();
-            if (acessos is null || acessos.Count != 1)
-                throw new ErroEsusPec("O usuário do e-SUS tem mais de um acesso — informe o acesso (lotação) na credencial.");
-            acessoId = acessos[0]?["id"]?.GetValue<string>();
+            try { await SelecionarAsync(acessoId, ct); return; }
+            catch (ErroEsusPec) { /* id não é deste usuário — cai no auto-abaixo */ }
         }
-        await GraphQlAsync(MutSelecionarAcesso, new JsonObject { ["input"] = new JsonObject { ["id"] = acessoId } },
-            "SelecionarAcesso", login: false, ct);
+
+        var sessao = await GraphQlAsync(QSessao, null, "Sessao", login: false, ct);
+        var acessos = sessao["sessao"]?["profissional"]?["acessos"]?.AsArray();
+        var escolhido = acessos?.FirstOrDefault(a => a?["tipo"]?.GetValue<string>() == "LOTACAO")?["id"]?.GetValue<string>()
+            ?? acessos?.FirstOrDefault()?["id"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(escolhido))
+            throw new ErroEsusPec("O usuário do e-SUS não tem nenhum acesso (lotação) disponível.");
+        await SelecionarAsync(escolhido, ct);
     }
+
+    private Task SelecionarAsync(string acessoId, CancellationToken ct) =>
+        GraphQlAsync(MutSelecionarAcesso, new JsonObject { ["input"] = new JsonObject { ["id"] = acessoId } },
+            "SelecionarAcesso", login: false, ct);
 
     /// <summary>Busca o cidadão por CPF ou CNS (o PEC acha no município todo) e lê o detalhe.
     /// Devolve null quando não acha um cidadão com ESSE documento.</summary>
