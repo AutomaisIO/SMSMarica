@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using Automais.Zap.Core.Meta;
 using Automais.Zap.Data.Entities;
@@ -334,6 +334,109 @@ public sealed class GraphMetaClientTests
     }
 
     // ---------------------------------------------------------------- apoio
+
+    // ---------------------------------------------------------------- Criar template
+
+    [Fact]
+    public async Task CriarTemplate_com_foto_sobe_a_imagem_e_manda_o_handle_e_os_botoes()
+    {
+        var (cliente, handler) = Montar(
+            (HttpStatusCode.OK, """{"id":"upload:sessao-1"}"""),
+            (HttpStatusCode.OK, """{"h":"4::handle-da-foto"}"""),
+            (HttpStatusCode.OK, """{"id":"999","status":"PENDING","category":"UTILITY"}"""));
+
+        var r = await cliente.CriarTemplateAsync("waba-1", new NovoTemplate(
+            "agendamento_data_alterada", "pt_BR", "UTILITY", "Olá, {{1}}. A data {{2}} mudou.", null, null,
+            ["Sra. Maria", "do seu exame"])
+        {
+            ImagemCabecalho = new ImagemCabecalhoNova([1, 2, 3], "image/jpeg", "mudanca-de-data.jpg"),
+            Botoes =
+            [
+                new NovoBotaoTemplate("URL", "Confirmar nova data", "https://app.exemplo/entrar/{{1}}",
+                    "https://app.exemplo/entrar/abc123"),
+                new NovoBotaoTemplate("QUICK_REPLY", "Não poderei ir"),
+            ],
+        });
+
+        r.Sucesso.Should().BeTrue(r.Erro);
+        r.Valor.Should().Be("999");
+        handler.Chamadas.Should().HaveCount(3);
+        handler.Chamadas[0].Should().Contain("app-de-teste/uploads?file_length=3").And.Contain("file_type=image%2Fjpeg");
+        handler.Chamadas[1].Should().EndWith("/upload:sessao-1");
+        handler.Chamadas[2].Should().EndWith("/waba-1/message_templates");
+
+        using var corpo = System.Text.Json.JsonDocument.Parse(handler.Corpos[^1]);
+        var componentes = corpo.RootElement.GetProperty("components").EnumerateArray().ToList();
+        var cabecalho = componentes.Single(c => c.GetProperty("type").GetString() == "HEADER");
+        cabecalho.GetProperty("format").GetString().Should().Be("IMAGE");
+        cabecalho.GetProperty("example").GetProperty("header_handle")[0].GetString().Should().Be("4::handle-da-foto");
+
+        var botoes = componentes.Single(c => c.GetProperty("type").GetString() == "BUTTONS")
+            .GetProperty("buttons").EnumerateArray().ToList();
+        botoes.Should().HaveCount(2);
+        botoes[0].GetProperty("type").GetString().Should().Be("URL");
+        botoes[0].GetProperty("url").GetString().Should().Be("https://app.exemplo/entrar/{{1}}");
+        botoes[0].GetProperty("example")[0].GetString().Should().Be("https://app.exemplo/entrar/abc123");
+        botoes[1].GetProperty("type").GetString().Should().Be("QUICK_REPLY");
+        botoes[1].GetProperty("text").GetString().Should().Be("Não poderei ir");
+    }
+
+    [Fact]
+    public async Task CriarTemplate_link_que_muda_a_cada_envio_sem_exemplo_nem_chega_a_meta()
+    {
+        var (cliente, handler) = Montar();
+
+        var r = await cliente.CriarTemplateAsync("waba-1", new NovoTemplate(
+            "x", "pt_BR", "UTILITY", "Olá.", null, null, [])
+        {
+            Botoes = [new NovoBotaoTemplate("URL", "Confirmar", "https://app.exemplo/entrar/{{1}}")],
+        });
+
+        r.Sucesso.Should().BeFalse();
+        r.Erro.Should().Contain("exemplo");
+        handler.Chamadas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CriarTemplate_foto_que_nao_e_jpeg_nem_png_nem_sobe()
+    {
+        var (cliente, handler) = Montar();
+
+        var r = await cliente.CriarTemplateAsync("waba-1", new NovoTemplate(
+            "x", "pt_BR", "UTILITY", "Olá.", null, null, [])
+        {
+            ImagemCabecalho = new ImagemCabecalhoNova([1], "image/webp", "x.webp"),
+        });
+
+        r.Sucesso.Should().BeFalse();
+        handler.Chamadas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Painel_le_um_botao_por_linha_na_ordem()
+    {
+        var (botoes, erro) = Automais.Zap.Api.Pages.Admin.TemplatesModel.LerBotoes(
+            "Link: Confirmar nova data | https://app.exemplo/entrar/{{1}} | https://app.exemplo/entrar/abc\r\n"
+            + "\r\nResposta: Não poderei ir\n");
+
+        erro.Should().BeNull();
+        botoes.Should().HaveCount(2);
+        botoes[0].Should().Be(new NovoBotaoTemplate("URL", "Confirmar nova data",
+            "https://app.exemplo/entrar/{{1}}", "https://app.exemplo/entrar/abc"));
+        botoes[1].Should().Be(new NovoBotaoTemplate("QUICK_REPLY", "Não poderei ir"));
+    }
+
+    [Theory]
+    [InlineData("Confirmar")]
+    [InlineData("Link: Confirmar")]
+    [InlineData("Link: Confirmar | https://app.exemplo/entrar/{{1}}")]
+    public void Painel_recusa_botao_que_nao_entende_antes_de_ir_a_meta(string linha)
+    {
+        var (botoes, erro) = Automais.Zap.Api.Pages.Admin.TemplatesModel.LerBotoes(linha);
+
+        erro.Should().NotBeNull();
+        botoes.Should().BeEmpty();
+    }
 
     private static (GraphMetaClient Cliente, HandlerFalso Handler) Montar(
         params (HttpStatusCode Codigo, string Corpo)[] respostas)

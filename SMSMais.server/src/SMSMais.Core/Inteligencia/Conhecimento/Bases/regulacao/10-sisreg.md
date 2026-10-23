@@ -68,7 +68,12 @@ vagas_reserva, vagas_total, status, agenda_local, visto_em, ausente`.
 
 Tabela liberada inteira. `tipo`: 1 remarcação (data/hora) · 2 troca de profissional · 3 troca de
 procedimento · 4 **sumiu do SISREG** (provável cancelamento). `valor_antes`/`valor_depois` em texto,
-`detectada_em`, `tratada_em` (nulo = ninguém tratou), `comunicada_em` (paciente avisado).
+`detectada_em`, `tratada_em` (nulo = ainda na fila da equipe), `comunicada_em` (paciente avisado;
+`comunicada_por` nulo = avisado pelo automático). Desde 23/10/2026 a remarcação avisa o paciente
+sozinha (ADR-0083): `aviso_automatico_em` = quando o automático olhou a linha, `nota_aviso` = o que
+foi feito com o paciente ou por que ficou para a equipe ("Retida: …" = freio de leitura errada).
+Quem já conhecia a data antiga recebe o modelo "Mudança de data": a comunicação fica com
+`comunicacao_paciente.remarcada_de` = a data anterior que ele conhecia.
 Liga em `solicitacao` por `solicitacao_id`.
 
 ## Catálogo SISREG

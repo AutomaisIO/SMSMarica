@@ -1567,6 +1567,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("proxima_tentativa_em");
 
+                    b.Property<DateTime?>("RemarcadaDe")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("remarcada_de");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -6788,6 +6792,15 @@ namespace SMSMais.Data.Migrations
                     b.Property<DateTime?>("AvisoCancelamentoLigadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("aviso_cancelamento_ligado_em");
+
+                    b.Property<bool>("AvisoRemarcacaoHabilitado")
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("aviso_remarcacao_habilitado");
+
+                    b.Property<DateTime?>("AvisoRemarcacaoLigadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("aviso_remarcacao_ligado_em");
 
                     b.Property<bool>("ConciliacaoCancelamentoHabilitada")
                         .ValueGeneratedOnAdd()
@@ -14254,6 +14267,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime?>("AvisoAutomaticoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("aviso_automatico_em");
+
                     b.Property<string>("CodigoSolicitacao")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -14270,6 +14287,11 @@ namespace SMSMais.Data.Migrations
                     b.Property<DateTime>("DetectadaEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("detectada_em");
+
+                    b.Property<string>("NotaAviso")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("nota_aviso");
 
                     b.Property<Guid>("SolicitacaoId")
                         .HasColumnType("uuid")

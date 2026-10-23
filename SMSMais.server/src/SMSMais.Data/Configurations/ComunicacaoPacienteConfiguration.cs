@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SMSMais.Data.Entities;
 
@@ -25,6 +25,7 @@ internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguratio
         builder.Property(n => n.Origem).HasColumnName("origem").HasConversion<int>()
             .HasDefaultValue(Entities.Enums.OrigemComunicacao.Automatico).IsRequired();
         builder.Property(n => n.EnviadoPor).HasColumnName("enviado_por");
+        builder.Property(n => n.RemarcadaDe).HasColumnName("remarcada_de");
         builder.Property(n => n.IgnorarVerificacaoTelefone)
             .HasColumnName("ignorar_verificacao_telefone").HasDefaultValue(false).IsRequired();
         builder.Property(n => n.IgnorarJanelaHorario)

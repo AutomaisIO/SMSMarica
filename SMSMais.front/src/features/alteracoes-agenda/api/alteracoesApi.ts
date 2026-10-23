@@ -18,6 +18,10 @@ export type AlteracaoAgenda = {
   detectadaEm: string;
   tratadaEm: string | null;
   comunicadaEm: string | null;
+  /** O que foi feito com o paciente a partir desta alteração (pelo automático ou pela equipe). */
+  notaAviso: string | null;
+  /** O aviso saiu pelo automático (true) ou pelo botão (false). Sem aviso, false. */
+  avisadaAutomaticamente: boolean;
 };
 
 export type PaginaAlteracoesAgenda = { total: number; itens: AlteracaoAgenda[] };
@@ -44,8 +48,8 @@ export async function tratarLoteAlteracoesAgenda(ids: string[]): Promise<number>
 }
 
 /**
- * Reenvia a confirmação ao paciente com os dados atuais e trata a alteração.
- * Revoga os links anteriores — quem tem a data velha na mão perde o acesso a ela.
+ * Reenvia a confirmação ao paciente com os dados atuais e trata a alteração. A resposta anterior
+ * do paciente (inclusive um "não vou") deixa de valer: era sobre a data antiga.
  */
 export async function comunicarAlteracaoAgenda(id: string): Promise<void> {
   await http.post(`/alteracoes-agenda/${id}/comunicar`);

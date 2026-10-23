@@ -89,8 +89,13 @@ public sealed class LembreteAgendamentoService(
                 && unidadesLigadas.Contains(s.UnidadeExecutanteId)
                 && s.DataAgendada > agora && s.DataAgendada <= limite
                 && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Cancelada
+                // Um lembrete por agendamento — e remarcação é agendamento novo: o lembrete da data
+                // antiga, dispensado pelo aviso de remarcação, volta a valer (é rearmado abaixo).
                 && !db.ComunicacoesPaciente.Any(c =>
-                    c.SolicitacaoId == s.Id && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento)
+                    c.SolicitacaoId == s.Id && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                    && !(c.Status == StatusComunicacao.Dispensada
+                         && c.MotivoFalha != null
+                         && c.MotivoFalha.StartsWith(AvisoRemarcacaoService.CarimboLembreteRemarcado)))
                 // Falou com essa pessoa faz pouco tempo? Então não fala de novo.
                 && !db.ComunicacoesPaciente.Any(c =>
                     c.SolicitacaoId == s.Id
@@ -117,6 +122,15 @@ public sealed class LembreteAgendamentoService(
             .Take(MaximoPorPassagem)
             .ToListAsync(ct);
 
+        // Os lembretes de data antiga que a remarcação deixou para rearmar (a linha é única por
+        // solicitação × finalidade: o lembrete da data nova é a mesma linha, zerada).
+        var idsCandidatos = candidatos.Select(s => (Guid?)s.Id).ToList();
+        var paraRearmar = await db.ComunicacoesPaciente
+            .Where(c => idsCandidatos.Contains(c.SolicitacaoId)
+                && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                && c.Status == StatusComunicacao.Dispensada)
+            .ToDictionaryAsync(c => c.SolicitacaoId!.Value, ct);
+
         var enfileirados = 0;
         foreach (var s in candidatos)
         {
@@ -126,7 +140,10 @@ public sealed class LembreteAgendamentoService(
             var ligados = codigosLigados.GetValueOrDefault(s.UnidadeExecutanteId);
             if (string.IsNullOrEmpty(codigo) || ligados is null || !ligados.Contains(codigo)) continue;
 
-            await comunicacoes.EnfileirarAsync(s, FinalidadeComunicacao.LembreteAgendamento, ct);
+            if (paraRearmar.TryGetValue(s.Id, out var daDataAntiga))
+                ComunicacaoPacienteService.RearmarParaNovoEnvio(daDataAntiga);
+            else
+                await comunicacoes.EnfileirarAsync(s, FinalidadeComunicacao.LembreteAgendamento, ct);
             enfileirados++;
         }
 

@@ -126,6 +126,11 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.ReforcoConfirmacaoHabilitado = request.ReforcoConfirmacaoHabilitado ?? c.ReforcoConfirmacaoHabilitado;
         c.OrientacaoPostoHabilitada = request.OrientacaoPostoHabilitada ?? c.OrientacaoPostoHabilitada;
         c.AvisoAgendamentoExternoHabilitado = request.AvisoAgendamentoExternoHabilitado ?? c.AvisoAgendamentoExternoHabilitado;
+        // Mesma régua do aviso de cancelamento: ligar vale daqui para frente.
+        var avisoRemarcacao = request.AvisoRemarcacaoHabilitado ?? c.AvisoRemarcacaoHabilitado;
+        if (avisoRemarcacao && !c.AvisoRemarcacaoHabilitado)
+            c.AvisoRemarcacaoLigadoEm = agora;
+        c.AvisoRemarcacaoHabilitado = avisoRemarcacao;
         c.ConciliacaoIntervaloMinutos = intervalo;
         c.ConciliacaoHoraInicio = horaInicio;
         c.ConciliacaoHoraFim = horaFim;
@@ -172,5 +177,7 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.AvisoCancelamentoLigadoEm,
         c.ReforcoConfirmacaoHabilitado,
         c.OrientacaoPostoHabilitada,
-        c.AvisoAgendamentoExternoHabilitado);
+        c.AvisoAgendamentoExternoHabilitado,
+        c.AvisoRemarcacaoHabilitado,
+        c.AvisoRemarcacaoLigadoEm);
 }

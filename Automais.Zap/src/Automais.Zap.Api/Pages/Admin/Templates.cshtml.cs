@@ -1,4 +1,4 @@
-using System.Text.Encodings.Web;
+﻿using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Automais.Zap.Api.Infra;
 using Automais.Zap.Core.Meta;
@@ -168,9 +168,13 @@ public sealed partial class TemplatesModel(
         return await escopo.PodeVerAsync(waba.TenantId, ct) ? waba : null;
     }
 
+    /// <param name="imagemId">Arte do cabeçalho (uma das publicadas em Artes). Vai à Meta como a imagem
+    /// de exemplo que a aprovação exige e, aprovado ou não, já fica escolhida como a arte do modelo —
+    /// sem ela o envio de modelo com foto é recusado.</param>
+    /// <param name="botoes">Um botão por linha, ver <see cref="LerBotoes"/>.</param>
     public async Task<IActionResult> OnPostCriarAsync(
         Guid id, string nome, string idioma, string categoria, string corpo,
-        string? cabecalho, string? rodape, string? exemplos, CancellationToken ct)
+        string? cabecalho, string? rodape, string? exemplos, Guid? imagemId, string? botoes, CancellationToken ct)
     {
         var waba = await AutorizarAsync(id, ct);
         if (waba is null) return Forbid();
@@ -183,13 +187,45 @@ public sealed partial class TemplatesModel(
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
 
+        var (listaBotoes, erroBotoes) = LerBotoes(botoes);
+        if (erroBotoes is not null)
+        {
+            Erro = erroBotoes;
+            return RedirectToPage(new { id });
+        }
+
+        ImagemCabecalhoNova? imagem = null;
+        if (imagemId is { } arteId && arteId != Guid.Empty)
+        {
+            // Só arte do próprio cliente: o id vem do formulário, não da confiança no formulário.
+            var doCliente = await midias.ListarAsync(waba.TenantId, "cabecalho", ct);
+            var conteudo = doCliente.Any(m => m.Id == arteId) ? await midias.ObterConteudoAsync(arteId, ct) : null;
+            if (conteudo is null)
+            {
+                Erro = "A arte escolhida não foi encontrada entre as artes deste cliente.";
+                return RedirectToPage(new { id });
+            }
+            imagem = new ImagemCabecalhoNova(conteudo.Conteudo, conteudo.MimeType, conteudo.NomeArquivo);
+        }
+
         var r = await graph.CriarTemplateAsync(waba.WabaId,
-            new NovoTemplate(nome, idioma, categoria, corpo, cabecalho, rodape, lista), ct);
+            new NovoTemplate(nome, idioma, categoria, corpo, cabecalho, rodape, lista)
+            {
+                ImagemCabecalho = imagem,
+                Botoes = listaBotoes,
+            }, ct);
 
         if (r.Sucesso)
         {
             Recado = $"Template \"{nome}\" enviado para aprovação (id {r.Valor}). " +
                      "O resultado chega pelo webhook, em message_template_status_update.";
+            if (imagem is not null)
+            {
+                var (ok, erroArte) = await artes.DefinirAsync(waba.Id, nome, imagemId!.Value, escopo.UsuarioId, ct);
+                Recado += ok
+                    ? " A arte do cabeçalho já ficou escolhida para os envios."
+                    : $" A arte NÃO ficou escolhida ({erroArte}) — escolha no cartão do modelo.";
+            }
         }
         else
         {
@@ -197,6 +233,48 @@ public sealed partial class TemplatesModel(
         }
 
         return RedirectToPage(new { id });
+    }
+
+    /// <summary>
+    /// Botões do formulário, um por linha, na ordem em que aparecem no modelo:
+    /// <list type="bullet">
+    ///   <item><c>Resposta: Não poderei ir</c> — resposta rápida;</item>
+    ///   <item><c>Link: Confirmar | https://app.exemplo/entrar/{{1}} | https://app.exemplo/entrar/abc123</c>
+    ///   — texto, endereço e, se o endereço termina em <c>{{1}}</c> (muda a cada envio), um endereço
+    ///   completo de exemplo.</item>
+    /// </list>
+    /// Linha em branco é ignorada; qualquer outra coisa é erro dito na tela, antes de ir à Meta.
+    /// </summary>
+    public static (IReadOnlyList<NovoBotaoTemplate> Botoes, string? Erro) LerBotoes(string? texto)
+    {
+        var botoes = new List<NovoBotaoTemplate>();
+        var linhas = (texto ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var linha in linhas)
+        {
+            var doisPontos = linha.IndexOf(':');
+            var tipo = doisPontos < 0 ? "" : linha[..doisPontos].Trim().ToLowerInvariant();
+            var resto = doisPontos < 0 ? "" : linha[(doisPontos + 1)..].Trim();
+            switch (tipo)
+            {
+                case "resposta" when resto.Length > 0:
+                    botoes.Add(new NovoBotaoTemplate("QUICK_REPLY", resto));
+                    break;
+                case "link":
+                {
+                    var partes = resto.Split('|', StringSplitOptions.TrimEntries);
+                    if (partes.Length < 2 || partes[0].Length == 0 || partes[1].Length == 0)
+                        return ([], $"Botão de link sem texto ou sem endereço: \"{linha}\".");
+                    var exemplo = partes.Length > 2 && partes[2].Length > 0 ? partes[2] : null;
+                    if (partes[1].Contains("{{1}}") && exemplo is null)
+                        return ([], $"O link \"{partes[0]}\" muda a cada envio ({{{{1}}}}) e precisa de um endereço de exemplo depois de outra |.");
+                    botoes.Add(new NovoBotaoTemplate("URL", partes[0], partes[1], exemplo));
+                    break;
+                }
+                default:
+                    return ([], $"Não entendi o botão \"{linha}\". Use \"Resposta: texto\" ou \"Link: texto | endereço | exemplo\".");
+            }
+        }
+        return (botoes, null);
     }
 
     public async Task<IActionResult> OnPostExcluirAsync(Guid id, string nome, CancellationToken ct)

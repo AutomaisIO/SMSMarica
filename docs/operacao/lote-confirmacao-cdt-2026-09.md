@@ -196,50 +196,40 @@ cadastro, e 270 pessoas ficariam bloqueadas sem motivo.
 
 ## Em observação (não tratado de propósito)
 
-### Remarcação pela regulação depois do aviso
+### Remarcação pela regulação depois do aviso — TRATADO em 23/10/2026
 
 **A preocupação (Bernardo, 20/09/2026):** a regulação **altera agendamento**, principalmente os que
 estão longe na agenda. Quando isso acontece depois de o paciente já ter sido avisado — e pior,
 depois de ele ter **confirmado** —, o que ele tem no WhatsApp é uma data que não vale mais.
 
-**Por que não se trata agora:** ainda não se sabe o tamanho do problema. Pode ser raro (e aí um
-aviso manual pela tela de Alterações de Agenda resolve), ou frequente o bastante para exigir
-reenvio automático em toda remarcação. Medir primeiro, decidir depois.
+**O que foi feito ([ADR-0083](../adr/0083-aviso-automatico-da-remarcacao-do-sisreg.md)):** o pedido
+veio antes da medição — "precisamos avisar automaticamente ao detectar a alteração e marcar no
+histórico da solicitação". Ficou como o gatilho desta seção previa: **reenvio automático na
+remarcação + a confirmação antiga deixa de valer**, para a pessoa responder de novo sobre a data
+certa. Com um freio por unidade (volume de leitura errada não avisa ninguém) e o que precisa de
+gente na fila de Alterações da agenda, com o motivo. A remarcação aparece na linha do tempo da
+solicitação. O botão **Comunicar/Avisar paciente** da fila nunca tinha funcionado (chamava o envio
+manual de exame/laudo); passou a funcionar pelo mesmo caminho.
 
-**O que já existe:** a varredura detecta a mudança e registra em `sisreg_alteracao_agenda`; a tela
-*Alterações de Agenda* tem o botão **Comunicar**, que refaz a mensagem com a data nova e revoga os
-links antigos. É manual e depende de alguém olhar a fila.
-
-**O que ainda não existe:** nada avisa que aquele paciente **já havia confirmado** a data velha. A
-confirmação continua marcada como válida para um horário que mudou — é o caso que mais incomoda.
-
-**Como acompanhar (rodar junto com a leitura semanal):**
+**Para acompanhar depois de ligado:**
 
 ```sql
--- 1. Remarcações que atingiram gente já avisada (e quantas já tinham confirmado)
+-- O que o aviso automático fez com as remarcações, por dia
 select date_trunc('day', a.detectada_em)::date dia,
        count(*) remarcacoes,
-       count(*) filter (where c.id is not null) ja_avisados,
-       count(*) filter (where s.status_confirmacao = 2) ja_confirmados,
-       count(*) filter (where a.comunicada_em is not null) recomunicados
+       count(*) filter (where a.comunicada_em is not null and a.comunicada_por is null) avisadas_sozinhas,
+       count(*) filter (where a.aviso_automatico_em is not null and a.tratada_em is null) para_a_equipe,
+       count(*) filter (where a.nota_aviso like 'Retida%') retidas
 from smsmarica.sisreg_alteracao_agenda a
-join smsmarica.solicitacao s on s.id = a.solicitacao_id
-left join smsmarica.comunicacao_paciente c
-       on c.solicitacao_id = s.id and c.finalidade = 1 and c.enviado_em is not null
-where a.detectada_em > now() - interval '30 days'
+where a.tipo = 1 and a.detectada_em > now() - interval '30 days'
 group by 1 order by 1 desc;
 
--- 2. O estoque do risco AGORA: confirmados cuja data mudou depois da confirmação
-select count(*)
+-- Por que ficaram para a equipe
+select left(a.nota_aviso, 60) motivo, count(*)
 from smsmarica.sisreg_alteracao_agenda a
-join smsmarica.solicitacao s on s.id = a.solicitacao_id
-where s.status_confirmacao = 2 and s.confirmado_em < a.detectada_em
-  and s.data_agendada > now();
+where a.tipo = 1 and a.aviso_automatico_em is not null and a.tratada_em is null
+group by 1 order by 2 desc;
 ```
-
-**Gatilho de decisão:** se aparecer remarcação de gente já confirmada com alguma regularidade
-(digamos, mais de 5 por semana), vira trabalho: reenvio automático na remarcação + derrubar a
-confirmação antiga, para a pessoa responder de novo sobre a data certa.
 
 ## Registro do que foi feito
 

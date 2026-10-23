@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -439,7 +439,22 @@ public sealed partial class GraphMetaClient(
 
         var componentes = new List<object>();
 
-        if (!string.IsNullOrWhiteSpace(template.Cabecalho))
+        if (template.ImagemCabecalho is { } imagem)
+        {
+            // A Meta só aprova modelo com foto se vier uma imagem de exemplo, e ela não aceita URL:
+            // quer o handle da Upload API do App — o mesmo caminho da foto de perfil.
+            if (imagem.MimeType is not ("image/jpeg" or "image/jpg" or "image/png"))
+            {
+                return ResultadoMeta<string>.Falha("A foto do cabeçalho precisa ser JPEG ou PNG.");
+            }
+
+            var handle = await SubirParaUploadApiAsync(creds!, imagem.Conteudo, imagem.MimeType,
+                imagem.NomeArquivo, "a foto do cabeçalho", ct);
+            if (!handle.Sucesso) return ResultadoMeta<string>.Falha(handle.Erro!);
+
+            componentes.Add(new { type = "HEADER", format = "IMAGE", example = new { header_handle = new[] { handle.Valor! } } });
+        }
+        else if (!string.IsNullOrWhiteSpace(template.Cabecalho))
         {
             componentes.Add(new { type = "HEADER", format = "TEXT", text = template.Cabecalho });
         }
@@ -464,6 +479,37 @@ public sealed partial class GraphMetaClient(
         if (!string.IsNullOrWhiteSpace(template.Rodape))
         {
             componentes.Add(new { type = "FOOTER", text = template.Rodape });
+        }
+
+        if (template.Botoes.Count > 0)
+        {
+            var botoes = new List<object>();
+            foreach (var b in template.Botoes)
+            {
+                switch (b.Tipo.ToUpperInvariant())
+                {
+                    case "QUICK_REPLY":
+                        botoes.Add(new { type = "QUICK_REPLY", text = b.Texto });
+                        break;
+                    case "URL" when string.IsNullOrWhiteSpace(b.Url):
+                        return ResultadoMeta<string>.Falha($"O botão \"{b.Texto}\" é de link e está sem o endereço.");
+                    case "URL" when b.Url!.Contains("{{1}}"):
+                        // URL dinâmica: sem exemplo a Meta recusa com erro pouco explicativo.
+                        if (string.IsNullOrWhiteSpace(b.ExemploUrl))
+                        {
+                            return ResultadoMeta<string>.Falha(
+                                $"O botão \"{b.Texto}\" tem link que muda a cada envio ({{{{1}}}}) e precisa de um endereço de exemplo.");
+                        }
+                        botoes.Add(new { type = "URL", text = b.Texto, url = b.Url, example = new[] { b.ExemploUrl } });
+                        break;
+                    case "URL":
+                        botoes.Add(new { type = "URL", text = b.Texto, url = b.Url });
+                        break;
+                    default:
+                        return ResultadoMeta<string>.Falha($"Tipo de botão desconhecido: {b.Tipo}.");
+                }
+            }
+            componentes.Add(new { type = "BUTTONS", buttons = botoes });
         }
 
         var corpoJson = JsonSerializer.Serialize(new
@@ -569,61 +615,15 @@ public sealed partial class GraphMetaClient(
         if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
 
         // A foto não vai direto no perfil: primeiro sobe pela Resumable Upload API do App,
-        // que devolve um handle; é o handle que o perfil aceita. file_name é obrigatório
-        // no contrato da Upload API, mesmo que a Meta hoje tolere a ausência.
+        // que devolve um handle; é o handle que o perfil aceita.
         var nomeArquivo = contentType == "image/png" ? "perfil.png" : "perfil.jpg";
-        var abertura = await ChamarAsync(HttpMethod.Post,
-            $"{creds!.AppId}/uploads?file_length={conteudo.Length}&file_type={Uri.EscapeDataString(contentType)}&file_name={nomeArquivo}",
-            creds.TokenSistema!, new Dictionary<string, string>(), ct);
-        if (!abertura.Sucesso) return ResultadoMeta<bool>.Falha("abrindo o upload: " + abertura.Erro);
-
-        var sessao = Texto(abertura.Valor!, "id");
-        if (string.IsNullOrWhiteSpace(sessao))
-        {
-            return ResultadoMeta<bool>.Falha("A Meta não devolveu o id da sessão de upload.");
-        }
-
-        // O envio dos bytes usa o esquema "OAuth" (não "Bearer") e o offset em header — é o
-        // contrato da Upload API, diferente do resto da Graph.
-        string? handle;
-        try
-        {
-            var baseUrl = (await config.ObterAsync(ct)).BaseUrl.TrimEnd('/');
-            using var req = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/{sessao}");
-            req.Headers.TryAddWithoutValidation("Authorization", $"OAuth {creds.TokenSistema}");
-            req.Headers.TryAddWithoutValidation("file_offset", "0");
-            req.Content = new ByteArrayContent(conteudo);
-            req.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-
-            using var resp = await http.SendAsync(req, ct);
-            var texto = await resp.Content.ReadAsStringAsync(ct);
-            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(texto) ? "{}" : texto);
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                var msg = doc.RootElement.TryGetProperty("error", out var err)
-                    ? Texto(err, "message") ?? $"HTTP {(int)resp.StatusCode}"
-                    : $"HTTP {(int)resp.StatusCode}";
-                logger.LogWarning("Upload da foto de perfil recusado: {Erro}", msg);
-                return ResultadoMeta<bool>.Falha("enviando a imagem: " + msg);
-            }
-
-            handle = Texto(doc.RootElement, "h");
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-        {
-            logger.LogWarning(ex, "Falha enviando a foto de perfil.");
-            return ResultadoMeta<bool>.Falha(ex is TaskCanceledException ? "timeout enviando a imagem" : ex.Message);
-        }
-
-        if (string.IsNullOrWhiteSpace(handle))
-        {
-            return ResultadoMeta<bool>.Falha("A Meta não devolveu o handle da imagem enviada.");
-        }
+        var subida = await SubirParaUploadApiAsync(creds!, conteudo, contentType, nomeArquivo, "a imagem", ct);
+        if (!subida.Sucesso) return ResultadoMeta<bool>.Falha(subida.Erro!);
+        var handle = subida.Valor!;
 
         logger.LogInformation("Trocando a foto de perfil do número {Numero}.", phoneNumberId);
         var grava = await ChamarJsonAsync(HttpMethod.Post, $"{phoneNumberId}/whatsapp_business_profile",
-            creds.TokenSistema!,
+            creds!.TokenSistema!,
             JsonSerializer.Serialize(new { messaging_product = "whatsapp", profile_picture_handle = handle }), ct);
         return grava.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(grava.Erro!);
     }
@@ -698,6 +698,65 @@ public sealed partial class GraphMetaClient(
     }
 
     // ---------------------------------------------------------------- Apoio
+
+    /// <summary>
+    /// Sobe um arquivo pela Resumable Upload API do App e devolve o handle (<c>h</c>) — o que a
+    /// foto de perfil e a imagem de exemplo do template aceitam no lugar do arquivo. Duas chamadas:
+    /// abre a sessão em <c>{app}/uploads</c> e manda os bytes nela, com o esquema "OAuth" (não
+    /// "Bearer") e o offset em header — é o contrato da Upload API, diferente do resto da Graph.
+    /// <c>file_name</c> é obrigatório no contrato, mesmo que a Meta hoje tolere a ausência.
+    /// </summary>
+    /// <param name="oQue">"a imagem", "a foto do cabeçalho" — entra nas mensagens de erro.</param>
+    private async Task<ResultadoMeta<string>> SubirParaUploadApiAsync(
+        CredenciaisMeta creds, byte[] conteudo, string contentType, string nomeArquivo, string oQue,
+        CancellationToken ct)
+    {
+        var abertura = await ChamarAsync(HttpMethod.Post,
+            $"{creds.AppId}/uploads?file_length={conteudo.Length}&file_type={Uri.EscapeDataString(contentType)}&file_name={Uri.EscapeDataString(nomeArquivo)}",
+            creds.TokenSistema!, new Dictionary<string, string>(), ct);
+        if (!abertura.Sucesso) return ResultadoMeta<string>.Falha("abrindo o upload: " + abertura.Erro);
+
+        var sessao = Texto(abertura.Valor!, "id");
+        if (string.IsNullOrWhiteSpace(sessao))
+        {
+            return ResultadoMeta<string>.Falha("A Meta não devolveu o id da sessão de upload.");
+        }
+
+        string? handle;
+        try
+        {
+            var baseUrl = (await config.ObterAsync(ct)).BaseUrl.TrimEnd('/');
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/{sessao}");
+            req.Headers.TryAddWithoutValidation("Authorization", $"OAuth {creds.TokenSistema}");
+            req.Headers.TryAddWithoutValidation("file_offset", "0");
+            req.Content = new ByteArrayContent(conteudo);
+            req.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+
+            using var resp = await http.SendAsync(req, ct);
+            var texto = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(texto) ? "{}" : texto);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var msg = doc.RootElement.TryGetProperty("error", out var err)
+                    ? Texto(err, "message") ?? $"HTTP {(int)resp.StatusCode}"
+                    : $"HTTP {(int)resp.StatusCode}";
+                logger.LogWarning("Upload de {OQue} recusado: {Erro}", oQue, msg);
+                return ResultadoMeta<string>.Falha($"enviando {oQue}: " + msg);
+            }
+
+            handle = Texto(doc.RootElement, "h");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Falha enviando {OQue} para a Meta.", oQue);
+            return ResultadoMeta<string>.Falha(ex is TaskCanceledException ? $"timeout enviando {oQue}" : ex.Message);
+        }
+
+        return string.IsNullOrWhiteSpace(handle)
+            ? ResultadoMeta<string>.Falha("A Meta não devolveu o handle do arquivo enviado.")
+            : ResultadoMeta<string>.Ok(handle);
+    }
 
     private async Task<(CredenciaisMeta? Creds, string? Erro)> CredenciaisSistemaAsync(CancellationToken ct)
     {

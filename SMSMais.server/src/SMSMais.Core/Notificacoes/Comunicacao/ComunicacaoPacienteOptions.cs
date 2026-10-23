@@ -1,4 +1,4 @@
-namespace SMSMais.Core.Notificacoes.Comunicacao;
+﻿namespace SMSMais.Core.Notificacoes.Comunicacao;
 
 public sealed class ComunicacaoPacienteOptions
 {
@@ -89,6 +89,29 @@ public sealed class ComunicacaoPacienteOptions
     /// falta a essa pessoa não é lembrar a data, é entrar na conversa.</para>
     /// </summary>
     public string TemplateLembreteConfirmado { get; set; } = "agendamento_proximo";
+
+    /// <summary>
+    /// MUDANÇA DE DATA para número PROVADO (verificado, ou que acabou de se identificar) — quem já
+    /// conhecia a data e teve o agendamento remarcado no SISREG (ADR-0083). Foto "Mudança de data" no
+    /// cabeçalho (a arte é do painel do Zap).
+    ///   {{1}} = "Sr. João" / "Sra. Maria" · {{2}} = "do seu exame de MAMOGRAFIA" /
+    ///   "da sua consulta de CARDIOLOGIA" · {{3}} = data anterior · {{4}} = nova data
+    ///   ("20/11/2026 às 09:30h")
+    /// Botões na ordem do modelo: URL (token; abrir = confirmar) e "Não poderei ir" (payload
+    /// confirma:). Sem "Falar com atendente" — decisão do dono.
+    /// <para>Enquanto não estiver aprovado (fora do catálogo), a mensagem ESPERA: a confirmação
+    /// comum no lugar leria como se nada tivesse mudado.</para>
+    /// </summary>
+    public string TemplateMudancaDeData { get; set; } = "agendamento_data_alterada";
+
+    /// <summary>
+    /// MUDANÇA DE DATA para número NÃO provado: sem dado nenhum (ADR-0057) — só que a data mudou.
+    ///   {{1}} = "Sr. João" / "Sra. Maria" · {{2}} = "do seu exame" / "da sua consulta"
+    /// Botões (resposta rápida, a Meta devolve o TEXTO): "Quero mais informações" e "Não sou essa
+    /// pessoa" — os mesmos da primeira mensagem, tratados pela máquina de identificação; depois de
+    /// se identificar, a pessoa recebe as duas datas na conversa. Mesma foto e mesma espera.
+    /// </summary>
+    public string TemplateMudancaDeDataAnonimo { get; set; } = "agendamento_data_alterada_anonimo";
 
     /// <summary>
     /// Aviso de agendamento de CAMPANHA (ADR-0062) — já com os dados, e com o local e o endereço

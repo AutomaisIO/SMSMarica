@@ -1,4 +1,4 @@
-using SMSMais.Core.Common.Excecoes;
+﻿using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Conversas;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Notificacoes.WhatsApp;
@@ -138,6 +138,14 @@ public sealed class TesteModeloService(
                 "Sr. Teste", "O seu exame", "Mamografia", $"{data} às 14:00h",
                 "o Sr. é assistido", "do seu exame", "o Sr.",
             ];
+
+        if (Igual(modelo, opts.TemplateMudancaDeData))
+            return
+            [
+                "Sra. Teste", "do seu exame de Mamografia", $"{data} às 08:00h",
+                $"{amanha.AddDays(7):dd/MM/yyyy} às 14:00h",
+            ];
+        if (Igual(modelo, opts.TemplateMudancaDeDataAnonimo)) return ["Sra. Teste", "do seu exame"];
 
         return [.. Enumerable.Range(1, Math.Max(0, parametros)).Select(i => $"exemplo {i}")];
     }

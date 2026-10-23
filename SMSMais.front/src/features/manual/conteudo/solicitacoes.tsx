@@ -29,8 +29,11 @@ export const artigoSolicitacoes: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/solicitacoes',
   publico: 'Recepção das unidades e quem acompanha os agendamentos',
-  atualizadoEm: '2026-10-22',
+  atualizadoEm: '2026-10-23',
   palavrasChave: [
+    'remarcada no sisreg',
+    'data mudou',
+    'histórico da solicitação',
     'diagnóstico inicial',
     'CID',
     'CID-10',
@@ -239,13 +242,23 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'detalhe',
       titulo: 'O detalhe: exame e consulta',
-      busca: 'detalhe exame consulta ciclo do exame equipamento worklist PACS laudo histórico de mensagens seção SISREG diagnóstico inicial CID CID-10 hipótese diagnóstica procedimentos deste pedido',
+      busca: 'detalhe exame consulta ciclo do exame equipamento worklist PACS laudo histórico de mensagens seção SISREG diagnóstico inicial CID CID-10 hipótese diagnóstica procedimentos deste pedido remarcada no sisreg data antiga data nova linha do tempo profissional trocado',
       conteudo: (
         <>
           <P>
             Clicar na linha abre o detalhe. Nos dois tipos ele mostra o paciente, quem solicitou, a
             regulação (nº do SISREG, chave, prioridade), a chegada, o histórico de mensagens e
             contatos, a seção do SISREG e a linha do tempo.
+          </P>
+          <P>
+            No quadro <strong>Comunicação com o paciente</strong> aparece também o que o SISREG mudou
+            no agendamento depois que ele chegou aqui: <em>Remarcada no SISREG</em> (de quando para
+            quando), profissional ou procedimento trocado, ou que ele sumiu da leitura. Embaixo de
+            cada uma, o que foi feito com o paciente — na remarcação, normalmente{' '}
+            <em>confirmação reenviada com a data nova</em>, e a mensagem aparece com a marca{' '}
+            <em>mudança de data</em> (ela diz ao paciente a data anterior e a nova). É o que explica
+            por que uma ficha confirmada voltou a não confirmada. A fila dessas mudanças é a tela{' '}
+            <em>Alterações de agenda</em>.
           </P>
           <P>
             Na <strong>Regulação</strong> aparece também o <strong>diagnóstico inicial</strong> — o

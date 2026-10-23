@@ -24,9 +24,13 @@ export const artigoMensageria: Artigo = {
   icone: BellRing,
   rota: '/app/mensageria',
   publico: 'Quem responde pelo canal: coordenação, regulação e quem configura o envio automático',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-23',
   palavrasChave: [
     'mensageria',
+    'remarcação',
+    'aviso de remarcação',
+    'remarcado no sisreg',
+    'data nova',
     'lembrete do ser',
     'aviso de cancelamento do ser',
     'voltou para a fila',
@@ -474,7 +478,7 @@ export const artigoMensageria: Artigo = {
       id: 'regras',
       titulo: 'Regras e parâmetros: o que governa o automático',
       busca:
-        'regras parâmetros janela de envio horário 21h véspera atendimento de amanhã atendimento hoje mesmo dia primeira vez dispensada vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente reforço orientação ao posto interruptor desligado ser sernit esus agendamentos externos',
+        'regras parâmetros janela de envio horário 21h véspera atendimento de amanhã atendimento hoje mesmo dia primeira vez dispensada vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente remarcação remarcado data nova mudança de data agendamento_data_alterada aviso de remarcação retida reforço orientação ao posto interruptor desligado ser sernit esus agendamentos externos',
       conteudo: (
         <div className="space-y-4">
           <Sub>Parâmetros de disparo</Sub>
@@ -576,6 +580,29 @@ export const artigoMensageria: Artigo = {
             assustar no meio da tarde, dá para afrouxar na hora.
           </Callout>
 
+          <Sub>Remarcações feitas no SISREG</Sub>
+          <P>
+            Quando a regulação muda o dia ou a hora de um agendamento que já estava aqui, a sincronização acha a data
+            nova. Com <strong>Avisar o paciente da data nova</strong> ligado (nasce ligado), quem já conhecia a data
+            antiga recebe o aviso <strong>Mudança de data</strong>, com foto própria: com o número confirmado, a
+            data anterior, a nova e os botões <em>Confirmar nova data</em> e <em>Não poderei ir</em>; sem o número
+            confirmado, só que a data mudou — as datas chegam depois que a pessoa toca em <em>Quero mais
+            informações</em> e se identifica. A resposta que tinha dado deixa de valer: era sobre a data antiga. Segue
+            o horário de envio e as chaves por unidade e procedimento da lista abaixo. São dois modelos próprios da
+            Meta (<em>agendamento_data_alterada</em> e <em>agendamento_data_alterada_anonimo</em>); enquanto não
+            estiverem aprovados, a mensagem espera na fila — a confirmação comum não sai no lugar.
+          </P>
+          <P>
+            O que o automático não avisa — quem tinha dito que não ia, quem está em atendimento, quem foi remarcado para
+            hoje, unidade sem aviso por WhatsApp — fica em <em>Alterações da agenda</em>, com o motivo. Se uma unidade
+            tem remarcações demais num dia, com cara de leitura errada do SISREG, nenhuma sai e chega um aviso no
+            celular. Os detalhes estão no artigo <em>Alterações de agenda</em>.
+          </P>
+          <Callout tipo="regra" titulo="Ligar o aviso de remarcação vale daqui para frente">
+            Como o aviso de cancelamento: ao ligar, o sistema anota a hora, e só remarcações achadas depois dela são
+            avisadas. As antigas continuam em Alterações da agenda para a equipe.
+          </Callout>
+
           <Sub>Reforço da confirmação (quem não se identificou)</Sub>
           <P>
             Dois interruptores para quem recebeu a primeira mensagem num número não verificado e não se identificou.
@@ -612,7 +639,7 @@ export const artigoMensageria: Artigo = {
             nesta lista, e a do procedimento, que se escolhe na aba SISREG da própria unidade (o link{' '}
             <em>Escolher procedimentos</em> leva para lá). A coluna do meio mostra quantos procedimentos daquela
             unidade estão marcados — "3 de 40" é o aviso ligado com quase nada passando. Essas chaves governam a
-            confirmação e o lembrete. O aviso de cancelamento não passa por elas: quando está ligado, sai para
+            confirmação, o lembrete e o aviso de remarcação. O aviso de cancelamento não passa por elas: quando está ligado, sai para
             qualquer unidade.
           </P>
         </div>

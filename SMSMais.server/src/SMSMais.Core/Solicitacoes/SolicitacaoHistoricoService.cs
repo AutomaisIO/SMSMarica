@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Solicitacoes.Dtos;
@@ -45,7 +45,8 @@ public sealed class SolicitacaoHistoricoService(
                 c.LidoEm,
                 c.VisualizadoEm,
                 c.MotivoFalha,
-                c.MensagemWhatsApp != null ? c.MensagemWhatsApp.ErroMeta : null))
+                c.MensagemWhatsApp != null ? c.MensagemWhatsApp.ErroMeta : null,
+                c.RemarcadaDe != null))
             .ToListAsync(ct);
 
         var contatos = await (
@@ -76,11 +77,43 @@ public sealed class SolicitacaoHistoricoService(
                 r.ValorAnterior,
                 r.ValorNovo,
                 r.UsuarioNome,
-                r.CriadoEm))
+                r.CriadoEm,
+                null))
             .ToListAsync(ct);
+
+        // O que o SISREG mudou no agendamento (23/10/2026). Já estava registrado desde 04/09 — só não
+        // aparecia aqui, e quem abria a solicitação via a data nova sem saber que um dia foi outra.
+        // Ancorado na espinha, como as comunicações.
+        var doSisreg = await (
+            from a in db.SisregAlteracoesAgenda.AsNoTracking()
+            where a.SolicitacaoId == solicitacaoId
+            join u in db.Usuarios.AsNoTracking() on a.ComunicadaPor equals (Guid?)u.Id into ju
+            from u in ju.DefaultIfEmpty()
+            select new { a.Id, a.Tipo, a.ValorAntes, a.ValorDepois, a.DetectadaEm, a.NotaAviso, Quem = u != null ? u.NomeCompleto : null })
+            .ToListAsync(ct);
+
+        // "Sumiu" não tem de/para que diga alguma coisa ("agendado → não veio no arquivo"): o rótulo basta.
+        eventos.AddRange(doSisreg.Select(a => new HistoricoEventoDto(
+            a.Id,
+            AcaoDoSisreg(a.Tipo),
+            a.Tipo == TipoAlteracaoAgenda.Ausente ? null : a.ValorAntes,
+            a.Tipo == TipoAlteracaoAgenda.Ausente ? null : a.ValorDepois,
+            null,
+            a.DetectadaEm,
+            a.NotaAviso is null ? null : a.Quem is null ? a.NotaAviso : $"{a.NotaAviso} (por {a.Quem})")));
+        eventos = [.. eventos.OrderByDescending(e => e.CriadoEm)];
 
         return new HistoricoSolicitacaoDto(comunicacoes, contatos, eventos);
     }
+
+    /// <summary>O nome do evento na linha do tempo — o front traduz para o rótulo.</summary>
+    private static string AcaoDoSisreg(TipoAlteracaoAgenda tipo) => tipo switch
+    {
+        TipoAlteracaoAgenda.DataHora => "RemarcadaNoSisreg",
+        TipoAlteracaoAgenda.Executante => "ExecutanteAlteradoNoSisreg",
+        TipoAlteracaoAgenda.Procedimento => "ProcedimentoAlteradoNoSisreg",
+        _ => "AusenteNoSisreg",
+    };
 
     public async Task RegistrarContatoAsync(
         Guid solicitacaoExameId, RegistrarContatoRequest request, CancellationToken ct = default)

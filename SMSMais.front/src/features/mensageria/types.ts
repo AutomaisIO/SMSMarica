@@ -176,6 +176,13 @@ export type ConfirmacaoConfiguracao = {
    * com o nome do local e sem mandar ao posto. Nasce ligado.
    */
   avisoAgendamentoExternoHabilitado: boolean;
+  /**
+   * Aviso automático da remarcação feita no SISREG (23/10/2026): quem já recebeu a data antiga
+   * recebe a confirmação de novo, com a nova. Nasce ligado.
+   */
+  avisoRemarcacaoHabilitado: boolean;
+  /** Quando o aviso de remarcação foi ligado. Só leitura: o que foi detectado antes não é avisado. */
+  avisoRemarcacaoLigadoEm?: string | null;
   /** De quantos em quantos minutos o motor relê o dia corrente (1 a 120). */
   conciliacaoIntervaloMinutos: number;
   /** Hora em que a leitura do dia começa (0–23). */
@@ -203,6 +210,7 @@ export type SalvarConfirmacaoConfiguracao = Pick<
   | 'reforcoConfirmacaoHabilitado'
   | 'orientacaoPostoHabilitada'
   | 'avisoAgendamentoExternoHabilitado'
+  | 'avisoRemarcacaoHabilitado'
   | 'conciliacaoIntervaloMinutos'
   | 'conciliacaoHoraInicio'
   | 'conciliacaoHoraFim'

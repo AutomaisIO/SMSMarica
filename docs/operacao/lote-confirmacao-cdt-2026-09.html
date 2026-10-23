@@ -19,6 +19,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -94,13 +97,49 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h2>Como medir</h2>
 <p><strong>Na tela:</strong> menu <strong>Confirmações</strong> → aba <em>Fila de envio</em> (números do dia, filtros por situação) e aba <em>Respostas dos pacientes</em> (confirmaram / não vão, com motivo). A coorte é reconhecível por <code>origem = Manual</code> e a data do disparo.</p>
 <p><strong>No banco</strong> (<code>scripts/</code> deste diretório não existe de propósito — são consultas de leitura, para rodar pelo caminho de sempre):</p>
-<p>```sql -- 1. ENTREGA — a coorte é o lote manual disparado no dia with coorte as (   select c.<em> from smsmarica.comunicacao_paciente c   where c.finalidade = 1 and c.origem = 2          -- confirmação, origem Manual     and c.criado_em &gt;= timestamp '2026-09-17 00:00' ) select status, count(</em>) from coorte group by 1 order by 1; -- 1=na fila 2=enviada 3=entregue 4=lida 5=falha 6=sem celular -- 7=aguardando verificado 8=aguardando identificação 9=número inválido</p>
-<p>-- 2. IDENTIFICAÇÃO — quem está no meio do desafio agora select e.etapa, count(*) from smsmarica.verificacao_cadastral_estado e where e.criado_em &gt;= timestamp '2026-09-18 00:00' group by 1 order by 1; -- 1=CPF 2=nascimento 3=nome 4=nova tentativa 5=esgotado 6=vínculo</p>
-<p>-- 3. RESPOSTA ao agendamento (a coorte pela agenda) select s.status_confirmacao, s.confirmado_canal, count(*) from smsmarica.solicitacao s join smsmarica.unidade u on u.id = s.unidade_executante_id where u.nome like 'CDT%'   and s.data_agendada &gt;= timestamp '2026-09-21' and s.data_agendada &lt; timestamp '2026-09-28' group by 1, 2 order by 1, 2;   -- 1=pendente 2=confirmada 3=cancelada</p>
-<p>-- 4. MOTIVOS de quem não vai (ler a olho, é o que a contagem não diz) select s.motivo_cancelamento_paciente, s.confirmacao_cancelada_em from smsmarica.solicitacao s join smsmarica.unidade u on u.id = s.unidade_executante_id where u.nome like 'CDT%' and s.status_confirmacao = 3   and s.confirmacao_cancelada_em &gt;= timestamp '2026-09-18' order by 2;</p>
-<p>-- 5. CARGA — conversas abertas por dia (comparar com a semana anterior) select date_trunc('day', primeiro_contato_em)::date dia, count(*) from smsmarica.conversa where primeiro_contato_em &gt; now() - interval '14 days' group by 1 order by 1;</p>
-<p>-- 6. NÚMEROS INVÁLIDOS surgidos no período select date_trunc('day', criado_em)::date dia, count(*) from smsmarica.pendencia_cadastro where tipo = 1 and criado_em &gt; now() - interval '14 days' group by 1 order by 1;</p>
-<p>-- 7. BLOQUEIOS da guarda de LGPD (o que deixou de sair, e por quê) select date_trunc('day', ocorrido_em)::date dia, count(*) from smsmarica.whatsapp_mensagem where erro_meta like 'BLOQUEADO%' and ocorrido_em &gt; now() - interval '14 days' group by 1 order by 1; ```</p>
+<pre><code>-- 1. ENTREGA — a coorte é o lote manual disparado no dia
+with coorte as (
+  select c.* from smsmarica.comunicacao_paciente c
+  where c.finalidade = 1 and c.origem = 2          -- confirmação, origem Manual
+    and c.criado_em &gt;= timestamp '2026-09-17 00:00'
+)
+select status, count(*) from coorte group by 1 order by 1;
+-- 1=na fila 2=enviada 3=entregue 4=lida 5=falha 6=sem celular
+-- 7=aguardando verificado 8=aguardando identificação 9=número inválido
+
+-- 2. IDENTIFICAÇÃO — quem está no meio do desafio agora
+select e.etapa, count(*) from smsmarica.verificacao_cadastral_estado e
+where e.criado_em &gt;= timestamp '2026-09-18 00:00' group by 1 order by 1;
+-- 1=CPF 2=nascimento 3=nome 4=nova tentativa 5=esgotado 6=vínculo
+
+-- 3. RESPOSTA ao agendamento (a coorte pela agenda)
+select s.status_confirmacao, s.confirmado_canal, count(*)
+from smsmarica.solicitacao s join smsmarica.unidade u on u.id = s.unidade_executante_id
+where u.nome like 'CDT%'
+  and s.data_agendada &gt;= timestamp '2026-09-21' and s.data_agendada &lt; timestamp '2026-09-28'
+group by 1, 2 order by 1, 2;   -- 1=pendente 2=confirmada 3=cancelada
+
+-- 4. MOTIVOS de quem não vai (ler a olho, é o que a contagem não diz)
+select s.motivo_cancelamento_paciente, s.confirmacao_cancelada_em
+from smsmarica.solicitacao s join smsmarica.unidade u on u.id = s.unidade_executante_id
+where u.nome like 'CDT%' and s.status_confirmacao = 3
+  and s.confirmacao_cancelada_em &gt;= timestamp '2026-09-18' order by 2;
+
+-- 5. CARGA — conversas abertas por dia (comparar com a semana anterior)
+select date_trunc('day', primeiro_contato_em)::date dia, count(*)
+from smsmarica.conversa where primeiro_contato_em &gt; now() - interval '14 days'
+group by 1 order by 1;
+
+-- 6. NÚMEROS INVÁLIDOS surgidos no período
+select date_trunc('day', criado_em)::date dia, count(*)
+from smsmarica.pendencia_cadastro where tipo = 1 and criado_em &gt; now() - interval '14 days'
+group by 1 order by 1;
+
+-- 7. BLOQUEIOS da guarda de LGPD (o que deixou de sair, e por quê)
+select date_trunc('day', ocorrido_em)::date dia, count(*)
+from smsmarica.whatsapp_mensagem
+where erro_meta like 'BLOQUEADO%' and ocorrido_em &gt; now() - interval '14 days'
+group by 1 order by 1;</code></pre>
 <h2>Cronograma de leitura</h2>
 <div class="tw"><table><thead><tr><th>Quando</th><th>O que olhar</th><th>Decisão possível</th></tr></thead><tbody>
 <tr><td><strong>D+0</strong> (dia do disparo, 8h–9h)</td><td>escoamento da fila, falhas, sem celular</td><td>parar o resto se a falha passar de 10%</td></tr>
@@ -127,15 +166,25 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>A marca se desfaz sozinha.</strong> Ela vale para um número específico; quando o cadastro passa a usar outro — ou passa a ter algum —, o próprio envio fecha o que deixou de valer. Sem isso a lista viraria um cemitério de problemas já resolvidos, e a recepção pararia de confiar nela.</p>
 <p><strong>Não confundir com "número negado".</strong> Negado é quem atendeu e disse <em>não sou essa pessoa</em>: é questão de LGPD, e bloqueia mensagem automática (<a href="../adr/0057-destinatario-correto-e-contato-negado.md">ADR-0057</a>). Telefone comprometido é problema de entrega — o número provavelmente é do paciente mesmo. Por isso são tabelas separadas: misturar faria uma regra de privacidade pegar carona num problema de cadastro, e 270 pessoas ficariam bloqueadas sem motivo.</p>
 <h2>Em observação (não tratado de propósito)</h2>
-<h3>Remarcação pela regulação depois do aviso</h3>
+<h3>Remarcação pela regulação depois do aviso — TRATADO em 23/10/2026</h3>
 <p><strong>A preocupação (Bernardo, 20/09/2026):</strong> a regulação <strong>altera agendamento</strong>, principalmente os que estão longe na agenda. Quando isso acontece depois de o paciente já ter sido avisado — e pior, depois de ele ter <strong>confirmado</strong> —, o que ele tem no WhatsApp é uma data que não vale mais.</p>
-<p><strong>Por que não se trata agora:</strong> ainda não se sabe o tamanho do problema. Pode ser raro (e aí um aviso manual pela tela de Alterações de Agenda resolve), ou frequente o bastante para exigir reenvio automático em toda remarcação. Medir primeiro, decidir depois.</p>
-<p><strong>O que já existe:</strong> a varredura detecta a mudança e registra em <code>sisreg_alteracao_agenda</code>; a tela <em>Alterações de Agenda</em> tem o botão <strong>Comunicar</strong>, que refaz a mensagem com a data nova e revoga os links antigos. É manual e depende de alguém olhar a fila.</p>
-<p><strong>O que ainda não existe:</strong> nada avisa que aquele paciente <strong>já havia confirmado</strong> a data velha. A confirmação continua marcada como válida para um horário que mudou — é o caso que mais incomoda.</p>
-<p><strong>Como acompanhar (rodar junto com a leitura semanal):</strong></p>
-<p>```sql -- 1. Remarcações que atingiram gente já avisada (e quantas já tinham confirmado) select date_trunc('day', a.detectada_em)::date dia,        count(<em>) remarcacoes,        count(</em>) filter (where c.id is not null) ja_avisados,        count(<em>) filter (where s.status_confirmacao = 2) ja_confirmados,        count(</em>) filter (where a.comunicada_em is not null) recomunicados from smsmarica.sisreg_alteracao_agenda a join smsmarica.solicitacao s on s.id = a.solicitacao_id left join smsmarica.comunicacao_paciente c        on c.solicitacao_id = s.id and c.finalidade = 1 and c.enviado_em is not null where a.detectada_em &gt; now() - interval '30 days' group by 1 order by 1 desc;</p>
-<p>-- 2. O estoque do risco AGORA: confirmados cuja data mudou depois da confirmação select count(*) from smsmarica.sisreg_alteracao_agenda a join smsmarica.solicitacao s on s.id = a.solicitacao_id where s.status_confirmacao = 2 and s.confirmado_em &lt; a.detectada_em   and s.data_agendada &gt; now(); ```</p>
-<p><strong>Gatilho de decisão:</strong> se aparecer remarcação de gente já confirmada com alguma regularidade (digamos, mais de 5 por semana), vira trabalho: reenvio automático na remarcação + derrubar a confirmação antiga, para a pessoa responder de novo sobre a data certa.</p>
+<p><strong>O que foi feito (<a href="../adr/0083-aviso-automatico-da-remarcacao-do-sisreg.md">ADR-0083</a>):</strong> o pedido veio antes da medição — "precisamos avisar automaticamente ao detectar a alteração e marcar no histórico da solicitação". Ficou como o gatilho desta seção previa: <strong>reenvio automático na remarcação + a confirmação antiga deixa de valer</strong>, para a pessoa responder de novo sobre a data certa. Com um freio por unidade (volume de leitura errada não avisa ninguém) e o que precisa de gente na fila de Alterações da agenda, com o motivo. A remarcação aparece na linha do tempo da solicitação. O botão <strong>Comunicar/Avisar paciente</strong> da fila nunca tinha funcionado (chamava o envio manual de exame/laudo); passou a funcionar pelo mesmo caminho.</p>
+<p><strong>Para acompanhar depois de ligado:</strong></p>
+<pre><code>-- O que o aviso automático fez com as remarcações, por dia
+select date_trunc('day', a.detectada_em)::date dia,
+       count(*) remarcacoes,
+       count(*) filter (where a.comunicada_em is not null and a.comunicada_por is null) avisadas_sozinhas,
+       count(*) filter (where a.aviso_automatico_em is not null and a.tratada_em is null) para_a_equipe,
+       count(*) filter (where a.nota_aviso like 'Retida%') retidas
+from smsmarica.sisreg_alteracao_agenda a
+where a.tipo = 1 and a.detectada_em &gt; now() - interval '30 days'
+group by 1 order by 1 desc;
+
+-- Por que ficaram para a equipe
+select left(a.nota_aviso, 60) motivo, count(*)
+from smsmarica.sisreg_alteracao_agenda a
+where a.tipo = 1 and a.aviso_automatico_em is not null and a.tratada_em is null
+group by 1 order by 2 desc;</code></pre>
 <h2>Registro do que foi feito</h2>
 <div class="tw"><table><thead><tr><th>Quando</th><th>O quê</th></tr></thead><tbody>
 <tr><td>17/09 21:04</td><td>chave de aviso do CDT <strong>ligada</strong> pelo Bernardo</td></tr>

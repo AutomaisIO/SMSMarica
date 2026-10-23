@@ -24,6 +24,8 @@ internal sealed class SisregAlteracaoAgendaConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.TratadaPor).HasColumnName("tratada_por");
         builder.Property(x => x.ComunicadaEm).HasColumnName("comunicada_em");
         builder.Property(x => x.ComunicadaPor).HasColumnName("comunicada_por");
+        builder.Property(x => x.AvisoAutomaticoEm).HasColumnName("aviso_automatico_em");
+        builder.Property(x => x.NotaAviso).HasColumnName("nota_aviso").HasMaxLength(500);
 
         builder.HasOne(x => x.Solicitacao)
             .WithMany()

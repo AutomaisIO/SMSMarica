@@ -133,6 +133,7 @@ export function AbaRegras() {
   const [reforcoConfirmacao, setReforcoConfirmacao] = useState(false);
   const [orientacaoPosto, setOrientacaoPosto] = useState(false);
   const [avisoExterno, setAvisoExterno] = useState(true);
+  const [avisoRemarcacao, setAvisoRemarcacao] = useState(true);
   // Texto, não número: `Number('')` é 0, e um campo apagado para redigitar viraria "lê a cada 0
   // minutos, das 0h às 0h" na legenda e um 400 no salvar. Guardar o que foi digitado deixa o campo
   // vazio de verdade enquanto a pessoa redigita, e a conversão acontece num lugar só, na hora de
@@ -155,6 +156,8 @@ export function AbaRegras() {
     setReforcoConfirmacao(cfg.data.reforcoConfirmacaoHabilitado);
     setOrientacaoPosto(cfg.data.orientacaoPostoHabilitada);
     setAvisoExterno(cfg.data.avisoAgendamentoExternoHabilitado);
+    // Servidor anterior à chave não a manda: vale o padrão (ligado), não "desligado".
+    setAvisoRemarcacao(cfg.data.avisoRemarcacaoHabilitado ?? true);
     setConciliacaoIntervalo(String(cfg.data.conciliacaoIntervaloMinutos));
     setConciliacaoInicio(String(cfg.data.conciliacaoHoraInicio));
     setConciliacaoFim(String(cfg.data.conciliacaoHoraFim));
@@ -415,6 +418,47 @@ export function AbaRegras() {
         </div>
 
         {/*
+          Remarcação (23/10/2026): a sincronização já achava a data nova; agora o paciente fica
+          sabendo. Mesmas chaves por unidade e procedimento da confirmação (lista abaixo).
+        */}
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900">Remarcações feitas no SISREG</h3>
+          <p className="mt-0.5 text-xs text-gray-600">
+            Quando a regulação muda o dia ou a hora de um agendamento que já estava aqui, a sincronização acha a
+            data nova e ela aparece em Alterações da agenda e na linha do tempo da solicitação.
+          </p>
+          <div className="mt-3">
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={avisoRemarcacao}
+                onChange={(e) => setAvisoRemarcacao(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                Avisar o paciente da data nova
+                <span className="block text-xs text-gray-500">
+                  Quem já conhecia a data antiga recebe o aviso &quot;Mudança de data&quot;: com o número confirmado, a
+                  data anterior, a nova e os botões Confirmar nova data e Não poderei ir; sem o número confirmado, só
+                  que a data mudou — as datas vêm depois que a pessoa se identificar. A resposta que tinha dado deixa
+                  de valer. Enquanto os dois modelos não estiverem aprovados na Meta, a mensagem espera na fila. Fica para a equipe, em Alterações da agenda, quem tinha dito que não ia, quem
+                  está em atendimento, quem foi remarcado para hoje e unidade sem aviso por WhatsApp. Se uma unidade
+                  tiver remarcações demais num dia (cara de leitura errada do SISREG), nenhuma sai e chega um aviso
+                  no celular. Vale daqui para frente.
+                </span>
+                {cfg.data?.avisoRemarcacaoHabilitado && cfg.data.avisoRemarcacaoLigadoEm ? (
+                  <span className="block text-xs text-gray-500">
+                    Ligado em {formatarInstante(cfg.data.avisoRemarcacaoLigadoEm)} — só remarcações achadas depois
+                    disso são avisadas.
+                  </span>
+                ) : null}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/*
           Régua de quem não se identificou: dois interruptores, e não um, para dar para ligar a
           orientação ao posto primeiro — ela é o toque que encerra a insistência, e é o que menos
           arrisca incomodar. Os dois nascem desligados: ligar é decisão de operação, feita aqui.
@@ -516,6 +560,7 @@ export function AbaRegras() {
                   reforcoConfirmacaoHabilitado: reforcoConfirmacao,
                   orientacaoPostoHabilitada: orientacaoPosto,
                   avisoAgendamentoExternoHabilitado: avisoExterno,
+                  avisoRemarcacaoHabilitado: avisoRemarcacao,
                   conciliacaoIntervaloMinutos: conciliacao.intervalo!,
                   conciliacaoHoraInicio: conciliacao.ini!,
                   conciliacaoHoraFim: conciliacao.f!,
@@ -535,7 +580,8 @@ export function AbaRegras() {
           <p className="mt-1 text-sm text-gray-600">
             A mensagem só sai quando a <strong>unidade executante</strong> está ligada <strong>e</strong> o procedimento
             também está marcado para avisar (os procedimentos se escolhem na aba SISREG da unidade). Vale para a
-            confirmação e o lembrete; o aviso de cancelamento, quando ligado, sai para a rede toda.
+            confirmação, o lembrete e o aviso de remarcação; o aviso de cancelamento, quando ligado, sai para a rede
+            toda.
           </p>
         </div>
         {alterarUnidade.isError ? <p className="text-sm text-red-700">{extrairMensagemDeErro(alterarUnidade.error)}</p> : null}

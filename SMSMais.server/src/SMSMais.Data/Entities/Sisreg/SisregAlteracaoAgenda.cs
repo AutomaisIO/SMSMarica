@@ -50,4 +50,14 @@ public class SisregAlteracaoAgenda
     /// muitas vezes não muda nada para quem vai comparecer.</summary>
     public DateTime? ComunicadaEm { get; set; }
     public Guid? ComunicadaPor { get; set; }
+
+    /// <summary>Quando o aviso automático da remarcação olhou esta linha (23/10/2026). Null = ainda
+    /// não olhou. Olhar não quer dizer avisar: o que ele decidiu fica em <see cref="NotaAviso"/>, e
+    /// o que ele devolveu à equipe continua sem <see cref="TratadaEm"/>.</summary>
+    public DateTime? AvisoAutomaticoEm { get; set; }
+
+    /// <summary>O que foi feito com o paciente a partir desta alteração, em uma frase — "confirmação
+    /// reenviada com a data nova", "o paciente tinha avisado que não ia: confirme por telefone"…
+    /// Aparece na fila e na linha do tempo da solicitação.</summary>
+    public string? NotaAviso { get; set; }
 }

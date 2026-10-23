@@ -23,9 +23,11 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-23',
   palavrasChave: [
     'confirmação',
+    'remarcação',
+    'confirmação da data antiga',
     'confirmar presença',
     'confirmar direto',
     'confirmar sem atender',
@@ -107,7 +109,7 @@ export const artigoConfirmacoes: Artigo = {
     {
       id: 'abas',
       titulo: 'As seis filas',
-      busca: 'abas não confirmados confirmados contato errado pendentes telefone comprometido cancelamento significado',
+      busca: 'abas não confirmados confirmados contato errado pendentes telefone comprometido cancelamento significado remarcação remarcado no sisreg voltou para não confirmados',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -120,7 +122,7 @@ export const artigoConfirmacoes: Artigo = {
               {
                 termo: <AbaRef>Não confirmados</AbaRef>,
                 descricao:
-                  'Ninguém respondeu ainda, por nenhum caminho. É a fila de trabalho: aparece do agendamento mais próximo para o mais distante, porque o de amanhã é o que não pode esperar.',
+                  'Ninguém respondeu ainda, por nenhum caminho. É a fila de trabalho: aparece do agendamento mais próximo para o mais distante, porque o de amanhã é o que não pode esperar. Quem tinha confirmado e teve a data remarcada no SISREG volta para cá: a confirmação era da data antiga (a linha do tempo da solicitação mostra a remarcação).',
               },
               {
                 termo: <AbaRef>Confirmados</AbaRef>,

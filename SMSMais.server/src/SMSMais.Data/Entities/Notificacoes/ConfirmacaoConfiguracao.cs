@@ -109,6 +109,24 @@ public class ConfirmacaoConfiguracao
     public bool AvisoAgendamentoExternoHabilitado { get; set; } = true;
 
     /// <summary>
+    /// Liga o AVISO AUTOMÁTICO da remarcação feita no SISREG (23/10/2026). A sincronização diária já
+    /// detectava a data nova e a punha na fila de Alterações da agenda, mas ninguém avisava o paciente
+    /// — quem tinha confirmado seguia "Confirmado" para um horário que não existia mais.
+    ///
+    /// <para>Com a chave ligada, quem já recebeu a data antiga recebe a confirmação de novo, com a
+    /// data nova, e a resposta anterior deixa de valer. Nasce LIGADO (pedido do dono). Desligar
+    /// devolve as remarcações à fila, para a equipe avisar.</para>
+    /// </summary>
+    public bool AvisoRemarcacaoHabilitado { get; set; } = true;
+
+    /// <summary>
+    /// Quando o aviso de remarcação foi ligado pela última vez. Remarcação detectada antes disso não
+    /// é avisada pelo automático — ligar vale daqui para frente, como o aviso de cancelamento. Null =
+    /// sem corte (instância nova, que não tem passado a soltar de uma vez).
+    /// </summary>
+    public DateTime? AvisoRemarcacaoLigadoEm { get; set; }
+
+    /// <summary>
     /// Minutos entre passadas da conciliação. O padrão 10 saiu de medição: um dia útil tem 46–62
     /// cancelamentos, a listagem traz 20 por página, e o ciclo custa 1 a 3 requisições em ~1,5 s —
     /// 11 req/h no dia típico contra um teto de ~700/h. Mas é a operação que decide: apertar custa
