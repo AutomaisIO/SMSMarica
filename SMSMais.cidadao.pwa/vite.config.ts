@@ -50,7 +50,7 @@ export default defineConfig({
       workbox: {
         // as páginas legais são HTML real servido pelo nginx — não cair no SPA fallback.
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/privacidade/, /^\/termos/, /^\/api/],
+        navigateFallbackDenylist: [/^\/privacidade/, /^\/termos/, /^\/exclusao-de-conta/, /^\/api/],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         // ao publicar versão nova, limpa precaches antigos (evita app preso em versão).
         cleanupOutdatedCaches: true,
