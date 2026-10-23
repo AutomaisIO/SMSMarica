@@ -134,6 +134,28 @@ export const SECOES: SecaoMenu[] = [
     ],
   },
   {
+    id: 'faturamentoProducao',
+    titulo: 'Faturamento',
+    icone: FileText,
+    itens: [
+      {
+        rotulo: 'Gerar BPA',
+        to: '/app/faturamento-producao',
+        icone: FileText,
+        modulo: 'FaturamentoProducao',
+        end: true,
+        descricao: 'Gerar o arquivo BPA da produção (SISREG, com comparecimento).',
+      },
+      {
+        rotulo: 'Configurações',
+        to: '/app/faturamento-producao/configuracoes',
+        icone: Settings2,
+        modulo: 'FaturamentoProducao',
+        descricao: 'Unidades habilitadas para o BPA.',
+      },
+    ],
+  },
+  {
     id: 'operacao',
     titulo: 'Transporte Pacientes',
     icone: Wrench,

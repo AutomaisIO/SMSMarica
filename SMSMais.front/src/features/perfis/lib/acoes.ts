@@ -175,6 +175,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string; grupo: GrupoPermiss
   { id: 'Motoristas', grupo: 'transporte', rotulo: 'Motoristas' },
   { id: 'Avaliacoes', grupo: 'transporte', rotulo: 'Avaliações' },
   { id: 'Faturamento', grupo: 'transporte', rotulo: 'Faturamento', ajuda: 'Faturamento do TFD/SUS.' },
+  { id: 'FaturamentoProducao', grupo: 'sisreg', rotulo: 'Faturamento — Produção (BPA)', ajuda: 'Gera o BPA Magnético da produção (SISREG, com comparecimento). Consulta = gerar/baixar; Edição = Configurações (unidades habilitadas).' },
 
   // ---- Ouvidoria (sigilo e ponto de resposta são eixos à parte do trabalho da ouvidoria)
   { id: 'Ouvidoria', grupo: 'ouvidoria', rotulo: 'Ouvidoria', ajuda: 'Fila e tratamento das manifestações.' },
@@ -229,6 +230,11 @@ export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
 export const APELIDOS_ACOES_POR_MODULO: Partial<
   Record<ModuloPermissao, Partial<Record<AcaoPermissao, string>>>
 > = {
+  // Um módulo, duas ações: gerar o BPA (Consulta) e configurar as unidades habilitadas (Edição).
+  FaturamentoProducao: {
+    Consulta: 'Gerar e baixar o BPA das unidades habilitadas',
+    Edicao: 'Configurações — habilitar/desabilitar unidades para o BPA',
+  },
   Pacs: {
     Consulta: 'Abrir exame',
     Edicao: 'Salvar anotações',

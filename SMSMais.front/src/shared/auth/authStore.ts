@@ -39,6 +39,7 @@ export type ModuloPermissao =
   | 'Cidadao'
   | 'IntegracoesConfig'
   | 'Faturamento'
+  | 'FaturamentoProducao'
   | 'ConfiguracaoLaudo'
   | 'Auditoria'
   | 'Erros'
