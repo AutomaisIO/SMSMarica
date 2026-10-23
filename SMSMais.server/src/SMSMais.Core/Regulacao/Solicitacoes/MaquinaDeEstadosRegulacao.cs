@@ -71,6 +71,10 @@ public static class MaquinaDeEstadosRegulacao
         // foi criado: ele registra o número, como no envio assistido.
         new(StatusRegulacao.FalhaEnvio, StatusRegulacao.EnviadaAoSistema,
             PapelEventoRegulacao.Agente, TipoEventoRegulacao.NumeroExterno),
+        // O sistema recusou por falta de um dado que só a unidade tem (telefone, documento, médico):
+        // o agente devolve dali mesmo, sem fingir uma volta a "Em análise" só para liberar o botão.
+        new(StatusRegulacao.FalhaEnvio, StatusRegulacao.Devolvida,
+            PapelEventoRegulacao.Agente, TipoEventoRegulacao.Devolucao),
 
         // --- sistema (envio, varreduras, importação) ---
         new(StatusRegulacao.EnviandoAoSistema, StatusRegulacao.EnviadaAoSistema,
