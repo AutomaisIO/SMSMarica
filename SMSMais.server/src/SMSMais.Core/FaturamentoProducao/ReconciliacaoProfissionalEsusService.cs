@@ -20,12 +20,14 @@ public sealed record ResumoReconciliacaoProfissional(int Candidatos, int Resolvi
 /// (ADR-0067), para o faturamento BPA de produção. A <c>solicitacao</c> do SISREG só guarda o CPF do
 /// executante; aqui, de madrugada, cada CPF ainda não conciliado é resolvido no PEC (ProfissionalSelect
 /// por CPF) e gravado no cache <c>faturamento_profissional_cns</c>. A geração do BPA lê só o cache —
-/// quem o e-SUS não tiver fica como pendência (e é reconsultado na próxima madrugada).
+/// quem o e-SUS não tiver fica como pendência (e é reconsultado na próxima passagem).
 ///
-/// <para>Por que de madrugada e não ao vivo: a credencial do PEC é CEDIDA por uma servidora e o PEC é
-/// SESSÃO ÚNICA — logar no horário de trabalho a derrubaria. Mesma razão (e mesma janela/credencial
-/// <c>esuspec</c>) da <see cref="Integracoes.EsusPec.ICorrecaoTelefoneEsusService"/>; a janela padrão
-/// daqui é DEPOIS da dela (05:00–06:00) para as duas rotinas não disputarem a sessão única.</para>
+/// <para>Janela: respeita o <b>período de funcionamento configurado na credencial</b>
+/// (<c>janelaInicio</c>/<c>janelaFim</c> do provedor <c>esuspec</c>, mesmas chaves da
+/// <see cref="Integracoes.EsusPec.ICorrecaoTelefoneEsusService"/>). <b>Sem janela configurada, roda a
+/// qualquer hora</b> — a credencial do e-SUS é dedicada e usável o dia todo. O PEC é SESSÃO ÚNICA (uma
+/// por conta): se a rotina de telefone estiver na mesma credencial, uma derruba a outra e a perdedora
+/// tenta de novo na volta seguinte — a conciliação precisa de uma passagem bem-sucedida só.</para>
 /// </summary>
 public interface IReconciliacaoProfissionalEsusService
 {
@@ -39,8 +41,6 @@ public sealed class ReconciliacaoProfissionalEsusService(
 {
     private const string Provedor = "esuspec";
     private const int MaximoPorPassagem = 200; // executantes são poucos; teto só por segurança
-    private static readonly TimeOnly JanelaInicioPadrao = new(5, 0);
-    private static readonly TimeOnly JanelaFimPadrao = new(6, 0);
 
     public async Task<ResumoReconciliacaoProfissional?> ExecutarSeNaJanelaAsync(CancellationToken ct = default)
     {
@@ -132,27 +132,31 @@ public sealed class ReconciliacaoProfissionalEsusService(
     private static string SoDigitos(string? v) => new((v ?? string.Empty).Where(char.IsDigit).ToArray());
     private static TimeOnly AgoraBrasilia() => TimeOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
 
-    internal static bool DentroDaJanela(TimeOnly inicio, TimeOnly fim, TimeOnly agora) =>
-        inicio <= fim ? agora >= inicio && agora < fim : agora >= inicio || agora < fim;
-
-    private static (string? BaseUrl, string? AcessoId, TimeOnly Inicio, TimeOnly Fim) LerParametros(string? json)
+    /// <summary>Dentro do período configurado. <b>Sem janela (null/null) = sempre</b> — a credencial é
+    /// usável o dia todo; a restrição só vale quando o operador configura um período.</summary>
+    internal static bool DentroDaJanela(TimeOnly? inicio, TimeOnly? fim, TimeOnly agora)
     {
-        string? Texto(JsonElement r, string k) =>
-            r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String && v.GetString() is { Length: > 0 } s ? s : null;
-        TimeOnly Hora(string? s, TimeOnly padrao) => TimeOnly.TryParseExact(s, "HH:mm", out var t) ? t : padrao;
+        if (inicio is not { } i || fim is not { } f) return true;
+        return i <= f ? agora >= i && agora < f : agora >= i || agora < f;
+    }
 
-        if (string.IsNullOrWhiteSpace(json)) return (null, null, JanelaInicioPadrao, JanelaFimPadrao);
+    /// <summary>Lê base/acesso e o período de funcionamento CONFIGURADO (janelaInicio/janelaFim). Janela
+    /// ausente → (null, null) = roda a qualquer hora.</summary>
+    private static (string? BaseUrl, string? AcessoId, TimeOnly? Inicio, TimeOnly? Fim) LerParametros(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return (null, null, null, null);
         try
         {
             using var doc = JsonDocument.Parse(json);
             var r = doc.RootElement;
-            return (Texto(r, "baseUrl"), Texto(r, "acessoId"),
-                Hora(Texto(r, "janelaFaturamentoInicio"), JanelaInicioPadrao),
-                Hora(Texto(r, "janelaFaturamentoFim"), JanelaFimPadrao));
+            string? Texto(string k) =>
+                r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String && v.GetString() is { Length: > 0 } s ? s : null;
+            TimeOnly? Hora(string k) => TimeOnly.TryParseExact(Texto(k), "HH:mm", out var t) ? t : null;
+            return (Texto("baseUrl"), Texto("acessoId"), Hora("janelaInicio"), Hora("janelaFim"));
         }
         catch (JsonException)
         {
-            return (null, null, JanelaInicioPadrao, JanelaFimPadrao);
+            return (null, null, null, null);
         }
     }
 }
