@@ -83,7 +83,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       ref.read(pushProvider).registrarAparelho();
       _consultarLocalizacao();
     });
-    // Localização no dia da viagem (ADR-0079): consulta a cada minuto, só com o app na tela; o GPS
+    // Localização no dia da viagem (ADR-0082): consulta a cada minuto, só com o app na tela; o GPS
     // desliga quando ele some (o app fechado não envia). Falha aqui só esconde a função.
     _consultaLocalizacao = Timer.periodic(const Duration(minutes: 1), (_) => _consultarLocalizacao());
     // Volta ao primeiro plano: refaz o registro do push que falhou (API fora, sem rede). Registrado,
@@ -209,7 +209,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                     style: Txt.sans(12, peso: FontWeight.w500, cor: CoresMarica.ambar800),
                   ),
                 ),
-              // Compartilhando a localização com o motorista (ADR-0079): fica em todas as telas.
+              // Compartilhando a localização com o motorista (ADR-0082): fica em todas as telas.
               const FaixaLocalizacao(),
               Expanded(child: widget.child),
             ],

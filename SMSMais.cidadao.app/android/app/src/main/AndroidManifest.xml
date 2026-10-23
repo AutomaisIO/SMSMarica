@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Faixa "Sem conexão" (connectivity_plus). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Localização no dia da viagem (ADR-0079): só com o app aberto, depois do "Compartilhar". A
+    <!-- Localização no dia da viagem (ADR-0082): só com o app aberto, depois do "Compartilhar". A
          aproximada vem junto porque o Android 12+ deixa a pessoa escolher. SEM segundo plano
          (ACCESS_BACKGROUND_LOCATION) e sem serviço em primeiro plano. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -59,7 +59,7 @@
         <!-- go_router recebe o link e abre a rota equivalente à do PWA. -->
         <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
         <!-- O geolocator declara o seu serviço como "primeiro plano de localização" (para quem rastreia
-             com o app fechado). Este app não faz isso (ADR-0079 §3): o serviço fica (sem ele o fluxo de
+             com o app fechado). Este app não faz isso (ADR-0082 §3): o serviço fica (sem ele o fluxo de
              posições NÃO começa — "Location background service has not started correctly"), mas sem o
              tipo. Ele só é vinculado, nunca vai para o primeiro plano (o app não passa
              foregroundNotificationConfig), e a Play não pede a declaração de serviço em primeiro plano. -->

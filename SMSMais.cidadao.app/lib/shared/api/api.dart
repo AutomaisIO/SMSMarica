@@ -165,7 +165,7 @@ class ApiCidadao {
   Future<void> responderResgate(String sessaoId, {required bool disponivel}) =>
       _dio.post<void>('/auth/paciente/resgate/$sessaoId/resposta', data: {'disponivel': disponivel});
 
-  /// O embarque que o paciente espera agora (ADR-0079); nulo fora da espera. Sem cache: muda na hora.
+  /// O embarque que o paciente espera agora (ADR-0082); nulo fora da espera. Sem cache: muda na hora.
   Future<LocalizacaoViagem?> localizacao() async {
     // Sem `get<Json>`: o 204 chega sem corpo e sem Content-Type, e o Dio entrega '' (não nulo) — o
     // cast para Map quebraria e a espera antiga ficaria na tela depois do embarque.

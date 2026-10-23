@@ -18,7 +18,7 @@ enum AcessoGps {
   /// Pode usar, com a localização precisa.
   liberado,
 
-  /// Pode usar, mas só a aproximada (Android 12+, iOS 14+): o app envia assim mesmo (ADR-0079 §3).
+  /// Pode usar, mas só a aproximada (Android 12+, iOS 14+): o app envia assim mesmo (ADR-0082 §3).
   aproximado,
 
   /// Negou; o próximo "Permitir" pergunta de novo.
@@ -37,7 +37,7 @@ enum AcessoGps {
 }
 
 /// O GPS do aparelho atrás de uma interface (os testes trocam por um falso). Só "durante o uso",
-/// nunca em segundo plano (ADR-0079 §3).
+/// nunca em segundo plano (ADR-0082 §3).
 abstract class FonteGps {
   /// Confere a permissão sem perguntar nada (volta ao app, consulta de minuto em minuto).
   Future<AcessoGps> conferirAcesso();

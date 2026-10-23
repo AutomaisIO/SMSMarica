@@ -41,7 +41,7 @@ class DemoAdapter implements HttpClientAdapter {
     'proximaPerguntaAs': null,
   };
 
-  /// Localização no dia da viagem (demonstração, ADR-0079 §8): o mesmo resgate de hoje, esperando o
+  /// Localização no dia da viagem (demonstração, ADR-0082 §8): o mesmo resgate de hoje, esperando o
   /// carro na unidade — para a revisão das lojas ver a explicação e o pedido de permissão. As
   /// posições ficam aqui: nada vai à rede.
   final Map<String, dynamic> _localizacao = {

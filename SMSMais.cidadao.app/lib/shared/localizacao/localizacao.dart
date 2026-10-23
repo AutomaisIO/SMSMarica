@@ -134,7 +134,7 @@ bool _appNaTela() {
   return ciclo == null || ciclo == AppLifecycleState.resumed || ciclo == AppLifecycleState.inactive;
 }
 
-/// Localização do paciente no dia da viagem (ADR-0079; `store/localizacao.ts` do PWA). O servidor
+/// Localização do paciente no dia da viagem (ADR-0082; `store/localizacao.ts` do PWA). O servidor
 /// diz se ele espera um embarque agora (a ida ou o resgate) e se aceitou compartilhar; aqui fica o
 /// GPS do aparelho, ligado só com o app na tela e só enquanto ele compartilha.
 ///

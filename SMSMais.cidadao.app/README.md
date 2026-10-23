@@ -80,7 +80,7 @@ sabe se a busca do telefone no e-SUS está ligada para este canal (Sistema → A
 ## Localização no dia da viagem
 
 O paciente pode compartilhar a posição do celular com o motorista enquanto espera um embarque de hoje
-([ADR-0079](../docs/adr/0079-localizacao-do-paciente-no-transporte.md)), igual ao PWA:
+([ADR-0082](../docs/adr/0082-localizacao-do-paciente-no-transporte.md)), igual ao PWA:
 
 - **Quando aparece:** o servidor diz (`GET /auth/paciente/localizacao`) se há uma espera agora: a ida, a
   partir de 2 h antes da busca, ou o resgate, depois de descer na unidade. O app consulta a cada minuto,

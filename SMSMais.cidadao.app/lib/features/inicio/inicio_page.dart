@@ -104,7 +104,7 @@ class _InicioPageState extends ConsumerState<InicioPage> {
                 ),
               ),
             ),
-            // No dia da viagem, o convite para compartilhar a localização com o motorista (ADR-0079).
+            // No dia da viagem, o convite para compartilhar a localização com o motorista (ADR-0082).
             const CompartilharLocalizacao(margem: EdgeInsets.only(bottom: 16)),
             _CartaoCidadao(nome: nome, foto: perfil?.fotoBase64, cpf: cpf, cns: perfil?.cns),
           ],

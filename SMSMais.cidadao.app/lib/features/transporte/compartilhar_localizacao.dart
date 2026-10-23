@@ -16,7 +16,7 @@ const _explicacao = [
   'Guardamos só a última posição, e ela é apagada no embarque.',
 ];
 
-/// O convite para compartilhar a localização com o motorista no dia da viagem (ADR-0079;
+/// O convite para compartilhar a localização com o motorista no dia da viagem (ADR-0082;
 /// `CompartilharLocalizacao.tsx`). Aparece só enquanto o paciente espera um embarque (a ida, a partir
 /// de 2 h antes da busca, ou o resgate) e ainda não compartilha. Antes do pedido de permissão do
 /// aparelho, explica quem vê, quando e como parar.
