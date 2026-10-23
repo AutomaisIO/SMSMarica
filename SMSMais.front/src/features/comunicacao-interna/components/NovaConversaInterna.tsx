@@ -148,15 +148,8 @@ function PessoasDaUnidade({
   const presenca = useInterno((s) => s.presenca);
   const [erro, setErro] = useState<string | null>(null);
 
-  // "Falando como": a unidade em que estou agora; senão a principal; senão a primeira.
-  const padrao =
-    minhasUnidades.find((u) => u.unidadeId === unidadeAtualId)?.unidadeId ??
-    minhasUnidades.find((u) => u.principal)?.unidadeId ??
-    minhasUnidades[0]?.unidadeId ??
-    null;
-  // O contexto pode chegar depois da montagem: só vira estado quando a pessoa escolhe outra.
-  const [escolhida, setEscolhida] = useState<string | null>(null);
-  const origemId = escolhida ?? padrao;
+  // No chat a pessoa fala sempre da unidade padrão (ADR-0081) — o backend só devolve ela.
+  const origemId = unidadeAtualId ?? minhasUnidades[0]?.unidadeId ?? null;
   const semVinculo = minhasUnidades.length === 0;
   const mesmaUnidade = origemId === unidade.id;
 
@@ -197,22 +190,6 @@ function PessoasDaUnidade({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">{unidade.nome}</p>
-        {minhasUnidades.length > 1 && (
-          <label className="flex shrink-0 items-center gap-1 text-[11px] text-gray-500">
-            Falando como
-            <select
-              value={origemId ?? ''}
-              onChange={(e) => setEscolhida(e.target.value || null)}
-              className="max-w-[9rem] rounded border border-gray-200 bg-white py-0.5 pl-1 pr-5 text-[11px] text-gray-700"
-            >
-              {minhasUnidades.map((u) => (
-                <option key={u.unidadeId} value={u.unidadeId}>
-                  {u.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </div>
 
       {erro && <p className="px-3 pt-2 text-xs text-red-600">{erro}</p>}
@@ -225,7 +202,7 @@ function PessoasDaUnidade({
           className="flex w-full items-center gap-2.5 border-b border-gray-100 px-3 py-2.5 text-left hover:bg-orange-50/60 disabled:cursor-not-allowed disabled:opacity-60"
           title={
             semVinculo
-              ? 'Você não está vinculado a nenhuma unidade — peça ao administrador. Mensagem direta continua valendo.'
+              ? 'Você ainda não tem unidade padrão — peça ao administrador. Mensagem direta continua valendo.'
               : mesmaUnidade
                 ? 'Canal da sua equipe: todos desta unidade participam'
                 : 'Todos desta unidade e todos da sua unidade participam da mesma conversa'
@@ -240,7 +217,7 @@ function PessoasDaUnidade({
             </span>
             <span className="block truncate text-xs text-gray-500">
               {semVinculo
-                ? 'Indisponível: você não tem unidade vinculada'
+                ? 'Indisponível: você ainda não tem unidade padrão'
                 : mesmaUnidade
                   ? 'Conversa da equipe inteira desta unidade'
                   : `Conversa entre ${unidade.nome} e a sua unidade — todos interagem`}
@@ -259,7 +236,7 @@ function PessoasDaUnidade({
         ) : usuarios.isError ? (
           <p className="px-4 py-6 text-center text-xs text-red-600">Não foi possível carregar as pessoas.</p>
         ) : ordenados.length === 0 ? (
-          <p className="px-4 py-6 text-center text-xs text-gray-500">Ninguém vinculado a esta unidade.</p>
+          <p className="px-4 py-6 text-center text-xs text-gray-500">Ninguém tem esta unidade como padrão.</p>
         ) : (
           ordenados.map((p) => (
             <button

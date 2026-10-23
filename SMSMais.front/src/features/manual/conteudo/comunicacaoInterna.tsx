@@ -11,7 +11,7 @@ import type { Artigo } from '@/features/manual/tipos';
  *
  * Conferido no código: `features/comunicacao-interna` (BalaoInterno, PainelInterno,
  * NovaConversaInterna, ThreadInterna, ComposerInterno, SeletorEmoji, AnexoInterno, useInternoHub,
- * selos.tsx) e o ADR-0079 (sessão única por par, participação derivada do vínculo com a unidade,
+ * selos.tsx) e o ADR-0079 (sessão única por par, participação derivada da unidade padrão — ADR-0081,
  * nada se apaga, anexo até 25 MB, presença = painel aberto, módulo ComunicacaoInterna).
  */
 export const artigoComunicacaoInterna: Artigo = {
@@ -30,6 +30,9 @@ export const artigoComunicacaoInterna: Artigo = {
     'conversar com outra unidade',
     'mensagem para unidade',
     'mensagem direta',
+    'unidade padrão',
+    'lotação',
+    'não apareço na unidade',
     'balão laranja',
     'online',
     'quem está online',
@@ -78,7 +81,7 @@ export const artigoComunicacaoInterna: Artigo = {
     {
       id: 'conversas',
       titulo: 'Os dois tipos de conversa',
-      busca: 'todos da unidade pessoa direta equipe mesma conversa sessão participantes vínculo unidade',
+      busca: 'todos da unidade pessoa direta equipe mesma conversa sessão participantes unidade padrão',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -86,7 +89,7 @@ export const artigoComunicacaoInterna: Artigo = {
               {
                 termo: 'Todos da unidade',
                 descricao:
-                  'Conversa entre duas unidades. Participam todos os vinculados a qualquer uma das duas — quem está de plantão lê e responde, e quem chega no turno seguinte vê o que já foi combinado.',
+                  'Conversa entre duas unidades. Participam todos que têm qualquer uma das duas como unidade padrão — quem está de plantão lê e responde, e quem chega no turno seguinte vê o que já foi combinado.',
               },
               {
                 termo: 'Uma pessoa',
@@ -103,17 +106,45 @@ export const artigoComunicacaoInterna: Artigo = {
               Escolher a <strong>sua própria unidade</strong> em “Todos” abre o canal da sua equipe.
             </Item>
             <Item>
-              Quem entra numa unidade passa a ver as conversas dela; quem sai deixa de ver. O vínculo
-              com a unidade é feito no cadastro do usuário.
+              Quem passa a ter a unidade como padrão passa a ver as conversas dela; quem troca de
+              unidade padrão deixa de ver. Veja abaixo em qual unidade cada pessoa aparece.
             </Item>
           </Lista>
         </>
       ),
     },
     {
+      id: 'unidade-padrao',
+      titulo: 'Em qual unidade cada pessoa aparece',
+      busca:
+        'unidade padrão lotação vínculo várias unidades aparece onde regulação técnico não apareço cadastro do usuário',
+      conteudo: (
+        <>
+          <P>
+            No chat, cada pessoa é de <strong>uma unidade só</strong>: a sua{' '}
+            <strong>unidade padrão</strong> — onde ela está lotada. É ela que aparece na lista de
+            pessoas, é por ela que a pessoa participa de “Todos da unidade” e é dela que saem as
+            conversas que a pessoa abre.
+          </P>
+          <P>
+            Muita gente é vinculada a várias unidades para <strong>enxergar os pedidos</strong> delas
+            (quem trabalha na regulação, por exemplo, costuma ver todas). Esses vínculos continuam
+            valendo para os dados, mas <strong>não contam no chat</strong> — senão a mesma pessoa
+            apareceria na equipe de todas as unidades e receberia a conversa de todas elas.
+          </P>
+          <Callout tipo="dica" titulo="Não me acho na unidade certa">
+            A unidade padrão é obrigatória e é definida no cadastro do usuário, na aba{' '}
+            <strong>Unidades</strong>. Quem administra os usuários consegue listar, na tela de
+            Usuários, quem ainda está <strong>sem unidade padrão</strong>. Depois de trocar, a pessoa
+            recarrega a página (F5) para as mensagens novas chegarem na hora.
+          </Callout>
+        </>
+      ),
+    },
+    {
       id: 'comecar',
       titulo: 'Começar uma conversa',
-      busca: 'nova conversa escolher unidade pessoa online ponto verde falando como',
+      busca: 'nova conversa escolher unidade pessoa online ponto verde de qual unidade falo',
       conteudo: (
         <>
           <Passos
@@ -132,9 +163,10 @@ export const artigoComunicacaoInterna: Artigo = {
             ]}
           />
           <P>
-            Quem é de mais de uma unidade escolhe em <strong>Falando como</strong> de qual delas está
-            falando (vem marcada a unidade em que você está no painel). Sem nenhuma unidade vinculada,
-            “Todos da unidade” fica indisponível — a conversa com uma pessoa continua valendo.
+            Você fala sempre pela sua <strong>unidade padrão</strong>, não importa a unidade escolhida
+            no topo do painel. Quem ainda não tem unidade padrão não consegue abrir “Todos da
+            unidade” — a conversa com uma pessoa continua valendo; peça ao administrador para definir
+            a sua.
           </P>
         </>
       ),

@@ -255,6 +255,11 @@ public sealed class IdentidadeService(
             query = query.Where(u => _db.UsuarioUnidades.Any(v => v.UsuarioId == u.Id && v.UnidadeId == unidadeId));
         }
 
+        if (filtro.SemUnidadePadrao)
+        {
+            query = query.Where(u => !_db.UsuarioUnidades.Any(v => v.UsuarioId == u.Id && v.Principal));
+        }
+
         // A lista tende a crescer — limita (clamp 1..500, default 50).
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         var usuarios = await query

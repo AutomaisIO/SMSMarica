@@ -37,7 +37,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <p>A migration concede o 86 (Consulta + Inclusão) a <strong>todo perfil existente</strong> — o pedido é que as unidades conversem, e um módulo que nasce desligado em todo lugar não é usado. O recorte (tirar de um perfil) é feito na tela de Perfis. Não é seed institucional: vale igual em qualquer instância.</p>
 <h3>2. Dois tipos de conversa, uma sessão por par</h3>
 <div class="tw"><table><thead><tr><th>Tipo</th><th>Quem participa</th><th>Chave</th></tr></thead><tbody>
-<tr><td><strong>Unidade ↔ unidade</strong> ("Todos da unidade")</td><td>todos os vinculados (<code>usuario_unidade</code>) a qualquer das duas unidades</td><td>par <strong>não ordenado</strong> de unidades — A→B e B→A são a mesma sessão</td></tr>
+<tr><td><strong>Unidade ↔ unidade</strong> ("Todos da unidade")</td><td>todos que têm qualquer das duas como <strong>unidade padrão</strong> (<code>usuario_unidade.principal</code>) — ver a nota do ADR-0081 abaixo</td><td>par <strong>não ordenado</strong> de unidades — A→B e B→A são a mesma sessão</td></tr>
 <tr><td><strong>Direta</strong> (pessoa ↔ pessoa)</td><td>as duas pessoas</td><td>par não ordenado de usuários</td></tr>
 </tbody></table></div>
 <ul>
@@ -48,6 +48,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li><strong>Unidade de origem</strong> = a unidade em que a pessoa está (cabeçalho <code>X-Unidade-Id</code>), ou a principal; quem</li>
 </ul>
 <p>  tem mais de uma escolhe ("falando como"). Sem vínculo com unidade, só conversa direta.</p>
+<p>&gt; <strong>Mudou em 23/10/2026 — <a href="./0081-unidade-padrao-obrigatoria.md">ADR-0081</a>.</strong> No chat cada pessoa é de &gt; uma unidade só: a <strong>unidade padrão</strong> (obrigatória). Participação, lista de pessoas, grupo do hub e &gt; unidade de origem vêm dela; os demais vínculos (escopo de dados) não contam aqui. O "falando como" &gt; saiu. Motivo: o técnico de regulação, vinculado às 56 unidades para enxergar os pedidos, aparecia na &gt; equipe de todas elas.</p>
 <ul>
 <li><strong>Origem = destino</strong> é permitido: vira o canal da própria equipe.</li>
 <li><strong>Participação é derivada na hora</strong>, não copiada: quem entra na equipe vê o histórico da unidade (é a</li>

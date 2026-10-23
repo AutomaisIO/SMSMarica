@@ -11,9 +11,9 @@ namespace SMSMais.Api.Hubs;
 
 /// <summary>
 /// Hub da Comunicação interna (ADR-0079). Grupos: <c>ci:usuario:{id}</c> (a própria pessoa, em
-/// todas as abas), <c>ci:unidade:{id}</c> (cada unidade a que ela é vinculada) e <c>ci:todos</c>
-/// (todo mundo com o módulo — recebe as mudanças de presença). Os grupos de unidade são lidos na
-/// conexão: um vínculo novo só vale depois que a aba reconecta. Também é o registro de presença:
+/// todas as abas), <c>ci:unidade:{id}</c> (a unidade PADRÃO dela — só essa, ADR-0081) e <c>ci:todos</c>
+/// (todo mundo com o módulo — recebe as mudanças de presença). O grupo de unidade é lido na
+/// conexão: trocar a unidade padrão só vale depois que a aba reconecta. Também é o registro de presença:
 /// cada conexão viva conta como "painel aberto". Autenticação via JWT no query string, como o
 /// <see cref="ConversasHub"/>.
 /// </summary>
@@ -46,7 +46,7 @@ public sealed class ComunicacaoInternaHub(
             Context.Items[ChaveUsuario] = usuarioId;
             await Groups.AddToGroupAsync(Context.ConnectionId, GrupoUsuario(usuarioId));
             await Groups.AddToGroupAsync(Context.ConnectionId, GrupoTodos);
-            foreach (var unidadeId in await vinculos.ObterUnidadeIdsAsync(usuarioId, Context.ConnectionAborted))
+            if (await vinculos.ObterPrincipalIdAsync(usuarioId, Context.ConnectionAborted) is { } unidadeId)
                 await Groups.AddToGroupAsync(Context.ConnectionId, GrupoUnidade(unidadeId));
 
             if (presenca.Conectou(usuarioId, Context.ConnectionId))

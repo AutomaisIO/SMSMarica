@@ -26,6 +26,8 @@ export type UsuarioListItem = {
 export type FiltroUsuarios = {
   busca?: string;
   unidadeId?: string;
+  /** Só quem ainda não tem unidade padrão (obrigatória — ADR-0081). */
+  semUnidadePadrao?: boolean;
   limite?: number;
 };
 

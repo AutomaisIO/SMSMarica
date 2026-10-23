@@ -172,10 +172,13 @@ function lerPersistido(): Persistido | null {
   }
 }
 
-/** Unidade ativa default: única vinculada, senão a principal, senão null (seletor no login). */
+/**
+ * Unidade ativa ao entrar: a única vinculada; com várias, null = "Todas as unidades". A unidade
+ * padrão (`principal`) NÃO decide isso (ADR-0081): ela é a lotação — o técnico lotado no Complexo
+ * Regulador, que não tem pedido nenhum, entraria com a fila vazia.
+ */
 function unidadeAtivaDefault(unidades: UnidadeVinculada[]): string | null {
-  if (unidades.length === 1) return unidades[0].id;
-  return unidades.find((u) => u.principal)?.id ?? null;
+  return unidades.length === 1 ? unidades[0].id : null;
 }
 
 function parseAcoes(s: string): AcaoPermissao[] {

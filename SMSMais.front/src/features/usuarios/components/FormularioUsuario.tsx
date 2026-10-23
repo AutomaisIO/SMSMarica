@@ -122,6 +122,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
   const [overrides, setOverrides] = useState<MatrizEdicao>({});
   const [erros, setErros] = useState<Erros>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
+  const [aba, setAba] = useState('dados');
 
   // Gate inicial em modo criar: CPF + nascimento + consulta Hub.
   const [passoCpfConcluido, setPassoCpfConcluido] = useState(modo === 'editar' || !!prefill);
@@ -284,6 +285,18 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
     }
     if (Object.keys(ne).length > 0) {
       setErros(ne);
+      setAba('dados');
+      return;
+    }
+    // Unidade padrão é obrigatória (ADR-0081): é a lotação — por ela a pessoa aparece na
+    // Comunicação interna. O backend recusa igual; aqui é para cair direto na aba certa.
+    if (unidadesSelecionadas.filter((u) => u.principal).length !== 1) {
+      setErroGlobal(
+        unidadesSelecionadas.length === 0
+          ? 'Vincule ao menos uma unidade e marque a unidade padrão.'
+          : 'Marque a unidade padrão do usuário.',
+      );
+      setAba('unidades');
       return;
     }
 
@@ -322,9 +335,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
         if (overridesParaApi.length > 0) {
           await salvarOverrides.mutateAsync({ id: novoId, overrides: overridesParaApi });
         }
-        if (unidadesSelecionadas.length > 0) {
-          await salvarUnidades.mutateAsync({ id: novoId, unidades: unidadesSelecionadas });
-        }
+        await salvarUnidades.mutateAsync({ id: novoId, unidades: unidadesSelecionadas });
       } else {
         if (!idUsuario) throw new Error('ID ausente.');
         // Nome, CPF e data de nascimento são imutáveis. E-mail PODE ser editado/inserido
@@ -564,7 +575,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
 
   return (
     <form onSubmit={aoEnviar} className="space-y-5">
-      <Tabs abas={abas} inicial="dados" />
+      <Tabs abas={abas} abaAtiva={aba} aoTrocarAba={setAba} />
 
       {erroGlobal ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
