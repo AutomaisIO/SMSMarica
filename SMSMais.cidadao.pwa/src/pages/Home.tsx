@@ -16,6 +16,8 @@ import { useAuth } from '@/store/auth';
 import { usePerfil } from '@/store/perfil';
 import { formatarCpf } from '@/components/AppShell';
 import { Avatar } from '@/components/ui';
+import { CompartilharLocalizacao } from '@/components/CompartilharLocalizacao';
+import { ProtecaoDeErro } from '@/components/ProtecaoDeErro';
 
 const ATALHOS = [
   { to: '/agendados/consultas', label: 'Consultas', desc: 'Agenda, fila e histórico', icon: CalendarClock, tom: 'lagoa' },
@@ -63,6 +65,12 @@ export function Home() {
       <p className="pb-2 text-[15px] text-tinta-mute">
         Olá, <span className="font-semibold text-tinta">{primeiro}</span>. Bem-vindo de volta.
       </p>
+
+      {/* No dia da viagem, o convite para compartilhar a localização com o motorista (ADR-0079). */}
+      {/* Espaço por dentro: o space-y da página zera a margem de baixo, e o cartão do cidadão é um link. */}
+      <ProtecaoDeErro>
+        <CompartilharLocalizacao className="!mt-0 pb-4" />
+      </ProtecaoDeErro>
 
       {/* ASSINATURA — Cartão do Cidadão */}
       <Link to="/perfil" aria-label="Ver meu perfil">

@@ -21,6 +21,9 @@ import { usePerfil } from '@/store/perfil';
 import { Avatar } from '@/components/ui';
 import { VisualizadorPdf } from '@/components/VisualizadorPdf';
 import { InstalarApp } from '@/components/InstalarApp';
+import { FaixaLocalizacao } from '@/components/FaixaLocalizacao';
+import { ProtecaoDeErro } from '@/components/ProtecaoDeErro';
+import { useLocalizacao } from '@/store/localizacao';
 import { sincronizarTudo, resetarSincronizacao } from '@/lib/sincronizar';
 import { limparDadosLocais } from '@/lib/dadosCache';
 import { limparPdfCache } from '@/lib/pdfCache';
@@ -65,6 +68,26 @@ export function AppShell() {
     };
   }, []);
 
+  // Localização no dia da viagem (ADR-0079): consulta a cada minuto, só com a página visível; o GPS
+  // desliga quando ela some (o app fechado não envia). Falha aqui só esconde a função.
+  useEffect(() => {
+    const consultar = () => {
+      if (document.visibilityState === 'visible') void useLocalizacao.getState().atualizar();
+    };
+    const aoMudarVisibilidade = () => {
+      if (document.visibilityState === 'visible') consultar();
+      else useLocalizacao.getState().pausar();
+    };
+    consultar();
+    const timer = window.setInterval(consultar, 60_000);
+    document.addEventListener('visibilitychange', aoMudarVisibilidade);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', aoMudarVisibilidade);
+      useLocalizacao.getState().pausar();
+    };
+  }, []);
+
   // Fecha o menu ao trocar de rota.
   useEffect(() => setAberto(false), [location.pathname]);
 
@@ -78,6 +101,14 @@ export function AppShell() {
   const foto = perfil?.fotoBase64 ?? null;
 
   async function fazerLogout() {
+    // Para de compartilhar a localização antes de encerrar a sessão (ADR-0079). No máximo 2 s, e nada
+    // aqui segura a saída.
+    try {
+      await Promise.race([useLocalizacao.getState().parar(), new Promise((r) => window.setTimeout(r, 2000))]);
+      useLocalizacao.getState().encerrar();
+    } catch {
+      /* segue para a saída */
+    }
     try {
       await api.logout();
     } catch {
@@ -123,6 +154,11 @@ export function AppShell() {
           Sem conexão — mostrando os dados salvos no aparelho.
         </div>
       )}
+
+      {/* Compartilhando a localização com o motorista (ADR-0079): fica em todas as telas. */}
+      <ProtecaoDeErro>
+        <FaixaLocalizacao />
+      </ProtecaoDeErro>
 
       <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] pt-5">
         {/* Convite de instalação em todas as telas autenticadas (some se instalado/adiado). */}

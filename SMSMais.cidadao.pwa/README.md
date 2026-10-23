@@ -57,6 +57,21 @@ Login (`/auth/paciente`, rotas públicas — ADR-0078):
 As antigas `solicitar-otp` e `solicitar-otp-verificacao` respondem 410 (`entrada.atualizar`). As
 demais rotas do cidadão estão em `src/lib/api.ts`.
 
+Localização no dia da viagem (`/auth/paciente/localizacao`, [ADR-0079](../docs/adr/0079-localizacao-do-paciente-no-transporte.md)):
+
+- `GET localizacao` → o embarque que o paciente espera agora (a ida, a partir de 2 h antes da
+  busca, ou o resgate), ou 204 fora da espera. O app consulta a cada minuto, só com a página visível.
+- `POST localizacao/{sessaoId}` → o aceite desta viagem, depois da explicação e antes do pedido de
+  permissão do navegador.
+- `PUT localizacao/{sessaoId}` `{ latitude, longitude, precisaoM, capturadaEm, simulada }` → a
+  posição, no máximo a cada 15 s (antes, se andou 20 m; nunca antes de 10 s). 409 = a espera acabou
+  (embarcou, cancelou): o GPS desliga.
+- `DELETE localizacao/{sessaoId}` → "Parar" (o Sair também para).
+
+A função é aditiva (§9 do ADR): o cartão e a faixa ficam dentro de `ProtecaoDeErro`, e qualquer
+falha só esconde a função. Servidor sem as rotas (404): o app para de consultar até ser aberto de
+novo, e o resto segue igual.
+
 ## Comandos
 
 ```bash

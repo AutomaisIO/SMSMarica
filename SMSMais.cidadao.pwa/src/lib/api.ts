@@ -52,6 +52,30 @@ export type ViagemParaAvaliar = {
   hora: string | null;
 };
 
+/** O embarque de hoje em que o paciente pode compartilhar a localização com o motorista (ADR-0079):
+ * a ida (a partir de 2 h antes da busca) ou o resgate (depois de descer na unidade). */
+export type LocalizacaoViagem = {
+  sessaoId: string;
+  trecho: 'Ida' | 'Resgate';
+  /** O destino da ida ou o lugar do resgate. */
+  unidade: string;
+  /** "HH:mm:ss": a busca prevista da ida. */
+  horaBusca: string | null;
+  compartilhando: boolean;
+  desde: string | null;
+  ultimoEnvioEm: string | null;
+};
+
+/** Uma posição do celular, como o servidor recebe. */
+export type PosicaoCelular = {
+  latitude: number;
+  longitude: number;
+  precisaoM: number | null;
+  /** ISO em UTC: quando o aparelho mediu. */
+  capturadaEm: string;
+  simulada: boolean;
+};
+
 /** O resgate de hoje (buscar na unidade depois do atendimento e levar para casa). */
 export type ResgateDoPaciente = {
   sessaoId: string;
@@ -323,6 +347,16 @@ export const api = {
   /** Resposta à pergunta: sim = "já estou disponível"; não = "ainda não terminei" (volta em 10 min). */
   responderResgate: (sessaoId: string, disponivel: boolean) =>
     http.post(`/auth/paciente/resgate/${sessaoId}/resposta`, { disponivel }),
+  /** O embarque que o paciente espera agora; nulo fora da espera. Sem cache: muda na hora. */
+  localizacao: () =>
+    http.get<LocalizacaoViagem>('/auth/paciente/localizacao').then((r) => (r.status === 204 ? null : r.data)),
+  /** O aceite para compartilhar a localização nesta viagem (idempotente). */
+  iniciarLocalizacao: (sessaoId: string) =>
+    http.post<LocalizacaoViagem>(`/auth/paciente/localizacao/${sessaoId}`).then((r) => r.data),
+  enviarLocalizacao: (sessaoId: string, posicao: PosicaoCelular) =>
+    http.put(`/auth/paciente/localizacao/${sessaoId}`, posicao),
+  /** "Parar": o servidor encerra e apaga a posição. */
+  pararLocalizacao: (sessaoId: string) => http.delete(`/auth/paciente/localizacao/${sessaoId}`),
   atendimentos: () =>
     comCacheLocal('atendimentos', () =>
       http.get<Atendimento[]>('/auth/paciente/atendimentos').then((r) => r.data)),
