@@ -68,7 +68,7 @@ export function AppShell() {
     };
   }, []);
 
-  // Localização no dia da viagem (ADR-0079): consulta a cada minuto, só com a página visível; o GPS
+  // Localização no dia da viagem (ADR-0082): consulta a cada minuto, só com a página visível; o GPS
   // desliga quando ela some (o app fechado não envia). Falha aqui só esconde a função.
   useEffect(() => {
     const consultar = () => {
@@ -101,7 +101,7 @@ export function AppShell() {
   const foto = perfil?.fotoBase64 ?? null;
 
   async function fazerLogout() {
-    // Para de compartilhar a localização antes de encerrar a sessão (ADR-0079). No máximo 2 s, e nada
+    // Para de compartilhar a localização antes de encerrar a sessão (ADR-0082). No máximo 2 s, e nada
     // aqui segura a saída.
     try {
       await Promise.race([useLocalizacao.getState().parar(), new Promise((r) => window.setTimeout(r, 2000))]);
@@ -155,7 +155,7 @@ export function AppShell() {
         </div>
       )}
 
-      {/* Compartilhando a localização com o motorista (ADR-0079): fica em todas as telas. */}
+      {/* Compartilhando a localização com o motorista (ADR-0082): fica em todas as telas. */}
       <ProtecaoDeErro>
         <FaixaLocalizacao />
       </ProtecaoDeErro>

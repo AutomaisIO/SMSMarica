@@ -4,7 +4,7 @@ import { useLocalizacao } from '@/store/localizacao';
 import { Card, PrimaryButton } from '@/components/ui';
 
 /**
- * O convite para compartilhar a localização com o motorista no dia da viagem (ADR-0079). Aparece só
+ * O convite para compartilhar a localização com o motorista no dia da viagem (ADR-0082). Aparece só
  * enquanto o paciente espera um embarque (a ida, a partir de 2 h antes da busca, ou o resgate) e ainda
  * não compartilha. Antes do pedido de permissão do navegador, explica quem vê, quando e como parar.
  */

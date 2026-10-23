@@ -66,7 +66,7 @@ export function Home() {
         Olá, <span className="font-semibold text-tinta">{primeiro}</span>. Bem-vindo de volta.
       </p>
 
-      {/* No dia da viagem, o convite para compartilhar a localização com o motorista (ADR-0079). */}
+      {/* No dia da viagem, o convite para compartilhar a localização com o motorista (ADR-0082). */}
       {/* Espaço por dentro: o space-y da página zera a margem de baixo, e o cartão do cidadão é um link. */}
       <ProtecaoDeErro>
         <CompartilharLocalizacao className="!mt-0 pb-4" />

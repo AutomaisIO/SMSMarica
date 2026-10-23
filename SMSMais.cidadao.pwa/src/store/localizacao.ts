@@ -3,7 +3,7 @@ import { api, type LocalizacaoViagem } from '@/lib/api';
 import { classificarErro, codigosDoErro } from '@/lib/httpClient';
 
 /**
- * Localização do paciente no dia da viagem (ADR-0079). O servidor diz se ele espera um embarque agora (a
+ * Localização do paciente no dia da viagem (ADR-0082). O servidor diz se ele espera um embarque agora (a
  * ida ou o resgate) e se aceitou compartilhar; aqui fica o GPS do navegador, ligado só com a página
  * visível e só enquanto ele compartilha.
  *

@@ -8,7 +8,7 @@ function haQuanto(ms: number): string {
 }
 
 /**
- * A faixa fixa enquanto o paciente compartilha a localização com o motorista (ADR-0079), em todas as telas
+ * A faixa fixa enquanto o paciente compartilha a localização com o motorista (ADR-0082), em todas as telas
  * logadas, logo abaixo da barra de cima: o estado do GPS, o "Parar" e o lembrete de deixar o app aberto.
  */
 export function FaixaLocalizacao() {

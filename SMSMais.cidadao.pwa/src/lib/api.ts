@@ -52,7 +52,7 @@ export type ViagemParaAvaliar = {
   hora: string | null;
 };
 
-/** O embarque de hoje em que o paciente pode compartilhar a localização com o motorista (ADR-0079):
+/** O embarque de hoje em que o paciente pode compartilhar a localização com o motorista (ADR-0082):
  * a ida (a partir de 2 h antes da busca) ou o resgate (depois de descer na unidade). */
 export type LocalizacaoViagem = {
   sessaoId: string;

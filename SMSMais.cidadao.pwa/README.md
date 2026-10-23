@@ -57,7 +57,7 @@ Login (`/auth/paciente`, rotas públicas — ADR-0078):
 As antigas `solicitar-otp` e `solicitar-otp-verificacao` respondem 410 (`entrada.atualizar`). As
 demais rotas do cidadão estão em `src/lib/api.ts`.
 
-Localização no dia da viagem (`/auth/paciente/localizacao`, [ADR-0079](../docs/adr/0079-localizacao-do-paciente-no-transporte.md)):
+Localização no dia da viagem (`/auth/paciente/localizacao`, [ADR-0082](../docs/adr/0082-localizacao-do-paciente-no-transporte.md)):
 
 - `GET localizacao` → o embarque que o paciente espera agora (a ida, a partir de 2 h antes da
   busca, ou o resgate), ou 204 fora da espera. O app consulta a cada minuto, só com a página visível.
