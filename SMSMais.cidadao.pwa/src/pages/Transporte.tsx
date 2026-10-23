@@ -6,6 +6,8 @@ import { Etiqueta } from '@/components/Etiqueta';
 import { AvaliarViagens } from '@/components/AvaliarViagens';
 import { AguardarResgate } from '@/components/AguardarResgate';
 import { MeusAcompanhantes } from '@/components/MeusAcompanhantes';
+import { CompartilharLocalizacao } from '@/components/CompartilharLocalizacao';
+import { ProtecaoDeErro } from '@/components/ProtecaoDeErro';
 
 const ROTULO_STATUS: Record<string, string> = {
   Pendente: 'Agendada',
@@ -25,6 +27,9 @@ function formatarDia(iso: string): string {
 export function Transporte() {
   return (
     <>
+      <ProtecaoDeErro>
+        <CompartilharLocalizacao />
+      </ProtecaoDeErro>
       <AguardarResgate />
       <AvaliarViagens />
       <Lista<ViagemTransporte>
