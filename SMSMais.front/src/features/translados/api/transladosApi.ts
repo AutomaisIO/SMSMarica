@@ -2,6 +2,7 @@ import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarRotaPayload,
   CadastrarRotaPayload,
+  CompartilhamentoDaRota,
   CriarAlocacaoPayload,
   EnderecoParaRevisar,
   EventoViagem,
@@ -74,6 +75,12 @@ export async function removerAlocacao(rotaId: string, alocacaoId: string): Promi
 /** A viagem como o tablet registrou, na ordem em que aconteceu. */
 export async function listarViagem(rotaId: string): Promise<EventoViagem[]> {
   const { data } = await http.get<EventoViagem[]>(`/rotas/${rotaId}/viagem`);
+  return data;
+}
+
+/** Quem da rota compartilha a localização pelo app agora (ADR-0079), sem a coordenada. */
+export async function listarLocalizacaoPacientes(rotaId: string): Promise<CompartilhamentoDaRota[]> {
+  const { data } = await http.get<CompartilhamentoDaRota[]>(`/rotas/${rotaId}/localizacao-pacientes`);
   return data;
 }
 
