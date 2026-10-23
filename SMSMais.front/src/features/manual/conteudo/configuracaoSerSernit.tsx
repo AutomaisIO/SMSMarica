@@ -119,7 +119,7 @@ function secoesDoMotor(sistema: Sistema): SecaoArtigo[] {
     {
       id: 'anexos',
       titulo: 'Anexos no envio',
-      busca: 'anexos tamanho máximo por arquivo mb limite comprimir compressão foto pdf 150 dpi 2 arquivos 4,5 mb salvar limite',
+      busca: 'anexos tamanho máximo por arquivo mb limite comprimir compressão compactado na entrada foto pdf 150 dpi 2 arquivos 4,5 mb salvar limite',
       conteudo: (
         <>
           <P>
@@ -134,7 +134,10 @@ function secoesDoMotor(sistema: Sistema): SecaoArtigo[] {
               Arquivo acima do limite é comprimido no envio: a foto é reduzida, e o PDF tem as imagens regravadas em
               resolução menor, nunca abaixo de 150 dpi. Só se nem assim couber, o envio é recusado.
             </Item>
-            <Item>O original continua guardado na plataforma.</Item>
+            <Item>
+              O que está guardado na plataforma não muda: só a cópia que sobe é comprimida. Os anexos da
+              solicitação já entram compactados — a unidade confere a prévia ao anexar.
+            </Item>
           </Lista>
         </>
       ),
@@ -297,7 +300,7 @@ export const artigoSerConfiguracao: Artigo = {
   icone: Settings2,
   rota: '/app/regulacao/configuracao',
   publico: 'Quem cuida da integração com o SER e decide o que o paciente recebe',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-23',
   palavrasChave: ['SER', 'SES-RJ', 'Estado', 'consulta direta', 'catálogo de procedimentos', ...palavrasComuns],
   secoes: () => [
     {
@@ -345,7 +348,7 @@ export const artigoSernitConfiguracao: Artigo = {
   icone: Settings2,
   rota: '/app/regulacao/sernit/configuracao',
   publico: 'Quem cuida da integração com o SERNIT e decide o que o paciente recebe',
-  atualizadoEm: '2026-10-21',
+  atualizadoEm: '2026-10-23',
   palavrasChave: ['SERNIT', 'Niterói', ...palavrasComuns],
   secoes: () => [
     {

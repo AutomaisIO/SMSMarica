@@ -27,7 +27,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/regulacao/gestao-fila',
   publico: 'Quem avalia e regula as solicitações (agente regulador)',
-  atualizadoEm: '2026-10-22',
+  atualizadoEm: '2026-10-23',
   palavrasChave: [
     'anexar documento',
     'guia de agendamento',
@@ -679,7 +679,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'anexar-documento',
       titulo: 'Anexar um documento para a unidade (guia de agendamento)',
       busca:
-        'anexar documento guia de agendamento autorização autorizacao regulação enviar para a unidade download baixar abrir quem baixou pegou retirou trilha linha do tempo sem e-mail email arquivo pdf anexos',
+        'anexar documento guia de agendamento autorização autorizacao regulação enviar para a unidade download baixar abrir quem baixou pegou retirou trilha linha do tempo sem e-mail email arquivo pdf anexos compactar compactado prévia legível descartar',
       conteudo: (
         <>
           <P>
@@ -694,8 +694,11 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               escolha o arquivo.
             </Item>
             <Item>
-              Clique em <BotaoRef>Anexar</BotaoRef>. O documento passa a aparecer no quadro{' '}
-              <strong>Anexos</strong>, logo abaixo.
+              Clique em <BotaoRef>Anexar</BotaoRef>. O sistema compacta o arquivo e abre a{' '}
+              <strong>prévia</strong>: confira se dá para ler e clique em{' '}
+              <BotaoRef>Está legível — anexar</BotaoRef> (ou descarte e escolha outro). Só então o documento
+              aparece no quadro <strong>Anexos</strong>, logo abaixo — e fica guardada só a cópia
+              compactada.
             </Item>
             <Item>
               A unidade abre a solicitação e <strong>baixa o documento pela própria plataforma</strong>{' '}

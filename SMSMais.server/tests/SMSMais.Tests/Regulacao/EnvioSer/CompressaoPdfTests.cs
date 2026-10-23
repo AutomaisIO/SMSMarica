@@ -40,6 +40,9 @@ public class CompressaoPdfTests
             Alvo = alvoBytes;
             return Task.FromResult(resposta);
         }
+
+        public Task<byte[]?> ComprimirNoDegrauAsync(byte[] pdf, DegrauPdf degrau, CancellationToken ct) =>
+            throw new NotSupportedException("O envio ao SER não usa a compactação de entrada.");
     }
 
     private static readonly byte[] PdfPequeno = "%PDF-1.4 comprimido"u8.ToArray();
@@ -331,6 +334,32 @@ public class CompressaoPdfTests
         r.Conteudo!.LongLength.Should().BeLessThanOrEqualTo(AnexosParaSer.TamanhoMaximoPadrao);
         r.Degrau.Should().EndWith("dpi");
         using var pdf = PdfReader.Open(new MemoryStream(r.Conteudo), PdfDocumentOpenMode.Import);
+        pdf.PageCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Degrau_unico_sem_executavel_ou_sem_PDF_devolve_nulo()
+    {
+        using var semGs = Compressor(Path.Combine(Path.GetTempPath(), "nao-existe", "gs"));
+        using var naoGs = Compressor(Environment.ProcessPath!);
+
+        (await semGs.ComprimirNoDegrauAsync(ComCabecalhoPdf(10), EscadaCompressaoPdf.Entrada, CancellationToken.None))
+            .Should().BeNull();
+        (await naoGs.ComprimirNoDegrauAsync("%!PS-Adobe-3.0 showpage"u8.ToArray(), EscadaCompressaoPdf.Entrada, CancellationToken.None))
+            .Should().BeNull("o que não começa com %PDF nem chega ao executável");
+    }
+
+    [FactComGhostscript]
+    public async Task Ghostscript_de_verdade_compacta_na_entrada_numa_passada_sem_perder_pagina()
+    {
+        using var compressor = Compressor(FactComGhostscriptAttribute.Caminho);
+        var original = PdfEscaneado(PngRuido(2400));
+
+        var r = await compressor.ComprimirNoDegrauAsync(original, EscadaCompressaoPdf.Entrada, CancellationToken.None);
+
+        r.Should().NotBeNull();
+        r!.LongLength.Should().BeLessThan(original.LongLength);
+        using var pdf = PdfReader.Open(new MemoryStream(r), PdfDocumentOpenMode.Import);
         pdf.PageCount.Should().Be(1);
     }
 }

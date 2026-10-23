@@ -53,18 +53,7 @@ public sealed class CompressorPdfGhostscript(
 
     public async Task<CompressaoPdf> ComprimirAteAsync(byte[] pdf, long alvoBytes, CancellationToken ct)
     {
-        if (!File.Exists(_opcoes.Caminho))
-        {
-            logger.LogWarning(
-                "Compressão de PDF indisponível: Ghostscript não encontrado em {Caminho}. Instalar: "
-                + "apt-get install -y --no-install-recommends ghostscript (skill operar-servidor).", _opcoes.Caminho);
-            return CompressaoPdf.Indisponivel;
-        }
-        if (!EhPdf(pdf))
-        {
-            logger.LogWarning("Compressão de PDF recusada: o arquivo não começa com %PDF ({Bytes} bytes).", pdf.Length);
-            return CompressaoPdf.Falhou;
-        }
+        if (Recusa(pdf) is { } recusa) return recusa;
 
         var chave = $"regulacao:pdf-gs:{Convert.ToHexString(SHA256.HashData(pdf))}:{alvoBytes}";
         if (cache.TryGetValue(chave, out CompressaoPdf? guardada) && guardada is not null) return guardada;
@@ -102,6 +91,51 @@ public sealed class CompressorPdfGhostscript(
             try { Directory.Delete(pasta, recursive: true); }
             catch (Exception ex) { logger.LogWarning(ex, "Não consegui apagar a pasta temporária {Pasta}.", pasta); }
         }
+    }
+
+    /// <summary>
+    /// Sem cache, ao contrário da escada: o resultado já fica guardado na prévia do anexo, e guardá-lo
+    /// aqui também seria o mesmo PDF duas vezes na memória.
+    /// </summary>
+    public async Task<byte[]?> ComprimirNoDegrauAsync(byte[] pdf, DegrauPdf degrau, CancellationToken ct)
+    {
+        if (Recusa(pdf) is not null) return null;
+
+        var pasta = CriarPastaTemporaria();
+        var relogio = Stopwatch.StartNew();
+        try
+        {
+            var entrada = Path.Combine(pasta, "entrada.pdf");
+            await File.WriteAllBytesAsync(entrada, pdf, ct);
+            var saida = await PassadaAsync(entrada, Path.Combine(pasta, "saida.pdf"), degrau, ct);
+            logger.LogInformation(
+                "Compressão de PDF no degrau {Degrau}: {Antes} bytes -> {Depois} bytes em {Ms} ms.",
+                degrau.Rotulo, pdf.Length, saida?.Length, relogio.ElapsedMilliseconds);
+            return saida;
+        }
+        finally
+        {
+            try { Directory.Delete(pasta, recursive: true); }
+            catch (Exception ex) { logger.LogWarning(ex, "Não consegui apagar a pasta temporária {Pasta}.", pasta); }
+        }
+    }
+
+    /// <summary>Por que não dá para comprimir este arquivo aqui; <c>null</c> = dá.</summary>
+    private CompressaoPdf? Recusa(byte[] pdf)
+    {
+        if (!File.Exists(_opcoes.Caminho))
+        {
+            logger.LogWarning(
+                "Compressão de PDF indisponível: Ghostscript não encontrado em {Caminho}. Instalar: "
+                + "apt-get install -y --no-install-recommends ghostscript (skill operar-servidor).", _opcoes.Caminho);
+            return CompressaoPdf.Indisponivel;
+        }
+        if (!EhPdf(pdf))
+        {
+            logger.LogWarning("Compressão de PDF recusada: o arquivo não começa com %PDF ({Bytes} bytes).", pdf.Length);
+            return CompressaoPdf.Falhou;
+        }
+        return null;
     }
 
     /// <summary>

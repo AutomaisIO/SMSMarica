@@ -33,6 +33,13 @@ public sealed record CompressaoPdf(DesfechoCompressaoPdf Desfecho, byte[]? Conte
 public interface ICompressorPdf
 {
     Task<CompressaoPdf> ComprimirAteAsync(byte[] pdf, long alvoBytes, CancellationToken ct);
+
+    /// <summary>
+    /// Uma passada só, no degrau dado — a compactação de entrada (<see cref="EscadaCompressaoPdf.Entrada"/>),
+    /// que não persegue um limite: só deixa o arquivo enxuto antes de guardar. <c>null</c> = não deu
+    /// (Ghostscript fora, arquivo recusado, prazo estourado); o motivo fica no log.
+    /// </summary>
+    Task<byte[]?> ComprimirNoDegrauAsync(byte[] pdf, DegrauPdf degrau, CancellationToken ct);
 }
 
 /// <summary>Um degrau da escada: resolução máxima das imagens e qualidade JPEG (QFactor do Ghostscript —
@@ -59,6 +66,13 @@ public static class EscadaCompressaoPdf
     ];
 
     public static DegrauPdf Piso => Degraus[^1];
+
+    /// <summary>
+    /// O degrau da compactação de entrada (anexo da regulação, 23/10/2026): 200 dpi, qualidade média —
+    /// no pedido medido acima, 10,4 MB viraram 2,32 MB legíveis. Folgado de propósito: a pessoa confere
+    /// a prévia, mas o que se guarda é só esta cópia.
+    /// </summary>
+    public static DegrauPdf Entrada => Degraus[2];
 
     /// <summary>
     /// Busca binária do degrau <b>mais fiel</b> cujo resultado cabe em <paramref name="alvoBytes"/> —

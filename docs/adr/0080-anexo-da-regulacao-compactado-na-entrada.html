@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0080 — Anexo da regulação compactado na entrada: só a cópia enxuta é guardada, depois de quem anexou conferir</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0080 — Anexo da regulação compactado na entrada: só a cópia enxuta é guardada, depois de quem anexou conferir</h1>
+<ul>
+<li><strong>Status:</strong> Aceito</li>
+<li><strong>Data:</strong> 2026-10-23</li>
+<li><strong>Contexto módulo:</strong> Regulação — anexos da solicitação (<a href="./0052-fila-pre-regulacao-e-agente-regulador.md">ADR-0052</a>)</li>
+<li><strong>Relacionado:</strong> <a href="./0066-acervo-do-paciente-e-midia-do-whatsapp.md">ADR-0066</a> (acervo do paciente),</li>
+</ul>
+<p>  <a href="./0069-envio-automatico-ao-ser.md">ADR-0069</a> §6 (compressão no envio ao SER/SERNIT)</p>
+<h2>Contexto</h2>
+<p>Até aqui o anexo da solicitação era guardado <strong>como chegou</strong> — foto de celular de 3–5 MB, PDF escaneado de 10 MB — e a compressão só acontecia no envio ao SER/SERNIT, sobre uma cópia (ADR-0069 §6). O arquivo inteiro ficava no Spaces e, de novo, no cadastro do paciente (a cópia do acervo, ADR-0066). O pedido do Bernardo (23/10/2026): usar o mesmo compactador <strong>já na entrada</strong>, para limitar e preservar o espaço, e mostrar o resultado para a pessoa aceitar ou recusar.</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Todo upload na solicitação da regulação é compactado antes de guardar</strong> — o assistente da</li>
+</ol>
+<p>   unidade e o "Anexar documento para a unidade" da regulação. O original <strong>não é guardado</strong>.    - Foto (JPEG, PNG, WebP): JPEG com lado maior de 2400 px e qualidade 75, <strong>de pé</strong> (a marca de      orientação do EXIF é aplicada — sem isso a foto do celular era regravada deitada).    - PDF: Ghostscript em 200 dpi, qualidade média (o degrau medido em 21/10 que levou 10,4 MB a      2,32 MB legíveis).    - O que não diminuiu ao menos 10% vai como chegou (PDF digital costuma cair aqui); falha da      compactação nunca bloqueia o anexo.</p>
+<ol>
+<li><strong>Um degrau fixo, não a escada até um limite.</strong> O objetivo aqui é não guardar peso à toa; caber</li>
+</ol>
+<p>   no limite do destino continua sendo do envio, que só comprime de novo se o arquivo, mesmo    enxuto, ainda passar dele.</p>
+<ol>
+<li><strong>Quem anexa confere antes.</strong> O upload vira uma <strong>prévia</strong>: o servidor compacta e guarda o</li>
+</ol>
+<p>   resultado só em memória por 30 minutos; a pessoa vê o arquivo no visualizador, com o tamanho de    antes e depois, e escolhe "Está legível" (aceita) ou "Não está legível — descartar". Fechar a    prévia é descartar. Nada entra na solicitação, no Spaces ou no cadastro do paciente sem o aceite.    A prévia é amarrada à solicitação e a quem a preparou; a de outra pessoa responde como expirada.</p>
+<ol>
+<li><strong>O limite de tamanho da configuração vale para o arquivo como chegou</strong>, como antes. Aceitar um</li>
+</ol>
+<p>   arquivo maior porque ele compactaria fica para outra decisão.</p>
+<h2>Consequências</h2>
+<ul>
+<li>O que vai para o regulador e para o cadastro do paciente é exatamente o que a pessoa conferiu.</li>
+<li>Sem o original, não há como "voltar à versão boa" se a compactação estragar um documento — por</li>
+</ul>
+<p>  isso a prévia é obrigatória e o degrau é folgado. Se aparecer documento que fica ilegível em   200 dpi / 2400 px, o remédio é um botão "enviar sem compactar", não descer o degrau.</p>
+<ul>
+<li>A prévia mora na memória do processo da API: reiniciar o serviço no meio perde as prévias em</li>
+</ul>
+<p>  aberto (a pessoa anexa de novo). Cabe numa instância por município (<a href="./0043-instancia-por-municipio.md">ADR-0043</a>); não cabe se a API   um dia rodar em mais de uma réplica.</p>
+<ul>
+<li>Fora do escopo: anexos de rascunho do SER/SERNIT (telas próprias), anamnese, PWA de arquivos e</li>
+</ul>
+<p>  app do cidadão continuam guardando o que chega. Anexos já guardados não são recompactados.</p>
+<h2>Implementação</h2>
+<p><code>CompactadorAnexo</code> (<code>SMSMais.Core/Regulacao/Anexos/</code>), <code>CompressorImagem.CompactarNaEntrada</code> e <code>ICompressorPdf.ComprimirNoDegrauAsync</code> (<code>SMSMais.Core/Regulacao/EnvioSer/</code>); prévia em <code>RegulacaoExigenciaService</code> (<code>PrepararAsync</code> / <code>ObterPreparadoAsync</code> / <code>AceitarPreparadoAsync</code> / <code>DescartarPreparadoAsync</code>) com os endpoints <code>POST …/exigencias/{exigenciaId}/arquivos/preparar</code>, <code>GET …/exigencias/preparados/{token}/conteudo</code>, <code>POST …/exigencias/preparados/{token}/aceitar</code> e <code>DELETE …/exigencias/preparados/{token}</code>. No front, <code>shared/acervo/PreviaCompactacao</code> e a prop <code>compactar</code> do <code>UploadAnexo</code>.</p>
+</main>
+</body>
+</html>

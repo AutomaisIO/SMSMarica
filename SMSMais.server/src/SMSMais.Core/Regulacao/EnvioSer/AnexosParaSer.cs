@@ -34,8 +34,9 @@ public sealed record ArquivoLido(Guid Id, string Nome, string? Titulo, string Co
 /// de celular) é reencodada menor com SkiaSharp (ticket #167); PDF — avulso ou o agrupado — passa pelo
 /// Ghostscript (<see cref="ICompressorPdf"/>), que reduz as imagens de dentro dele até caber. Só quando
 /// nem comprimido cabe — ou quando o Ghostscript não está disponível neste servidor — é que recusa,
-/// com o nome do arquivo, antes de tocar no SER. O original continua intacto no armazenamento: só a
-/// cópia que sobe é comprimida.</para>
+/// com o nome do arquivo, antes de tocar no SER. O que está no armazenamento continua intacto (desde
+/// 23/10/2026 já é a cópia compactada na entrada, <see cref="Anexos.CompactadorAnexo"/>): só a cópia
+/// que sobe é comprimida de novo.</para>
 /// </summary>
 public static class AnexosParaSer
 {

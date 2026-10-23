@@ -27,7 +27,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
   publico: 'Quem abre e acompanha solicitações na unidade',
-  atualizadoEm: '2026-10-22',
+  atualizadoEm: '2026-10-23',
   palavrasChave: [
     'contato com o paciente',
     'aviso do SER',
@@ -42,6 +42,9 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'nova solicitação',
     'anexar do cadastro',
     'exames anexados',
+    'compactar anexo',
+    'prévia do anexo',
+    'arquivo ilegível',
     'nome do documento',
     'visualizar anexo',
     'pedido',
@@ -468,14 +471,26 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'anexos',
       titulo: 'Anexos',
       busca:
-        'anexo anexos caixinha documento exigido anexos gerais pdf imagem tamanho limite usar este exame da rede remover nome do documento descrição visualizar abrir anexar do cadastro exames anexados laudo assinado imagens do exame cadastro do paciente 15 mb 5 mb arquivo grande reduzir comprimir pdf compressão ser sernit',
+        'anexo anexos caixinha documento exigido anexos gerais pdf imagem tamanho limite usar este exame da rede remover nome do documento descrição visualizar abrir anexar do cadastro exames anexados laudo assinado imagens do exame cadastro do paciente 15 mb 5 mb arquivo grande reduzir comprimir pdf compressão compactar compactado compactação prévia conferir legível ilegível está legível descartar aceitar original foto deitada espaço armazenamento ser sernit',
       conteudo: (
         <>
           <Lista>
             <Item>Cada documento exigido pelo manual vira uma caixinha; toda solicitação tem também “Anexos gerais”.</Item>
             <Item>
-              <BotaoRef variante="outline">Anexar arquivo</BotaoRef> pede, antes de enviar, o{' '}
-              <strong>nome do documento</strong> (obrigatório) e uma <strong>descrição</strong>. Um
+              <BotaoRef variante="outline">Anexar arquivo</BotaoRef>: escolha o arquivo e o sistema o{' '}
+              <strong>compacta</strong> (o botão mostra “Compactando…”). Foto de celular vira uma imagem
+              bem menor e de pé; PDF escaneado tem as páginas reduzidas. Arquivo que já estava enxuto vai
+              como chegou.
+            </Item>
+            <Item>
+              Abre a <strong>prévia</strong> do arquivo compactado, com o tamanho de antes e de depois.
+              Confira se dá para ler tudo e clique em <BotaoRef>Está legível — continuar</BotaoRef> — ou em{' '}
+              <BotaoRef variante="outline">Não está legível — descartar</BotaoRef> para tirar outra foto ou
+              digitalizar de novo.
+            </Item>
+            <Item>
+              Aceita a prévia, o sistema pede o <strong>nome do documento</strong> (obrigatório) e uma{' '}
+              <strong>descrição</strong>, e <BotaoRef>Anexar</BotaoRef> põe o arquivo na caixinha. Um
               arquivo por vez — cada um com o seu nome.
             </Item>
             <Item>
@@ -490,9 +505,10 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               caixinha sem novo upload.
             </Item>
             <Item>
-              Os tipos e o tamanho máximo do upload são os da configuração (normalmente PDF e imagens, até 15 MB).
-              Não precisa reduzir o arquivo para o SER ou o SERNIT, que têm limite por arquivo (perto de 5 MB):
-              ao levar o pedido, a regulação comprime sozinha o que passar do limite, e aqui fica o original.
+              Os tipos e o tamanho máximo do upload são os da configuração (normalmente PDF e imagens, até 15 MB),
+              contados sobre o arquivo como você o escolheu. Não precisa reduzir nada para o SER ou o SERNIT, que
+              têm limite por arquivo (perto de 5 MB): o arquivo já entra compactado e, se mesmo assim passar do
+              limite, a regulação comprime de novo ao levar o pedido.
             </Item>
             <Item>
               Quando a rede já tem um exame do paciente que serve para a caixinha, aparece a sugestão com{' '}
@@ -500,6 +516,13 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             </Item>
             <Item>Arquivo que já foi enviado ao sistema de destino não pode mais ser removido.</Item>
           </Lista>
+          <Callout tipo="regra" titulo="Por que conferir a prévia">
+            Fica guardada <strong>só a cópia compactada</strong> — o original não, para poupar o espaço do
+            sistema. É essa cópia que vai para o regulador e para o cadastro do paciente; por isso ela só
+            entra depois de alguém olhar e dizer que está legível. Fechar a prévia (ou o pedido do nome) é o
+            mesmo que descartar: nada fica anexado. A prévia espera até 30 minutos; passou disso, anexe de
+            novo.
+          </Callout>
           <Callout tipo="dica" titulo="Não aparece o exame que o paciente mandou pelo app?">
             O que o paciente envia pelo app (ou pelo WhatsApp) só entra no “Anexar do cadastro” depois
             que alguém da equipe aceita — na ficha do paciente, aba Exames anexados. É a conferência que
