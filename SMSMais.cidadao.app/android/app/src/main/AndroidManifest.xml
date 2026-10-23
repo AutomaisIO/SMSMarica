@@ -4,10 +4,18 @@
     <!-- Faixa "Sem conexão" (connectivity_plus). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Sem backup: o cache offline tem dados de saúde (perfil, exames, laudos em PDF) e não pode ir
+         para o backup do Google nem passar de um aparelho para outro. allowBackup cobre o backup;
+         dataExtractionRules cobre também a transferência entre aparelhos (Android 12+).
+         networkSecurityConfig: release só aceita HTTPS e certificados do sistema. -->
     <application
         android:label="Saúde Maricá"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"

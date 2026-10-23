@@ -138,8 +138,25 @@ keyPassword=&lt;a senha&gt;</code></pre>
 <p>A Play exige, de app em que se entra com conta, um jeito de <strong>pedir a exclusão</strong> dentro do app e fora dele. Fora: a página pública <a href="../SMSMais.cidadao.pwa/public/exclusao-de-conta/index.html"><code>/exclusao-de-conta/</code></a> do PWA (é a "URL para exclusão de contas" da Segurança dos dados). Dentro: <strong>Meu perfil → Excluir minha conta</strong>, no app e no PWA, que abre essa página. O pedido vai por e-mail ao DPO (<code>contato@smsmarica.online</code>), com resposta em até 15 dias; apaga o acesso ao app (sessões e aparelhos do push), a foto e os acompanhantes, e o prontuário fica, por obrigação legal. Mudou o processo, mudam a página e a declaração juntas.</p>
 <p>Na Segurança dos dados, o declarado é o que o app <strong>manda</strong> ao servidor: CPF e nascimento (seus e dos acompanhantes), e-mail e telefones do Perfil, foto, exames enviados (arquivo e foto), confirmação e cancelamento de exame, avaliação da viagem e o token do push. Nada é "compartilhado" no sentido da Play (WhatsApp e Firebase são prestadores de serviço); não há localização, ID de anúncio nem relatório de falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa declaração.</p>
 <h3>Gerar o pacote da loja</h3>
-<pre><code>flutter build appbundle --release --dart-define-from-file=firebase.json</code></pre>
+<pre><code>flutter build appbundle --release --dart-define-from-file=firebase.json --obfuscate --split-debug-info=build/app/simbolos</code></pre>
 <p>Sai em <code>build/app/outputs/bundle/release/app-release.aab</code>. A versão vem do <code>pubspec.yaml</code> (<code>version: &lt;nome&gt;+&lt;código&gt;</code>): cada envio à Play precisa de um <strong>código maior</strong> que o anterior.</p>
+<p>O <code>--obfuscate</code> embaralha os nomes do código Dart no pacote (dificulta a engenharia reversa). Os símbolos para ler uma pilha de erro ficam em <code>build/app/simbolos</code>: <strong>guarde a pasta de cada versão</strong> fora do repositório, junto da cópia da chave. Sem ela, a pilha daquela versão não se lê (<code>flutter symbolize -i &lt;pilha&gt; -d build/app/simbolos/app.android-arm64.symbols</code>).</p>
+<h3>Segurança do app</h3>
+<p>Do pentest VULTUS (fev/2026, projeto Aeromais) e da revisão de 23/10/2026:</p>
+<ul>
+<li><strong>Backup desligado</strong> (<code>allowBackup</code>, <code>fullBackupContent</code>, <code>dataExtractionRules</code>): o cache offline</li>
+</ul>
+<p>  tem dados de saúde e não vai ao backup do Google nem passa para outro aparelho.</p>
+<ul>
+<li><strong>Só HTTPS no build de loja:</strong> <code>exigirHttpsNoBuildDeLoja()</code> (em <code>lib/shared/api/http.dart</code>) impede</li>
+</ul>
+<p>  o app de abrir se a API não for <code>https</code>. Essa trava é necessária porque o cliente HTTP do Dart não   obedece ao <code>network_security_config.xml</code>. O config continua valendo para as bibliotecas nativas e   aceita só certificados do sistema (o debug libera HTTP e certificados do usuário).</p>
+<ul>
+<li><strong>Sessão no cofre do aparelho</strong> (<code>flutter_secure_storage</code>). O cache é limpo ao sair da conta.</li>
+<li><strong>Pendente:</strong></li>
+<li><strong>Play Integrity</strong> conferido no servidor, no lugar de detecção caseira de root/emulador. Precisa</li>
+</ul>
+<p>    ligar um projeto do Google Cloud no Play Console.   - <strong>iOS:</strong> excluir o cache do backup do iCloud antes da App Store.</p>
 <h2>Pendências para publicar</h2>
 <ul>
 <li><strong>Links do WhatsApp abrirem direto no app:</strong> publicar <code>/.well-known/assetlinks.json</code> (Android)</li>

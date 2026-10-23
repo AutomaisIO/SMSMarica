@@ -21,6 +21,16 @@ const demoLogado = modoDemo && bool.fromEnvironment('DEMO_LOGADO');
 /// Endereço público do app (páginas estáticas de privacidade/termos e links do WhatsApp).
 const appWebUrl = String.fromEnvironment('APP_WEB_URL', defaultValue: 'https://app.smsmarica.online');
 
+/// Build de loja só fala HTTPS (pentest VULTUS, PTRZN-1515). O cliente HTTP do Dart não obedece à
+/// regra de "sem tráfego em claro" do Android (`network_security_config.xml`), então a trava que
+/// vale para a API fica aqui: um build de release apontado para `http://` não abre.
+void exigirHttpsNoBuildDeLoja() {
+  if (!kReleaseMode) return;
+  for (final url in [apiBaseUrl, appWebUrl]) {
+    if (!url.startsWith('https://')) throw StateError('Build de loja exige HTTPS: $url');
+  }
+}
+
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
