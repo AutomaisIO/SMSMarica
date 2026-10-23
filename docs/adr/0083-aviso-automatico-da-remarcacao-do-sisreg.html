@@ -109,6 +109,20 @@ Comunicamos que a data {{2}} *mudou*. Para ver a nova data, toque em *Quero mais
 <pre><code>Resposta: Quero mais informações
 Resposta: Não sou essa pessoa</code></pre>
 <p>Os textos dos botões são os que a máquina de identificação reconhece (a Meta devolve o texto do botão). A tela Mensageria → Testar modelo já sabe as variáveis dos dois.</p>
+<h2>Adendo (23/10/2026, noite): nenhum modelo de Marketing sai pelo SMSMais</h2>
+<p>Na aprovação, a Meta pôs o <code>agendamento_data_alterada_anonimo</code> na categoria <strong>MARKETING</strong> (o completo ficou em utilidade); o Bernardo pediu a revisão. Daí a regra da plataforma, pedida por ele: <strong>tudo o que sai pelo SMSMais é utilidade</strong> — mensagem de saúde não pode chegar ao cidadão como propaganda, nem custar como propaganda, nem pesar na nota da conta como propaganda.</p>
+<ul>
+<li><strong>Break no único ponto de saída</strong> (<code>WhatsAppCliente.EnviarRealAsync</code>): modelo que o catálogo diz ser</li>
+</ul>
+<p>  MARKETING não é pedido ao relay — automático, atendente, teste ou autenticação. Fica registrado na thread   como <code>[BLOQUEADO — MARKETING]</code>, com o erro <code>MODELO_MARKETING</code>. Sem catálogo no momento, a trava usa a última   lista conhecida (até 7 dias).</p>
+<ul>
+<li>A fila de comunicações trata o bloqueio como espera: <strong>não vira falha nem gasta tentativa</strong>, tenta de hora</li>
+</ul>
+<p>  em hora; voltando a Utilidade, sai sozinha.</p>
+<ul>
+<li>Para o aviso de remarcação, modelo aprovado como MARKETING conta como <strong>não aprovado</strong>: a mensagem espera e</li>
+</ul>
+<p>  a remarcação fica visível para a equipe.</p>
 <h2>Consequências</h2>
 <ul>
 <li>O paciente remarcado recebe a data certa sem depender de alguém olhar a fila; a fila guarda só o que</li>

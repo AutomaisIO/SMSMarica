@@ -55,6 +55,9 @@ export const artigoMensageria: Artigo = {
     'testar modelo',
     'template',
     'modelo aprovado',
+    'marketing',
+    'modelo bloqueado',
+    'classificado como marketing',
     'tarifas meta',
     'custo',
     'utility',
@@ -590,7 +593,7 @@ export const artigoMensageria: Artigo = {
             informações</em> e se identifica. A resposta que tinha dado deixa de valer: era sobre a data antiga. Segue
             o horário de envio e as chaves por unidade e procedimento da lista abaixo. São dois modelos próprios da
             Meta (<em>agendamento_data_alterada</em> e <em>agendamento_data_alterada_anonimo</em>); enquanto não
-            estiverem aprovados, a mensagem espera na fila — a confirmação comum não sai no lugar.
+            estiverem aprovados como utilidade, a mensagem espera na fila — a confirmação comum não sai no lugar.
           </P>
           <P>
             O que o automático não avisa — quem tinha dito que não ia, quem está em atendimento, quem foi remarcado para
@@ -898,7 +901,7 @@ export const artigoMensageria: Artigo = {
     {
       id: 'tarifas-e-modelos',
       titulo: 'Tarifas da Meta e teste de modelo',
-      busca: 'tarifas meta custo usd utility marketing authentication template categoria testar modelo arte cabeçalho automais zap',
+      busca: 'tarifas meta custo usd utility marketing authentication template categoria testar modelo arte cabeçalho automais zap bloqueado marketing utilidade revisão reclassificado',
       conteudo: (
         <div className="space-y-4">
           <Sub>Tarifas</Sub>
@@ -934,6 +937,13 @@ export const artigoMensageria: Artigo = {
             modelo aprovado é só exemplo. Faltando a arte, o envio é recusado antes mesmo de chegar na Meta. A tela
             avisa quais modelos estão nessa situação. A arte não se troca aqui: publica-se no painel do Automais.Zap,
             em Artes, e escolhe-se em Templates.
+          </Callout>
+          <Callout tipo="regra" titulo="Modelo classificado como Marketing nunca sai">
+            Tudo o que sai por aqui é <strong>utilidade</strong>: mensagem de saúde não pode chegar ao paciente como
+            propaganda. A Meta às vezes classifica (ou reclassifica) um modelo como <em>Marketing</em> por conta
+            própria — e aí o sistema <strong>bloqueia</strong> todo envio dele, automático, de atendente ou de teste,
+            antes de chegar na Meta. Em Envios a mensagem aparece parada com o motivo; ela não vira falha nem gasta
+            tentativa: espera. Peça a revisão do modelo no WhatsApp Manager — voltando para Utilidade, sai sozinha.
           </Callout>
         </div>
       ),
