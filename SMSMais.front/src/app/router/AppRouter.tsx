@@ -111,6 +111,7 @@ import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
 import { EstatisticasPage } from '@/features/estatisticas/pages/EstatisticasPage';
 import { RelatoriosImagemPage } from '@/features/relatorios-imagem/pages/RelatoriosImagemPage';
 import { ChatJanelaPage } from '@/features/conversas/pages/ChatJanelaPage';
+import { InternoJanelaPage } from '@/features/comunicacao-interna/pages/InternoJanelaPage';
 import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
@@ -166,6 +167,8 @@ export function AppRouter() {
         <Route path="/exames-anteriores/janela" element={<ExamesAnterioresJanelaPage />} />
         {/* Central de Atendimento em janela separada do navegador (ticket #18). */}
         <Route path="/chat/janela" element={<ChatJanelaPage />} />
+        {/* Comunicação interna em janela separada (ADR-0079) — a própria página checa o módulo. */}
+        <Route path="/interno/janela" element={<InternoJanelaPage />} />
         {/* Janela solta de confirmar/cancelar UM agendamento, aberta do chat. */}
         <Route path="/confirmacoes/janela/:solicitacaoId" element={<JanelaAtendimentoPage />} />
       </Route>

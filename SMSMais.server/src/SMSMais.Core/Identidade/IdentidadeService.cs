@@ -484,7 +484,9 @@ public sealed class IdentidadeService(
             preferencias.NotificacoesSerTecnicos ?? atual.NotificacoesSerTecnicos,
             preferencias.NotificacoesSernitTecnicos ?? atual.NotificacoesSernitTecnicos,
             preferencias.NotificacoesEsusSgTecnicos ?? atual.NotificacoesEsusSgTecnicos,
-            preferencias.NotificacoesSerRecursos ?? atual.NotificacoesSerRecursos);
+            preferencias.NotificacoesSerRecursos ?? atual.NotificacoesSerRecursos,
+            preferencias.SomComunicacaoInternaSilenciado ?? atual.SomComunicacaoInternaSilenciado,
+            preferencias.ComunicacaoInternaNaoAbrirSozinho ?? atual.ComunicacaoInternaNaoAbrirSozinho);
         u.PreferenciasUi = JsonSerializer.Serialize(mesclado, PreferenciasJson);
         await _db.SaveChangesAsync(cancellationToken);
     }

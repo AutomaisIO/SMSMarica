@@ -78,6 +78,12 @@ public static class DependencyInjection
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<Tickets.ITicketService, Tickets.TicketService>();
 
+        // Comunicação interna (ADR-0079): presença em memória (singleton — uma instância por
+        // município) + notificador no-op, sobrescrito pela Api com o SignalR.
+        services.AddSingleton<ComunicacaoInterna.IPresencaInterna, ComunicacaoInterna.PresencaInterna>();
+        services.AddScoped<ComunicacaoInterna.IComunicacaoInternaNotificador, ComunicacaoInterna.NotificadorComunicacaoInternaNulo>();
+        services.AddScoped<ComunicacaoInterna.IComunicacaoInternaService, ComunicacaoInterna.ComunicacaoInternaService>();
+
         // Ouvidoria (ADR-0060)
         services.AddScoped<Ouvidoria.IOuvidoriaCatalogoService, Ouvidoria.OuvidoriaCatalogoService>();
         services.AddScoped<Ouvidoria.IOuvidoriaManifestacaoService, Ouvidoria.OuvidoriaManifestacaoService>();

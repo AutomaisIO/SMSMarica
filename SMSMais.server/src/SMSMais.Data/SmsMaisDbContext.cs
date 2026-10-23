@@ -323,6 +323,11 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RespostaRapidaCampo> RespostaRapidaCampos => Set<RespostaRapidaCampo>();
     public DbSet<UsuarioUnidade> UsuarioUnidades => Set<UsuarioUnidade>();
 
+    // Comunicação interna (ADR-0079) — chat entre unidades e entre pessoas, dentro do painel.
+    public DbSet<Entities.ComunicacaoInterna.ConversaInterna> ConversasInternas => Set<Entities.ComunicacaoInterna.ConversaInterna>();
+    public DbSet<Entities.ComunicacaoInterna.MensagemInterna> MensagensInternas => Set<Entities.ComunicacaoInterna.MensagemInterna>();
+    public DbSet<Entities.ComunicacaoInterna.ConversaInternaLeitura> ConversaInternaLeituras => Set<Entities.ComunicacaoInterna.ConversaInternaLeitura>();
+
     // Comunicações ao paciente (fila WhatsApp: confirmação/exame liberado/laudo pronto),
     // estado da conversa de cancelamento e registro manual de contatos.
     public DbSet<ComunicacaoPaciente> ComunicacoesPaciente => Set<ComunicacaoPaciente>();
