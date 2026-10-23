@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Download, FileText, Loader2 } from 'lucide-react';
+import { Download, FileText, Loader2, Search } from 'lucide-react';
 
 import { baixarArquivoBpa } from '@/features/faturamento-producao/api/faturamentoProducaoApi';
 import { usePreviewBpa, useUnidadesHabilitadas } from '@/features/faturamento-producao/api/queries';
@@ -69,32 +69,46 @@ function LinhaTabela({ l }: { l: BpaLinha }) {
   );
 }
 
+type Consulta = { unidadeId: string; competencia: number };
+
 export function FaturamentoProducaoPage() {
   const [unidadeId, setUnidadeId] = useState<string>('');
   const [ym, setYm] = useState<string>(mesAtual());
   const [baixando, setBaixando] = useState(false);
+  // A prévia só roda quando o usuário clica em "Gerar prévia" (não automaticamente ao trocar os
+  // seletores). `consulta` guarda a seleção submetida; mudar unidade/competência a limpa.
+  const [consulta, setConsulta] = useState<Consulta | null>(null);
 
   const unidades = useUnidadesHabilitadas();
   const competencia = competenciaDe(ym);
-  const preview = usePreviewBpa(unidadeId || null, competencia);
+  const preview = usePreviewBpa(consulta?.unidadeId ?? null, consulta?.competencia ?? null);
 
   const est = preview.data?.estatisticas;
-  const podeBaixar = Boolean(unidadeId && competencia && (est?.validas ?? 0) > 0);
+  const podeGerarPrevia = Boolean(unidadeId && competencia);
+  const podeBaixar = Boolean(consulta && (est?.validas ?? 0) > 0);
 
   const linhasOrdenadas = useMemo(() => {
     const linhas = preview.data?.linhas ?? [];
-    // pendências primeiro (precisam de ação), depois as válidas por folha/seq
     return [...linhas].sort((a, b) => {
       if (a.valida !== b.valida) return a.valida ? 1 : -1;
       return (a.folha ?? 0) - (b.folha ?? 0) || (a.sequencia ?? 0) - (b.sequencia ?? 0);
     });
   }, [preview.data]);
 
-  async function baixar() {
+  function gerarPrevia() {
     if (!unidadeId || !competencia) return;
+    if (consulta && consulta.unidadeId === unidadeId && consulta.competencia === competencia) {
+      void preview.refetch(); // mesma seleção → atualiza (ex.: profissional conciliado depois)
+    } else {
+      setConsulta({ unidadeId, competencia });
+    }
+  }
+
+  async function baixar() {
+    if (!consulta) return;
     setBaixando(true);
     try {
-      await baixarArquivoBpa(unidadeId, competencia);
+      await baixarArquivoBpa(consulta.unidadeId, consulta.competencia);
     } catch (e) {
       notificar(extrairMensagemDeErro(e), 'erro');
     } finally {
@@ -120,7 +134,10 @@ export function FaturamentoProducaoPage() {
           <select
             className="min-w-[18rem] rounded border border-slate-300 px-2 py-1.5"
             value={unidadeId}
-            onChange={(e) => setUnidadeId(e.target.value)}
+            onChange={(e) => {
+              setUnidadeId(e.target.value);
+              setConsulta(null);
+            }}
           >
             <option value="">Selecione…</option>
             {(unidades.data ?? []).map((u) => (
@@ -138,9 +155,22 @@ export function FaturamentoProducaoPage() {
             type="month"
             className="rounded border border-slate-300 px-2 py-1.5"
             value={ym}
-            onChange={(e) => setYm(e.target.value)}
+            onChange={(e) => {
+              setYm(e.target.value);
+              setConsulta(null);
+            }}
           />
         </label>
+
+        <button
+          type="button"
+          onClick={gerarPrevia}
+          disabled={!podeGerarPrevia || preview.isFetching}
+          className="inline-flex items-center gap-2 rounded border border-red-600 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {preview.isFetching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          Gerar prévia
+        </button>
 
         <button
           type="button"
@@ -159,25 +189,25 @@ export function FaturamentoProducaoPage() {
         </div>
       )}
 
-      {!unidadeId && (
+      {!consulta && (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          Selecione uma unidade e a competência para ver a prévia das linhas e as estatísticas.
+          Selecione a unidade e a competência e clique em <strong>Gerar prévia</strong> para ver as linhas e as estatísticas.
         </div>
       )}
 
-      {unidadeId && preview.isError && (
+      {consulta && preview.isError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {extrairMensagemDeErro(preview.error)}
         </div>
       )}
 
-      {unidadeId && preview.isPending && (
+      {consulta && preview.isFetching && !preview.data && (
         <div className="flex items-center justify-center gap-2 p-8 text-slate-500">
-          <Loader2 className="size-5 animate-spin" /> Carregando prévia…
+          <Loader2 className="size-5 animate-spin" /> Gerando prévia…
         </div>
       )}
 
-      {est && (
+      {consulta && est && (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
             <Tile rotulo="Procedimentos" valor={est.total} detalhe={`folhas: ${preview.data?.folhas ?? 0}`} />
