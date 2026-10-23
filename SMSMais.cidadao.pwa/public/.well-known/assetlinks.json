@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.automais.smsmais.cidadao",
+      "sha256_cert_fingerprints": [
+        "9A:9C:84:32:27:1D:37:9A:0C:2C:5E:E1:4D:2E:0B:31:B4:C4:20:9C:52:6D:22:AB:09:6C:7D:62:73:49:BB:8B"
+      ]
+    }
+  }
+]

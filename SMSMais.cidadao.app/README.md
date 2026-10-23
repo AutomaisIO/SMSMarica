@@ -215,10 +215,18 @@ flutter build appbundle --release --dart-define-from-file=firebase.json
 Sai em `build/app/outputs/bundle/release/app-release.aab`. A versão vem do `pubspec.yaml`
 (`version: <nome>+<código>`): cada envio à Play precisa de um **código maior** que o anterior.
 
+### Links do WhatsApp abrindo no app (Android)
+
+Os links `/entrar/` e `/documento/` abrem direto no app porque o PWA publica
+[`/.well-known/assetlinks.json`](../SMSMais.cidadao.pwa/public/.well-known/assetlinks.json) em
+`app.smsmarica.online`, com a impressão digital (SHA-256) da **chave de assinatura da Play** — a que
+assina o app nos aparelhos, em Play Console → Testar e lançar → Configuração → Assinatura de apps.
+Não é a da chave de upload: um pacote de release instalado à mão (assinado com ela) não é verificado
+e o Android pergunta "abrir com". Se a Play trocar a chave de assinatura, o arquivo muda junto.
+
 ## Pendências para publicar
 
-- **Links do WhatsApp abrirem direto no app:** publicar `/.well-known/assetlinks.json` (Android)
-  e `apple-app-site-association` (iOS, com Associated Domains no projeto) em
-  `app.smsmarica.online`, com a impressão digital da chave de assinatura. Sem isso, o Android
-  pergunta "abrir com" e o iOS abre no navegador (o PWA).
-- **Push:** criar o projeto no Firebase e montar o `firebase.json` do build de loja (seção acima). O Firebase está trocando o token de registro pelo FID (Firebase Installation ID); o app ainda usa `getToken`/`onTokenRefresh` e o servidor envia em `message.token`, que aceita os dois. Quando o FlutterFire publicar `register()`/`onRegistered`, migrar.
+- **Links do WhatsApp abrirem direto no app no iOS:** publicar `apple-app-site-association` em
+  `app.smsmarica.online` (com Associated Domains no projeto). Sem isso o iOS abre no navegador (o
+  PWA). No Android já está publicado (seção acima).
+- **Push:** o projeto do Firebase existe e o `firebase.json` do build de loja está montado (seção acima). O Firebase está trocando o token de registro pelo FID (Firebase Installation ID); o app ainda usa `getToken`/`onTokenRefresh` e o servidor envia em `message.token`, que aceita os dois. Quando o FlutterFire publicar `register()`/`onRegistered`, migrar.
