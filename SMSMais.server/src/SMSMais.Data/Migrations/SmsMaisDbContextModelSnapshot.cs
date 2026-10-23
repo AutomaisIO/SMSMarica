@@ -1248,6 +1248,77 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("cidadao_sessao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.CompartilhamentoLocalizacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Canal")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("canal");
+
+                    b.Property<DateTime?>("CapturadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("capturada_em");
+
+                    b.Property<Guid>("CidadaoSessaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cidadao_sessao_id");
+
+                    b.Property<DateTime?>("EncerradoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("encerrado_em");
+
+                    b.Property<DateTime>("IniciadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("iniciado_em");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<int?>("MotivoEncerramento")
+                        .HasColumnType("integer")
+                        .HasColumnName("motivo_encerramento");
+
+                    b.Property<double?>("PrecisaoM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("precisao_m");
+
+                    b.Property<DateTime?>("RecebidaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recebida_em");
+
+                    b.Property<Guid>("SessaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sessao_id");
+
+                    b.Property<bool>("Simulada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("simulada");
+
+                    b.Property<int>("Trecho")
+                        .HasColumnType("integer")
+                        .HasColumnName("trecho");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EncerradoEm");
+
+                    b.HasIndex("SessaoId", "Trecho")
+                        .IsUnique();
+
+                    b.ToTable("translado_compartilhamento_localizacao", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoPaciente", b =>
                 {
                     b.Property<Guid>("Id")
@@ -17484,6 +17555,15 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("CidadaoAcesso");
 
                     b.Navigation("Personificacao");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.CompartilhamentoLocalizacao", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.SessaoDeTratamento", null)
+                        .WithMany()
+                        .HasForeignKey("SessaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.ComunicacaoPaciente", b =>

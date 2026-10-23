@@ -9,7 +9,10 @@ namespace SMSMais.Api.Controllers;
 
 [ApiController]
 [Route("rotas")]
-public sealed class TransladoController(ITransladoService service, IViagemService viagem) : ControllerBase
+public sealed class TransladoController(
+    ITransladoService service,
+    IViagemService viagem,
+    SMSMais.Core.Translado.Localizacao.ICompartilhamentoLocalizacaoService localizacao) : ControllerBase
 {
     private readonly ITransladoService _service = service;
 
@@ -68,6 +71,15 @@ public sealed class TransladoController(ITransladoService service, IViagemServic
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IReadOnlyList<EventoViagemDto>> Viagem(Guid id, CancellationToken cancellationToken) =>
         viagem.ListarDaRotaAsync(id, cancellationToken);
+
+    /// <summary>Quem da rota está compartilhando a localização com o motorista agora: desde quando, a idade
+    /// e a precisão da última posição. Sem a coordenada — ela é só do tablet do carro (ADR-0079 §5).</summary>
+    [HttpGet("{id:guid}/localizacao-pacientes")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SMSMais.Core.Translado.Localizacao.CompartilhamentoDaRotaDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<SMSMais.Core.Translado.Localizacao.CompartilhamentoDaRotaDto>> LocalizacaoPacientes(
+        Guid id, CancellationToken cancellationToken) =>
+        localizacao.DaRotaAsync(id, cancellationToken);
 
     [HttpPost("{id:guid}/iniciar")]
     [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Edicao)]

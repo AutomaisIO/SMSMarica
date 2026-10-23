@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0079 — Localização do paciente no dia da viagem do TFD, compartilhada pelo app com o motorista</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0079 — Localização do paciente no dia da viagem do TFD, compartilhada pelo app com o motorista</h1>
+<ul>
+<li><strong>Status:</strong> Aceito (23/10/2026)</li>
+<li><strong>Data:</strong> 2026-10-23</li>
+<li><strong>Contexto módulo:</strong> Transporte (TFD) — app do cidadão (<a href="../../SMSMais.cidadao.app/"><code>SMSMais.cidadao.app</code></a></li>
+</ul>
+<p>  e <a href="../../SMSMais.cidadao.pwa/"><code>SMSMais.cidadao.pwa</code></a>), servidor, tablet do veículo   (<a href="../../SMSMais.agente.app/"><code>SMSMais.agente.app</code></a>) e painel</p>
+<ul>
+<li><strong>Relacionado:</strong> <a href="./0017-otimizacao-rota-tfd.md">ADR-0017</a> (rota e tempo real do TFD),</li>
+</ul>
+<p>  <a href="./0070-push-do-app-do-cidadao.md">ADR-0070</a> (push do app), <a href="./0078-entrada-cidadao-cpf-nascimento.md">ADR-0078</a>   (entrada no app), <a href="../modulos/tfd/navegacao-motorista.md"><code>docs/modulos/tfd/navegacao-motorista.md</code></a>   (resgate de 19/10)</p>
+<h2>Contexto</h2>
+<p>O motorista chega ao ponto de embarque pelo endereço do cadastro: a coordenada do plano da rota ou, sem ela, o endereço geocodificado. Ele erra quando o endereço está incompleto ou é de uma rua sem número, quando a pessoa espera na esquina ou em outro portão e, no <strong>resgate</strong>, quando o paciente sai por uma porta qualquer de um hospital grande, fora de Maricá. Hoje o motorista só tem o telefone para achar o paciente.</p>
+<p>A decisão de produto (23/10/2026) é que o paciente <strong>compartilhe a localização do celular no dia da viagem, com o app aberto</strong>, nos dois aplicativos (app nativo e PWA), e que a primeira publicação nas lojas espere essa função.</p>
+<p>O que já existe e pesa no desenho:</p>
+<ul>
+<li>a viagem do paciente num dia é a <code>SessaoDeTratamento</code> (o <code>SessaoId</code> identifica tudo, inclusive no</li>
+</ul>
+<p>  tablet). O embarque <strong>não muda o status</strong>, só grava <code>HoraSaidaResidencia</code> (ida) ou <code>HoraSaidaUnidade</code>   (resgate) (<code>ViagemService</code>);</p>
+<ul>
+<li>o tablet fala por <code>X-Dispositivo-Token</code> (um por veículo) e busca a rota do dia por polling; não usa</li>
+</ul>
+<p>  SignalR;</p>
+<ul>
+<li>o hub SignalR <code>/hubs/rastreamento</code> aceitava qualquer JWT, inclusive o do cidadão, no grupo do painel.</li>
+</ul>
+<p>  Foi corrigido no PR #78 (só a equipe com Consulta em Rastreamento). <strong>A localização do paciente não   passa por ele</strong>;</p>
+<ul>
+<li>o app nativo não tem pacote nem permissão de localização; a Segurança dos dados da Play diz "sem</li>
+</ul>
+<p>  localização".</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Quando o paciente pode compartilhar.</strong> Só enquanto ele <strong>espera um embarque</strong> de uma viagem de</li>
+</ol>
+<p>   <strong>hoje</strong> (fuso de Brasília), num de dois trechos:    - <strong>ida:</strong> a sessão está numa rota de hoje (Planejada ou Em andamento) como coleta, não foi cancelada      nem marcada como ausente, e ainda não embarcou (<code>HoraSaidaResidencia</code> vazio). A janela abre      <strong>2 h antes da busca prevista</strong> ou quando a rota começa, o que vier primeiro;    - <strong>resgate:</strong> o paciente já desceu na unidade (<code>HoraChegadaUnidade</code>) e ainda não embarcou na volta      (<code>HoraSaidaUnidade</code> vazio).</p>
+<p>   Fora disso o servidor recusa (<code>409 localizacao.fora_da_janela</code>) e o app para sozinho. Dentro do    carro a posição do paciente não interessa: a do veículo já existe.</p>
+<ol>
+<li><strong>Consentimento específico, a cada viagem.</strong> O app explica antes de pedir a permissão do aparelho:</li>
+</ol>
+<p>   para que serve (o motorista achar você), quem vê (o motorista daquela viagem), quando para (no    embarque, ou quando você tocar em Parar) e que o app só envia com ele aberto. Depois do "Compartilhar",    o sistema operacional pede a permissão. O aceite fica registrado na trilha de auditoria (sessão do    cidadão, viagem, canal, hora), que é a prova exigida pela LGPD (art. 8º). Não serve aceite genérico    no termo: a autorização vale para aquela viagem.</p>
+<ol>
+<li><strong>Só com o app aberto.</strong> Permissão "durante o uso" (Android <code>ACCESS_FINE_LOCATION</code>/<code>COARSE</code>; iOS</li>
+</ol>
+<p>   <em>When In Use</em>; no PWA, <code>watchPosition</code>). <strong>Sem localização em segundo plano</strong>: ela exige declaração    especial do Google, com vídeo, é muito recusada e não é proporcional ao uso. Enquanto compartilha,    o app mostra uma faixa fixa ("Compartilhando sua localização com o motorista · Parar"). Minimizou o    app, o envio para, e a faixa avisa para deixar o app aberto. Com permissão só aproximada (Android 12+),    o app envia assim mesmo, com a precisão real.</p>
+<ol>
+<li><strong>O servidor guarda só a última posição, e só durante a espera.</strong> Uma linha por sessão (não há</li>
+</ol>
+<p>   trajeto): latitude, longitude, precisão em metros, se o aparelho diz que é posição simulada, hora da    captura e do recebimento. Os campos de posição são <strong>apagados no embarque</strong>, na ausência, no    cancelamento, quando o paciente toca em Parar e, por uma rotina periódica, quando a janela fecha. O    registro do aceite fica na auditoria, sem a coordenada. A posição <strong>não vai para log</strong>, nem para push,    nem para o FHIR (é dado operacional do transporte, schema <code>smsmarica</code>).</p>
+<ol>
+<li><strong>Quem vê.</strong></li>
+</ol>
+<ul>
+<li><strong>o tablet do veículo da viagem</strong>: só os passageiros das paradas da rota daquele veículo, hoje</li>
+</ul>
+<p>     (coleta na ida; resgate marcado por aquele carro), por um endpoint próprio, consultado a cada 15 s      na tela de navegação. O tablet mostra o pino do paciente no mapa e, no painel do passageiro,      "compartilhando · há X min · ±Y m" (e "posição simulada", se for o caso). A posição fica <strong>só em      memória</strong>: não entra no cache cifrado da rota;    - <strong>o painel</strong>, para quem tem Consulta em Translados (<code>GET rotas/{id}/localizacao-pacientes</code>): só      <strong>se</strong> o paciente está compartilhando, há quanto tempo e com que precisão, <strong>sem a coordenada</strong>. A central fala com o motorista pelo telefone,      e o motorista tem o mapa. Mostrar a coordenada no painel fica para um ADR futuro, com auditoria de      leitura;    - <strong>o cidadão</strong>: o próprio estado ("compartilhando desde HH:mm").</p>
+<ol>
+<li><strong>O contrato.</strong></li>
+</ol>
+<ul>
+<li>cidadão (<code>/auth/paciente</code>, JWT do cidadão, <code>[ExigeConsentimento]</code>):</li>
+<li><code>GET localizacao</code> → a viagem em que ele pode compartilhar agora e o estado (ou 204);</li>
+<li><code>POST localizacao/{sessaoId}</code> → registra o aceite e abre o compartilhamento (idempotente);</li>
+<li><code>PUT localizacao/{sessaoId}</code> <code>{ latitude, longitude, precisaoM, capturadaEm, simulada }</code> → 204;</li>
+<li><code>DELETE localizacao/{sessaoId}</code> → para e apaga a posição;</li>
+<li>tablet (<code>/rastreamento/dispositivos</code>, <code>X-Dispositivo-Token</code>):</li>
+</ul>
+<p>     <code>GET localizacao-passageiros</code> → os passageiros da rota do veículo, hoje, que estão compartilhando.</p>
+<ol>
+<li><strong>Travas</strong> (revisão de segurança de 23/10 e pentest VULTUS):</li>
+</ol>
+<ul>
+<li><strong>posse:</strong> a sessão tem de ser do paciente do token. No tablet, a sessão tem de estar numa rota de</li>
+</ul>
+<p>     hoje do veículo do token. Assim ninguém manda nem lê a posição de outra pessoa;    - <strong>sem personificação:</strong> "Entrar como paciente" (Sandbox) e a sessão aberta pelo link do WhatsApp não      compartilham, como as outras escritas do transporte;    - <strong>validação:</strong> latitude e longitude no intervalo, (0,0) recusado, precisão até 5 km, captura no máximo      5 min no passado e 1 min no futuro;    - <strong>limite</strong> próprio por sessão do cidadão (um envio a cada 10 s, com folga); o app manda no máximo a      cada 15 s ou 20 m;    - <strong>posição simulada:</strong> o Android informa quando a posição vem de um app de GPS falso; vai para o      tablet como aviso, não bloqueia;    - <strong>transporte:</strong> só HTTPS (PR #79 no app). O hub de rastreamento não é usado (PR #78).</p>
+<ol>
+<li><strong>Modo demonstração.</strong> O <code>DemoAdapter</code> do app (e o do PWA) simula uma viagem de hoje na janela e</li>
+</ol>
+<p>   aceita os envios sem rede, para a revisão das lojas ver a explicação e o pedido de permissão.</p>
+<h2>O que muda em cada lugar</h2>
+<div class="tw"><table><thead><tr><th>Onde</th><th>Mudança</th></tr></thead><tbody>
+<tr><td>Servidor</td><td>entidade e migration (<code>translado_compartilhamento_localizacao</code>); <code>CompartilhamentoLocalizacaoService</code> com a regra da espera (o resgate reusa <code>ResgateService.EstaNaUnidade</code>, a mesma regra da lista de resgate); endpoints do cidadão, do tablet e do painel; limite <code>localizacao-cidadao</code> (12/min por sessão do app); encerramento na própria marcação do tablet (<code>ViagemService</code>, mesmo <code>SaveChanges</code>); <code>EncerramentoLocalizacaoWorker</code> (a cada minuto, para cancelamento, outro dia e já em casa); testes</td></tr>
+<tr><td>App nativo</td><td><code>geolocator</code>, permissões (Android e <code>Info.plist</code>), cartão no Transporte, explicação, faixa, envio, demonstração, versão 1.0.2</td></tr>
+<tr><td>PWA</td><td>o mesmo cartão e a faixa com <code>navigator.geolocation</code>, <code>X-App-Canal: pwa</code></td></tr>
+<tr><td>Tablet</td><td>consulta a cada 15 s na navegação, pino no mapa, aviso no painel do passageiro</td></tr>
+<tr><td>Painel</td><td>"compartilhando · há X min" no translado (sem coordenada); artigo do Manual</td></tr>
+<tr><td>Play</td><td>Segurança dos dados ganha "Local exato" (coletado, não compartilhado, opcional, funcionalidade); "Detalhes do login" ganha o passo da demonstração</td></tr>
+<tr><td>Páginas públicas</td><td>Política: retenção da posição (só a última, apagada no embarque). Termos §1: compartilhar a localização no dia da viagem, se quiser</td></tr>
+<tr><td>Docs</td><td>este ADR; <code>navegacao-motorista.md</code>; README do app</td></tr>
+</tbody></table></div>
+<h2>Consequências</h2>
+<ul>
+<li>O motorista acha o paciente pelo pino, com a idade e a precisão da posição. Sem o app aberto, sem</li>
+</ul>
+<p>  aceite ou sem sinal, continua tudo como hoje (endereço e telefone).</p>
+<ul>
+<li>Depende de o paciente abrir o app no dia. Um push "o carro está a caminho, abra o app para</li>
+</ul>
+<p>  compartilhar sua localização" (sem dado de saúde, ADR-0070) fica como evolução.</p>
+<ul>
+<li>O tablet só mostra o pino depois de receber a versão nova.</li>
+<li>Nenhuma coordenada fica guardada depois da viagem. Se surgir a necessidade de histórico (por exemplo,</li>
+</ul>
+<p>  para auditar uma reclamação de "não passaram aqui"), ela precisa de um ADR novo, com prazo de   retenção e base legal.</p>
+<ul>
+<li>Testes só com simulação: banco e servidor locais, pacientes fictícios, GPS simulado no emulador ou no</li>
+</ul>
+<p>  navegador. Nada com paciente real.</p>
+</main>
+</body>
+</html>

@@ -141,6 +141,15 @@ public sealed class ViagemService(
         evento.MotivoNaoAplicado = efeito.Motivo;
         db.EventosViagem.Add(evento);
 
+        // Embarcou (ou não estava na coleta): a posição do celular dele deixa de valer e é apagada junto
+        // com esta marcação (ADR-0079).
+        if (sessao is not null && efeito.Aplicado && pessoa == PessoaViagem.Paciente
+            && Localizacao.CompartilhamentoLocalizacaoService.FimNaViagem(evento) is { } fim)
+        {
+            await Localizacao.CompartilhamentoLocalizacaoService.EncerrarNaViagemAsync(
+                db, sessao.Id, fim.Trecho, fim.Motivo, agora, ct);
+        }
+
         // Quem não estava no local volta para a lista de resgate, e a rota encerrada devolve quem ela
         // marcou e não buscou.
         if (efeito.Liberar is { } liberar)

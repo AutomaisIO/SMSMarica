@@ -21,7 +21,8 @@ public sealed class DispositivosVeiculoController(
     IOcorrenciaVeiculoService ocorrencias,
     IRotaTabletService rotasTablet,
     IViagemService viagem,
-    IResgateService resgates) : ControllerBase
+    IResgateService resgates,
+    SMSMais.Core.Translado.Localizacao.ICompartilhamentoLocalizacaoService localizacao) : ControllerBase
 {
     public const string PoliticaDeLimite = "tablet-veiculo";
     private const string CabecalhoToken = "X-Dispositivo-Token";
@@ -126,6 +127,21 @@ public sealed class DispositivosVeiculoController(
         if (d is null) return Unauthorized();
         var registrado = await viagem.RegistrarDoTabletAsync(d, request, ct);
         return StatusCode(StatusCodes.Status201Created, registrado);
+    }
+
+    /// <summary>
+    /// Os passageiros das rotas de hoje deste veículo que estão compartilhando a localização do celular
+    /// enquanto esperam o embarque (a coleta na ida, o resgate marcado por este carro): a última posição,
+    /// quando foi medida, a precisão e se o aparelho disse que é simulada (ADR-0079). O tablet consulta
+    /// na tela de navegação e mantém a posição só em memória.
+    /// </summary>
+    [HttpGet("rastreamento/dispositivos/localizacao-passageiros")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimite)]
+    public async Task<IActionResult> LocalizacaoPassageiros(CancellationToken ct)
+    {
+        var d = await service.AutenticarAsync(Request.Headers[CabecalhoToken].ToString(), ct);
+        return d is null ? Unauthorized() : Ok(await localizacao.DoTabletAsync(d, ct));
     }
 
     /// <summary>

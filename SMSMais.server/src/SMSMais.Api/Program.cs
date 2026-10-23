@@ -298,6 +298,20 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
+    // Localização do paciente no dia da viagem (ADR-0079): o app manda a cada 15 s; folga para o GET
+    // e para quem abre o app duas vezes. Por sessão do app (jti), não por IP (rede móvel compartilha IP).
+    options.AddPolicy(SMSMais.Api.Controllers.CidadaoController.PoliticaLocalizacao, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 12,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
     // Defesa em profundidade nos endpoints anônimos do PWA de anexos (o token É a
     // autorização). Particiona por IP; barra brute-force de token / abuso de upload.
     options.AddPolicy("anexos-sessao", httpContext =>
