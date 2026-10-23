@@ -42,6 +42,13 @@ export type PreferenciasUi = {
   notificacoesEsusSgTecnicos?: string[];
   /** Recursos (procedimento/especialidade) marcados no filtro por recurso das Notificações do SER. Vazio = todos. */
   notificacoesSerRecursos?: string[];
+  /**
+   * Som de mensagem nova da Comunicação interna (ADR-0079) silenciado? Separado do bip da
+   * Central: são dois sons diferentes e quem cala um pode querer ouvir o outro.
+   */
+  somComunicacaoInternaSilenciado?: boolean;
+  /** Na Comunicação interna, NÃO abrir o painel sozinho quando chega mensagem. Ausente = abre. */
+  comunicacaoInternaNaoAbrirSozinho?: boolean;
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -60,6 +67,8 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     notificacoesSernitTecnicos: data?.notificacoesSernitTecnicos ?? undefined,
     notificacoesEsusSgTecnicos: data?.notificacoesEsusSgTecnicos ?? undefined,
     notificacoesSerRecursos: data?.notificacoesSerRecursos ?? undefined,
+    somComunicacaoInternaSilenciado: data?.somComunicacaoInternaSilenciado ?? undefined,
+    comunicacaoInternaNaoAbrirSozinho: data?.comunicacaoInternaNaoAbrirSozinho ?? undefined,
   };
 }
 

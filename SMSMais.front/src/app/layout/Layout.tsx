@@ -16,6 +16,8 @@ import { useRecursosFiltro } from '@/shared/regulacao/recursosFiltroPreferencia'
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
+import { BalaoInterno } from '@/features/comunicacao-interna/components/BalaoInterno';
+import { useInterno } from '@/features/comunicacao-interna/store/internoStore';
 import { AlertaOcorrencias } from '@/features/ocorrencias/components/AlertaOcorrencias';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { ModalTicketRespondido } from '@/features/tickets/components/ModalTicketRespondido';
@@ -80,6 +82,9 @@ export function Layout() {
         // Bip do chat persistido no usuário (ticket #127): aplica o silêncio salvo. Só
         // seta o estado — NÃO re-persiste (evita gravar de volta na hidratação).
         useChat.getState().setSom(!(p.bipChatSilenciado ?? false));
+        // Comunicação interna (ADR-0079): som e "abrir sozinho" próprios, também só aplicados.
+        useInterno.getState().setSom(!(p.somComunicacaoInternaSilenciado ?? false));
+        useInterno.getState().setAbrirSozinho(!(p.comunicacaoInternaNaoAbrirSozinho ?? false));
       })
       .catch(() => {
         /* offline/erro — segue com o cache local. */
@@ -134,6 +139,9 @@ export function Layout() {
 
       {/* Chat flutuante global (só aparece para quem tem o módulo Conversas). */}
       <ChatWidget />
+
+      {/* Comunicação interna (balão laranja, acima do da Central) — módulo ComunicacaoInterna. */}
+      <BalaoInterno />
 
       {/* Aviso vermelho global do REPORT dos tablets (módulo Rastreamento). */}
       <AlertaOcorrencias />

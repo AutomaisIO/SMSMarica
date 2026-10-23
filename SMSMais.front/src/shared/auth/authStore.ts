@@ -101,7 +101,10 @@ export type ModuloPermissao =
   // mensagem ao celular da pessoa.
   | 'NotificacaoAppCidadao'
   // Fontes de dados (82, ADR-0077): cadastro único de toda fonte de onde se lê dado (Sistema).
-  | 'FontesDados';
+  | 'FontesDados'
+  // Comunicação interna (86, ADR-0079): chat entre unidades e entre pessoas, no balão laranja.
+  // Consulta = ver e ler; Inclusão = enviar. Sem item de menu.
+  | 'ComunicacaoInterna';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

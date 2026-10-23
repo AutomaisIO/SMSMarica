@@ -94,6 +94,9 @@ builder.Services.AddScoped<SMSMais.Core.Rastreamento.IRastreamentoNotificador, S
 // Tempo real (Conversas/chat): notificador concreto (sobrescreve o no-op do Core).
 builder.Services.AddScoped<SMSMais.Core.Conversas.IConversaNotificador, SMSMais.Api.Realtime.ConversaNotificadorSignalR>();
 
+// Tempo real (Comunicação interna, ADR-0079): notificador concreto (sobrescreve o no-op do Core).
+builder.Services.AddScoped<SMSMais.Core.ComunicacaoInterna.IComunicacaoInternaNotificador, SMSMais.Api.Realtime.ComunicacaoInternaNotificadorSignalR>();
+
 // Token JWT do paciente (login CPF + OTP do PWA).
 builder.Services.AddScoped<SMSMais.Core.Cidadao.IPacienteTokenService, SMSMais.Api.Auth.PacienteTokenService>();
 
@@ -482,6 +485,7 @@ app.MapRoboComando();
 app.MapControllers();
 app.MapHub<SMSMais.Api.Hubs.RastreamentoHub>("/hubs/rastreamento");
 app.MapHub<SMSMais.Api.Hubs.ConversasHub>("/hubs/conversas");
+app.MapHub<SMSMais.Api.Hubs.ComunicacaoInternaHub>("/hubs/comunicacao-interna");
 
 // Default false (ADR-0010 / recuperação): evita migration destrutiva acidental no startup.
 // Habilitar explicitamente via AutoMigrate__Enabled=true quando for intencional.

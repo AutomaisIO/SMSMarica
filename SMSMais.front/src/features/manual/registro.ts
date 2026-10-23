@@ -8,6 +8,7 @@ import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendim
 import { artigoAvaliacoes } from '@/features/manual/conteudo/avaliacoes';
 import { artigoAvisosCelular } from '@/features/manual/conteudo/avisosCelular';
 import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
+import { artigoComunicacaoInterna } from '@/features/manual/conteudo/comunicacaoInterna';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoEnvioMensagens } from '@/features/manual/conteudo/envioMensagens';
 import { artigoEquipamentos } from '@/features/manual/conteudo/equipamentos';
@@ -113,6 +114,7 @@ export const ARTIGOS: Artigo[] = [
   artigoAvaliacoes,
   artigoAvisosCelular,
   artigoAvisosConexao,
+  artigoComunicacaoInterna,
   artigoConfirmacoes,
   artigoEsusSaoGoncalo,
   artigoExtensaoChrome,

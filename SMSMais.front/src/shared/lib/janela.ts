@@ -77,6 +77,22 @@ export function janelaSoltaAberta(nome: string): boolean {
   return Boolean(j && !j.closed);
 }
 
+/**
+ * Tenta trazer para frente a janela solta com este nome (aberta A PARTIR desta janela), SEM
+ * abrir nem navegar. Best-effort: sem gesto do usuário, o navegador costuma ignorar o foco —
+ * quem chama não pode depender disto. Devolve false se a janela não está aberta.
+ */
+export function focarJanelaSolta(nome: string): boolean {
+  const j = registroJanelas.get(nome);
+  if (!j || j.closed) return false;
+  try {
+    j.focus();
+  } catch {
+    /* ignorado: foco é cortesia */
+  }
+  return true;
+}
+
 /** Canal por onde JANELAS SOLTAS pedem navegação à(s) janela(s) principal(is). */
 export const CANAL_NAVEGACAO = 'smsmarica-navegacao';
 

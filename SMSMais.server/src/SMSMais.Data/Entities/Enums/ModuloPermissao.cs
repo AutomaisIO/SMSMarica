@@ -413,4 +413,11 @@ public enum ModuloPermissao
     /// <summary>Gestão de fila — a fila <b>Intermunicipal</b> (fluxo Externo: SER, SERNIT, ESUS de São
     /// Gonçalo). Ver <see cref="RegulacaoFilaNar"/>. Só <c>Consulta</c>.</summary>
     RegulacaoFilaIntermunicipal = 85,
+
+    /// <summary>Comunicação interna (ADR-0079): o chat entre unidades e entre pessoas, dentro do painel
+    /// (balão laranja). Separado de <see cref="Conversas"/>, que é o chat com o cidadão pelo WhatsApp.
+    /// <c>Consulta</c> = ver as conversas e ler; <c>Inclusao</c> = enviar. Nasce em todo perfil
+    /// (Consulta + Inclusão) pela migration — o pedido é que as unidades conversem. Sem item de menu:
+    /// vive no balão.</summary>
+    ComunicacaoInterna = 86,
 }

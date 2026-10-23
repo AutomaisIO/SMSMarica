@@ -59,6 +59,9 @@ public class FilaGuiasTests(PostgresFixture fixture)
         public string MontarChaveDocumento(Guid pacienteId, Guid documentoId, string extensao = "pdf") =>
             $"teste/{pacienteId:D}/{documentoId:D}.{extensao}";
 
+        public string MontarChaveComunicacaoInterna(Guid conversaId, Guid mensagemId, string extensao) =>
+            $"teste/comunicacao-interna/{conversaId:D}/{mensagemId:D}.{extensao}";
+
         public Task SalvarAsync(string chave, byte[] conteudo, CancellationToken cancellationToken = default)
         {
             _arquivos[chave] = conteudo;
