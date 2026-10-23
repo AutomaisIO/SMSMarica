@@ -41,6 +41,19 @@ class DemoAdapter implements HttpClientAdapter {
     'proximaPerguntaAs': null,
   };
 
+  /// Localização no dia da viagem (demonstração, ADR-0079 §8): o mesmo resgate de hoje, esperando o
+  /// carro na unidade — para a revisão das lojas ver a explicação e o pedido de permissão. As
+  /// posições ficam aqui: nada vai à rede.
+  final Map<String, dynamic> _localizacao = {
+    'sessaoId': 'sr1',
+    'trecho': 'Resgate',
+    'unidade': 'Hospital Demonstração',
+    'horaBusca': null,
+    'compartilhando': false,
+    'desde': null,
+    'ultimoEnvioEm': null,
+  };
+
   static String _diaRelativo(int dias) {
     final h = DateTime.now();
     return DateTime(h.year, h.month, h.day + dias).toIso8601String().substring(0, 10);
@@ -385,6 +398,26 @@ class DemoAdapter implements HttpClientAdapter {
           _resgate['disponibilidade'] = 'EmAtendimento';
           _resgate['proximaPerguntaAs'] = DateTime.now().toUtc().add(const Duration(minutes: 10)).toIso8601String();
         }
+        return (204, null);
+      case ('GET', '/auth/paciente/localizacao'):
+        return (200, _localizacao);
+      case ('POST', '/auth/paciente/localizacao/sr1'):
+        if (_localizacao['compartilhando'] != true) {
+          _localizacao['compartilhando'] = true;
+          _localizacao['desde'] = DateTime.now().toUtc().toIso8601String();
+        }
+        return (200, _localizacao);
+      case ('PUT', '/auth/paciente/localizacao/sr1'):
+        if (_localizacao['compartilhando'] != true) {
+          return (409, {'title': 'Compartilhamento não iniciado (demonstração).', 'status': 409, 'type': 'localizacao.nao_iniciada'});
+        }
+        _localizacao['ultimoEnvioEm'] = DateTime.now().toUtc().toIso8601String();
+        return (204, null);
+      case ('DELETE', '/auth/paciente/localizacao/sr1'):
+        _localizacao
+          ..['compartilhando'] = false
+          ..['desde'] = null
+          ..['ultimoEnvioEm'] = null;
         return (204, null);
       case ('POST', '/auth/paciente/me/acompanhantes'):
         _acompanhantes.add({

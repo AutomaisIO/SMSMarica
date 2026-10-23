@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sms_mais_cidadao/features/perfil/perfil_provider.dart';
+import 'package:sms_mais_cidadao/features/transporte/faixa_localizacao.dart';
+import 'package:sms_mais_cidadao/shared/localizacao/localizacao.dart';
 import 'package:sms_mais_cidadao/shared/push/push.dart';
 import 'package:sms_mais_cidadao/shared/sessao/sair.dart';
 import 'package:sms_mais_cidadao/shared/sessao/sessao.dart';
@@ -66,6 +70,8 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   final _scaffold = GlobalKey<ScaffoldState>();
   late final AppLifecycleListener _ciclo;
+  Timer? _consultaLocalizacao;
+  bool _naTela = true;
 
   @override
   void initState() {
@@ -75,14 +81,33 @@ class _AppShellState extends ConsumerState<AppShell> {
       ref.read(sincronizadorProvider).sincronizarTudo();
       // Push: o AppShell só existe depois do login e do termo aceito — só então pede a permissão.
       ref.read(pushProvider).registrarAparelho();
+      _consultarLocalizacao();
     });
+    // Localização no dia da viagem (ADR-0079): consulta a cada minuto, só com o app na tela; o GPS
+    // desliga quando ele some (o app fechado não envia). Falha aqui só esconde a função.
+    _consultaLocalizacao = Timer.periodic(const Duration(minutes: 1), (_) => _consultarLocalizacao());
     // Volta ao primeiro plano: refaz o registro do push que falhou (API fora, sem rede). Registrado,
     // não faz nada; negado, só lê a permissão — nunca reabre o pedido (ver MarcaDoRegistro).
-    _ciclo = AppLifecycleListener(onResume: () => ref.read(pushProvider).registrarAparelho());
+    _ciclo = AppLifecycleListener(
+      onResume: () => ref.read(pushProvider).registrarAparelho(),
+      onShow: () {
+        _naTela = true;
+        _consultarLocalizacao();
+      },
+      onHide: () {
+        _naTela = false;
+        ref.read(localizacaoProvider.notifier).pausar();
+      },
+    );
+  }
+
+  void _consultarLocalizacao() {
+    if (_naTela && mounted) unawaited(ref.read(localizacaoProvider.notifier).atualizar());
   }
 
   @override
   void dispose() {
+    _consultaLocalizacao?.cancel();
     _ciclo.dispose();
     super.dispose();
   }
@@ -184,6 +209,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                     style: Txt.sans(12, peso: FontWeight.w500, cor: CoresMarica.ambar800),
                   ),
                 ),
+              // Compartilhando a localização com o motorista (ADR-0079): fica em todas as telas.
+              const FaixaLocalizacao(),
               Expanded(child: widget.child),
             ],
           ),
