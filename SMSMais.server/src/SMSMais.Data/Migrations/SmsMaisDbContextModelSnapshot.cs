@@ -1460,6 +1460,18 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(8000)")
                         .HasColumnName("texto");
 
+                    b.Property<string>("Transcricao")
+                        .HasColumnType("text")
+                        .HasColumnName("transcricao");
+
+                    b.Property<DateTime?>("TranscritaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("transcrita_em");
+
+                    b.Property<Guid?>("TranscritaPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transcrita_por");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AutorId");
@@ -4237,6 +4249,68 @@ namespace SMSMais.Data.Migrations
                         .HasDatabaseName("ux_extensao_pacote_artefato_versao");
 
                     b.ToTable("extensao_pacote", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.FaturamentoProducao.FaturamentoProducaoUnidade", b =>
+                {
+                    b.Property<Guid>("UnidadeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unidade_id");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<bool>("Habilitada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("habilitada");
+
+                    b.HasKey("UnidadeId");
+
+                    b.ToTable("faturamento_producao_unidade", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.FaturamentoProducao.FaturamentoProfissionalCns", b =>
+                {
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<string>("Cbo")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)")
+                        .HasColumnName("cbo");
+
+                    b.Property<string>("Cns")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("cns");
+
+                    b.Property<string>("Nome")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Origem")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("origem");
+
+                    b.HasKey("Cpf");
+
+                    b.ToTable("faturamento_profissional_cns", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Fileira", b =>
@@ -18144,6 +18218,17 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("SolicitacaoProcedimento");
 
                     b.Navigation("TipoExame");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.FaturamentoProducao.FaturamentoProducaoUnidade", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Unidade", "Unidade")
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Unidade");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Fileira", b =>

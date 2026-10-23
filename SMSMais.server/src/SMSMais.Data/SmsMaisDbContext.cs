@@ -292,6 +292,10 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RegistroFaturamento> RegistrosFaturamento => Set<RegistroFaturamento>();
     public DbSet<TfdConfiguracao> TfdConfiguracao => Set<TfdConfiguracao>();
 
+    // Faturamento de PRODUÇÃO (BPA de procedimentos/consultas a partir da nossa base — SISREG).
+    public DbSet<Entities.FaturamentoProducao.FaturamentoProducaoUnidade> FaturamentoProducaoUnidades => Set<Entities.FaturamentoProducao.FaturamentoProducaoUnidade>();
+    public DbSet<Entities.FaturamentoProducao.FaturamentoProfissionalCns> FaturamentoProfissionaisCns => Set<Entities.FaturamentoProducao.FaturamentoProfissionalCns>();
+
     // Autenticação do cidadão (paciente no app) — credenciais + sessão única por device.
     // NÃO é Usuario/RBAC. Fonte da verdade = CPF. Ver ADR-0018.
     public DbSet<CidadaoAcesso> CidadaoAcessos => Set<CidadaoAcesso>();

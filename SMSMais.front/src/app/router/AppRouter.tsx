@@ -100,6 +100,8 @@ import { AppCidadaoPage } from '@/features/app-cidadao/pages/AppCidadaoPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
+import { FaturamentoProducaoPage } from '@/features/faturamento-producao/pages/FaturamentoProducaoPage';
+import { FaturamentoProducaoConfigPage } from '@/features/faturamento-producao/pages/FaturamentoProducaoConfigPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { InstituicaoPage } from '@/features/instituicao/pages/InstituicaoPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
@@ -220,6 +222,10 @@ export function AppRouter() {
             <Route path="rastreamento/ocorrencias" element={<OcorrenciasPage />} />
           </Route>
           <Route path="faturamento" element={<FaturamentoPage />} />
+          <Route element={<RotaComModulo modulo="FaturamentoProducao" rotulo="Faturamento — Produção (BPA)" />}>
+            <Route path="faturamento-producao" element={<FaturamentoProducaoPage />} />
+            <Route path="faturamento-producao/configuracoes" element={<FaturamentoProducaoConfigPage />} />
+          </Route>
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
           <Route path="pacs" element={<PacsListagemPage />} />
           <Route path="laudos" element={<LaudosListagemPage />} />

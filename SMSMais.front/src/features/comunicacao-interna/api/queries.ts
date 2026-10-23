@@ -107,6 +107,33 @@ export function anexarMensagemNoCache(qc: QueryClient, m: MensagemInterna) {
   );
 }
 
+/** Põe a transcrição no áudio que já está na tela (resposta do POST ou evento do hub). */
+export function transcricaoNoCache(qc: QueryClient, conversaId: string, mensagemId: string, transcricao: string) {
+  qc.setQueryData<InfiniteData<PaginaMensagensInternas, string | undefined>>(chavesInterno.mensagens(conversaId), (velho) =>
+    velho
+      ? {
+          ...velho,
+          pages: velho.pages.map((p) => ({
+            ...p,
+            mensagens: p.mensagens.map((x) =>
+              x.id === mensagemId && x.anexo ? { ...x, anexo: { ...x.anexo, transcricao } } : x,
+            ),
+          })),
+        }
+      : velho,
+  );
+}
+
+export function useTranscreverMensagemInterna() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.transcreverMensagem,
+    onSuccess: (m) => {
+      if (m.anexo?.transcricao) transcricaoNoCache(qc, m.conversaId, m.id, m.anexo.transcricao);
+    },
+  });
+}
+
 /** Atualiza a prévia da conversa na lista sem esperar o refetch (a ordem acerta no refetch). */
 function atualizarPreviaNaLista(qc: QueryClient, m: MensagemInterna) {
   qc.setQueryData<ConversaInternaItem[]>(chavesInterno.conversas, (lista) =>

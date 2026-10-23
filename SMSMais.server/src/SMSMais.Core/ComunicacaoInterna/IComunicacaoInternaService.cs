@@ -35,6 +35,12 @@ public interface IComunicacaoInternaService
 
     Task<ConteudoAnexoInterno> ObterAnexoAsync(Guid mensagemId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Transcreve o áudio da mensagem (a mesma STT dos áudios do WhatsApp — ElevenLabs) e guarda o texto
+    /// nela: a segunda pessoa que pedir recebe o que já foi transcrito, sem novo custo.
+    /// </summary>
+    Task<MensagemInternaDto> TranscreverAsync(Guid mensagemId, CancellationToken ct = default);
+
     Task<IReadOnlyList<UnidadeInternaDto>> ListarUnidadesAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<UsuarioInternoDto>> ListarUsuariosDaUnidadeAsync(Guid unidadeId, CancellationToken ct = default);

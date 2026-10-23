@@ -48,8 +48,12 @@ public sealed record ConversaInternaDetalheDto(
     IReadOnlyList<ParticipanteInternoDto> Participantes,
     DateTime? OutroLidaAte);
 
-/// <summary>Anexo de uma mensagem (arquivo ou áudio gravado). O conteúdo baixa por <c>mensagens/{id}/anexo</c>.</summary>
-public sealed record AnexoInternoDto(string Nome, string Mime, long TamanhoBytes, int? DuracaoSegundos, bool EhAudio);
+/// <summary>
+/// Anexo de uma mensagem (arquivo ou áudio gravado). O conteúdo baixa por <c>mensagens/{id}/anexo</c>.
+/// <see cref="Transcricao"/> só existe depois que alguém da conversa pediu (<c>mensagens/{id}/transcricao</c>).
+/// </summary>
+public sealed record AnexoInternoDto(
+    string Nome, string Mime, long TamanhoBytes, int? DuracaoSegundos, bool EhAudio, string? Transcricao = null);
 
 public sealed record MensagemInternaDto(
     Guid Id,
@@ -85,8 +89,12 @@ public sealed record AbrirConversaDiretaRequest(Guid UsuarioId);
 
 public sealed record SilenciarConversaInternaRequest(bool Silenciada);
 
-/// <summary>Anexo recebido pela Api (multipart) já lido em memória.</summary>
-public sealed record AnexoEnviadoInterno(string Nome, string Mime, byte[] Conteudo, int? DuracaoSegundos, bool EhAudio);
+/// <summary>
+/// Anexo recebido pela Api (multipart) já lido em memória. <see cref="TamanhoDeclarado"/> é o tamanho que o
+/// navegador diz ter mandado — se não bater com o recebido, fica no log (diagnóstico do áudio de 23/10/2026).
+/// </summary>
+public sealed record AnexoEnviadoInterno(
+    string Nome, string Mime, byte[] Conteudo, int? DuracaoSegundos, bool EhAudio, long? TamanhoDeclarado = null);
 
 /// <summary>Conteúdo de um anexo para download.</summary>
 public sealed record ConteudoAnexoInterno(string Nome, string Mime, byte[] Conteudo);
@@ -108,3 +116,6 @@ public sealed record LeituraInternaEventoDto(Guid ConversaId, Guid UsuarioId, Da
 public sealed record PresencaInternaEventoDto(Guid UsuarioId, bool Online);
 
 public sealed record DigitandoInternoEventoDto(Guid ConversaId, Guid UsuarioId, string Nome);
+
+/// <summary>Um áudio ganhou transcrição — quem está com a conversa aberta passa a ver o texto.</summary>
+public sealed record TranscricaoInternaEventoDto(Guid ConversaId, Guid MensagemId, string Transcricao);

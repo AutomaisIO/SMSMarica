@@ -384,6 +384,10 @@ public static class DependencyInjection
         services.AddScoped<Integracoes.EsusPec.ICorrecaoTelefoneEsusService, Integracoes.EsusPec.CorrecaoTelefoneEsusService>();
         services.AddHostedService<Integracoes.EsusPec.CorrecaoTelefoneEsusWorker>();
 
+        // Conciliação do CNS/CBO do profissional executante pelo e-SUS (BPA de produção) — madrugada.
+        services.AddScoped<FaturamentoProducao.IReconciliacaoProfissionalEsusService, FaturamentoProducao.ReconciliacaoProfissionalEsusService>();
+        services.AddHostedService<FaturamentoProducao.ReconciliacaoProfissionalEsusWorker>();
+
         // ---- SISREG III (web scraping): consulta de paciente por CNS (CADSUS) ----
         // Sessão única por operador → um cliente HTTP com cookies próprios POR OPERADOR
         // (singleton), que reloga sozinho quando a sessão cai. A credencial é a global do store
@@ -1180,6 +1184,9 @@ public static class DependencyInjection
 
         // Faturamento SUS/BPA (FT10): contabilização proporcional + relatórios.
         services.AddScoped<Faturamento.IFaturamentoService, Faturamento.FaturamentoService>();
+
+        // Faturamento de PRODUÇÃO (BPA de procedimentos/consultas a partir da nossa base — SISREG).
+        services.AddScoped<FaturamentoProducao.IBpaProducaoService, FaturamentoProducao.BpaProducaoService>();
 
         // Motor de geração de translado (FT3): distribuição + sequenciamento de rotas.
         services.AddScoped<Translado.Geracao.IGeradorDeTransladoService, Translado.Geracao.GeradorDeTransladoService>();

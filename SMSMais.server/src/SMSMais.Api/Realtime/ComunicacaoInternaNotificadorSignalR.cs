@@ -19,6 +19,9 @@ public sealed class ComunicacaoInternaNotificadorSignalR(IHubContext<Comunicacao
     public Task LeituraAsync(LeituraInternaEventoDto evt, AudienciaInterna audiencia, CancellationToken ct = default) =>
         hub.Clients.Groups(Grupos(audiencia)).SendAsync("leituraInterna", evt, ct);
 
+    public Task TranscricaoAsync(TranscricaoInternaEventoDto evt, AudienciaInterna audiencia, CancellationToken ct = default) =>
+        hub.Clients.Groups(Grupos(audiencia)).SendAsync("transcricaoInterna", evt, ct);
+
     private static IReadOnlyList<string> Grupos(AudienciaInterna a) =>
         a.Unidades.Select(ComunicacaoInternaHub.GrupoUnidade)
             .Concat(a.Usuarios.Select(ComunicacaoInternaHub.GrupoUsuario))

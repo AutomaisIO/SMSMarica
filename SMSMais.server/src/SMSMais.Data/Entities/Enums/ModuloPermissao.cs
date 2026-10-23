@@ -420,4 +420,11 @@ public enum ModuloPermissao
     /// (Consulta + Inclusão) pela migration — o pedido é que as unidades conversem. Sem item de menu:
     /// vive no balão.</summary>
     ComunicacaoInterna = 86,
+
+    /// <summary>Faturamento de PRODUÇÃO (BPA de procedimentos/consultas): gerar o arquivo BPA
+    /// Magnético a partir da produção da NOSSA base (SISREG, com comparecimento confirmado). NÃO
+    /// confundir com <see cref="Faturamento"/> (= 31, BPA do transporte/TFD). <c>Consulta</c> =
+    /// gerar/baixar o BPA das unidades habilitadas ∩ escopo; <c>Edicao</c> = submenu Configurações
+    /// (habilitar/desabilitar unidades para o usuário final).</summary>
+    FaturamentoProducao = 87,
 }
