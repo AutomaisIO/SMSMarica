@@ -178,6 +178,19 @@ export function Perfil() {
         </PrimaryButton>
       </form>
 
+      {/* Exclusão da conta (exigência das lojas): a página explica o pedido, o que é apagado e o que
+          a lei obriga a guardar. */}
+      <p className="text-center">
+        <a
+          href="/exclusao-de-conta/"
+          target="_blank"
+          rel="noopener"
+          className="text-sm font-medium text-tinta-mute underline"
+        >
+          Excluir minha conta
+        </a>
+      </p>
+
       {trocando && (
         <TrocaCelularModal
           aoFechar={() => setTrocando(false)}
