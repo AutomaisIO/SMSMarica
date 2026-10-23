@@ -11,7 +11,7 @@ class LocalizacaoIndisponivel implements Exception {
 }
 
 /// Quem das paradas deste carro compartilha a localização pelo app do cidadão
-/// agora (ADR-0079), pelo token do veículo. Sem cache: a posição fica só em
+/// agora (ADR-0082), pelo token do veículo. Sem cache: a posição fica só em
 /// memória e some quando o paciente embarca ou para.
 class LocalizacaoPassageirosRepository {
   LocalizacaoPassageirosRepository(this._dio);

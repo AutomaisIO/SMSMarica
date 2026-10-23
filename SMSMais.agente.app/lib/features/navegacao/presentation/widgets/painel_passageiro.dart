@@ -28,7 +28,7 @@ class PainelPassageiro extends StatelessWidget {
   /// Se informado, mostra um botão para ocultar o painel (vira FAB no mapa).
   final VoidCallback? onOcultar;
 
-  /// O paciente compartilha a localização pelo app (ADR-0079): há quanto
+  /// O paciente compartilha a localização pelo app (ADR-0082): há quanto
   /// tempo e com que precisão — o pino fica no mapa.
   final PosicaoPassageiro? posicao;
 

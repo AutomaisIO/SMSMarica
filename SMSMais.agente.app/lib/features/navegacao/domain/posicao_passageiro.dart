@@ -1,5 +1,5 @@
 /// A posição que o paciente compartilha pelo app do cidadão enquanto espera o
-/// embarque (ADR-0079). Fica só em memória: nunca entra no cache cifrado da
+/// embarque (ADR-0082). Fica só em memória: nunca entra no cache cifrado da
 /// rota.
 class PosicaoPassageiro {
   const PosicaoPassageiro({

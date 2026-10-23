@@ -65,7 +65,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
   /// Simulação ligada (teste com o tablet parado): retoma a cada parada.
   bool _simulando = false;
 
-  /// Pinos de quem compartilha a localização pelo app (ADR-0079), por
+  /// Pinos de quem compartilha a localização pelo app (ADR-0082), por
   /// [PosicaoPassageiro.chave]. Só em memória, como a posição.
   final Map<String, Marker> _pinos = {};
   ImageDescriptor? _iconePaciente;
@@ -754,7 +754,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     }
   }
 
-  /// Pinos de quem compartilha a localização pelo app (ADR-0079), só nas
+  /// Pinos de quem compartilha a localização pelo app (ADR-0082), só nas
   /// buscas que faltam: some quando o paciente embarca ou para de
   /// compartilhar. A posição nunca sai da memória.
   Future<void> _sincronizarPinos(
@@ -852,7 +852,7 @@ class _NavegacaoPageState extends ConsumerState<NavegacaoPage> {
     if (_translado == null || !_sessaoPronta) return _telaCarregando();
 
     // Quem das buscas compartilha a localização pelo app: a cada 15 s,
-    // enquanto o mapa está aberto (ADR-0079).
+    // enquanto o mapa está aberto (ADR-0082).
     final posicoes = ref.watch(localizacaoPassageirosProvider);
     ref.listen<Map<String, PosicaoPassageiro>>(
       localizacaoPassageirosProvider,

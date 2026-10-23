@@ -67,7 +67,7 @@ Plano detalhado: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md` (trilho A
 ## Localização do paciente na navegação
 
 Quando o paciente compartilha a localização pelo app do cidadão, enquanto espera o embarque
-([ADR-0079](../docs/adr/0079-localizacao-do-paciente-no-transporte.md)), a tela de navegação mostra
+([ADR-0082](../docs/adr/0082-localizacao-do-paciente-no-transporte.md)), a tela de navegação mostra
 onde ele está:
 
 - **Consulta** `GET /rastreamento/dispositivos/localizacao-passageiros` (token do veículo) a cada 15 s,

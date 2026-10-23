@@ -6,7 +6,7 @@ import 'package:agente/features/navegacao/domain/posicao_passageiro.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Enquanto a tela de navegação está aberta, consulta a cada 15 s quem das
-/// paradas deste carro compartilha a localização (ADR-0079 §5), por
+/// paradas deste carro compartilha a localização (ADR-0082 §5), por
 /// [PosicaoPassageiro.chave]. Só em memória; fechou a tela, parou.
 class LocalizacaoPassageirosController
     extends StateNotifier<Map<String, PosicaoPassageiro>> {
