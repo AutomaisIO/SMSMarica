@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -57,7 +57,8 @@ public class AvisoRemarcacaoEnvioTests(PostgresFixture fixture)
     }
 
     private async Task<(ComunicacaoPacienteService Servico, IWhatsAppCliente Whats)> ServicoAsync(
-        SmsMaisDbContext db, Solicitacao s, bool verificado, bool modelosAprovados = true)
+        SmsMaisDbContext db, Solicitacao s, bool verificado, bool modelosAprovados = true,
+        bool anonimoComoMarketing = false)
     {
         var cpf = SeedSolicitacao.CpfAleatorio();
         var link = new CidadaoLoginLink
@@ -82,7 +83,8 @@ public class AvisoRemarcacaoEnvioTests(PostgresFixture fixture)
         if (modelosAprovados)
         {
             catalogo.Add(new("agendamento_data_alterada", "pt_BR", "UTILITY", null, 4, []));
-            catalogo.Add(new("agendamento_data_alterada_anonimo", "pt_BR", "UTILITY", null, 2, []));
+            catalogo.Add(new("agendamento_data_alterada_anonimo", "pt_BR",
+                anonimoComoMarketing ? "MARKETING" : "UTILITY", null, 2, []));
         }
         whats.ListarTemplatesAsync(Arg.Any<CancellationToken>()).Returns(catalogo);
         whats.EnviarTemplateAsync(default!, default!, default!, default!)
@@ -204,6 +206,43 @@ public class AvisoRemarcacaoEnvioTests(PostgresFixture fixture)
         Assert.Contains(FusoBrasilia.ParaExibicao(DataNova).ToString("dd/MM/yyyy"), texto);
         var botoes = (IReadOnlyList<BotaoInterativoWhatsApp>)args[2]!;
         Assert.Equal(new[] { "Sim, confirmo", "Não poderei ir" }, botoes.Select(b => b.Titulo));
+    }
+
+    [Fact]
+    public async Task Anonimo_aprovado_como_marketing_conta_como_nao_aprovado_e_a_mensagem_espera()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (s, c) = await SeedAsync(db, remarcadaDe: DataAntiga);
+        var (servico, whats) = await ServicoAsync(db, s, verificado: false, anonimoComoMarketing: true);
+
+        await servico.ProcessarTentativaEnvioAsync(c.Id);
+
+        Assert.False(Chamou(whats, nameof(IWhatsAppCliente.EnviarTemplateAsync)));
+        await using var db2 = fixture.CriarDbContext();
+        var atual = await db2.ComunicacoesPaciente.AsNoTracking().SingleAsync(x => x.Id == c.Id);
+        Assert.Equal(StatusComunicacao.Pendente, atual.Status);
+        Assert.Equal(0, atual.Tentativas);
+        Assert.Contains("utilidade", atual.MotivoFalha);
+    }
+
+    [Fact]
+    public async Task Envio_barrado_por_marketing_espera_a_revisao_sem_gastar_tentativa()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (s, c) = await SeedAsync(db, remarcadaDe: null);
+        var (servico, whats) = await ServicoAsync(db, s, verificado: true);
+        whats.EnviarTemplateComBotoesAsync(default!, default!, default!, default!, default!)
+            .ReturnsForAnyArgs(new EnvioWhatsAppResultado(false, null,
+                $"{WhatsAppCliente.CodigoModeloMarketing}: o modelo está classificado como MARKETING."));
+
+        await servico.ProcessarTentativaEnvioAsync(c.Id);
+
+        await using var db2 = fixture.CriarDbContext();
+        var atual = await db2.ComunicacoesPaciente.AsNoTracking().SingleAsync(x => x.Id == c.Id);
+        Assert.Equal(StatusComunicacao.Pendente, atual.Status); // não vira Falha
+        Assert.Equal(0, atual.Tentativas);
+        Assert.True(atual.ProximaTentativaEm > DateTime.UtcNow.AddMinutes(50));
+        Assert.StartsWith(WhatsAppCliente.CodigoModeloMarketing, atual.MotivoFalha);
     }
 
     [Fact]

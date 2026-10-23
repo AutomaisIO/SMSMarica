@@ -308,8 +308,9 @@ public sealed class AvisoRemarcacaoService(
             if (await ModelosDeMudancaAprovadosAsync(ct) == false)
             {
                 desfecho = DesfechoRemarcacao.Equipe;
-                nota = "Na fila como aviso de mudança de data, mas os modelos ainda não foram aprovados na Meta: "
-                    + "a mensagem sai sozinha quando forem. Se o atendimento estiver perto, avise por telefone.";
+                nota = "Na fila como aviso de mudança de data, mas os modelos ainda não estão aprovados como "
+                    + "utilidade na Meta: a mensagem sai sozinha quando estiverem. Se o atendimento estiver perto, "
+                    + "avise por telefone.";
             }
         }
 
@@ -387,7 +388,7 @@ public sealed class AvisoRemarcacaoService(
         {
             c.RemarcadaDe = de;
             nota += await ModelosDeMudancaAprovadosAsync(ct) == false
-                ? " Vai como aviso de mudança de data assim que os modelos forem aprovados na Meta."
+                ? " Vai como aviso de mudança de data assim que os modelos estiverem aprovados como utilidade na Meta."
                 : " Vai como aviso de mudança de data, com a data anterior e a nova.";
         }
 
@@ -586,8 +587,9 @@ public sealed class AvisoRemarcacaoService(
         catch (OperationCanceledException) { throw; }
         catch { return null; }
         if (catalogo.Count == 0) return null;
+        // Aprovado como MARKETING não conta: o SMSMais não envia modelo assim (WhatsAppCliente).
         bool Aprovado(string nome) =>
-            catalogo.Any(t => string.Equals(t.Nome, nome, StringComparison.OrdinalIgnoreCase));
+            catalogo.Any(t => string.Equals(t.Nome, nome, StringComparison.OrdinalIgnoreCase) && !t.Marketing);
         return Aprovado(opcoes.Value.TemplateMudancaDeData) && Aprovado(opcoes.Value.TemplateMudancaDeDataAnonimo);
     }
 

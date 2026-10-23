@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -34,7 +34,23 @@ public sealed class WhatsAppCliente(
     /// <summary>Prefixo do erro de um envio que o freio segurou (conta do WhatsApp parada).</summary>
     public const string CodigoContaParada = "CONTA_WHATSAPP_PARADA";
 
+    /// <summary>
+    /// Prefixo do erro de um envio BARRADO porque o modelo está classificado como MARKETING na Meta.
+    ///
+    /// <para><b>Tudo o que sai pelo SMSMais é utilidade</b> — regra do dono (23/10/2026), para
+    /// preservar quem usa a plataforma: mensagem de saúde não pode chegar ao cidadão como
+    /// propaganda, nem custar como propaganda, nem pesar na nota da conta como propaganda. A Meta
+    /// reclassifica modelo sozinha (o <c>agendamento_data_alterada_anonimo</c> foi aprovado como
+    /// MARKETING no mesmo dia em que foi criado como utilidade); o break aqui não depende de alguém
+    /// perceber a tempo. Vale para todo envio de modelo — automático, atendente, teste.</para>
+    /// </summary>
+    public const string CodigoModeloMarketing = "MODELO_MARKETING";
+
     private const string CacheKeyTemplates = "whatsapp:templates";
+
+    /// <summary>A última lista que o relay entregou, guardada por mais tempo: é o que a trava de
+    /// Marketing consulta quando o catálogo não responde.</summary>
+    private const string CacheKeyTemplatesUltimoConhecido = "whatsapp:templates:ultimo-conhecido";
     /// <summary>
     /// Monta o componente de cabeçalho do envio — ou diz por que ele não pode ser montado.
     ///
@@ -157,6 +173,31 @@ public sealed class WhatsAppCliente(
         return new EnvioWhatsAppResultado(false, null, $"{BloqueioEnvioWhatsApp.CodigoNumeroNegado}: {motivo}");
     }
 
+    /// <summary>O motivo do bloqueio quando o modelo está como MARKETING no catálogo; null quando pode sair.
+    /// Modelo fora do catálogo não é bloqueado aqui — a Meta recusa o que não está aprovado.</summary>
+    internal static string? MotivoBloqueioMarketing(IReadOnlyList<TemplateWhatsApp> catalogo, string template)
+    {
+        var modelo = catalogo.FirstOrDefault(t => string.Equals(t.Nome, template, StringComparison.OrdinalIgnoreCase));
+        return modelo is { Marketing: true }
+            ? $"{CodigoModeloMarketing}: o modelo \"{template}\" está classificado como MARKETING na Meta, e o "
+              + "SMSMais só envia mensagem de utilidade. O envio espera até a Meta voltar o modelo para "
+              + "Utilidade (peça a revisão no WhatsApp Manager)."
+            : null;
+    }
+
+    /// <summary>O catálogo para a trava de Marketing: o de agora ou, se o relay não responder, o último
+    /// que respondeu (até 7 dias) — a trava não pode ficar cega justo quando o catálogo cai.</summary>
+    private async Task<IReadOnlyList<TemplateWhatsApp>> CatalogoParaATravaAsync(CancellationToken ct)
+    {
+        IReadOnlyList<TemplateWhatsApp> atual = [];
+        try { atual = await ListarTemplatesAsync(ct); }
+        catch (OperationCanceledException) { throw; }
+        catch { /* sem catálogo agora: cai no último conhecido */ }
+        if (atual.Count > 0) return atual;
+        return memoryCache.TryGetValue(CacheKeyTemplatesUltimoConhecido, out IReadOnlyList<TemplateWhatsApp>? ultimo)
+            && ultimo is not null ? ultimo : [];
+    }
+
     public async Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default)
     {
         var ctx = await ObterContextoOuNuloAsync(ct);
@@ -182,6 +223,7 @@ public sealed class WhatsAppCliente(
 
             var lista = ParsearTemplates(corpo);
             memoryCache.Set(CacheKeyTemplates, lista, TimeSpan.FromMinutes(5));
+            if (lista.Count > 0) memoryCache.Set(CacheKeyTemplatesUltimoConhecido, lista, TimeSpan.FromDays(7));
             return lista;
         }
         catch (Exception ex)
@@ -558,6 +600,21 @@ public sealed class WhatsAppCliente(
             db.MensagensWhatsApp.Add(msg);
             await RegistrarEnvioAsync(msg, ct);
             return new EnvioWhatsAppResultado(false, null, motivo);
+        }
+
+        // BREAK: modelo classificado como MARKETING não sai, venha de onde vier (ver
+        // CodigoModeloMarketing). Fica registrado na thread com o motivo; quem chamou recebe o erro
+        // e decide esperar a revisão — a fila de comunicações espera sem gastar tentativa.
+        if (template is not null
+            && MotivoBloqueioMarketing(await CatalogoParaATravaAsync(ct), template) is { } marketing)
+        {
+            msg.Status = StatusMensagemWhatsApp.Falha;
+            msg.Conteudo = Truncar($"[BLOQUEADO — MARKETING] {conteudo}");
+            msg.ErroMeta = marketing.Length <= 500 ? marketing : marketing[..500];
+            db.MensagensWhatsApp.Add(msg);
+            await RegistrarEnvioAsync(msg, ct);
+            logger.LogError("Envio do modelo {Template} BLOQUEADO: ele está classificado como MARKETING na Meta.", template);
+            return new EnvioWhatsAppResultado(false, null, marketing);
         }
 
         HttpStatusCode status;

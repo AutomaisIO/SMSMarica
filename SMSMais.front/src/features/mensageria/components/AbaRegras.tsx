@@ -442,7 +442,7 @@ export function AbaRegras() {
                   Quem já conhecia a data antiga recebe o aviso &quot;Mudança de data&quot;: com o número confirmado, a
                   data anterior, a nova e os botões Confirmar nova data e Não poderei ir; sem o número confirmado, só
                   que a data mudou — as datas vêm depois que a pessoa se identificar. A resposta que tinha dado deixa
-                  de valer. Enquanto os dois modelos não estiverem aprovados na Meta, a mensagem espera na fila. Fica para a equipe, em Alterações da agenda, quem tinha dito que não ia, quem
+                  de valer. Enquanto os dois modelos não estiverem aprovados como utilidade na Meta, a mensagem espera na fila. Fica para a equipe, em Alterações da agenda, quem tinha dito que não ia, quem
                   está em atendimento, quem foi remarcado para hoje e unidade sem aviso por WhatsApp. Se uma unidade
                   tiver remarcações demais num dia (cara de leitura errada do SISREG), nenhuma sai e chega um aviso
                   no celular. Vale daqui para frente.

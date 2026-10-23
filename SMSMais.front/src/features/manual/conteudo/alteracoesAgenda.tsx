@@ -177,7 +177,7 @@ export const artigoAlteracoesAgenda: Artigo = {
               procedimento do mesmo pedido.
             </Item>
             <Item>
-              <strong>Os modelos de &quot;Mudança de data&quot; ainda não foram aprovados na Meta.</strong> A mensagem já
+              <strong>Os modelos de &quot;Mudança de data&quot; ainda não estão aprovados como utilidade na Meta.</strong> A mensagem já
               está na fila e sai sozinha quando forem; até lá, ligue se o atendimento estiver perto.
             </Item>
           </Lista>

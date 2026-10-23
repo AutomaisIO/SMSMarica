@@ -1,4 +1,4 @@
-namespace SMSMais.Core.Notificacoes.WhatsApp;
+﻿namespace SMSMais.Core.Notificacoes.WhatsApp;
 
 public sealed record EnvioWhatsAppResultado(bool Ok, string? WaMessageId, string? Erro);
 
@@ -100,6 +100,10 @@ public sealed record TemplateWhatsApp(
     IReadOnlyList<string>? Variaveis = null,
     CabecalhoTemplateWhatsApp? Cabecalho = null)
 {
+    /// <summary>A Meta classificou o modelo como MARKETING. O SMSMais não envia modelo assim (ver
+    /// <see cref="WhatsAppCliente.CodigoModeloMarketing"/>).</summary>
+    public bool Marketing => string.Equals(Categoria, "MARKETING", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>O modelo usa variáveis nomeadas (<c>{{nome}}</c>) em vez de numeradas.</summary>
     public bool Nomeadas => Variaveis is { Count: > 0 }
         && !Variaveis.All(v => v.Length > 0 && v.All(char.IsAsciiDigit));

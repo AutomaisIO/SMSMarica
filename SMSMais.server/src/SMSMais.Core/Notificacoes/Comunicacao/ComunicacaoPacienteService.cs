@@ -1094,8 +1094,8 @@ public sealed class ComunicacaoPacienteService(
             {
                 n.Tentativas--;
                 n.ProximaTentativaEm = DateTime.UtcNow.AddHours(1);
-                n.MotivoFalha = $"Esperando o modelo \"{modelo}\" (mudança de data) ser aprovado na Meta — "
-                    + "a mensagem sai sozinha quando ele estiver aprovado.";
+                n.MotivoFalha = $"Esperando o modelo \"{modelo}\" (mudança de data) estar aprovado como "
+                    + "utilidade na Meta — a mensagem sai sozinha quando estiver.";
                 return;
             }
             if (anonimo)
@@ -2241,7 +2241,8 @@ public sealed class ComunicacaoPacienteService(
         catch (OperationCanceledException) { throw; }
         catch { return null; }
         if (catalogo.Count == 0) return null;
-        return catalogo.Any(t => string.Equals(t.Nome, modelo, StringComparison.OrdinalIgnoreCase));
+        // Aprovado como MARKETING não conta: o SMSMais não envia modelo assim (WhatsAppCliente).
+        return catalogo.Any(t => string.Equals(t.Nome, modelo, StringComparison.OrdinalIgnoreCase) && !t.Marketing);
     }
 
     /// <summary>A data anterior, quando esta confirmação é o aviso de uma remarcação do SISREG para
@@ -2262,6 +2263,14 @@ public sealed class ComunicacaoPacienteService(
     private void ReagendarOuFalhar(ComunicacaoPaciente n, string? erro)
     {
         n.MotivoFalha = Truncar(erro);
+        if (erro?.StartsWith(WhatsApp.WhatsAppCliente.CodigoModeloMarketing, StringComparison.Ordinal) == true)
+        {
+            // O modelo virou MARKETING na Meta e o SMSMais não envia modelo assim. Não é falha desta
+            // mensagem: ela espera a revisão, sem gastar tentativa — de volta a Utilidade, sai sozinha.
+            n.Tentativas = Math.Max(0, n.Tentativas - 1);
+            n.ProximaTentativaEm = DateTime.UtcNow.AddHours(1);
+            return;
+        }
         if (EhContaParada(erro))
         {
             // A CONTA do WhatsApp parou (pagamento, bloqueio…): não é falha desta mensagem. Não gasta

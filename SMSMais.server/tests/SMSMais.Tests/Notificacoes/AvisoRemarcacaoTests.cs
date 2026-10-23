@@ -214,7 +214,7 @@ public class AvisoRemarcacaoTests(PostgresFixture fixture)
         var a = await db.SisregAlteracoesAgenda.AsNoTracking().SingleAsync(x => x.Id == c.AlteracaoId);
         Assert.Null(a.TratadaEm);
         Assert.Null(a.ComunicadaEm);
-        Assert.Contains("ainda não foram aprovados", a.NotaAviso);
+        Assert.Contains("aprovados como utilidade", a.NotaAviso);
 
         // Já está na fila, marcada como mudança de data: sai sozinha quando a Meta aprovar.
         var confirmacao = await db.ComunicacoesPaciente.AsNoTracking().SingleAsync(x =>
