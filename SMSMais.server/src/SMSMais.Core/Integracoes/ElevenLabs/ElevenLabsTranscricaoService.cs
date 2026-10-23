@@ -15,7 +15,10 @@ public sealed record TranscricaoResultado(string? Texto, string? Erro);
 /// </summary>
 public interface IElevenLabsTranscricaoService
 {
-    Task<TranscricaoResultado> TranscreverAsync(byte[] audio, string? mimeType, CancellationToken ct = default);
+    /// <param name="nomeArquivo">Nome com a extensão real (ex.: <c>audio.webm</c>). Sem ele vai
+    /// <c>audio.ogg</c>, que é o formato da nota de voz do WhatsApp.</param>
+    Task<TranscricaoResultado> TranscreverAsync(
+        byte[] audio, string? mimeType, CancellationToken ct = default, string? nomeArquivo = null);
 }
 
 public sealed class ElevenLabsTranscricaoService(
@@ -23,7 +26,8 @@ public sealed class ElevenLabsTranscricaoService(
     IElevenLabsConfigService config,
     ILogger<ElevenLabsTranscricaoService> logger) : IElevenLabsTranscricaoService
 {
-    public async Task<TranscricaoResultado> TranscreverAsync(byte[] audio, string? mimeType, CancellationToken ct = default)
+    public async Task<TranscricaoResultado> TranscreverAsync(
+        byte[] audio, string? mimeType, CancellationToken ct = default, string? nomeArquivo = null)
     {
         if (audio is null || audio.Length == 0)
             return new(null, "áudio vazio");
@@ -40,7 +44,7 @@ public sealed class ElevenLabsTranscricaoService(
             arquivo.Headers.ContentType = MediaTypeHeaderValue.Parse(
                 string.IsNullOrWhiteSpace(mimeType) ? "audio/ogg" : mimeType);
             // O WhatsApp manda nota de voz em OGG/Opus; o nome só precisa de uma extensão plausível.
-            form.Add(arquivo, "file", "audio.ogg");
+            form.Add(arquivo, "file", string.IsNullOrWhiteSpace(nomeArquivo) ? "audio.ogg" : nomeArquivo);
             form.Add(new StringContent(ctx.Modelo), "model_id");
             // pt-BR: fixa o idioma melhora a precisão (ISO-639-3).
             form.Add(new StringContent("por"), "language_code");

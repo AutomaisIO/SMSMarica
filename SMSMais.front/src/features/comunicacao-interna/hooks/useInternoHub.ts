@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiBaseAbsoluto } from '@/shared/api/httpClient';
 import { obterToken, useAuth } from '@/shared/auth/authStore';
 import { useNotificacoesNavegador } from '@/features/conversas/hooks/useNotificacoesNavegador';
-import { anexarMensagemNoCache, chavesInterno } from '@/features/comunicacao-interna/api/queries';
+import { anexarMensagemNoCache, chavesInterno, transcricaoNoCache } from '@/features/comunicacao-interna/api/queries';
 import {
   CANAL_INTERNO,
   ehJanelaInterna,
@@ -21,6 +21,7 @@ import type {
   LeituraInternaEvento,
   MensagemInternaEvento,
   PresencaInternaEvento,
+  TranscricaoInternaEvento,
 } from '@/features/comunicacao-interna/types';
 
 /** Mesmas esperas da Central (useChatHub): a última se repete para sempre — deploy derruba ~45 s. */
@@ -217,6 +218,11 @@ export function useInternoHub(habilitado: boolean) {
           void queryClient.invalidateQueries({ queryKey: chavesInterno.unidades });
         }, 3_000);
       }
+    });
+
+    // Alguém da conversa transcreveu um áudio: o texto aparece para todos sem recarregar.
+    conn.on('transcricaoInterna', (evt: TranscricaoInternaEvento) => {
+      transcricaoNoCache(queryClient, evt.conversaId, evt.mensagemId, evt.transcricao);
     });
 
     conn.on('digitandoInterno', (evt: DigitandoInternoEvento) => {

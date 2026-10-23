@@ -75,6 +75,7 @@ public sealed class ComunicacaoInternaController(IComunicacaoInternaService serv
         IFormFile? arquivo,
         [FromForm] int? duracaoSegundos,
         [FromForm] bool ehAudio,
+        [FromForm] long? tamanhoBytes,
         CancellationToken ct)
     {
         AnexoEnviadoInterno? anexo = null;
@@ -82,7 +83,8 @@ public sealed class ComunicacaoInternaController(IComunicacaoInternaService serv
         {
             using var ms = new MemoryStream();
             await arquivo.CopyToAsync(ms, ct);
-            anexo = new AnexoEnviadoInterno(arquivo.FileName, arquivo.ContentType, ms.ToArray(), duracaoSegundos, ehAudio);
+            anexo = new AnexoEnviadoInterno(
+                arquivo.FileName, arquivo.ContentType, ms.ToArray(), duracaoSegundos, ehAudio, tamanhoBytes);
         }
         return await service.EnviarAsync(id, texto, anexo, ct);
     }
@@ -119,6 +121,17 @@ public sealed class ComunicacaoInternaController(IComunicacaoInternaService serv
         Response.Headers.XContentTypeOptions = "nosniff";
         return File(anexo.Conteudo, anexo.Mime, anexo.Nome);
     }
+
+    /// <summary>
+    /// Transcreve o áudio da mensagem (ElevenLabs, a mesma dos áudios do WhatsApp) e guarda o texto nela;
+    /// se alguém já pediu, devolve o que está guardado. Quem participa da conversa pode pedir.
+    /// </summary>
+    [HttpPost("mensagens/{id:guid}/transcricao")]
+    [RequerPermissao(ModuloPermissao.ComunicacaoInterna, AcoesPermissao.Consulta)]
+    [ProducesResponseType<MensagemInternaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<MensagemInternaDto> Transcrever(Guid id, CancellationToken ct) => service.TranscreverAsync(id, ct);
 
     [HttpGet("unidades")]
     [RequerPermissao(ModuloPermissao.ComunicacaoInterna, AcoesPermissao.Consulta)]

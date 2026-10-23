@@ -1460,6 +1460,18 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(8000)")
                         .HasColumnName("texto");
 
+                    b.Property<string>("Transcricao")
+                        .HasColumnType("text")
+                        .HasColumnName("transcricao");
+
+                    b.Property<DateTime?>("TranscritaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("transcrita_em");
+
+                    b.Property<Guid?>("TranscritaPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transcrita_por");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AutorId");

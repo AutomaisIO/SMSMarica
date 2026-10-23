@@ -75,6 +75,9 @@ internal sealed class MensagemInternaConfiguration : IEntityTypeConfiguration<Me
         builder.Property(m => m.AnexoEhAudio).HasColumnName("anexo_eh_audio").IsRequired();
         builder.Property(m => m.AnexoDuracaoSegundos).HasColumnName("anexo_duracao_segundos");
         builder.Property(m => m.EnviadaEm).HasColumnName("enviada_em").IsRequired();
+        builder.Property(m => m.Transcricao).HasColumnName("transcricao");
+        builder.Property(m => m.TranscritaEm).HasColumnName("transcrita_em");
+        builder.Property(m => m.TranscritaPor).HasColumnName("transcrita_por");
 
         // Página da thread (mais recentes primeiro, cursor por enviada_em) e contagem de não-lidas.
         builder.HasIndex(m => new { m.ConversaId, m.EnviadaEm }).HasDatabaseName("ix_mensagem_interna_conversa_enviada");

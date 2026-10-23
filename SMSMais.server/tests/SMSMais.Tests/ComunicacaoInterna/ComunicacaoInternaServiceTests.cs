@@ -6,6 +6,7 @@ using SMSMais.Core.Armazenamento;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.ComunicacaoInterna;
 using SMSMais.Core.ComunicacaoInterna.Dtos;
+using SMSMais.Core.Integracoes.ElevenLabs;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;
@@ -240,6 +241,81 @@ public class ComunicacaoInternaServiceTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task WebM_sem_o_primeiro_byte_e_consertado_na_entrada_e_na_leitura()
+    {
+        await using var db = fixture.CriarDbContext();
+        var a = await CriarUnidadeAsync(db);
+        var ana = await CriarUsuarioAsync(db, a);
+        var bia = await CriarUsuarioAsync(db, a);
+        var armazenamento = new ArmazenamentoFake();
+        var conversa = await Servico(db, ana, armazenamento).AbrirConversaDiretaAsync(new AbrirConversaDiretaRequest(bia));
+
+        // O que se viu em produção (23/10/2026): o EBML começando em 45 DF A3, sem o 0x1A.
+        byte[] semPrimeiro = [0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86, 0x81, 0x01];
+        var enviada = await Servico(db, ana, armazenamento).EnviarAsync(
+            conversa.Id, null, new AnexoEnviadoInterno("audio.webm", "audio/webm", semPrimeiro, 2, true, semPrimeiro.Length + 1));
+
+        var baixado = await Servico(db, bia, armazenamento).ObterAnexoAsync(enviada.Id);
+        Assert.Equal(new byte[] { 0x1A, 0x45, 0xDF, 0xA3 }, baixado.Conteudo[..4]);
+        Assert.Equal(semPrimeiro.Length + 1, baixado.Conteudo.Length);
+
+        // Arquivo íntegro não é mexido; e o conserto só vale para WebM/áudio.
+        byte[] inteiro = [0x1A, 0x45, 0xDF, 0xA3, 0x9F];
+        Assert.Same(inteiro, ComunicacaoInternaService.RepararWebmSemPrimeiroByte(inteiro, "audio/webm", true, out var r1));
+        Assert.False(r1);
+        Assert.Same(semPrimeiro, ComunicacaoInternaService.RepararWebmSemPrimeiroByte(semPrimeiro, "application/pdf", false, out var r2));
+        Assert.False(r2);
+    }
+
+    [Fact]
+    public async Task Transcricao_fica_guardada_vale_para_todos_e_entra_na_busca()
+    {
+        await using var db = fixture.CriarDbContext();
+        var a = await CriarUnidadeAsync(db);
+        var ana = await CriarUsuarioAsync(db, a);
+        var bia = await CriarUsuarioAsync(db, a);
+        var carla = await CriarUsuarioAsync(db, await CriarUnidadeAsync(db));
+        var armazenamento = new ArmazenamentoFake();
+        var marcador = $"leito {Guid.NewGuid():N}"[..18];
+        var stt = new TranscricaoFake($"Confirma o {marcador} para amanhã");
+        var conversa = await Servico(db, ana, armazenamento).AbrirConversaDiretaAsync(new AbrirConversaDiretaRequest(bia));
+        var audio = await Servico(db, ana, armazenamento).EnviarAsync(
+            conversa.Id, null, new AnexoEnviadoInterno("audio.webm", "audio/webm", [0x45, 0xDF, 0xA3, 0x9F], 3, true));
+
+        var primeira = await Servico(db, bia, armazenamento, stt).TranscreverAsync(audio.Id);
+        var segunda = await Servico(db, ana, armazenamento, stt).TranscreverAsync(audio.Id);
+
+        Assert.Contains(marcador, primeira.Anexo!.Transcricao);
+        Assert.Equal(primeira.Anexo.Transcricao, segunda.Anexo!.Transcricao);
+        Assert.Equal(1, stt.Chamadas); // a segunda não pagou de novo
+        Assert.Equal(0x1A, stt.UltimoAudio![0]); // a STT recebeu o arquivo consertado
+
+        var achado = Assert.Single(await Servico(db, ana, armazenamento).BuscarAsync(marcador));
+        Assert.Equal(audio.Id, achado.MensagemId);
+
+        await Assert.ThrowsAsync<NaoEncontradoException>(() => Servico(db, carla, armazenamento, stt).TranscreverAsync(audio.Id));
+    }
+
+    [Fact]
+    public async Task Transcricao_so_de_audio_e_falha_vira_mensagem_clara()
+    {
+        await using var db = fixture.CriarDbContext();
+        var a = await CriarUnidadeAsync(db);
+        var ana = await CriarUsuarioAsync(db, a);
+        var bia = await CriarUsuarioAsync(db, a);
+        var armazenamento = new ArmazenamentoFake();
+        var conversa = await Servico(db, ana, armazenamento).AbrirConversaDiretaAsync(new AbrirConversaDiretaRequest(bia));
+        var texto = await Servico(db, ana, armazenamento).EnviarAsync(conversa.Id, "só texto", null);
+        var audio = await Servico(db, ana, armazenamento).EnviarAsync(
+            conversa.Id, null, new AnexoEnviadoInterno("audio.webm", "audio/webm", [0x1A, 0x45, 0xDF, 0xA3], 1, true));
+
+        await Assert.ThrowsAsync<ValidacaoException>(() => Servico(db, bia, armazenamento).TranscreverAsync(texto.Id));
+        var falha = await Assert.ThrowsAsync<ValidacaoException>(() =>
+            Servico(db, bia, armazenamento, new TranscricaoFake(null, "HTTP 500")).TranscreverAsync(audio.Id));
+        Assert.Contains("Tente de novo", string.Join(" ", falha.Erros.SelectMany(e => e.Value)));
+    }
+
+    [Fact]
     public async Task Sem_vinculo_nao_abre_conversa_de_unidade()
     {
         await using var db = fixture.CriarDbContext();
@@ -253,14 +329,31 @@ public class ComunicacaoInternaServiceTests(PostgresFixture fixture)
     // ------------------------------------------------------------------ apoio
 
     private static ComunicacaoInternaService Servico(
-        SmsMaisDbContext db, Guid usuarioId, IArmazenamentoArquivos? armazenamento = null) =>
+        SmsMaisDbContext db, Guid usuarioId, IArmazenamentoArquivos? armazenamento = null,
+        IElevenLabsTranscricaoService? transcricao = null) =>
         new(
             db,
             new UsuarioAtualAccessorFake(usuarioId),
             new PresencaInterna(),
             armazenamento ?? new ArmazenamentoFake(),
             new NotificadorComunicacaoInternaNulo(),
+            transcricao ?? new TranscricaoFake("texto"),
             NullLogger<ComunicacaoInternaService>.Instance);
+
+    /// <summary>STT de mentira: conta as chamadas e guarda o que recebeu.</summary>
+    private sealed class TranscricaoFake(string? texto, string? erro = null) : IElevenLabsTranscricaoService
+    {
+        public int Chamadas { get; private set; }
+        public byte[]? UltimoAudio { get; private set; }
+
+        public Task<TranscricaoResultado> TranscreverAsync(
+            byte[] audio, string? mimeType, CancellationToken ct = default, string? nomeArquivo = null)
+        {
+            Chamadas++;
+            UltimoAudio = audio;
+            return Task.FromResult(new TranscricaoResultado(texto, erro));
+        }
+    }
 
     private static async Task<Guid> CriarUnidadeAsync(SmsMaisDbContext db)
     {
