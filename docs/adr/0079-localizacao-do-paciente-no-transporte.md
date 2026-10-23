@@ -103,8 +103,15 @@ O que já existe e pesa no desenho:
      tablet como aviso, não bloqueia;
    - **transporte:** só HTTPS (PR #79 no app). O hub de rastreamento não é usado (PR #78).
 
-8. **Modo demonstração.** O `DemoAdapter` do app (e o do PWA) simula uma viagem de hoje na janela e
-   aceita os envios sem rede, para a revisão das lojas ver a explicação e o pedido de permissão.
+8. **Modo demonstração.** O `DemoAdapter` do app nativo simula uma viagem de hoje na janela e aceita
+   os envios sem rede, para a revisão das lojas ver a explicação e o pedido de permissão. O PWA não tem
+   modo demonstração: lá a função só aparece com uma viagem de verdade na janela.
+
+9. **O PWA não pode parar o que já funciona.** A mudança no PWA é só aditiva: nenhum fluxo existente
+   muda. O cartão e a faixa ficam dentro de uma proteção de erro própria e somem em silêncio se o servidor
+   não tiver os endpoints (404), se der erro ou limite, se o navegador não tiver GPS ou se a permissão for
+   negada. A consulta só roda com a página visível e para na sessão se o endpoint não existir. O deploy vai
+   na ordem servidor → PWA.
 
 ## O que muda em cada lugar
 

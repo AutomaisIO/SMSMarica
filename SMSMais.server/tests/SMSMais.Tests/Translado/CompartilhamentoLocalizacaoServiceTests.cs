@@ -200,10 +200,11 @@ public class CompartilhamentoLocalizacaoServiceTests(PostgresFixture fixture)
                 pacienteId, sessaoId, Posicao(-22.9, -42.8) with { CapturadaEm = DateTime.UtcNow.AddMinutes(-10) }))
             .Should().ThrowAsync<ValidacaoException>();
 
-        var antes = DateTime.UtcNow;
-        await servico.AtualizarAsync(pacienteId, sessaoId, Posicao(-22.9, -42.8) with { CapturadaEm = DateTime.UtcNow.AddHours(1) });
+        // O Postgres guarda microssegundos e o DateTime, frações menores: compara com folga.
+        var noFuturo = DateTime.UtcNow.AddHours(1);
+        await servico.AtualizarAsync(pacienteId, sessaoId, Posicao(-22.9, -42.8) with { CapturadaEm = noFuturo });
         var linha = await db.CompartilhamentosLocalizacao.AsNoTracking().SingleAsync(x => x.SessaoId == sessaoId);
-        linha.CapturadaEm.Should().BeOnOrAfter(antes).And.BeOnOrBefore(DateTime.UtcNow);
+        linha.CapturadaEm.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(30)).And.BeBefore(noFuturo);
     }
 
     [Fact]

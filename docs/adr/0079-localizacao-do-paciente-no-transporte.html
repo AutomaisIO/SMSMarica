@@ -102,9 +102,13 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 </ul>
 <p>     hoje do veículo do token. Assim ninguém manda nem lê a posição de outra pessoa;    - <strong>sem personificação:</strong> "Entrar como paciente" (Sandbox) e a sessão aberta pelo link do WhatsApp não      compartilham, como as outras escritas do transporte;    - <strong>validação:</strong> latitude e longitude no intervalo, (0,0) recusado, precisão até 5 km, captura no máximo      5 min no passado e 1 min no futuro;    - <strong>limite</strong> próprio por sessão do cidadão (um envio a cada 10 s, com folga); o app manda no máximo a      cada 15 s ou 20 m;    - <strong>posição simulada:</strong> o Android informa quando a posição vem de um app de GPS falso; vai para o      tablet como aviso, não bloqueia;    - <strong>transporte:</strong> só HTTPS (PR #79 no app). O hub de rastreamento não é usado (PR #78).</p>
 <ol>
-<li><strong>Modo demonstração.</strong> O <code>DemoAdapter</code> do app (e o do PWA) simula uma viagem de hoje na janela e</li>
+<li><strong>Modo demonstração.</strong> O <code>DemoAdapter</code> do app nativo simula uma viagem de hoje na janela e aceita</li>
 </ol>
-<p>   aceita os envios sem rede, para a revisão das lojas ver a explicação e o pedido de permissão.</p>
+<p>   os envios sem rede, para a revisão das lojas ver a explicação e o pedido de permissão. O PWA não tem    modo demonstração: lá a função só aparece com uma viagem de verdade na janela.</p>
+<ol>
+<li><strong>O PWA não pode parar o que já funciona.</strong> A mudança no PWA é só aditiva: nenhum fluxo existente</li>
+</ol>
+<p>   muda. O cartão e a faixa ficam dentro de uma proteção de erro própria e somem em silêncio se o servidor    não tiver os endpoints (404), se der erro ou limite, se o navegador não tiver GPS ou se a permissão for    negada. A consulta só roda com a página visível e para na sessão se o endpoint não existir. O deploy vai    na ordem servidor → PWA.</p>
 <h2>O que muda em cada lugar</h2>
 <div class="tw"><table><thead><tr><th>Onde</th><th>Mudança</th></tr></thead><tbody>
 <tr><td>Servidor</td><td>entidade e migration (<code>translado_compartilhamento_localizacao</code>); <code>CompartilhamentoLocalizacaoService</code> com a regra da espera (o resgate reusa <code>ResgateService.EstaNaUnidade</code>, a mesma regra da lista de resgate); endpoints do cidadão, do tablet e do painel; limite <code>localizacao-cidadao</code> (12/min por sessão do app); encerramento na própria marcação do tablet (<code>ViagemService</code>, mesmo <code>SaveChanges</code>); <code>EncerramentoLocalizacaoWorker</code> (a cada minuto, para cancelamento, outro dia e já em casa); testes</td></tr>
