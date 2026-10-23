@@ -233,6 +233,9 @@ Sai em `build/app/outputs/bundle/release/app-release.aab`. A versão vem do `pub
 
 ## Pendências para publicar
 
+- **Apps governamentais (Play Console):** falta a autorização da Secretaria, assinada, enviada pelo
+  formulário de aviso prévio do Google. Documentos e passo a passo em
+  [`docs/publicacao-lojas/`](../docs/publicacao-lojas/README.md).
 - **Links do WhatsApp abrirem direto no app:** publicar `/.well-known/assetlinks.json` (Android)
   e `apple-app-site-association` (iOS, com Associated Domains no projeto) em
   `app.smsmarica.online`, com a impressão digital da chave de assinatura. Sem isso, o Android

@@ -142,6 +142,10 @@ keyPassword=&lt;a senha&gt;</code></pre>
 <p>Sai em <code>build/app/outputs/bundle/release/app-release.aab</code>. A versão vem do <code>pubspec.yaml</code> (<code>version: &lt;nome&gt;+&lt;código&gt;</code>): cada envio à Play precisa de um <strong>código maior</strong> que o anterior.</p>
 <h2>Pendências para publicar</h2>
 <ul>
+<li><strong>Apps governamentais (Play Console):</strong> falta a autorização da Secretaria, assinada, enviada pelo</li>
+</ul>
+<p>  formulário de aviso prévio do Google. Documentos e passo a passo em   <a href="../docs/publicacao-lojas/README.md"><code>docs/publicacao-lojas/</code></a>.</p>
+<ul>
 <li><strong>Links do WhatsApp abrirem direto no app:</strong> publicar <code>/.well-known/assetlinks.json</code> (Android)</li>
 </ul>
 <p>  e <code>apple-app-site-association</code> (iOS, com Associated Domains no projeto) em   <code>app.smsmarica.online</code>, com a impressão digital da chave de assinatura. Sem isso, o Android   pergunta "abrir com" e o iOS abre no navegador (o PWA).</p>
