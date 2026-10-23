@@ -206,6 +206,22 @@ O CPF tem os 11 dígitos iguais: é inválido por regra, então nunca é de ning
 ao servidor. Sair da conta desliga a demonstração. Estes dados podem ir no Play Console sem risco: com
 eles não se chega a nada real.
 
+### Exclusão da conta e Segurança dos dados
+
+A Play exige, de app em que se entra com conta, um jeito de **pedir a exclusão** dentro do app e fora
+dele. Fora: a página pública
+[`/exclusao-de-conta/`](../SMSMais.cidadao.pwa/public/exclusao-de-conta/index.html) do PWA (é a "URL para
+exclusão de contas" da Segurança dos dados). Dentro: **Meu perfil → Excluir minha conta**, no app e no
+PWA, que abre essa página. O pedido vai por e-mail ao DPO (`contato@smsmarica.online`), com resposta em
+até 15 dias; apaga o acesso ao app (sessões e aparelhos do push), a foto e os acompanhantes, e o
+prontuário fica, por obrigação legal. Mudou o processo, mudam a página e a declaração juntas.
+
+Na Segurança dos dados, o declarado é o que o app **manda** ao servidor: CPF e nascimento (seus e dos
+acompanhantes), e-mail e telefones do Perfil, foto, exames enviados (arquivo e foto), confirmação e
+cancelamento de exame, avaliação da viagem e o token do push. Nada é "compartilhado" no sentido da Play
+(WhatsApp e Firebase são prestadores de serviço); não há localização, ID de anúncio nem relatório de
+falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa declaração.
+
 ### Gerar o pacote da loja
 
 ```powershell
