@@ -142,6 +142,11 @@ motoristas).
   3. recalcula **ETA** até a próxima parada (Distance Matrix com cache).
 - **Tempo real:** **SignalR** (já disponível no projeto, hoje não usado aqui) publica
   posição/ETA para o **painel (mapa ao vivo)** e para o **app cidadão**.
+  > **23/10/2026:** o hub `/hubs/rastreamento` é **só da equipe**. A conexão exige Consulta em
+  > Rastreamento e derruba o token de cidadão, que é do mesmo esquema JWT e passava no `[Authorize]`.
+  > Até essa data, toda conexão caía no grupo `painel` e os métodos `Assinar*` aceitavam qualquer id.
+  > O cidadão não se conecta ao hub. Tempo real para ele precisa de um canal que confira a posse da
+  > viagem.
 - **"Puxar" pacientes:** endpoint lista sessões `AguardandoRetorno` (fora de Maricá) com a
   **distância** até cada motorista logado; o motorista aciona **"puxar (paciente +
   acompanhante)"** → cria/insere a `Alocacao` de retorno na rota dele, na ordem certa.
