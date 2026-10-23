@@ -209,7 +209,7 @@ else
                         · <span>@t.Parametros variáve@(t.Parametros == 1 ? "l" : "is")</span>
                         @if (t.Botoes.Count > 0)
                         {
-                            <text>· <span>@t.Botoes.Count botão@(t.Botoes.Count == 1 ? "" : "ões")</span></text>
+                            <text>· <span>@t.Botoes.Count @(t.Botoes.Count == 1 ? "botão" : "botões")</span></text>
                         }
                         <form method="post" asp-page-handler="Excluir"
                               onsubmit="return confirm('Excluir este template? A Meta apaga o nome em TODOS os idiomas, e quem usa esse nome para de conseguir enviar.');">
