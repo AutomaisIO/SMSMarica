@@ -30,10 +30,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <!-- Links do WhatsApp (magic link e download do exame) abrem no app quando ele está
-                 instalado; sem o app, seguem no PWA. A verificação automática (autoVerify)
-                 exige publicar /.well-known/assetlinks.json em app.smsmarica.online com a
-                 impressão digital da chave de assinatura do app — até lá o Android pergunta
-                 "abrir com". -->
+                 instalado; sem o app, seguem no PWA. A verificação automática (autoVerify) lê
+                 /.well-known/assetlinks.json em app.smsmarica.online (publicado pelo PWA), com a
+                 impressão digital da chave de assinatura da Play — instalado de outro jeito, o
+                 Android pergunta "abrir com". -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
