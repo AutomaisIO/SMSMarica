@@ -13,13 +13,14 @@ import type { Artigo } from '@/features/manual/tipos';
  * Conferido no código: `features/translados` (TransladosPage — "Gerar automático"/"Novo translado";
  * GerarTransladoPage — Data, "Usar IA", Pré-visualizar/Gerar e salvar, não alocados e
  * RevisaoEnderecos; TransladoDetalhePage — Editar/Iniciar/Cancelar/Concluir, mapa de assentos,
- * sessões elegíveis, ViagemDoTablet e ResgatesDisponiveis), `features/tratamentos` (TratamentoDetalhePage `?sessao=`,
+ * sessões elegíveis, ViagemDoTablet, ResgatesDisponiveis e LocalizacaoDosPacientes), `features/tratamentos` (TratamentoDetalhePage `?sessao=`,
  * PainelConfirmacao) e o backend (`GeradorDeTransladoService` — troca só a rota gerada ainda
  * planejada e replaneja quem estava nela; `RotaTabletService`; `ViagemService` — desembarque =
  * realizada + faturamento, ausência = não realizada, correção do painel vale mais;
  * `FaturamentoService` — cancelado sai dos totais; `GeoController` — permissão de Unidades;
  * `ResgateService` + `LotacaoDaRota` — lista de resgate, aviso "no local", marcação só se couber agora;
- * `TransladoService.CriarAlocacaoAsync` — acompanhantes ganham lugar, condição do paciente).
+ * `TransladoService.CriarAlocacaoAsync` — acompanhantes ganham lugar, condição do paciente;
+ * `CompartilhamentoLocalizacaoService` — localização do paciente na espera do embarque, ADR-0082).
  */
 export const artigoTranslados: Artigo = {
   slug: 'translados',
@@ -30,7 +31,7 @@ export const artigoTranslados: Artigo = {
   icone: Route,
   rota: '/app/translados',
   publico: 'Quem organiza e acompanha o transporte de pacientes (central)',
-  atualizadoEm: '2026-10-22',
+  atualizadoEm: '2026-10-23',
   palavrasChave: [
     'translado',
     'rota',
@@ -86,6 +87,12 @@ export const artigoTranslados: Artigo = {
     'volta',
     'retorno',
     'fora do município',
+    'localização',
+    'compartilhar localização',
+    'compartilhando',
+    'posição do paciente',
+    'pino do paciente',
+    'posição simulada',
   ],
   secoes: () => [
     {
@@ -265,6 +272,40 @@ export const artigoTranslados: Artigo = {
       ),
     },
     {
+      id: 'localizacao',
+      titulo: 'O paciente compartilha a localização no dia da viagem',
+      busca: 'localização compartilhar compartilhando posição do paciente pino do paciente mapa do tablet app do cidadão espera do embarque ida resgate precisão última posição posição simulada gps falso parar some embarcou sem coordenada',
+      conteudo: (
+        <>
+          <P>
+            No dia da viagem, enquanto espera o embarque, o paciente pode compartilhar a localização do
+            celular pelo app (instalado ou no navegador): na ida, a partir de 2 h antes da busca, e no
+            resgate, depois de descer na unidade. Ele aceita a cada viagem, e o app só envia aberto.
+          </P>
+          <Lista>
+            <Item>
+              no <strong>tablet do carro</strong>, a navegação mostra um pino azul-petróleo onde ele está e,
+              no painel do passageiro, “compartilhando · há X min · ±Y m”;
+            </Item>
+            <Item>
+              aqui, no detalhe do translado, <strong>Localização compartilhada pelo app</strong> mostra só
+              quem está compartilhando, desde quando, a idade da última posição e a precisão,{' '}
+              <strong>sem a coordenada</strong>. Quem precisa do lugar exato é o motorista, que tem o mapa; a
+              central fala com ele pelo telefone.
+            </Item>
+          </Lista>
+          <P>
+            A posição some no embarque, quando o paciente toca em Parar ou quando a espera acaba. O sistema
+            guarda só a última posição, nunca o trajeto.
+          </P>
+          <Callout tipo="atencao" titulo="Posição simulada">
+            Quando o celular avisa que a posição veio de um app de GPS falso, aparece “posição simulada”,
+            aqui e no tablet. O aviso não bloqueia nada: na dúvida, o motorista liga para o paciente.
+          </Callout>
+        </>
+      ),
+    },
+    {
       id: 'resgate',
       titulo: 'O resgate: buscar na unidade e deixar em casa',
       busca: 'resgate retorno volta pacientes disponíveis para resgate disponível em minutos aguardando no local avisar paciente central motorista marcar desmarcar outro carro lugares livres fora do município previsão tempo médio buscar na unidade entregar em casa você já está disponível para retorno ainda não terminei procedimento pergunta 10 minutos',
@@ -397,11 +438,11 @@ export const artigoTranslados: Artigo = {
     {
       id: 'quem-pode',
       titulo: 'Quem pode o quê',
-      busca: 'permissão perfil translados consulta inclusão edição unidades marcar no mapa atendimentos corrigir resgate',
+      busca: 'permissão perfil translados consulta inclusão edição unidades marcar no mapa atendimentos corrigir resgate localização compartilhada',
       conteudo: (
         <ListaDefinicoes
           itens={[
-            { termo: 'Translados — Consulta', descricao: 'Ver as rotas e a viagem registrada pelo tablet.' },
+            { termo: 'Translados — Consulta', descricao: 'Ver as rotas, a viagem registrada pelo tablet e quem compartilha a localização pelo app (sem a posição).' },
             { termo: 'Translados — Inclusão', descricao: 'Gerar automático e gravar as rotas, ou criar uma à mão.' },
             { termo: 'Translados — Edição', descricao: 'Alocar e desalocar, iniciar, concluir; marcar e desmarcar o resgate, avisar que o paciente está no local.' },
             { termo: 'Unidades — Edição', descricao: 'Marcar no mapa os endereços que o Google não achou.' },

@@ -23,6 +23,7 @@ import {
   useSessoesElegiveis,
 } from '@/features/translados/api/queries';
 import { ListaSessoesElegiveis } from '@/features/translados/components/ListaSessoesElegiveis';
+import { LocalizacaoDosPacientes } from '@/features/translados/components/LocalizacaoDosPacientes';
 import { MapaDeAssentosAlocavel } from '@/features/translados/components/MapaDeAssentosAlocavel';
 import { ModalEscolherSessao } from '@/features/translados/components/ModalEscolherSessao';
 import { ResgatesDisponiveis } from '@/features/translados/components/ResgatesDisponiveis';
@@ -327,6 +328,11 @@ export function TransladoDetalhePage() {
           ) : null}
         </div>
       )}
+
+      {/* No dia da viagem, quem espera o embarque e compartilha a localização pelo app (ADR-0082). */}
+      {r.status === 'Planejada' || r.status === 'EmAndamento' ? (
+        <LocalizacaoDosPacientes rotaId={r.id} alocacoes={r.alocacoes} />
+      ) : null}
 
       {r.status !== 'Planejada' ? (
         <ViagemDoTablet rotaId={r.id} status={r.status} alocacoes={r.alocacoes} />

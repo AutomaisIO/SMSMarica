@@ -254,3 +254,18 @@ export type Resgates = {
   lugaresCadeiranteLivres: number | null;
   carro: CarroAgora | null;
 };
+
+/** Quem da rota compartilha a localização pelo app agora (ADR-0082): só o estado, sem a coordenada —
+ * a posição só o tablet do carro vê. */
+export type CompartilhamentoDaRota = {
+  sessaoId: string;
+  /** "Ida" (busca em casa) ou "Resgate" (busca na unidade). */
+  trecho: 'Ida' | 'Resgate';
+  /** Desde quando compartilha (ISO, UTC). */
+  desde: string;
+  /** Quando a última posição chegou (ISO, UTC); nulo enquanto o celular ainda não mandou. */
+  ultimaPosicaoEm: string | null;
+  precisaoM: number | null;
+  /** O celular avisou que a posição veio de um app de GPS falso. */
+  simulada: boolean;
+};

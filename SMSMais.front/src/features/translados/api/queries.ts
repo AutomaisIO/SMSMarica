@@ -10,6 +10,7 @@ import {
   listarRotas,
   listarSessoesElegiveis,
   listarViagem,
+  listarLocalizacaoPacientes,
   listarResgates,
   marcarResgates,
   desmarcarResgate,
@@ -33,6 +34,7 @@ export const transladosKeys = {
   detalhe: (id: string) => ['rotas', 'detalhe', id] as const,
   sessoesElegiveis: (rotaId: string) => ['rotas', 'sessoes-elegiveis', rotaId] as const,
   viagem: (rotaId: string) => ['rotas', 'viagem', rotaId] as const,
+  localizacao: (rotaId: string) => ['rotas', 'localizacao', rotaId] as const,
 };
 
 export function useListarRotas(filtros: FiltrosListarRotas = {}) {
@@ -162,6 +164,18 @@ export function useViagemDaRota(rotaId: string | null, emAndamento: boolean) {
     queryFn: () => listarViagem(rotaId!),
     enabled: Boolean(rotaId),
     refetchInterval: emAndamento ? 30_000 : false,
+  });
+}
+
+/** Quem compartilha a localização pelo app (ADR-0082), a cada 30 s com a rota planejada ou em andamento.
+ * Servidor sem a função (404) ou sem permissão: o quadro só não aparece — sem insistir. */
+export function useLocalizacaoPacientes(rotaId: string | null, ativa: boolean) {
+  return useQuery({
+    queryKey: rotaId ? transladosKeys.localizacao(rotaId) : ['rotas', 'localizacao', 'nenhum'],
+    queryFn: () => listarLocalizacaoPacientes(rotaId!),
+    enabled: Boolean(rotaId) && ativa,
+    refetchInterval: (q) => (ativa && q.state.status !== 'error' ? 30_000 : false),
+    retry: false,
   });
 }
 
