@@ -43,6 +43,7 @@ import { artigoTicketsGestao } from '@/features/manual/conteudo/ticketsGestao';
 import { artigoTiposTratamento } from '@/features/manual/conteudo/tiposTratamento';
 import { artigoTranslados } from '@/features/manual/conteudo/translados';
 import { artigoUnidadesAtendimento } from '@/features/manual/conteudo/unidadesAtendimento';
+import { artigoUsuarios } from '@/features/manual/conteudo/usuarios';
 import { artigoVeiculos } from '@/features/manual/conteudo/veiculos';
 import { artigoOcorrencias } from '@/features/manual/conteudo/ocorrencias';
 import type { Artigo, GrupoManual } from '@/features/manual/tipos';
@@ -151,6 +152,7 @@ export const ARTIGOS: Artigo[] = [
   artigoTiposTratamento,
   artigoTranslados,
   artigoUnidadesAtendimento,
+  artigoUsuarios,
   artigoVeiculos,
 ];
 

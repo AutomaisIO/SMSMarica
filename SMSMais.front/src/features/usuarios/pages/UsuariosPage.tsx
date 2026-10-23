@@ -11,6 +11,7 @@ import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import {
   useDesativarUsuario,
   useListarUsuarios,
@@ -105,7 +106,10 @@ export function UsuariosPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Usuários</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-gray-900">Usuários</h1>
+            <AjudaManual artigo="usuarios" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">Contas com acesso ao ecossistema SMS Maricá.</p>
         </div>
         <Button onClick={() => setEstado({ tipo: 'criar' })}>
