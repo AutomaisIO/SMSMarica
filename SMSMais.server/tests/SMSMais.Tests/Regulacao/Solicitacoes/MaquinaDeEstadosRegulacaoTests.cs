@@ -52,6 +52,19 @@ public class MaquinaDeEstadosRegulacaoTests
     }
 
     [Fact]
+    public void Depois_de_uma_falha_no_envio_o_agente_devolve_a_unidade()
+    {
+        // O SER recusa por falta de um dado que só a unidade tem (telefone, documento). Voltar a
+        // "Em análise" só para liberar o "Devolver" poria na trilha uma análise que não houve.
+        MaquinaDeEstadosRegulacao
+            .EventoDe(StatusRegulacao.FalhaEnvio, StatusRegulacao.Devolvida, PapelEventoRegulacao.Agente)
+            .Should().Be(TipoEventoRegulacao.Devolucao);
+        MaquinaDeEstadosRegulacao
+            .PodeTransitar(StatusRegulacao.FalhaEnvio, StatusRegulacao.Devolvida, PapelEventoRegulacao.Sistema)
+            .Should().BeFalse("devolver é decisão de quem regula, não do envio");
+    }
+
+    [Fact]
     public void Papel_errado_na_transicao_certa_e_recusado()
     {
         // A transição existe — mas é do agente. Um solicitante que a alcançasse assumiria o

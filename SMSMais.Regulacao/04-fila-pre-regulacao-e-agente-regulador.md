@@ -84,6 +84,7 @@ solicitacao_id, tipo (enum: `Criacao`, `Edicao`, `Anexo`, `RespostaRegra`, `Envi
 | EnviandoAoSistema → EnviadaAoSistema | Sistema | número capturado; anexos subidos (SER/SERNIT antes do Gravar) | `NumeroExterno`; notifica solicitante |
 | EnviandoAoSistema → FalhaEnvio | Sistema | erro / CAPTCHA / sessão derrubada | `FalhaEnvio` (motivo) |
 | FalhaEnvio → EnviandoAoSistema / EmAnalise | Agente | retentar só após conferência de duplicidade | `EnvioSistema` / `Ajuste` |
+| FalhaEnvio → Devolvida | Agente (48 Edição) | o sistema recusou por dado que só a unidade tem; motivo obrigatório (a tela pré-preenche com o motivo da falha, editável). Se o Gravar chegou ao sistema, conferir lá antes (a tela avisa) | `Devolucao` |
 | EmAnalise → EnviadaAoSistema (**assistido**, inc. 3) | Agente (48 Edição) | "Registrar envio": digita `numero_externo` + sistema; unique parcial impede repetir | `NumeroExterno` (detalhe `assistido=true`) |
 | EnviadaAoSistema → EmFilaExterna | Sistema (plano 05) | varredura/importação casou `numero_externo` ⇒ seta FK do espelho | `SituacaoExterna` |
 | EmFilaExterna ↔ Agendada → Concluida / Cancelada | Sistema | mapeamento das situações externas; nunca regride além de EmFilaExterna | `SituacaoExterna` |

@@ -42,7 +42,8 @@ const SITUACAO_PARA_A_REGULACAO: Record<StatusRegulacao, string> = {
   EnviadaAoSistema: 'Já está no sistema de destino — o acompanhamento vem do espelho de lá.',
   EmFilaExterna: 'Já está no sistema de destino — o acompanhamento vem do espelho de lá.',
   Agendada: 'Já está no sistema de destino — o acompanhamento vem do espelho de lá.',
-  FalhaEnvio: 'O envio ao sistema de destino falhou. Leia o motivo abaixo antes de tentar de novo.',
+  FalhaEnvio:
+    'O envio ao sistema de destino falhou. Leia o motivo abaixo: corrija e tente de novo, ou devolva à unidade se o que falta é dela.',
   Concluida: 'Encerrada.',
   Cancelada: 'Encerrada.',
   Recusada: 'Encerrada.',
@@ -113,6 +114,20 @@ export function AnaliseSolicitacaoPage() {
       : null;
   const nomeSistema = automatico === 'Sernit' ? 'SERNIT' : 'SER';
 
+  // Devolver depois da falha: o texto já vem com o motivo que a linha do tempo mostra — o que o
+  // sistema respondeu, sem o "Nada foi gravado…" do aviso amarelo, que é recado para o regulador.
+  const ultimaFalha =
+    s.status === 'FalhaEnvio'
+      ? [...(eventos.data ?? [])].reverse().find((e) => e.tipo === 'FalhaEnvio')
+      : undefined;
+  const motivoDaFalha =
+    typeof ultimaFalha?.detalhe?.motivo === 'string' ? ultimaFalha.detalhe.motivo : s.statusMotivo;
+  const devolucaoAposFalha =
+    s.status === 'FalhaEnvio' && motivoDaFalha
+      ? `Falha no envio ao ${nomeSistema}: ${motivoDaFalha}\n\nCorrija e reenvie.`
+      : '';
+  const gravarChegou = ultimaFalha?.detalhe?.gravarAcionado === true;
+
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -158,6 +173,11 @@ export function AnaliseSolicitacaoPage() {
             <Button variante="secundaria" onClick={() => setModalEnvio(true)}>
               <Hash className="size-4" />
               Registrar número (já está no sistema)
+            </Button>
+            {/* Recusa por dado que só a unidade tem (telefone, documento, médico): volta para ela corrigir. */}
+            <Button variante="secundaria" onClick={() => setMotivoDe('devolver')}>
+              <Undo2 className="size-4" />
+              Devolver à unidade
             </Button>
           </div>
         )}
@@ -279,6 +299,12 @@ export function AnaliseSolicitacaoPage() {
           pergunta="O que a unidade precisa corrigir?"
           rotuloConfirmar="Devolver"
           desfecho="Devolvida à unidade. Ela lê o que precisa corrigir no pedido e nas notificações, e reenvia quando acertar."
+          motivoInicial={devolucaoAposFalha}
+          aviso={
+            gravarChegou
+              ? `O Gravar chegou ao ${nomeSistema}. Confira lá se o pedido não foi criado antes de devolver — se foi, volte e use “Registrar número (já está no sistema)”.`
+              : undefined
+          }
           aoConfirmar={(motivo) => devolver.mutateAsync({ id, motivo })}
           aoFechar={() => setMotivoDe(null)}
         />
