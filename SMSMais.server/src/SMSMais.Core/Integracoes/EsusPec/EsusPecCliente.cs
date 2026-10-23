@@ -32,6 +32,9 @@ public enum ResultadoLoginEsusPec
     OutraSessaoAberta,
 }
 
+/// <summary>Profissional como o e-SUS PEC o devolve — o que o faturamento BPA precisa (CNS + CBO).</summary>
+public sealed record ProfissionalEsusPec(string Id, string? Cpf, string? Cns, string? Cbo, string? Nome);
+
 /// <summary>Erro do PEC (HTTP ou <c>errors</c> do GraphQL), com a classificação que ele devolve.</summary>
 public sealed class ErroEsusPec(string mensagem, string? classificacao = null) : Exception(mensagem)
 {
@@ -96,6 +99,16 @@ public sealed class EsusPecCliente : IDisposable
             endereco { cep uf { nome } municipio { nome } bairro tipoLogradouro { nome } logradouro numero complemento }
             racaCor { racaCorDbEnum }
           }
+        }
+        """;
+    private const string QProfissionalPorCpf = """
+        query ProfissionalSelect($input: ProfissionaisQueryInput!) {
+          profissionais(input: $input) { content { id nome cpf cns } }
+        }
+        """;
+    private const string QProfissionalDetalhe = """
+        query profissionalDetail($id: ID!) {
+          profissional(id: $id) { lotacoes { ativo cbo { cbo2002 } unidadeSaude { cnes } } }
         }
         """;
 
@@ -266,6 +279,43 @@ public sealed class EsusPecCliente : IDisposable
         return new CidadaoEsusPec(id, Texto(det["cpf"]), Texto(det["cns"]), Texto(det["telefoneCelular"]),
             Texto(det["telefoneResidencial"]), Texto(det["telefoneContato"]), atualizado,
             Nome: Texto(det["nome"]), DataNascimento: Texto(det["dataNascimento"]));
+    }
+
+    /// <summary>
+    /// Resolve o profissional por CPF (o PEC acha no município) → CNS + CBO. Para o BPA, que só tem o
+    /// CPF do executante (a solicitação do SISREG não guarda o CNS). Devolve null quando o PEC não tem
+    /// profissional com esse CPF. <paramref name="cnesPreferido"/> escolhe o CBO da lotação naquela
+    /// unidade, quando houver (senão, a primeira lotação ativa).
+    /// </summary>
+    public async Task<ProfissionalEsusPec?> BuscarProfissionalAsync(string cpf, string? cnesPreferido, CancellationToken ct)
+    {
+        var doc = new string([.. cpf.Where(char.IsDigit)]);
+        if (doc.Length != 11) return null;
+
+        var lista = await GraphQlAsync(QProfissionalPorCpf, new JsonObject
+        {
+            ["input"] = new JsonObject { ["query"] = doc, ["pageParams"] = new JsonObject { ["page"] = 0, ["size"] = 10 } },
+        }, "ProfissionalSelect", login: false, ct);
+        var achado = lista["profissionais"]?["content"]?.AsArray().FirstOrDefault(p => Digitos(p?["cpf"]) == doc);
+        if (achado?["id"]?.GetValue<string>() is not { } id) return null;
+
+        string? cbo = null;
+        try
+        {
+            var det = await GraphQlAsync(QProfissionalDetalhe, new JsonObject { ["id"] = id }, "profissionalDetail", login: false, ct);
+            if (det["profissional"]?["lotacoes"]?.AsArray() is { Count: > 0 } lotacoes)
+            {
+                static bool Ativa(JsonNode? l) => l?["ativo"]?.GetValue<bool>() ?? false;
+                var escolhida =
+                    lotacoes.FirstOrDefault(l => Ativa(l) && Texto(l?["unidadeSaude"]?["cnes"]) == cnesPreferido)
+                    ?? lotacoes.FirstOrDefault(Ativa)
+                    ?? lotacoes[0];
+                cbo = Texto(escolhida?["cbo"]?["cbo2002"]);
+            }
+        }
+        catch (ErroEsusPec) { /* sem CBO: o faturamento trata como pendência de CBO */ }
+
+        return new ProfissionalEsusPec(id, Texto(achado["cpf"]) ?? doc, Texto(achado["cns"]), cbo, Texto(achado["nome"]));
     }
 
     public async Task LogoutAsync(CancellationToken ct)
