@@ -795,7 +795,7 @@ export function NovaSolicitacaoPage() {
               >
                 <Building2 className="size-4 shrink-0 text-slate-500" />
                 <span className="flex-1">{u.nome}</span>
-                {u.principal ? <span className="text-xs text-slate-400">principal</span> : null}
+                {u.principal ? <span className="text-xs text-slate-400">padrão</span> : null}
               </button>
             </li>
           ))}

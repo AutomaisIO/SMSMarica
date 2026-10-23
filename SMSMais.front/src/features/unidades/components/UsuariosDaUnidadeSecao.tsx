@@ -18,6 +18,8 @@ type Props = { unidadeId: string };
 /**
  * Aba "Usuários" do detalhe da unidade: quem tem vínculo com a unidade
  * (multitenant), com busca para incluir novos usuários e remoção do vínculo.
+ * A estrela marca quem tem esta como unidade PADRÃO (ADR-0081): incluir quem ainda não
+ * tem padrão faz desta a dele; remover a padrão é recusado (troca-se no cadastro do usuário).
  */
 export function UsuariosDaUnidadeSecao({ unidadeId }: Props) {
   const vinculados = useUsuariosDaUnidade(unidadeId);
@@ -70,7 +72,7 @@ export function UsuariosDaUnidadeSecao({ unidadeId }: Props) {
         <span className="flex items-center gap-1.5 font-medium text-gray-900">
           {v.nomeCompleto}
           {v.principal ? (
-            <span title="Unidade principal deste usuário">
+            <span title="Unidade padrão deste usuário">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
             </span>
           ) : null}
@@ -99,6 +101,10 @@ export function UsuariosDaUnidadeSecao({ unidadeId }: Props) {
         <label htmlFor="buscaUsuarioUnidade" className="label">
           Incluir usuário na unidade
         </label>
+        <p className="mb-2 text-xs text-gray-500">
+          A <Star className="inline h-3 w-3 fill-amber-400 text-amber-400" /> marca quem tem esta como
+          unidade padrão. Quem ainda não tem padrão e é incluído aqui fica com esta como padrão.
+        </p>
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input

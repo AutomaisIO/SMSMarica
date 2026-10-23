@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0081 — Unidade padrão obrigatória: a lotação da pessoa, separada da unidade em que ela entra</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0081 — Unidade padrão obrigatória: a lotação da pessoa, separada da unidade em que ela entra</h1>
+<ul>
+<li><strong>Status:</strong> Aceito</li>
+<li><strong>Data:</strong> 2026-10-23</li>
+<li><strong>Contexto módulo:</strong> Usuários / vínculo usuário↔unidade (<code>usuario_unidade</code>)</li>
+<li><strong>Relacionado:</strong> <a href="./0079-comunicacao-interna-entre-unidades.md">ADR-0079</a> (Comunicação interna — §2</li>
+</ul>
+<p>  muda: participação passa a ser pela unidade padrão), ADR-0037 (escopo por unidade fail-closed, em   <code>Core/Common/Unidades/EscopoUnidade.cs</code> — não muda), <a href="./0047-posse-de-conversa-filas.md">ADR-0047</a> (Central de   Atendimento — a conversa herda a unidade padrão de quem a assume, como já herdava a "principal")</p>
+<h2>Contexto</h2>
+<p>O vínculo usuário↔unidade (<code>usuario_unidade</code>) serve a duas coisas que, até aqui, andavam juntas:</p>
+<ol>
+<li><strong>Escopo de dados</strong> — de quais unidades a pessoa enxerga os pedidos (ADR-0037). O técnico de</li>
+</ol>
+<p>   regulação é vinculado a quase todas as 56 unidades porque trabalha os pedidos de todas.</p>
+<ol>
+<li><strong>Identidade na equipe</strong> — de qual unidade a pessoa "é". A Comunicação interna (ADR-0079) derivava</li>
+</ol>
+<p>   isso de <strong>todos</strong> os vínculos: em 23/10/2026 os 28 técnicos de regulação apareciam na equipe de    cada uma das 56 unidades e receberiam a conversa de todas elas.</p>
+<p>A marca <code>principal</code> existia, mas era opcional (90 dos 123 usuários ativos estavam sem ela) e fazia outro papel: decidir em qual unidade a pessoa <strong>entra</strong> no painel. Os 18 técnicos que a tinham apontada para a Central de Regulação entravam filtrando a fila por ela.</p>
+<p>O pedido do Bernardo (23/10/2026): todo usuário tem uma unidade padrão, obrigatória; no chat interno a pessoa aparece só nela; e a regulação ganha uma unidade de lotação que <strong>não existe no SISREG</strong> — o Complexo Regulador — onde ficam os técnicos de regulação, o perfil "Regulacao" e os de acesso global.</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>A unidade padrão é a lotação da pessoa, e é obrigatória.</strong> No banco continua sendo</li>
+</ol>
+<p>   <code>usuario_unidade.principal</code> (sem coluna nova); na tela passa a se chamar "Unidade padrão".    - Gravar os vínculos (<code>PUT /usuarios/{id}/unidades</code>) exige ao menos uma unidade e <strong>exatamente uma</strong>      padrão.    - Incluir alguém pela tela da unidade faz dela a padrão <strong>se a pessoa ainda não tem</strong>.    - Remover pela tela da unidade <strong>recusa</strong> a padrão — troca-se no cadastro do usuário.    - Não há constraint no banco ("toda linha de <code>usuario</code> tem uma padrão" não cabe num CHECK);      a regra é dos caminhos de escrita. Quem ficou sem padrão aparece no filtro      <strong>"Sem unidade padrão"</strong> da tela de Usuários, e o próximo salvar do cadastro exige escolher.</p>
+<ol>
+<li><strong>"A única" deixa de valer como padrão.</strong> <code>ObterPrincipalIdAsync</code> devolve só a marcada. A migration</li>
+</ol>
+<p>   <code>UnidadePadraoObrigatoria</code> marca, uma vez, quem tinha uma unidade só e nenhuma marcada (o que o    sistema já presumia). Quem tem várias e nenhuma marcada fica para o administrador escolher.</p>
+<ol>
+<li><strong>Comunicação interna: cada pessoa é de uma unidade só — a padrão</strong> (muda o ADR-0079 §2). A lista de</li>
+</ol>
+<p>   pessoas, a participação em "Todos da unidade", o grupo do hub, o contador de não lidas e a unidade de    onde a pessoa fala vêm da padrão. Os demais vínculos não contam no chat. O "falando como" deixa de    existir. Em 23/10/2026 não havia nenhuma conversa interna gravada — nada de histórico mudou de dono.</p>
+<ol>
+<li><strong>A unidade em que a pessoa entra no painel não é mais decidida pela padrão.</strong> Com uma unidade só,</li>
+</ol>
+<p>   entra nela; com várias, entra em <strong>"Todas as unidades"</strong>, sem tela de escolha (troca-se no    cabeçalho, como antes). Sem isso, o técnico lotado no Complexo Regulador — que não tem pedido    nenhum — entraria com a fila vazia. A tela "Escolha a unidade" do login sai.</p>
+<ol>
+<li><strong>O Complexo Regulador é dado da instância, não código.</strong> É cadastrado como unidade comum, sem CNES</li>
+</ol>
+<p>   (não está no SISREG; a unidade do TFD já vive assim desde 29/09 sem efeito nos sincronismos), e a    atribuição da padrão às pessoas é uma operação de dados em produção — nada disso entra em migration    (CLAUDE.md, regra 9: seed institucional nunca vai para migration).</p>
+<h2>Consequências</h2>
+<ul>
+<li><strong>Escopo não muda.</strong> O técnico continua enxergando os pedidos de todas as unidades a que é vinculado;</li>
+</ul>
+<p>  ganhar o Complexo como padrão só acrescenta um vínculo.</p>
+<ul>
+<li><strong>Central de Atendimento:</strong> a conversa que um técnico inicia ou assume sem unidade passa a ficar no</li>
+</ul>
+<p>  Complexo Regulador (antes, na Central de Regulação). Os demais técnicos lotados lá a enxergam.</p>
+<ul>
+<li><strong>Quem ainda está sem padrão</strong> (contas sem perfil, médicos importados, multi-unidade sem marca) não</li>
+</ul>
+<p>  aparece em unidade nenhuma do chat — só na conversa direta — até o administrador escolher.</p>
+<ul>
+<li><strong>Motoristas</strong> (usuário com <code>MotoristaId</code>) ficam de fora: não usam o painel nem a tela de Usuários.</li>
+<li>Trocar a padrão vale para o tempo real do chat depois que a aba reconecta (o grupo do hub é lido na</li>
+</ul>
+<p>  conexão); as listas já refletem na hora.</p>
+</main>
+</body>
+</html>

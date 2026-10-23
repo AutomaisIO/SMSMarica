@@ -19,8 +19,9 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
         [FromQuery] string? busca,
         [FromQuery] Guid? unidadeId,
         [FromQuery] int limite = 50,
+        [FromQuery] bool semUnidadePadrao = false,
         CancellationToken cancellationToken = default) =>
-        await _service.ListarAsync(new FiltroUsuariosDto(busca, unidadeId, limite), cancellationToken);
+        await _service.ListarAsync(new FiltroUsuariosDto(busca, unidadeId, limite, semUnidadePadrao), cancellationToken);
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Consulta)]

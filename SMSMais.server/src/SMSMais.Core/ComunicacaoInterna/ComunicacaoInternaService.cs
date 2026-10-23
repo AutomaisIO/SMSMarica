@@ -15,8 +15,9 @@ namespace SMSMais.Core.ComunicacaoInterna;
 
 /// <summary>
 /// Implementação da Comunicação interna (ADR-0079). Participação é DERIVADA na hora: conversa direta
-/// = as duas pessoas; conversa de unidade = quem tem vínculo (<c>usuario_unidade</c>) com qualquer
-/// das duas unidades. Nada é editado nem apagado.
+/// = as duas pessoas; conversa de unidade = quem tem qualquer das duas como unidade PADRÃO
+/// (<c>usuario_unidade.principal</c>, ADR-0081). Os demais vínculos (escopo de dados) não contam aqui:
+/// no chat cada pessoa é de uma unidade só. Nada é editado nem apagado.
 /// </summary>
 public sealed class ComunicacaoInternaService(
     SmsMaisDbContext db,
@@ -51,9 +52,7 @@ public sealed class ComunicacaoInternaService(
     {
         var eu = Eu;
         var unidades = await db.UsuarioUnidades.AsNoTracking()
-            .Where(v => v.UsuarioId == eu && v.Unidade!.Ativo)
-            .OrderByDescending(v => v.Principal)
-            .ThenBy(v => v.Unidade!.Nome)
+            .Where(v => v.UsuarioId == eu && v.Principal && v.Unidade!.Ativo)
             .Select(v => new UnidadeVinculoInternoDto(v.UnidadeId, v.Unidade!.Nome, v.Principal))
             .ToListAsync(ct);
 
@@ -137,18 +136,18 @@ public sealed class ComunicacaoInternaService(
     {
         var eu = Eu;
         var vinculos = await db.UsuarioUnidades.AsNoTracking()
-            .Where(v => v.UsuarioId == eu && v.Unidade!.Ativo)
+            .Where(v => v.UsuarioId == eu && v.Principal && v.Unidade!.Ativo)
             .Select(v => new UnidadeVinculoInternoDto(v.UnidadeId, v.Unidade!.Nome, v.Principal))
             .ToListAsync(ct);
         if (vinculos.Count == 0)
         {
             throw new ValidacaoException("unidadeOrigemId",
-                "Você não está vinculado a nenhuma unidade. Converse direto com uma pessoa ou peça o vínculo ao administrador.");
+                "Você ainda não tem unidade padrão. Converse direto com uma pessoa ou peça ao administrador para definir a sua.");
         }
 
         var origem = request.UnidadeOrigemId ?? UnidadeAtual(vinculos)!.Value;
         if (vinculos.All(v => v.UnidadeId != origem))
-            throw new ValidacaoException("unidadeOrigemId", "Você não faz parte da unidade escolhida como origem.");
+            throw new ValidacaoException("unidadeOrigemId", "A conversa sai da sua unidade padrão.");
 
         if (!await db.Unidades.AsNoTracking().AnyAsync(u => u.Id == request.UnidadeDestinoId && u.Ativo, ct))
             throw new NaoEncontradoException("Unidade", request.UnidadeDestinoId);
@@ -237,7 +236,7 @@ public sealed class ComunicacaoInternaService(
             Id = Guid.NewGuid(),
             ConversaId = conversaId,
             AutorId = eu,
-            AutorUnidadeId = UnidadeDoAutor(conversa, minhas),
+            AutorUnidadeId = UnidadeDoAutor(minhas),
             Texto = texto,
             EnviadaEm = agora,
         };
@@ -470,15 +469,16 @@ public sealed class ComunicacaoInternaService(
                     m.AnexoDuracaoSegundos,
                     m.AnexoEhAudio));
 
+    /// <summary>A minha unidade no chat: só a padrão (lista de 0 ou 1, no formato que o recorte usa).</summary>
     private Task<List<Guid?>> MinhasUnidadesAsync(Guid eu, CancellationToken ct) =>
         db.UsuarioUnidades.AsNoTracking()
-            .Where(v => v.UsuarioId == eu)
+            .Where(v => v.UsuarioId == eu && v.Principal)
             .Select(v => (Guid?)v.UnidadeId)
             .ToListAsync(ct);
 
     /// <summary>
-    /// O recorte de TUDO: direta = sou uma das duas pessoas; unidade = tenho vínculo com uma das
-    /// duas unidades. <c>AcessoGlobal</c> não entra — não há "ver tudo" nesta fase (ADR-0079 §2).
+    /// O recorte de TUDO: direta = sou uma das duas pessoas; unidade = uma das duas é a minha
+    /// unidade padrão. <c>AcessoGlobal</c> não entra — não há "ver tudo" nesta fase (ADR-0079 §2).
     /// </summary>
     private static IQueryable<ConversaInterna> Visiveis(IQueryable<ConversaInterna> query, Guid eu, List<Guid?> minhas) =>
         query.Where(c =>
@@ -506,14 +506,15 @@ public sealed class ComunicacaoInternaService(
                 .Select(p => p.UsuarioId));
 
     /// <summary>
-    /// Vínculos de quem de fato pode ler: ativo, não excluído e com o módulo. Sem esse filtro, uma
-    /// mensagem direta para quem não tem o módulo cairia num buraco calado.
+    /// Unidade padrão de quem de fato pode ler: ativo, não excluído e com o módulo. Sem esse filtro,
+    /// uma mensagem direta para quem não tem o módulo cairia num buraco calado. Só a padrão: o
+    /// técnico vinculado às 56 unidades para enxergar os pedidos aparece só na dele (ADR-0081).
     /// </summary>
     private IQueryable<UsuarioUnidade> VinculosElegiveis()
     {
         var comModulo = UsuariosComModulo();
         return db.UsuarioUnidades.AsNoTracking()
-            .Where(v => v.Usuario!.ExcluidoEm == null && v.Usuario.Ativo && comModulo.Contains(v.UsuarioId));
+            .Where(v => v.Principal && v.Usuario!.ExcluidoEm == null && v.Usuario.Ativo && comModulo.Contains(v.UsuarioId));
     }
 
     /// <summary>
@@ -527,7 +528,7 @@ public sealed class ComunicacaoInternaService(
             .Where(m => !db.ConversaInternaLeituras.Any(l => l.ConversaId == m.ConversaId && l.UsuarioId == eu
                 && ((ignorarSilenciadas && l.Silenciada) || (l.LidaAte != null && l.LidaAte >= m.EnviadaEm))))
             .Where(m => m.Conversa!.Tipo == TipoConversaInterna.Direta
-                || db.UsuarioUnidades.Any(v => v.UsuarioId == eu
+                || db.UsuarioUnidades.Any(v => v.UsuarioId == eu && v.Principal
                     && (v.UnidadeId == m.Conversa!.UnidadeAId || v.UnidadeId == m.Conversa!.UnidadeBId)
                     && v.CriadoEm <= m.EnviadaEm));
 
@@ -625,25 +626,12 @@ public sealed class ComunicacaoInternaService(
         return m.AnexoNome is null ? null : $"📎 {m.AnexoNome}";
     }
 
-    /// <summary>Unidades de cada pessoa (principal primeiro), para o subtítulo da conversa direta.</summary>
-    private async Task<Dictionary<Guid, string>> UnidadesDosUsuariosAsync(IReadOnlyCollection<Guid> usuarios, CancellationToken ct)
-    {
-        var vinculos = await db.UsuarioUnidades.AsNoTracking()
-            .Where(v => usuarios.Contains(v.UsuarioId) && v.Unidade!.Ativo)
-            .OrderByDescending(v => v.Principal)
-            .ThenBy(v => v.Unidade!.Nome)
+    /// <summary>Unidade padrão de cada pessoa, para o subtítulo da conversa direta.</summary>
+    private async Task<Dictionary<Guid, string>> UnidadesDosUsuariosAsync(IReadOnlyCollection<Guid> usuarios, CancellationToken ct) =>
+        await db.UsuarioUnidades.AsNoTracking()
+            .Where(v => usuarios.Contains(v.UsuarioId) && v.Principal && v.Unidade!.Ativo)
             .Select(v => new { v.UsuarioId, v.Unidade!.Nome })
-            .ToListAsync(ct);
-        return vinculos
-            .GroupBy(v => v.UsuarioId)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    var nomes = g.Select(x => x.Nome).ToList();
-                    return nomes.Count <= 2 ? string.Join(", ", nomes) : $"{nomes[0]}, {nomes[1]} +{nomes.Count - 2}";
-                });
-    }
+            .ToDictionaryAsync(v => v.UsuarioId, v => v.Nome, ct);
 
     private async Task<Guid> ObterOuCriarAsync(
         Expression<Func<ConversaInterna, bool>> chave, Func<ConversaInterna> nova, Guid eu, CancellationToken ct)
@@ -685,27 +673,14 @@ public sealed class ComunicacaoInternaService(
             : new AudienciaInterna(new HashSet<Guid> { c.UnidadeAId!.Value, c.UnidadeBId!.Value }, [autor]);
 
     /// <summary>
-    /// De onde a pessoa fala: a unidade em que está (cabeçalho), se for das unidades da conversa;
-    /// senão a primeira das dela que participa. Na direta, a unidade em que está, se for dela.
+    /// De onde a pessoa fala: sempre da unidade padrão (a unidade do cabeçalho não muda isso). Na
+    /// conversa de unidade ela é, por construção, uma das duas — senão a conversa não seria visível.
     /// </summary>
-    private Guid? UnidadeDoAutor(ConversaInterna c, List<Guid?> minhas)
-    {
-        var atual = usuarioAtual.UnidadeAtivaId;
-        if (c.Tipo == TipoConversaInterna.Unidade)
-        {
-            if (atual is { } a && minhas.Contains(a) && (c.UnidadeAId == a || c.UnidadeBId == a)) return a;
-            return minhas.Contains(c.UnidadeAId) ? c.UnidadeAId : c.UnidadeBId;
-        }
-        return atual is { } u && minhas.Contains(u) ? u : minhas.FirstOrDefault();
-    }
+    private static Guid? UnidadeDoAutor(List<Guid?> minhas) => minhas.FirstOrDefault();
 
-    /// <summary>A unidade do cabeçalho, se a pessoa é dela; senão a principal; senão a primeira.</summary>
-    private Guid? UnidadeAtual(IReadOnlyList<UnidadeVinculoInternoDto> vinculos)
-    {
-        var atual = usuarioAtual.UnidadeAtivaId;
-        if (atual is { } a && vinculos.Any(v => v.UnidadeId == a)) return a;
-        return (vinculos.FirstOrDefault(v => v.Principal) ?? vinculos.FirstOrDefault())?.UnidadeId;
-    }
+    /// <summary>A unidade padrão (a lista já vem só com ela).</summary>
+    private static Guid? UnidadeAtual(IReadOnlyList<UnidadeVinculoInternoDto> vinculos) =>
+        vinculos.FirstOrDefault()?.UnidadeId;
 
     /// <summary>
     /// Ordena o par pela ordem TEXTUAL do Guid — a mesma do <c>uuid</c> no Postgres, que é quem

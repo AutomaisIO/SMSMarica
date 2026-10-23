@@ -19,6 +19,7 @@ export async function listarUsuarios(filtro?: FiltroUsuarios): Promise<UsuarioLi
     params: {
       busca: filtro?.busca?.trim() || undefined,
       unidadeId: filtro?.unidadeId || undefined,
+      semUnidadePadrao: filtro?.semUnidadePadrao || undefined,
       limite: filtro?.limite ?? 50,
     },
   });

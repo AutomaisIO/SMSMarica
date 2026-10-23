@@ -203,6 +203,43 @@ public class ComunicacaoInternaServiceTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Pessoa_so_aparece_e_so_participa_pela_unidade_padrao()
+    {
+        // O técnico de regulação: padrão no Complexo, vinculado às unidades para enxergar os pedidos.
+        await using var db = fixture.CriarDbContext();
+        var complexo = await CriarUnidadeAsync(db);
+        var ubs = await CriarUnidadeAsync(db);
+        var hospital = await CriarUnidadeAsync(db);
+        var tecnico = await CriarUsuarioAsync(db, complexo, outrasUnidades: [ubs, hospital]);
+        var daUbs = await CriarUsuarioAsync(db, ubs);
+        await CriarUsuarioAsync(db, hospital);
+
+        var servico = Servico(db, daUbs);
+        Assert.DoesNotContain(await servico.ListarUsuariosDaUnidadeAsync(ubs), p => p.Id == tecnico);
+        Assert.Contains(await servico.ListarUsuariosDaUnidadeAsync(complexo), p => p.Id == tecnico);
+        var unidades = await servico.ListarUnidadesAsync();
+        Assert.Equal(1, unidades.Single(u => u.Id == ubs).Usuarios);
+        Assert.Equal(1, unidades.Single(u => u.Id == complexo).Usuarios);
+
+        // UBS ↔ hospital é das duas equipes; o vínculo comum do técnico não o põe na conversa.
+        var conversa = await servico.AbrirConversaUnidadeAsync(new AbrirConversaUnidadeRequest(hospital, null));
+        await servico.EnviarAsync(conversa.Id, "Chegou o paciente?", null);
+        var doTecnico = Servico(db, tecnico);
+        Assert.DoesNotContain(await doTecnico.ListarConversasAsync(), i => i.Id == conversa.Id);
+        Assert.Equal(0, (await doTecnico.ObterResumoAsync()).NaoLidas);
+
+        // E o que ele abre sai do Complexo.
+        var contexto = await doTecnico.ObterContextoAsync();
+        Assert.Equal(complexo, Assert.Single(contexto.MinhasUnidades).UnidadeId);
+        Assert.Equal(complexo, contexto.UnidadeAtualId);
+        var dele = await doTecnico.AbrirConversaUnidadeAsync(new AbrirConversaUnidadeRequest(ubs, null));
+        Assert.Contains(complexo, new[] { dele.UnidadeAId, dele.UnidadeBId });
+        var enviada = await doTecnico.EnviarAsync(dele.Id, "Pedido devolvido para ajuste", null);
+        Assert.Equal(1, (await servico.ListarConversasAsync()).Single(i => i.Id == dele.Id).NaoLidas);
+        Assert.NotNull(enviada.AutorUnidadeNome);
+    }
+
+    [Fact]
     public async Task Sem_vinculo_nao_abre_conversa_de_unidade()
     {
         await using var db = fixture.CriarDbContext();
@@ -239,8 +276,12 @@ public class ComunicacaoInternaServiceTests(PostgresFixture fixture)
         return unidade.Id;
     }
 
-    /// <summary>Usuário ativo, vinculado à unidade e — por padrão — num perfil com o módulo 86.</summary>
-    private static async Task<Guid> CriarUsuarioAsync(SmsMaisDbContext db, Guid? unidadeId, bool comModulo = true)
+    /// <summary>
+    /// Usuário ativo com <paramref name="unidadeId"/> como unidade PADRÃO, vínculos comuns em
+    /// <paramref name="outrasUnidades"/> e — por padrão — num perfil com o módulo 86.
+    /// </summary>
+    private static async Task<Guid> CriarUsuarioAsync(
+        SmsMaisDbContext db, Guid? unidadeId, bool comModulo = true, params Guid[] outrasUnidades)
     {
         var u = new Usuario
         {
@@ -253,7 +294,9 @@ public class ComunicacaoInternaServiceTests(PostgresFixture fixture)
         };
         db.Usuarios.Add(u);
         if (unidadeId is { } unidade)
-            db.UsuarioUnidades.Add(new UsuarioUnidade { UsuarioId = u.Id, UnidadeId = unidade, CriadoEm = DateTime.UtcNow });
+            db.UsuarioUnidades.Add(new UsuarioUnidade { UsuarioId = u.Id, UnidadeId = unidade, Principal = true, CriadoEm = DateTime.UtcNow });
+        foreach (var outra in outrasUnidades)
+            db.UsuarioUnidades.Add(new UsuarioUnidade { UsuarioId = u.Id, UnidadeId = outra, CriadoEm = DateTime.UtcNow });
         if (comModulo)
         {
             var perfil = new Perfil { Id = Guid.NewGuid(), Nome = $"PERFIL {Guid.NewGuid():N}", Ativo = true, CriadoEm = DateTime.UtcNow };

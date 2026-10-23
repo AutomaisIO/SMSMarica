@@ -36,13 +36,19 @@ feito na tela de Perfis. Não é seed institucional: vale igual em qualquer inst
 
 | Tipo | Quem participa | Chave |
 |---|---|---|
-| **Unidade ↔ unidade** ("Todos da unidade") | todos os vinculados (`usuario_unidade`) a qualquer das duas unidades | par **não ordenado** de unidades — A→B e B→A são a mesma sessão |
+| **Unidade ↔ unidade** ("Todos da unidade") | todos que têm qualquer das duas como **unidade padrão** (`usuario_unidade.principal`) — ver a nota do ADR-0081 abaixo | par **não ordenado** de unidades — A→B e B→A são a mesma sessão |
 | **Direta** (pessoa ↔ pessoa) | as duas pessoas | par não ordenado de usuários |
 
 - **A sessão é única por par**, como no WhatsApp: escrever de novo para a mesma unidade cai no mesmo
   histórico, e a busca encontra tudo num lugar só.
 - **Unidade de origem** = a unidade em que a pessoa está (cabeçalho `X-Unidade-Id`), ou a principal; quem
   tem mais de uma escolhe ("falando como"). Sem vínculo com unidade, só conversa direta.
+
+> **Mudou em 23/10/2026 — [ADR-0081](./0081-unidade-padrao-obrigatoria.md).** No chat cada pessoa é de
+> uma unidade só: a **unidade padrão** (obrigatória). Participação, lista de pessoas, grupo do hub e
+> unidade de origem vêm dela; os demais vínculos (escopo de dados) não contam aqui. O "falando como"
+> saiu. Motivo: o técnico de regulação, vinculado às 56 unidades para enxergar os pedidos, aparecia na
+> equipe de todas elas.
 - **Origem = destino** é permitido: vira o canal da própria equipe.
 - **Participação é derivada na hora**, não copiada: quem entra na equipe vê o histórico da unidade (é a
   continuidade do plantão); quem sai deixa de ver. `Usuario.AcessoGlobal` **não** dá acesso a conversa de

@@ -30,6 +30,9 @@ function formatarCpf(cpf: string | null): string {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
+/** Valor do select de unidade que pede "quem não tem unidade padrão". */
+const SEM_PADRAO = 'sem-padrao';
+
 export function UsuariosPage() {
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroUsuarios>({ limite: LIMITE });
   const [filtroAplicado, setFiltroAplicado] = useState<FiltroUsuarios>({ limite: LIMITE });
@@ -126,12 +129,18 @@ export function UsuariosPage() {
         <Campo label="Unidade" htmlFor="unidade">
           <Select
             id="unidade"
-            value={filtroDigitado.unidadeId ?? ''}
-            onChange={(e) =>
-              setFiltroDigitado((f) => ({ ...f, unidadeId: e.target.value || undefined }))
-            }
+            value={filtroDigitado.semUnidadePadrao ? SEM_PADRAO : (filtroDigitado.unidadeId ?? '')}
+            onChange={(e) => {
+              const v = e.target.value;
+              setFiltroDigitado((f) =>
+                v === SEM_PADRAO
+                  ? { ...f, unidadeId: undefined, semUnidadePadrao: true }
+                  : { ...f, unidadeId: v || undefined, semUnidadePadrao: undefined },
+              );
+            }}
           >
             <option value="">Todas</option>
+            <option value={SEM_PADRAO}>— Sem unidade padrão —</option>
             {(unidades.data ?? [])
               .filter((u) => u.ativo)
               .map((u) => (
@@ -145,7 +154,7 @@ export function UsuariosPage() {
           <Button type="submit">
             <Search className="h-4 w-4" /> Buscar
           </Button>
-          {(filtroAplicado.busca || filtroAplicado.unidadeId) ? (
+          {(filtroAplicado.busca || filtroAplicado.unidadeId || filtroAplicado.semUnidadePadrao) ? (
             <Button type="button" variante="ghost" onClick={limpar}>
               Limpar
             </Button>

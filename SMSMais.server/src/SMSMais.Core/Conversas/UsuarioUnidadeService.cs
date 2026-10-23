@@ -16,17 +16,13 @@ public sealed class UsuarioUnidadeService(
             .Select(x => x.UnidadeId)
             .ToListAsync(ct);
 
-    public async Task<Guid?> ObterPrincipalIdAsync(Guid usuarioId, CancellationToken ct = default)
-    {
-        var vinculos = await db.UsuarioUnidades.AsNoTracking()
-            .Where(x => x.UsuarioId == usuarioId)
-            .Select(x => new { x.UnidadeId, x.Principal })
-            .ToListAsync(ct);
-
-        // Prefere a marcada como principal; senão, se cobre só uma, usa essa.
-        return vinculos.FirstOrDefault(x => x.Principal)?.UnidadeId
-            ?? (vinculos.Count == 1 ? vinculos[0].UnidadeId : null);
-    }
+    // Só a marcada: a migration UnidadePadraoObrigatoria marcou quem tinha uma unidade só, e todo
+    // caminho de escrita exige (ou cria) a padrão — "a única" e "a marcada" não divergem mais.
+    public async Task<Guid?> ObterPrincipalIdAsync(Guid usuarioId, CancellationToken ct = default) =>
+        await db.UsuarioUnidades.AsNoTracking()
+            .Where(x => x.UsuarioId == usuarioId && x.Principal)
+            .Select(x => (Guid?)x.UnidadeId)
+            .FirstOrDefaultAsync(ct);
 
     public async Task<IReadOnlyList<VinculoUnidadeDto>> ObterVinculosAsync(Guid usuarioId, CancellationToken ct = default) =>
         await db.UsuarioUnidades.AsNoTracking()
@@ -40,8 +36,11 @@ public sealed class UsuarioUnidadeService(
         if (!await db.Usuarios.AnyAsync(u => u.Id == usuarioId && u.ExcluidoEm == null, ct))
             throw new NaoEncontradoException("Usuário", usuarioId);
 
-        if (request.Unidades.Count(x => x.Principal) > 1)
-            throw new ValidacaoException("unidades", "Só pode haver uma unidade principal.");
+        // Unidade padrão é obrigatória: é a lotação da pessoa (Comunicação interna, Central).
+        if (request.Unidades.Count == 0)
+            throw new ValidacaoException("unidades", "Vincule ao menos uma unidade e marque a unidade padrão.");
+        if (request.Unidades.Count(x => x.Principal) != 1)
+            throw new ValidacaoException("unidades", "Marque uma unidade padrão (uma só).");
 
         var unidadeIds = request.Unidades.Select(x => x.UnidadeId).Distinct().ToList();
         if (unidadeIds.Count != request.Unidades.Count)
@@ -93,11 +92,13 @@ public sealed class UsuarioUnidadeService(
         if (await db.UsuarioUnidades.AnyAsync(x => x.UnidadeId == unidadeId && x.UsuarioId == usuarioId, ct))
             return; // idempotente
 
+        // Quem ainda não tem unidade padrão fica com esta — a padrão é obrigatória.
+        var temPadrao = await db.UsuarioUnidades.AnyAsync(x => x.UsuarioId == usuarioId && x.Principal, ct);
         db.UsuarioUnidades.Add(new UsuarioUnidade
         {
             UsuarioId = usuarioId,
             UnidadeId = unidadeId,
-            Principal = false,
+            Principal = !temPadrao,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = usuarioAtual.UsuarioId,
         });
@@ -109,6 +110,9 @@ public sealed class UsuarioUnidadeService(
         var vinculo = await db.UsuarioUnidades
             .FirstOrDefaultAsync(x => x.UnidadeId == unidadeId && x.UsuarioId == usuarioId, ct);
         if (vinculo is null) return; // idempotente
+        if (vinculo.Principal)
+            throw new ValidacaoException("usuarioId",
+                "Esta é a unidade padrão do usuário. Troque a unidade padrão no cadastro dele antes de removê-lo daqui.");
 
         db.UsuarioUnidades.Remove(vinculo);
         await db.SaveChangesAsync(ct);
