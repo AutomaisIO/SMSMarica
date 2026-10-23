@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.DocumentosPaciente;
@@ -39,6 +40,18 @@ public sealed record ExigenciaDto(
 
 public sealed record ConteudoArquivoDto(byte[] Conteudo, string ContentType, string Nome);
 
+/// <summary>
+/// Um arquivo já compactado, esperando quem anexou conferir se ficou legível. Ainda não está na
+/// solicitação nem no armazenamento — só na memória do servidor, até <paramref name="ExpiraEm"/>.
+/// </summary>
+/// <param name="Token">Identifica a prévia: ver o conteúdo, aceitar e descartar usam ele.</param>
+/// <param name="TamanhoOriginal">O tamanho do arquivo como chegou; <paramref name="Tamanho"/> é o que
+/// vai ser guardado.</param>
+public sealed record ArquivoPreparadoDto(
+    Guid Token, string Nome, string ContentType, long TamanhoOriginal, long Tamanho, DateTime ExpiraEm);
+
+public sealed record AceitarArquivoPreparadoRequest(string? Titulo, string? Descricao);
+
 public interface IRegulacaoExigenciaService
 {
     Task<IReadOnlyList<ExigenciaDto>> ListarAsync(Guid solicitacaoId, CancellationToken ct);
@@ -55,10 +68,31 @@ public interface IRegulacaoExigenciaService
         Guid solicitacaoId, Guid regraId, string titulo, bool obrigatoria, CancellationToken ct);
 
     /// <param name="titulo">Nome do documento dado por quem anexou; sem ele, vale o nome do arquivo.</param>
-    /// <remarks>O arquivo também entra no acervo do paciente ("Exames anexados" do cadastro).</remarks>
+    /// <remarks>O arquivo é compactado na entrada (<see cref="ICompactadorAnexo"/>) e também entra no
+    /// acervo do paciente ("Exames anexados" do cadastro). A tela usa <see cref="PrepararAsync"/>, que
+    /// mostra o resultado antes de guardar; este anexa direto.</remarks>
     Task<ArquivoExigenciaDto> AnexarAsync(
         Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo,
         CancellationToken ct, string? titulo = null, string? descricao = null);
+
+    /// <summary>
+    /// Primeiro passo do anexo pela tela: valida, compacta e guarda o resultado <b>em memória</b> por
+    /// <see cref="RegulacaoExigenciaService.ValidadePrevia"/>, para quem anexou conferir se ficou legível.
+    /// Nada entra na solicitação, no armazenamento nem no cadastro do paciente até
+    /// <see cref="AceitarPreparadoAsync"/>.
+    /// </summary>
+    Task<ArquivoPreparadoDto> PrepararAsync(
+        Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo, CancellationToken ct);
+
+    /// <summary>O arquivo compactado, para a prévia. Só para quem o preparou.</summary>
+    Task<ConteudoArquivoDto> ObterPreparadoAsync(Guid solicitacaoId, Guid token, CancellationToken ct);
+
+    /// <summary>Quem anexou conferiu e aceitou: o arquivo compactado entra na caixinha (e no cadastro).</summary>
+    Task<ArquivoExigenciaDto> AceitarPreparadoAsync(
+        Guid solicitacaoId, Guid token, string? titulo, string? descricao, CancellationToken ct);
+
+    /// <summary>Quem anexou recusou a prévia: o arquivo é esquecido, nada fica guardado.</summary>
+    Task DescartarPreparadoAsync(Guid solicitacaoId, Guid token, CancellationToken ct);
 
     /// <summary>
     /// Anexa um documento que o paciente já tem no cadastro (chave <c>tipo:id</c> do acervo).
@@ -112,9 +146,19 @@ public sealed class RegulacaoExigenciaService(
     IUsuarioAtualAccessor usuarioAtual,
     IRegulacaoEscopo escopoRegulacao,
     IRegulacaoEventoService eventos,
-    IDocumentosPacienteService? acervo = null) : IRegulacaoExigenciaService
+    IDocumentosPacienteService? acervo = null,
+    ICompactadorAnexo? compactador = null,
+    IMemoryCache? cache = null) : IRegulacaoExigenciaService
 {
     private const string TituloAnexosGerais = "Anexos gerais";
+
+    /// <summary>Quanto tempo a prévia espera a decisão. Passou, é anexar de novo.</summary>
+    public static readonly TimeSpan ValidadePrevia = TimeSpan.FromMinutes(30);
+
+    /// <summary>O que fica na memória entre a prévia e a decisão — amarrado à solicitação, à caixinha
+    /// e a quem preparou.</summary>
+    private sealed record Preparado(
+        Guid SolicitacaoId, Guid ExigenciaId, Guid? UsuarioId, AnexoCompactado Arquivo, DateTime ExpiraEm);
 
     public async Task<IReadOnlyList<ExigenciaDto>> ListarAsync(Guid solicitacaoId, CancellationToken ct)
     {
@@ -203,7 +247,74 @@ public sealed class RegulacaoExigenciaService(
     {
         var solicitacao = await ExigirSolicitacaoAsync(solicitacaoId, ct);
         var exigencia = await ExigirExigenciaAsync(solicitacaoId, exigenciaId, ct);
+        var arquivo = await ValidarECompactarAsync(nome, contentType, conteudo, ct);
+        return await GravarUploadAsync(solicitacao, exigencia, arquivo, titulo, descricao, ct);
+    }
 
+    public async Task<ArquivoPreparadoDto> PrepararAsync(
+        Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo, CancellationToken ct)
+    {
+        await ExigirSolicitacaoAsync(solicitacaoId, ct, rastrear: false);
+        await ExigirExigenciaAsync(solicitacaoId, exigenciaId, ct);
+        var arquivo = await ValidarECompactarAsync(nome, contentType, conteudo, ct);
+
+        // Guid aleatório (v4), não o v7 das linhas: o token é a única coisa entre a prévia e quem
+        // quisesse adivinhá-la, e o v7 começa pelo relógio.
+        var token = Guid.NewGuid();
+        var expiraEm = DateTime.UtcNow.Add(ValidadePrevia);
+        ExigirCache().Set(
+            ChavePrevia(token),
+            new Preparado(solicitacaoId, exigenciaId, usuarioAtual.UsuarioId, arquivo, expiraEm),
+            new DateTimeOffset(expiraEm));
+
+        return new ArquivoPreparadoDto(
+            token, arquivo.Nome, arquivo.ContentType, arquivo.TamanhoOriginal, arquivo.Conteudo.LongLength, expiraEm);
+    }
+
+    public async Task<ConteudoArquivoDto> ObterPreparadoAsync(Guid solicitacaoId, Guid token, CancellationToken ct)
+    {
+        var p = ExigirPreparado(solicitacaoId, token);
+        await ExigirSolicitacaoAsync(solicitacaoId, ct, rastrear: false);
+        return new ConteudoArquivoDto(p.Arquivo.Conteudo, p.Arquivo.ContentType, p.Arquivo.Nome);
+    }
+
+    public async Task<ArquivoExigenciaDto> AceitarPreparadoAsync(
+        Guid solicitacaoId, Guid token, string? titulo, string? descricao, CancellationToken ct)
+    {
+        var p = TomarPreparado(solicitacaoId, token);
+        try
+        {
+            var solicitacao = await ExigirSolicitacaoAsync(solicitacaoId, ct);
+            var exigencia = await ExigirExigenciaAsync(solicitacaoId, p.ExigenciaId, ct);
+            return await GravarUploadAsync(solicitacao, exigencia, p.Arquivo, titulo, descricao, ct);
+        }
+        catch
+        {
+            // Não gravou (armazenamento fora, por exemplo): a prévia volta, para tentar de novo sem
+            // reenviar o arquivo.
+            if (p.ExpiraEm > DateTime.UtcNow) ExigirCache().Set(ChavePrevia(token), p, new DateTimeOffset(p.ExpiraEm));
+            throw;
+        }
+    }
+
+    public Task DescartarPreparadoAsync(Guid solicitacaoId, Guid token, CancellationToken ct)
+    {
+        // Idempotente: descartar o que já expirou (ou já foi descartado) não é erro.
+        var c = ExigirCache();
+        if (c.TryGetValue(ChavePrevia(token), out Preparado? p) && p is not null && DeQuemPede(p, solicitacaoId))
+        {
+            c.Remove(ChavePrevia(token));
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Tipo e tamanho como a configuração do módulo manda — sobre o arquivo <b>como chegou</b>, antes
+    /// de compactar —, e depois a compactação de entrada.
+    /// </summary>
+    private async Task<AnexoCompactado> ValidarECompactarAsync(
+        string nome, string contentType, byte[] conteudo, CancellationToken ct)
+    {
         var config = await configuracao.ObterEntidadeAsync(ct);
 
         var tipo = (contentType ?? string.Empty).Split(';')[0].Trim().ToLowerInvariant();
@@ -225,8 +336,22 @@ public sealed class RegulacaoExigenciaService(
             throw new ValidacaoException("arquivo", "Arquivo vazio.");
         }
 
+        var limpo = LimparNome(nome);
+        return compactador is null
+            ? new AnexoCompactado(limpo, tipo, conteudo, conteudo.LongLength)
+            : await compactador.CompactarAsync(limpo, tipo, conteudo, ct);
+    }
+
+    /// <summary>Grava o arquivo (já compactado) na caixinha, versionando, e a cópia no cadastro do paciente.</summary>
+    private async Task<ArquivoExigenciaDto> GravarUploadAsync(
+        RegulacaoSolicitacao solicitacao, RegulacaoSolicitacaoExigencia exigencia, AnexoCompactado upload,
+        string? titulo, string? descricao, CancellationToken ct)
+    {
+        var tipo = upload.ContentType;
+        var conteudo = upload.Conteudo;
+
         var versaoAnterior = await db.RegulacaoExigenciaArquivos
-            .Where(a => a.ExigenciaId == exigenciaId)
+            .Where(a => a.ExigenciaId == exigencia.Id)
             .OrderByDescending(a => a.Versao)
             .FirstOrDefaultAsync(ct);
 
@@ -240,7 +365,7 @@ public sealed class RegulacaoExigenciaService(
         }
 
         var id = Guid.CreateVersion7();
-        var extensao = ExtensaoDe(nome, tipo);
+        var extensao = ExtensaoDe(upload.Nome, tipo);
         var chave = store.MontarChave(solicitacao.PacienteId, id, extensao);
 
         // O arquivo vai ao armazenamento ANTES da linha: se o Spaces falhar, não fica registro
@@ -250,9 +375,9 @@ public sealed class RegulacaoExigenciaService(
         var arquivo = new RegulacaoExigenciaArquivo
         {
             Id = id,
-            ExigenciaId = exigenciaId,
+            ExigenciaId = exigencia.Id,
             ChaveArmazenamento = chave,
-            Nome = LimparNome(nome),
+            Nome = upload.Nome,
             Titulo = Texto(titulo, 200),
             Descricao = Texto(descricao, 2000),
             ContentType = tipo,
@@ -577,6 +702,44 @@ public sealed class RegulacaoExigenciaService(
             .Include(a => a.Exigencia)
             .FirstOrDefaultAsync(a => a.Id == arquivoId && a.Exigencia!.SolicitacaoId == solicitacaoId, ct)
         ?? throw new NaoEncontradoException("Anexo da solicitação", arquivoId);
+
+    private static readonly object TravaPrevias = new();
+
+    private static string ChavePrevia(Guid token) => $"regulacao:anexo-previa:{token:N}";
+
+    private bool DeQuemPede(Preparado p, Guid solicitacaoId) =>
+        p.SolicitacaoId == solicitacaoId && p.UsuarioId == usuarioAtual.UsuarioId;
+
+    /// <summary>
+    /// A prévia desta solicitação, preparada por quem pede. A de outra pessoa (ou de outra
+    /// solicitação) responde como expirada — não diz que existe.
+    /// </summary>
+    private Preparado ExigirPreparado(Guid solicitacaoId, Guid token)
+    {
+        if (ExigirCache().TryGetValue(ChavePrevia(token), out Preparado? p) && p is not null && DeQuemPede(p, solicitacaoId))
+        {
+            return p;
+        }
+        throw new ConflitoException(
+            "regulacao.anexo.previa_expirada", "A prévia deste arquivo expirou. Anexe o arquivo de novo.");
+    }
+
+    /// <summary>
+    /// Tira a prévia da memória ao mesmo tempo em que a lê: dois "Aceitar" seguidos não podem virar
+    /// duas versões do mesmo arquivo.
+    /// </summary>
+    private Preparado TomarPreparado(Guid solicitacaoId, Guid token)
+    {
+        lock (TravaPrevias)
+        {
+            var p = ExigirPreparado(solicitacaoId, token);
+            ExigirCache().Remove(ChavePrevia(token));
+            return p;
+        }
+    }
+
+    private IMemoryCache ExigirCache() =>
+        cache ?? throw new InvalidOperationException("IMemoryCache não registrado: a prévia de anexo precisa dele.");
 
     private IDocumentosPacienteService ExigirAcervo() =>
         acervo ?? throw new InvalidOperationException("Acervo do paciente não registrado.");

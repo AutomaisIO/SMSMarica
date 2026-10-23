@@ -1,11 +1,19 @@
 import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Paperclip, Upload } from 'lucide-react';
 
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { PreviaCompactacao, type ArquivoPreparado } from '@/shared/acervo/PreviaCompactacao';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 
-import { useAnexarGuiaRegulacao } from '../api/solicitacoesQueries';
+import {
+  aceitarAnexoPreparado,
+  caminhoAnexoPreparado,
+  descartarAnexoPreparado,
+  prepararAnexo,
+} from '../api/acervoRegulacao';
+import { garantirAnexosGerais } from '../api/solicitacoesApi';
 
 /**
  * A regulação anexa um documento (a guia de agendamento / autorização) na solicitação já enviada,
@@ -14,30 +22,52 @@ import { useAnexarGuiaRegulacao } from '../api/solicitacoesQueries';
  * <p>Só aparece para quem regula (a rota já é gateada por `RegulacaoTriagem`) e tem edição em
  * `Regulacao` — a mesma permissão que o endpoint exige. O arquivo entra na caixinha "Anexos
  * gerais", que a unidade enxerga em "Anexos".</p>
+ *
+ * <p>Como todo anexo da solicitação, é compactado na entrada e só entra depois de quem anexou
+ * conferir a prévia.</p>
  */
 export function AnexarGuiaRegulacao({ solicitacaoId }: { solicitacaoId: string }) {
   const podeAnexar = usePermissao('Regulacao', 'Edicao');
-  const anexar = useAnexarGuiaRegulacao();
+  const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [titulo, setTitulo] = useState('Guia de agendamento');
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [preparando, setPreparando] = useState(false);
+  const [previa, setPrevia] = useState<ArquivoPreparado | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const [desfecho, setDesfecho] = useState<'anexado' | 'descartado' | null>(null);
 
   if (!podeAnexar) return null;
 
-  async function enviar() {
+  async function preparar() {
     if (!arquivo) return;
     setErro(null);
-    setOk(false);
+    setDesfecho(null);
+    setPreparando(true);
     try {
-      await anexar.mutateAsync({ solicitacaoId, arquivo, titulo });
-      setArquivo(null);
-      if (inputRef.current) inputRef.current.value = '';
-      setOk(true);
+      const caixinha = await garantirAnexosGerais(solicitacaoId);
+      setPrevia(await prepararAnexo(solicitacaoId, caixinha.id, arquivo));
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
+    } finally {
+      setPreparando(false);
     }
+  }
+
+  async function aceitar() {
+    if (!previa) return;
+    await aceitarAnexoPreparado(solicitacaoId, previa.token, titulo.trim() || null, null);
+    await queryClient.invalidateQueries({ queryKey: ['regulacao', 'solicitacoes'] });
+    setPrevia(null);
+    setArquivo(null);
+    if (inputRef.current) inputRef.current.value = '';
+    setDesfecho('anexado');
+  }
+
+  function descartar() {
+    if (previa) void descartarAnexoPreparado(solicitacaoId, previa.token).catch(() => {});
+    setPrevia(null);
+    setDesfecho('descartado');
   }
 
   return (
@@ -68,21 +98,34 @@ export function AnexarGuiaRegulacao({ solicitacaoId }: { solicitacaoId: string }
           type="file"
           onChange={(e) => {
             setArquivo(e.target.files?.[0] ?? null);
-            setOk(false);
+            setDesfecho(null);
           }}
           className="block w-full text-sm text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:text-slate-700 hover:file:bg-slate-200"
         />
 
         <div className="flex items-center gap-3">
-          <Button onClick={enviar} disabled={!arquivo || anexar.isPending}>
+          <Button onClick={preparar} disabled={!arquivo || preparando}>
             <Upload className="size-4" />
-            {anexar.isPending ? 'Anexando…' : 'Anexar'}
+            {preparando ? 'Compactando…' : 'Anexar'}
           </Button>
-          {ok && <span className="text-xs text-emerald-700">Documento anexado.</span>}
+          {desfecho === 'anexado' && <span className="text-xs text-emerald-700">Documento anexado.</span>}
+          {desfecho === 'descartado' && (
+            <span className="text-xs text-slate-500">Arquivo descartado — nada foi anexado.</span>
+          )}
         </div>
 
         {erro && <p className="text-sm text-red-700">{erro}</p>}
       </div>
+
+      {previa ? (
+        <PreviaCompactacao
+          preparado={previa}
+          caminho={caminhoAnexoPreparado(solicitacaoId, previa.token)}
+          rotuloAceitar="anexar"
+          aoAceitar={aceitar}
+          aoDescartar={descartar}
+        />
+      ) : null}
     </section>
   );
 }

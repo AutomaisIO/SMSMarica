@@ -30,7 +30,6 @@ import { cn } from '@/shared/lib/cn';
 
 import { useConfiguracaoFluxo, useProcedimento } from '../api/queries';
 import {
-  useAnexarArquivo,
   useAtualizarSolicitacao,
   useCriarSolicitacao,
   useEnviarParaFila,
@@ -49,10 +48,10 @@ import { CHAVE_CIDS_SECUNDARIOS, CidsSecundarios } from '../components/CidsSecun
 import { IncluirMedico } from '../components/IncluirMedico';
 import { MedicoSisreg } from '../components/MedicoSisreg';
 import {
-  anexarComTitulo,
   anexarDoAcervo,
   caminhoArquivoExigencia,
   caminhoConteudoAcervo,
+  compactacaoDaRegulacao,
   listarAcervoDaSolicitacao,
 } from '../api/acervoRegulacao';
 import { SeletorCidRegulacao } from '../components/SeletorCidRegulacao';
@@ -126,7 +125,6 @@ export function NovaSolicitacaoPage() {
   const criar = useCriarSolicitacao();
   const atualizar = useAtualizarSolicitacao();
   const enviar = useEnviarParaFila();
-  const anexar = useAnexarArquivo();
   const remover = useRemoverArquivo();
 
   // A solicitação como está gravada: é contra ela que se decide se a estrutura mudou.
@@ -648,17 +646,11 @@ export function NovaSolicitacaoPage() {
                   pedirTitulo
                   onAbrir={setArquivoAberto}
                   onAnexarDoCadastro={solicitacaoId ? () => setExigenciaDoCadastro(e.id) : undefined}
-                  onEnviar={async (files, info) => {
-                    for (const arquivo of files) {
-                      if (info) {
-                        // Com nome e descrição o arquivo também entra no cadastro do paciente.
-                        await anexarComTitulo(solicitacaoId!, e.id, arquivo, info.titulo, info.descricao);
-                        await queryClient.invalidateQueries({ queryKey: ['regulacao', 'solicitacoes'] });
-                      } else {
-                        await anexar.mutateAsync({ solicitacaoId: solicitacaoId!, exigenciaId: e.id, arquivo });
-                      }
-                    }
-                  }}
+                  // Compactado na entrada: só a cópia enxuta é guardada, depois de a pessoa conferir
+                  // na prévia que ficou legível. Com nome e descrição, entra também no cadastro.
+                  compactar={compactacaoDaRegulacao(solicitacaoId!, e.id, () =>
+                    queryClient.invalidateQueries({ queryKey: ['regulacao', 'solicitacoes'] }),
+                  )}
                   onRemover={async (arquivoId) => {
                     await remover.mutateAsync({ solicitacaoId: solicitacaoId!, arquivoId });
                   }}

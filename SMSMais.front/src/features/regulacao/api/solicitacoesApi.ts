@@ -98,20 +98,6 @@ export async function listarExigencias(solicitacaoId: string): Promise<Exigencia
   return data;
 }
 
-export async function anexarArquivo(
-  solicitacaoId: string,
-  exigenciaId: string,
-  arquivo: File,
-  titulo?: string,
-): Promise<void> {
-  const form = new FormData();
-  form.append('arquivo', arquivo);
-  if (titulo?.trim()) form.append('titulo', titulo.trim());
-  await http.post(`${base}/${solicitacaoId}/exigencias/${exigenciaId}/arquivos`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-}
-
 /** Garante (ou devolve) a caixinha "Anexos gerais" — é onde a regulação pendura a guia. */
 export async function garantirAnexosGerais(solicitacaoId: string): Promise<Exigencia> {
   const { data } = await http.post<Exigencia>(`${base}/${solicitacaoId}/exigencias/anexos-gerais`);

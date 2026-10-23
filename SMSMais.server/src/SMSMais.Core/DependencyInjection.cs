@@ -1199,6 +1199,8 @@ public static class DependencyInjection
         services.AddHostedService<Regulacao.Catalogo.CatalogosRegulacaoDiarioScheduler>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoProcedimentoBuscaService, Regulacao.Catalogo.RegulacaoProcedimentoBuscaService>();
         services.AddScoped<Regulacao.Anexos.IArquivoExigenciaStore, Regulacao.Anexos.ArquivoExigenciaStoreSpaces>();
+        // Anexo da regulação é compactado na entrada (23/10/2026): só a cópia enxuta é guardada.
+        services.AddSingleton<Regulacao.Anexos.ICompactadorAnexo, Regulacao.Anexos.CompactadorAnexo>();
         services.AddScoped<Regulacao.Anexos.IRegulacaoExigenciaService, Regulacao.Anexos.RegulacaoExigenciaService>();
         services.AddScoped<Regulacao.Pacientes.IRegulacaoPacienteService, Regulacao.Pacientes.RegulacaoPacienteService>();
         services.AddScoped<Regulacao.Formularios.IRegulacaoFormularioService, Regulacao.Formularios.RegulacaoFormularioService>();
