@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -625,7 +625,13 @@ public sealed class ComunicacaoPacienteService(
             var endereco = campanha?.LocalEndereco
                 ?? (ehRetorno ? EnderecoEmUmaLinha(s.UnidadeExecutante?.Endereco) : null);
 
-            var texto = $"Aqui estão as informações do agendamento de *{PrimeiroNome(paciente.NomeCompleto)}*:\n\n"
+            // Remarcação (ADR-0083): quem já conhecia a data lê primeiro que ela mudou.
+            var mudanca = RemarcacaoDoEnvio(n) is { } dataAnterior
+                ? $"*Mudança de data:* o agendamento que estava marcado para ~{DataEHora(dataAnterior)}~ "
+                  + "mudou para a data abaixo.\n\n"
+                : string.Empty;
+            var texto = mudanca
+                + $"Aqui estão as informações do agendamento de *{PrimeiroNome(paciente.NomeCompleto)}*:\n\n"
                 + (string.IsNullOrWhiteSpace(procedimento) ? string.Empty : $"{rotulo}: *{procedimento.Trim()}*\n")
                 + $"Data: *{quando.ToString("dd/MM/yyyy", PtBr)} às {quando.ToString("HH:mm", PtBr)}h*\n"
                 + (string.IsNullOrWhiteSpace(localNome) ? string.Empty : $"Local: *{localNome}*\n")
@@ -1071,6 +1077,34 @@ public sealed class ComunicacaoPacienteService(
         // "falar com atendente" como única alternativa — e era nele que as pessoas clicavam, em vez
         // de responder. Agora o pedido do CPF só vem depois de "Quero mais informações".
         // "Assumo o risco" (IgnorarVerificacaoTelefone) pula tudo isso.
+        // REMARCAÇÃO (ADR-0083): quem já conhecia a data antiga recebe o modelo de MUDANÇA DE DATA.
+        // Número provado (ou que acabou de se identificar): o completo, com as duas datas — segue o
+        // caminho normal, e o MontarEnvio escolhe o modelo. Os demais: o anônimo, sem dado, com "Quero
+        // mais informações" — a mesma conversa de identificação da primeira mensagem. Modelo ainda não
+        // aprovado na Meta: a mensagem ESPERA (sem gastar tentativa) — a confirmação comum no lugar
+        // leria como se nada tivesse mudado.
+        if (RemarcacaoDoEnvio(n) is not null)
+        {
+            var provado = n.IgnorarVerificacaoTelefone
+                || (TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
+                    && TelefoneWhatsApp.MesmoNumero(paciente.TelefoneVerificado, n.Telefone));
+            var anonimo = !provado && options.Value.VerificacaoCadastralHabilitada;
+            var modelo = anonimo ? options.Value.TemplateMudancaDeDataAnonimo : options.Value.TemplateMudancaDeData;
+            if (await ModeloAprovadoAsync(modelo, ct) == false)
+            {
+                n.Tentativas--;
+                n.ProximaTentativaEm = DateTime.UtcNow.AddHours(1);
+                n.MotivoFalha = $"Esperando o modelo \"{modelo}\" (mudança de data) ser aprovado na Meta — "
+                    + "a mensagem sai sozinha quando ele estiver aprovado.";
+                return;
+            }
+            if (anonimo)
+            {
+                await EnviarPrimeiraMensagemAsync(n, paciente, ct, mudancaDeData: true);
+                return;
+            }
+        }
+
         var repetePrimeiraMensagem = n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
             || (n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
                 && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente);
@@ -1119,7 +1153,7 @@ public sealed class ComunicacaoPacienteService(
         // pessoa confirmava os dados e recebia "seu exame foi agendado" outra vez.
         var (template, parametros, botoes) = MontarEnvio(
             n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, tokenLink, opts,
-            contatoVerificado || n.IgnorarVerificacaoTelefone, campanha, localRetorno);
+            contatoVerificado || n.IgnorarVerificacaoTelefone, campanha, localRetorno, RemarcacaoDoEnvio(n));
 
         // O modelo aprovado manda na quantidade de variáveis: mandar a mais é erro 132000 na Meta
         // e a mensagem não sai. Corta pela declaração do catálogo (cacheado) e avisa quando o
@@ -1210,22 +1244,40 @@ public sealed class ComunicacaoPacienteService(
     /// "Quero mais informações" / "Não sou essa pessoa") — e a abertura da conversa de
     /// identificação. A confirmação de verdade fica pendurada até a pessoa se identificar.
     /// </summary>
-    private async Task EnviarPrimeiraMensagemAsync(ComunicacaoPaciente n, PacienteDto paciente, CancellationToken ct)
+    /// <param name="mudancaDeData">O aviso de REMARCAÇÃO para número não provado (ADR-0083): o modelo
+    /// anônimo de mudança de data — ainda sem dado nenhum — e o resto do caminho (botões, identificação,
+    /// as duas datas na conversa) é o mesmo da primeira mensagem.</param>
+    private async Task EnviarPrimeiraMensagemAsync(
+        ComunicacaoPaciente n, PacienteDto paciente, CancellationToken ct, bool mudancaDeData = false)
     {
         var optsDesafio = options.Value;
         var ehConsulta = n.Tipo == TipoAgendamento.Consulta;
-        var modeloPrimeiraMsg = ehConsulta
-            ? optsDesafio.TemplateConfirmacaoConsulta
-            : optsDesafio.TemplateConfirmacaoExame;
         var tratamento = Tratamento(paciente.NomeCompleto, paciente.Sexo);
-        // Conteúdo legível gravado na thread/histórico — é o que o operador vê que o cidadão recebeu.
-        var textoDesafio =
-            $"Olá {tratamento}, esse é o canal oficial do Alô Maricá da Secretaria Municipal de Saúde.\n\n"
-            + $"{(ehConsulta ? "Sua consulta foi agendada" : "Seu exame foi agendado")}!\n"
-            + "Para mais informações acesse: app.smsmarica.online";
+        string modeloPrimeiraMsg;
+        string[] parametrosPrimeiraMsg;
+        string? textoDesafio;
+        if (mudancaDeData)
+        {
+            modeloPrimeiraMsg = optsDesafio.TemplateMudancaDeDataAnonimo;
+            parametrosPrimeiraMsg = [tratamento, ehConsulta ? "da sua consulta" : "do seu exame"];
+            // O corpo vem do catálogo aprovado, preenchido (o modelo é configurável — não se repete aqui).
+            textoDesafio = null;
+        }
+        else
+        {
+            modeloPrimeiraMsg = ehConsulta
+                ? optsDesafio.TemplateConfirmacaoConsulta
+                : optsDesafio.TemplateConfirmacaoExame;
+            parametrosPrimeiraMsg = [tratamento];
+            // Conteúdo legível gravado na thread/histórico — é o que o operador vê que o cidadão recebeu.
+            textoDesafio =
+                $"Olá {tratamento}, esse é o canal oficial do Alô Maricá da Secretaria Municipal de Saúde.\n\n"
+                + $"{(ehConsulta ? "Sua consulta foi agendada" : "Seu exame foi agendado")}!\n"
+                + "Para mais informações acesse: app.smsmarica.online";
+        }
         // Mesma conferência do resto: o modelo aprovado manda na quantidade de variáveis.
         var (paramsPrimeiraMsg, incompativelPrimeiraMsg) =
-            await AjustarAoModeloAsync(modeloPrimeiraMsg, [tratamento], ct);
+            await AjustarAoModeloAsync(modeloPrimeiraMsg, parametrosPrimeiraMsg, ct);
         if (incompativelPrimeiraMsg is not null)
         {
             Terminal(n, StatusComunicacao.Falha, incompativelPrimeiraMsg);
@@ -1245,8 +1297,11 @@ public sealed class ComunicacaoPacienteService(
             if (desafio.WaMessageId is { } wamidDesafio)
                 n.MensagemWhatsAppId = await db.MensagensWhatsApp.AsNoTracking()
                     .Where(m => m.WaMessageId == wamidDesafio).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct);
-            n.MotivoFalha = "Primeira mensagem entregue; aguardando o paciente se identificar "
-                + "(Quero mais informações → 4 dígitos do CPF → nascimento → nome).";
+            n.MotivoFalha = mudancaDeData
+                ? "Aviso de mudança de data entregue; a data nova sai quando o paciente tocar em Quero mais "
+                  + "informações (número verificado recebe na hora; os demais se identificam antes)."
+                : "Primeira mensagem entregue; aguardando o paciente se identificar "
+                  + "(Quero mais informações → 4 dígitos do CPF → nascimento → nome).";
             n.ProximaTentativaEm = null;
             await AbrirEstadoVerificacaoAsync(n, ct);
             await db.SaveChangesAsync(ct);
@@ -1922,13 +1977,21 @@ public sealed class ComunicacaoPacienteService(
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
         FinalidadeComunicacao finalidade, TipoAgendamento tipo, Solicitacao s, string? nomePaciente,
         Sexo sexo, Guid token, ComunicacaoPacienteOptions opts, bool contatoVerificado = false,
-        Campanhas.CampanhaVigente? campanha = null, LocalDoAgendamento? localRetorno = null)
+        Campanhas.CampanhaVigente? campanha = null, LocalDoAgendamento? localRetorno = null,
+        DateTime? remarcadaDe = null)
     {
         var nome = PrimeiroNome(nomePaciente);
         // Nome do procedimento: exame de imagem tem TipoExame no satélite; consulta usa a
         // especialidade/procedimento em texto.
         var exame = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto ?? "exame";
         var url = new BotaoTemplateWhatsApp(TipoBotaoTemplate.Url, token.ToString());
+
+        // REMARCAÇÃO (ADR-0083) antes de campanha e retorno: para quem já conhecia a data, o que
+        // importa é ler que ela mudou — o local é o mesmo de antes. Só para contato provado: o modelo
+        // leva procedimento e datas (o anônimo sai antes, em EnviarPrimeiraMensagemAsync).
+        if (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento && remarcadaDe is { } dataAnterior
+            && contatoVerificado)
+            return MudancaDeData(tipo, s, nomePaciente, exame, sexo, dataAnterior, url, opts);
 
         // CAMPANHA (ADR-0062): a confirmação — e o lembrete de quem ainda não respondeu, que é a
         // mesma mensagem repetida — sai no modelo da campanha, com o local e o endereço dela.
@@ -2140,6 +2203,51 @@ public sealed class ComunicacaoPacienteService(
                 new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"atendente:{s.Id}"),
             ]);
     }
+
+    /// <summary>"20/11/2026 às 09:30h", em Brasília.</summary>
+    private static string DataEHora(DateTime utc)
+    {
+        var local = FusoBrasilia.ParaExibicao(utc);
+        return $"{local.ToString("dd/MM/yyyy", PtBr)} às {local.ToString("HH:mm", PtBr)}h";
+    }
+
+    /// <summary>
+    /// <c>agendamento_data_alterada</c> (ADR-0083), foto "Mudança de data": a data {{2}} mudou — data
+    /// anterior {{3}}, nova data {{4}} — e o pedido de confirmar de novo. {{2}} já vem flexionado ("do
+    /// seu exame de …" / "da sua consulta de …"): sem palavra de gênero fixo no modelo, a lição do "foi
+    /// agendada" do <c>confirmacao_regulacao</c>. Botões na ordem do modelo: URL (0; abrir = confirmar)
+    /// e "Não poderei ir" (1, payload confirma:).
+    /// </summary>
+    internal static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MudancaDeData(
+        TipoAgendamento tipo, Solicitacao s, string? nomePaciente, string exame, Sexo sexo, DateTime dataAnteriorUtc,
+        BotaoTemplateWhatsApp url, ComunicacaoPacienteOptions opts) =>
+    (
+        opts.TemplateMudancaDeData,
+        [
+            Tratamento(nomePaciente, sexo),
+            $"{(tipo == TipoAgendamento.Consulta ? "da sua consulta" : "do seu exame")} de {exame}",
+            DataEHora(dataAnteriorUtc),
+            DataEHora(s.DataAgendada!.Value),
+        ],
+        [url, new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}")]
+    );
+
+    /// <summary>O modelo está aprovado na Meta? <c>null</c> = não dá para saber (catálogo fora ou vazio,
+    /// modo simulado) — aí quem chama segue a política de sempre: tenta.</summary>
+    private async Task<bool?> ModeloAprovadoAsync(string modelo, CancellationToken ct)
+    {
+        IReadOnlyList<TemplateWhatsApp> catalogo;
+        try { catalogo = await whatsApp.ListarTemplatesAsync(ct); }
+        catch (OperationCanceledException) { throw; }
+        catch { return null; }
+        if (catalogo.Count == 0) return null;
+        return catalogo.Any(t => string.Equals(t.Nome, modelo, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>A data anterior, quando esta confirmação é o aviso de uma remarcação do SISREG para
+    /// quem já conhecia a data (ADR-0083) — senão null.</summary>
+    internal static DateTime? RemarcacaoDoEnvio(ComunicacaoPaciente n) =>
+        n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento && n.RemarcadaDe is { } de ? de : null;
 
     /// <summary>Data em que o exame foi feito (DICOM → detecção → criação), formatada dd/MM/aaaa.</summary>
     private static string DataRealizacao(Solicitacao s)

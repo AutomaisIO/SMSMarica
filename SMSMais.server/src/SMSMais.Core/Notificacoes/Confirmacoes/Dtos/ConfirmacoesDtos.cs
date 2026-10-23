@@ -28,7 +28,11 @@ public sealed record ConfirmacaoConfiguracaoDto(
     /// <summary>Orientação ao posto — a última mensagem da régua (toque 3, terminal).</summary>
     bool OrientacaoPostoHabilitada = false,
     /// <summary>Aviso dos agendamentos do SER/SERNIT/ESUS SG (nasce ligado).</summary>
-    bool AvisoAgendamentoExternoHabilitado = true);
+    bool AvisoAgendamentoExternoHabilitado = true,
+    /// <summary>Aviso automático da remarcação feita no SISREG (nasce ligado).</summary>
+    bool AvisoRemarcacaoHabilitado = true,
+    /// <summary>Quando o aviso de remarcação foi ligado — só leitura. O que foi detectado antes não é avisado.</summary>
+    DateTime? AvisoRemarcacaoLigadoEm = null);
 
 public sealed record SalvarConfirmacaoConfiguracaoRequest(
     string HoraInicioEnvio,
@@ -58,7 +62,9 @@ public sealed record SalvarConfirmacaoConfiguracaoRequest(
     bool? ReforcoConfirmacaoHabilitado = null,
     bool? OrientacaoPostoHabilitada = null,
     /// <summary>Aviso dos agendamentos do SER/SERNIT/ESUS SG — ausente = manter o gravado.</summary>
-    bool? AvisoAgendamentoExternoHabilitado = null);
+    bool? AvisoAgendamentoExternoHabilitado = null,
+    /// <summary>Aviso automático da remarcação do SISREG — ausente = manter o gravado.</summary>
+    bool? AvisoRemarcacaoHabilitado = null);
 
 /// <summary>Fotografia da fila de confirmações (só a finalidade confirmação de agendamento).</summary>
 public sealed record ResumoFilaConfirmacaoDto(

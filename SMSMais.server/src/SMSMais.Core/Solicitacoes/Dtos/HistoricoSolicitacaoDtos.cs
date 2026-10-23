@@ -1,4 +1,4 @@
-namespace SMSMais.Core.Solicitacoes.Dtos;
+﻿namespace SMSMais.Core.Solicitacoes.Dtos;
 
 /// <summary>Comunicação da solicitação na linha do tempo (checks ✓/✓✓/✓✓azul/⚠).</summary>
 public sealed record HistoricoComunicacaoDto(
@@ -13,7 +13,9 @@ public sealed record HistoricoComunicacaoDto(
     DateTime? LidoEm,
     DateTime? VisualizadoEm,
     string? MotivoFalha,
-    string? ErroMeta);
+    string? ErroMeta,
+    /// <summary>Saiu (ou vai sair) no modelo "Mudança de data" — o aviso de uma remarcação do SISREG.</summary>
+    bool MudancaDeData = false);
 
 /// <summary>Contato manual registrado pela equipe (ligação etc.).</summary>
 public sealed record HistoricoContatoDto(
@@ -24,16 +26,20 @@ public sealed record HistoricoContatoDto(
     DateTime CriadoEm,
     string? RegistradoPorNome);
 
-/// <summary>Evento de negócio da solicitação na linha do tempo (trilha de auditoria — ex.: troca
-/// de unidade executante). Lido de <c>registro_auditoria</c> (uma única escrita alimenta a tela
-/// de Auditoria e esta linha do tempo).</summary>
+/// <summary>Evento de negócio da solicitação na linha do tempo. Duas fontes: a trilha de auditoria
+/// (<c>registro_auditoria</c> — ex.: troca de unidade executante; uma única escrita alimenta a tela
+/// de Auditoria e esta linha do tempo) e o que o SISREG mudou no agendamento
+/// (<c>sisreg_alteracao_agenda</c> — remarcação, troca de profissional ou de procedimento).</summary>
+/// <param name="Detalhe">O que foi feito a partir do evento — na remarcação, o que aconteceu com o
+/// paciente ("confirmação reenviada com a data nova…"). Null na trilha de auditoria.</param>
 public sealed record HistoricoEventoDto(
     Guid Id,
     string Acao,
     string? ValorAnterior,
     string? ValorNovo,
     string? RegistradoPorNome,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    string? Detalhe = null);
 
 /// <summary>Histórico do processo de comunicação da solicitação (para a linha do tempo do detalhe).</summary>
 public sealed record HistoricoSolicitacaoDto(

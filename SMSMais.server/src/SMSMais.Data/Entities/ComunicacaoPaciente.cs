@@ -1,4 +1,4 @@
-using SMSMais.Data.Entities.Enums;
+﻿using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMais.Data.Entities;
@@ -62,6 +62,15 @@ public class ComunicacaoPaciente
     /// seria deixá-lo esperando sem motivo. Zerado a cada rearme.
     /// </summary>
     public bool IgnorarJanelaHorario { get; set; }
+
+    /// <summary>
+    /// A data (UTC) que o paciente conhecia antes de o SISREG remarcar o agendamento (23/10/2026,
+    /// ADR-0083). Preenchida pelo aviso de remarcação quando o paciente já sabia da data antiga —
+    /// recebeu a mensagem com ela ou tinha confirmado. Com ela, a confirmação sai num dos modelos de
+    /// "Mudança de data" (o completo, com a data anterior e a nova, para número provado; o anônimo para
+    /// os demais), e não na confirmação comum, que leria como se nada tivesse mudado.
+    /// </summary>
+    public DateTime? RemarcadaDe { get; set; }
 
     /// <summary>Magic link ativo desta comunicação (renovado a cada reenvio).</summary>
     public Guid? LoginLinkId { get; set; }

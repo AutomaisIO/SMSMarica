@@ -54,6 +54,11 @@ internal sealed class ConfirmacaoConfiguracaoConfiguration : IEntityTypeConfigur
         // do CLR) sumiria do INSERT da linha singleton e o banco gravaria true.
         builder.Property(x => x.AvisoAgendamentoExternoHabilitado)
             .HasColumnName("aviso_agendamento_externo_habilitado").HasDefaultValue(true).ValueGeneratedNever().IsRequired();
+        // Aviso automático da remarcação do SISREG (23/10/2026): nasce LIGADO; ValueGeneratedNever
+        // pelo mesmo motivo do de cima.
+        builder.Property(x => x.AvisoRemarcacaoHabilitado)
+            .HasColumnName("aviso_remarcacao_habilitado").HasDefaultValue(true).ValueGeneratedNever().IsRequired();
+        builder.Property(x => x.AvisoRemarcacaoLigadoEm).HasColumnName("aviso_remarcacao_ligado_em");
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em");
         builder.Property(x => x.AtualizadoPor).HasColumnName("atualizado_por");

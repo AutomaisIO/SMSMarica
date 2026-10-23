@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CalendarClock, Check, CheckCheck, Loader2, Send } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import {
   useAlteracoesAgenda,
@@ -103,11 +104,14 @@ export function AlteracoesAgendaPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
           <CalendarClock className="h-6 w-6 text-primary-600" />
           Alterações de Agenda
+          <AjudaManual artigo="alteracoes-agenda" />
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-600">
           O que o SISREG mudou em agendamentos que já estavam aqui. <strong>Remarcado</strong> é o
-          que muda a vida do paciente: ele tem na mão um dia que não vale mais — avisar pelo botão
-          reenvia a mensagem com a data nova e <strong>invalida o link antigo</strong>.{' '}
+          que muda a vida do paciente: ele tem na mão um dia que não vale mais. O sistema{' '}
+          <strong>avisa sozinho</strong> quem já tinha recebido a data antiga — a confirmação sai de
+          novo, com a data nova — e só deixa aqui o que precisa de alguém (a coluna{' '}
+          <em>Aviso ao paciente</em> diz por quê). O botão faz o mesmo à mão.{' '}
           <strong>Sumiu do SISREG</strong> é provável cancelamento lá, e não se avisa paciente a
           partir dele: a mensagem seria uma confirmação do horário antigo. Confirme no SISREG e, se
           caiu mesmo, cancele a solicitação — enquanto estiver aqui a vaga continua contando como
@@ -165,14 +169,14 @@ export function AlteracoesAgendaPage() {
       {lista.data && itens.length === 0 ? (
         <p className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
           {apenasPendentes
-            ? 'Nada pendente — o SISREG não mudou nenhum agendamento desde a última importação.'
+            ? 'Nada pendente — nenhuma alteração do SISREG está esperando alguém da equipe.'
             : 'Nenhuma alteração registrada ainda.'}
         </p>
       ) : null}
 
       {lista.data && itens.length > 0 ? (
         <section className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="w-full min-w-[66rem] text-left text-sm">
+          <table className="w-full min-w-[78rem] text-left text-sm">
             <thead className="border-b border-gray-200 text-xs text-gray-500">
               <tr>
                 <th className="px-3 py-2 font-medium">
@@ -193,6 +197,7 @@ export function AlteracoesAgendaPage() {
                 <th className="px-4 py-2 font-medium">Solicitante</th>
                 <th className="px-4 py-2 font-medium">Nº SISREG</th>
                 <th className="px-4 py-2 font-medium">Detectada</th>
+                <th className="px-4 py-2 font-medium">Aviso ao paciente</th>
                 <th className="px-4 py-2 font-medium">Ações</th>
               </tr>
             </thead>
@@ -220,10 +225,15 @@ export function AlteracoesAgendaPage() {
                   <td className="px-4 py-2 text-xs">{a.unidadeSolicitanteNome ?? '—'}</td>
                   <td className="px-4 py-2 text-xs">{a.codigoSolicitacao ?? '—'}</td>
                   <td className="px-4 py-2 text-xs">{dataHora(a.detectadaEm)}</td>
+                  {/* O que o automático (ou quem clicou) fez com o paciente — e, quando a linha
+                      ficou para a equipe, o motivo: é isso que diz por onde começar. */}
+                  <td className="max-w-xs px-4 py-2 text-xs">{a.notaAviso ?? '—'}</td>
                   <td className="px-4 py-2">
                     {a.tratadaEm ? (
                       <span className="text-xs">
-                        {a.comunicadaEm ? `avisado ${dataHora(a.comunicadaEm)}` : 'tratada'}
+                        {a.comunicadaEm
+                          ? `avisado ${a.avisadaAutomaticamente ? 'automaticamente ' : ''}${dataHora(a.comunicadaEm)}`
+                          : 'tratada'}
                       </span>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
@@ -234,7 +244,7 @@ export function AlteracoesAgendaPage() {
                           <Button
                             tamanho="sm"
                             disabled={agindoEm === a.id}
-                            title="Reenvia a confirmação com a data atual e invalida o link antigo."
+                            title="Reenvia a confirmação com a data atual. A resposta anterior do paciente deixa de valer."
                             onClick={() => agir(a.id, 'comunicar')}
                           >
                             {agindoEm === a.id && comunicar.isPending ? (

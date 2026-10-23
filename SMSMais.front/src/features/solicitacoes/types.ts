@@ -1,4 +1,4 @@
-import type { ModalidadeDicom } from '@/features/tipos-exame/types';
+﻿import type { ModalidadeDicom } from '@/features/tipos-exame/types';
 import type { FinalidadeComunicacao } from '@/features/mensageria/types';
 
 export type StatusSolicitacao =
@@ -276,6 +276,8 @@ export type HistoricoComunicacao = {
   visualizadoEm: string | null;
   motivoFalha: string | null;
   erroMeta: string | null;
+  /** Saiu (ou vai sair) no modelo "Mudança de data" — o aviso de uma remarcação do SISREG. */
+  mudancaDeData?: boolean;
 };
 
 export type HistoricoContato = {
@@ -287,7 +289,10 @@ export type HistoricoContato = {
   registradoPorNome: string | null;
 };
 
-/** Evento de negócio na linha do tempo (trilha de auditoria — ex.: troca de unidade executante). */
+/**
+ * Evento de negócio na linha do tempo: a trilha de auditoria (ex.: troca de unidade executante) e o
+ * que o SISREG mudou no agendamento (remarcação, troca de profissional ou de procedimento).
+ */
 export type HistoricoEvento = {
   id: string;
   acao: string;
@@ -295,6 +300,8 @@ export type HistoricoEvento = {
   valorNovo: string | null;
   registradoPorNome: string | null;
   criadoEm: string;
+  /** O que foi feito a partir do evento — na remarcação, o que aconteceu com o paciente. */
+  detalhe?: string | null;
 };
 
 export type HistoricoSolicitacao = {

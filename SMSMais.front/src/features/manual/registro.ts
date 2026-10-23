@@ -1,5 +1,6 @@
 import { BookOpen, Bus, ClipboardCheck, Folder, LifeBuoy, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
 import { artigoAgenteIa } from '@/features/manual/conteudo/agenteIa';
+import { artigoAlteracoesAgenda } from '@/features/manual/conteudo/alteracoesAgenda';
 import { artigoAnaliseRegrasEspelho } from '@/features/manual/conteudo/analiseRegrasEspelho';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAppCidadao } from '@/features/manual/conteudo/appCidadao';
@@ -107,6 +108,7 @@ export const GRUPOS: GrupoManual[] = [
 
 export const ARTIGOS: Artigo[] = [
   artigoAgenteIa,
+  artigoAlteracoesAgenda,
   artigoAnaliseRegrasEspelho,
   artigoAnamnese,
   artigoAppCidadao,

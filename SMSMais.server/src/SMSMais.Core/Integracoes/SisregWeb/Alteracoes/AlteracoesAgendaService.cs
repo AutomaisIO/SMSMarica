@@ -1,8 +1,9 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Unidades;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Notificacoes.Confirmacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 
@@ -23,7 +24,11 @@ public sealed record AlteracaoAgendaDto(
     DateTime? DataAgendada,
     DateTime DetectadaEm,
     DateTime? TratadaEm,
-    DateTime? ComunicadaEm);
+    DateTime? ComunicadaEm,
+    /// <summary>O que foi feito com o paciente a partir da alteração (automático ou equipe).</summary>
+    string? NotaAviso = null,
+    /// <summary>Avisado pelo automático (true) ou por alguém da equipe (false). Sem aviso, false.</summary>
+    bool AvisadaAutomaticamente = false);
 
 public sealed record PaginaAlteracoesAgendaDto(int Total, IReadOnlyList<AlteracaoAgendaDto> Itens);
 
@@ -46,8 +51,8 @@ public interface IAlteracoesAgendaService
     Task<int> TratarLoteAsync(IReadOnlyList<Guid> ids, CancellationToken ct = default);
 
     /// <summary>
-    /// Reenvia a confirmação ao paciente com os dados ATUAIS e marca a alteração como comunicada.
-    /// Revoga os links anteriores: quem tem na mão a data velha perde o acesso a ela.
+    /// Reenvia a confirmação ao paciente com os dados ATUAIS e marca a alteração como comunicada. A
+    /// resposta anterior do paciente deixa de valer (era sobre a data antiga).
     /// </summary>
     Task ComunicarAsync(Guid id, CancellationToken ct = default);
 }
@@ -66,7 +71,8 @@ public interface IAlteracoesAgendaService
 public sealed class AlteracoesAgendaService(
     SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
-    IComunicacaoPacienteService comunicacao) : IAlteracoesAgendaService
+    IComunicacaoPacienteService comunicacao,
+    IAvisoRemarcacaoService avisoRemarcacao) : IAlteracoesAgendaService
 {
     public async Task<PaginaAlteracoesAgendaDto> ListarAsync(
         bool apenasPendentes, int pagina, int tamanho, CancellationToken ct = default)
@@ -107,7 +113,9 @@ public sealed class AlteracoesAgendaService(
                 a.Solicitacao.DataAgendada,
                 a.DetectadaEm,
                 a.TratadaEm,
-                a.ComunicadaEm))
+                a.ComunicadaEm,
+                a.NotaAviso,
+                a.ComunicadaEm != null && a.ComunicadaPor == null))
             .ToListAsync(ct);
 
         return new PaginaAlteracoesAgendaDto(total, itens);
@@ -190,21 +198,26 @@ public sealed class AlteracoesAgendaService(
                 + "solicitação; se continua de pé, use \"Só tratar\".");
         }
 
-        // `EnviarManualAsync` reconstrói a comunicação com os dados de AGORA e revoga os magic links
-        // anteriores — é justamente o que se quer numa remarcação: o link com a data velha morre.
-        await comunicacao.EnviarManualAsync(
-            alteracao.SolicitacaoId, FinalidadeComunicacao.ConfirmacaoAgendamento,
-            assumirRisco: false, ct);
+        // Até 23/10/2026 isto chamava o envio manual de exame/laudo, que recusa a confirmação desde
+        // 16/07 — o botão nunca funcionou. Agora é o mesmo caminho do aviso automático de remarcação,
+        // sem as travas que só valem para a máquina (é uma pessoa decidindo).
+        var preparado = await avisoRemarcacao.PrepararAvisoManualAsync(alteracao.SolicitacaoId, alteracao, ct);
 
-        alteracao.ComunicadaEm = DateTime.UtcNow;
+        var agora = DateTime.UtcNow;
+        alteracao.ComunicadaEm = agora;
         alteracao.ComunicadaPor = usuarioAtual.UsuarioId;
+        alteracao.NotaAviso = preparado.Nota;
 
         // Avisar o paciente É a providência: deixar a linha pendente depois disso só faria a fila
         // crescer com o que já foi resolvido.
-        alteracao.TratadaEm ??= DateTime.UtcNow;
+        alteracao.TratadaEm ??= agora;
         alteracao.TratadaPor ??= usuarioAtual.UsuarioId;
 
         await db.SaveChangesAsync(ct);
+
+        // Sai já (dentro do horário de envio; fora dele, o envio empilha como qualquer outro).
+        if (preparado.ComunicacaoId is { } comunicacaoId)
+            await comunicacao.ProcessarTentativaEnvioAsync(comunicacaoId, ct);
     }
 
     private async Task<Data.Entities.Sisreg.SisregAlteracaoAgenda> ObterNoEscopoAsync(

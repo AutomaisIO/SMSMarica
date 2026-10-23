@@ -38,6 +38,9 @@ public static class AlertaCatalogo
     public const string SisregForaDoTunel = "sisreg.fora_do_tunel";
     public const string SisregTunelOk = "sisreg.tunel_ok";
 
+    /// <summary>O aviso automático da remarcação segurou uma unidade inteira (freio de volume ou vai-e-volta).</summary>
+    public const string SisregRemarcacaoRetida = "sisreg.remarcacao_retida";
+
     // Monitor que roda DENTRO do servidor do PACS (docs/pacs.md §11.1) e reporta por
     // POST /alertas-plataforma/externo. Chaves separadas de propósito: o freio é por chave, e o
     // "voltou" logo depois do "vai reiniciar" não pode ser engolido por ele.
@@ -81,6 +84,10 @@ public static class AlertaCatalogo
             + "o SISREG não responde e o login falha (\"Não foi possível autenticar\")."),
         new(SisregTunelOk, "SISREG de volta ao túnel", "Sincronismo",
             "A rota até o SISREG voltou a sair pelo túnel depois de um aviso de \"fora do túnel\"."),
+        new(SisregRemarcacaoRetida, "Remarcações do SISREG retidas", "Sincronismo",
+            "Uma unidade teve tantas remarcações em 24 h que o aviso automático ao paciente parou e "
+            + "deixou todas para a equipe conferir — volume assim costuma ser leitura errada do SISREG, "
+            + "e avisar cada paciente de uma data errada não tem conserto."),
         new(Sincronismo("ser"), "Sincronismo SER", "Sincronismo",
             "Falhas avisadas pelo motor do SER."),
         new(Sincronismo("sernit"), "Sincronismo SERNIT", "Sincronismo",

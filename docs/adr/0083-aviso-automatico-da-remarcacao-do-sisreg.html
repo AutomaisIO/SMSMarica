@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0083 — Aviso automático da remarcação feita no SISREG: quem conhecia a data antiga recebe "Mudança de data" (dois modelos, com foto), e a resposta antiga deixa de valer</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0083 — Aviso automático da remarcação feita no SISREG: quem conhecia a data antiga recebe "Mudança de data" (dois modelos, com foto), e a resposta antiga deixa de valer</h1>
+<ul>
+<li><strong>Status:</strong> Aceito</li>
+<li><strong>Data:</strong> 2026-10-23</li>
+<li><strong>Contexto módulo:</strong> Confirmações / Mensageria (<a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a>) e a fila</li>
+</ul>
+<p>  de Alterações da agenda (sincronização do SISREG)</p>
+<ul>
+<li><strong>Relacionado:</strong> <a href="./0072-aviso-agendamentos-ser-sernit-esus.md">ADR-0072</a> (o SER/SERNIT/ESUS já avisa a</li>
+</ul>
+<p>  troca de dia sozinho), <a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a> (humano entrou, o automático   para)</p>
+<h2>Contexto</h2>
+<p>A sincronização diária relê a agenda de cada unidade no SISREG e, desde 04/09/2026, compara o que lê com o que já está aqui: a data nova é aplicada na solicitação e a mudança vira uma linha em <code>sisreg_alteracao_agenda</code>. Parava aí, de propósito — o código dizia "não avisa ninguém aqui; disparar WhatsApp a cada remarcação seria decidir pelo regulador, sem saber com que frequência acontece". Em 20/09 a decisão foi medir antes (<code>docs/operacao/lote-confirmacao-cdt-2026-09.md</code> § Em observação).</p>
+<p>Consequências que se acumularam:</p>
+<ul>
+<li>o paciente que recebeu a data antiga ficava com ela; quem tinha <strong>confirmado</strong> seguia "Confirmado"</li>
+</ul>
+<p>  para um horário que não existia mais;</p>
+<ul>
+<li>o botão <strong>Avisar paciente</strong> da fila, o único caminho, <strong>nunca funcionou</strong>: chamava o envio manual de</li>
+</ul>
+<p>  exame/laudo, que recusa a confirmação desde 16/07 (<code>comunicacao.finalidade_invalida</code>);</p>
+<ul>
+<li>a remarcação não aparecia na linha do tempo da solicitação — quem abria via só a data nova.</li>
+</ul>
+<p>O SER/SERNIT/ESUS, ao contrário, já avisava a troca de dia sozinho (ADR-0072). Pedido do Bernardo (23/10/2026): avisar automaticamente ao detectar a alteração e marcar a mudança de data no histórico da solicitação.</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>A remarcação do SISREG avisa o paciente sozinha</strong>, com uma chave própria em Mensageria → Regras</li>
+</ol>
+<p>   (<code>confirmacao_configuracao.aviso_remarcacao_habilitado</code>), que <strong>nasce ligada</strong> e vale <strong>daqui para    frente</strong> (<code>aviso_remarcacao_ligado_em</code>; a migration carimba a virada para não soltar o estoque de    remarcações antigas da fila). Respeita as mesmas chaves por unidade e por procedimento da confirmação.</p>
+<ol>
+<li><strong>Quem já conhecia a data antiga recebe um aviso próprio de "Mudança de data"</strong>, com foto própria</li>
+</ol>
+<p>   (a Maria com leve constrangimento, "MUDANÇA DE DATA! CONFIRA A NOVA DATA."), em <strong>dois modelos</strong> — pedido do Bernardo no mesmo    dia: a confirmação comum leria como se nada tivesse mudado. "Conhecia" = recebeu a mensagem com a data,    ou tinha confirmado por qualquer canal; a data anterior é a que ele tinha na mão (com duas remarcações    antes de um aviso, a primeira). Fica em <code>comunicacao_paciente.remarcada_de</code>, e é ela que escolhe o    modelo na hora do envio:    - <strong>número provado</strong> (verificado, ou que acabou de se identificar) → <code>agendamento_data_alterada</code>: a      data anterior e a nova, com <strong>"Confirmar nova data"</strong> (o link de sempre; abrir = confirmar) e <strong>"Não      poderei ir"</strong>. Sem "Falar com atendente" (decisão do Bernardo);    - <strong>número não provado</strong> → <code>agendamento_data_alterada_anonimo</code>: só que a data mudou, sem dado nenhum      (ADR-0057), com <strong>"Quero mais informações"</strong> e <strong>"Não sou essa pessoa"</strong> — a mesma conversa de      identificação da primeira mensagem. Identificado, recebe as duas datas na conversa, com "Sim,      confirmo" e "Não poderei ir".    Conforme o que a mensagem anterior fez: já levou a data antiga → é rearmada e sai de novo, como    mudança; ainda não tinha levado → sai com a data nova (como mudança, se ele sabia a data por ter    confirmado); nunca houve mensagem → a primeira já sai com a data nova.    <strong>Sem os dois modelos aprovados na Meta, a mensagem espera na fila</strong> (de hora em hora olha de novo; não    gasta tentativa) e a remarcação fica visível para a equipe com esse motivo. A confirmação comum nunca    sai no lugar — nem o aviso de cancelamento, que chegou a ser cogitado por ter frase livre e foi    descartado: a foto dele diz "NOTIFICAÇÃO DE CANCELAMENTO".</p>
+<ol>
+<li><strong>A resposta anterior deixa de valer.</strong> "Confirmado" era sobre a data antiga: volta para "sem</li>
+</ol>
+<p>   resposta" — é isso que libera a confirmação a sair (o envio barra quem "já respondeu") e que devolve a    ficha para <strong>Não confirmados</strong> em Confirmações. O <strong>"não vou"</strong> não é apagado pelo automático (pode ser    justamente a causa da remarcação); só uma pessoa o reabre, pelo botão.</p>
+<ol>
+<li><strong>O que o automático não avisa fica para a equipe, com o motivo</strong>, na fila de Alterações da agenda:</li>
+</ol>
+<p>   o paciente tinha dito que não ia; remarcado para hoje; unidade ou procedimento sem aviso por    WhatsApp; em atendimento humano (ADR-0059); a mensagem antiga não chegou; a data nova não é a da    solicitação (outro procedimento do mesmo pedido). Nesses casos, quem tinha confirmado também volta a    "sem resposta", menos no último.</p>
+<ol>
+<li><strong>A decisão não é da importação, é de um passo à parte</strong> (<code>AvisoRemarcacaoService</code> + worker a cada</li>
+</ol>
+<p>   10 min). A importação vê uma linha por vez; o passo à parte espera a <strong>leitura da unidade terminar</strong>    e olha o conjunto antes de avisar qualquer um:    - <strong>freio de volume:</strong> 20 ou mais remarcações da unidade em 24 h <strong>e</strong> mais de 10% da agenda futura      dela → nenhuma sai, todas ficam como "Retida" e chega aviso no celular      (<code>sisreg.remarcacao_retida</code>). Nada na ficha do paciente é mexido;    - <strong>vai-e-volta:</strong> data que volta para uma que já tinha sido trocada no último mês fica retida.    Avisar um paciente de uma data errada é a única mensagem sem conserto, e leitura errada do SISREG já    produziu 1.378 linhas falsas num dia (06/09/2026).</p>
+<ol>
+<li><strong>O lembrete das vésperas acompanha a data nova</strong>: o da data antiga é dispensado com carimbo e o</li>
+</ol>
+<p>   lembrete o rearma quando chegar a hora da nova.</p>
+<ol>
+<li><strong>"Avisar paciente" passa a funcionar</strong> e usa o mesmo caminho, sem as travas da máquina (é uma</li>
+</ol>
+<p>   pessoa decidindo): reabre inclusive o "não vou", vale para unidade sem aviso automático, e sai na hora    dentro do horário de envio — como mudança de data quando a linha é uma remarcação e o paciente conhecia    a data antiga. Não revoga mais os links antigos — eles mostram a data de agora, e revogar    derrubava a sessão do paciente certo.</p>
+<ol>
+<li><strong>Toda mudança do SISREG entra na linha do tempo da solicitação</strong> (remarcação, troca de profissional</li>
+</ol>
+<p>   ou de procedimento, sumiço), lida direto de <code>sisreg_alteracao_agenda</code>, com o que foi feito com o    paciente (<code>nota_aviso</code>). Vale também para as alterações registradas desde 04/09.</p>
+<h2>Os modelos na Meta</h2>
+<p><strong>Criados pela plataforma</strong>, no painel do Automais.Zap (Templates → criar), que ganhou junto foto no cabeçalho (uma das Artes, enviada à Meta como a imagem de exemplo que a aprovação exige, pela mesma Upload API da foto de perfil) e botões (resposta rápida e link, inclusive o link que muda a cada envio). Criado com foto, o modelo já fica com a arte escolhida para os envios. Arte: <code>mudanca-de-data.jpg</code> (1125×628, a Maria sobre o vermelho, logo nova), feita a partir da <code>agendamento-proximo</code> trocando o texto e a expressão: <strong>leve constrangimento, não sorriso</strong> — é uma notícia que incomoda (pedido do Bernardo).</p>
+<p>Os dois: categoria <strong>Utilidade</strong>, idioma <strong>pt_BR</strong>, foto <code>mudanca-de-data.jpg</code>. Nomes configuráveis em <code>ComunicacaoPaciente:TemplateMudancaDeData</code> e <code>TemplateMudancaDeDataAnonimo</code>.</p>
+<p><strong><code>agendamento_data_alterada</code></strong> (número provado)</p>
+<pre><code>Olá, *{{1}}*. Esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+A data {{2}} *mudou*.
+
+Data anterior: {{3}}
+*Nova data: {{4}}*
+
+Por favor, confirme se poderá comparecer na nova data.</code></pre>
+<p>Exemplos: <code>Sra. Maria | do seu exame de MAMOGRAFIA BILATERAL | 10/11/2026 às 08:00h | 20/11/2026 às 09:30h</code>. Botões, nesta ordem (a ordem é o índice no envio):</p>
+<pre><code>Link: Confirmar nova data | https://app.smsmarica.online/entrar/{{1}} | https://app.smsmarica.online/entrar/0f8b1c2e-7a41-4c55-9d3e-2b6f0a9c1d42
+Resposta: Não poderei ir</code></pre>
+<p>O envio põe o token no link e o payload <code>confirma:</code> no "Não poderei ir" (o mesmo tratador da confirmação). <code>{{2}}</code> já chega flexionado ("do seu exame de …" / "da sua consulta de …"): sem palavra de gênero fixo no texto, a lição do "foi agendada" do <code>confirmacao_regulacao</code>.</p>
+<p><strong><code>agendamento_data_alterada_anonimo</code></strong> (número não provado)</p>
+<pre><code>Olá, *{{1}}*. Esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+Comunicamos que a data {{2}} *mudou*. Para ver a nova data, toque em *Quero mais informações*.</code></pre>
+<p>Exemplos: <code>Sra. Maria | do seu exame</code>. Botões:</p>
+<pre><code>Resposta: Quero mais informações
+Resposta: Não sou essa pessoa</code></pre>
+<p>Os textos dos botões são os que a máquina de identificação reconhece (a Meta devolve o texto do botão). A tela Mensageria → Testar modelo já sabe as variáveis dos dois.</p>
+<h2>Consequências</h2>
+<ul>
+<li>O paciente remarcado recebe a data certa sem depender de alguém olhar a fila; a fila guarda só o que</li>
+</ul>
+<p>  precisa de gente, e diz por quê.</p>
+<ul>
+<li>Até os modelos serem aprovados, quem conhecia a data antiga não recebe nada sozinho — fica na fila de</li>
+</ul>
+<p>  Alterações da agenda com o motivo, e a mensagem sai assim que a Meta aprovar. Se a aprovação demorar   além do dia do atendimento, a mensagem cai como "sem data futura" no envio, como qualquer outra.</p>
+<ul>
+<li>Quem recebe o anônimo e não toca em "Quero mais informações" sabe que a data mudou, mas não para</li>
+</ul>
+<p>  quando — como na primeira mensagem. A régua de reforço, quando ligada, insiste como nela.</p>
+<ul>
+<li>O freio pode segurar remarcação legítima em unidade pequena (agenda inteira mudada). É o lado seguro:</li>
+</ul>
+<p>  a equipe confere e avisa pelo botão.</p>
+<ul>
+<li>A remarcação de <strong>outro procedimento</strong> de um pedido com vários não é avisada sozinha: a confirmação</li>
+</ul>
+<p>  fala do principal.</p>
+<ul>
+<li>Mudança só de hora no mesmo dia <strong>é</strong> avisada (o comparador já não conta "ganhou a hora que não</li>
+</ul>
+<p>  tinha" como remarcação). No SER/SERNIT/ESUS, mudança só de hora continua silenciosa (ADR-0072).</p>
+<h2>Implementação</h2>
+<p><code>AvisoRemarcacaoService</code> e <code>AvisoRemarcacaoWorker</code> (<code>SMSMais.Core/Notificacoes/Confirmacoes/</code>), decisão pura em <code>AvisoRemarcacaoService.Decidir</code>, data que o paciente conhecia em <code>DataQueOPacienteConheciaAsync</code>; no envio, <code>ComunicacaoPacienteService.MudancaDeData</code> (o modelo provado), <code>EnviarPrimeiraMensagemAsync</code> com <code>mudancaDeData</code> (o anônimo), a espera pelo modelo aprovado em <code>EnviarAsync</code> e a linha "Mudança de data" nos detalhes da conversa; <code>LembreteAgendamentoService</code> rearma o lembrete carimbado; <code>AlteracoesAgendaService.ComunicarAsync</code> usa <code>PrepararAvisoManualAsync</code>; <code>SolicitacaoHistoricoService</code> junta <code>sisreg_alteracao_agenda</code> aos eventos (<code>HistoricoEventoDto.Detalhe</code>). Migration <code>AvisoRemarcacaoSisreg</code>: <code>confirmacao_configuracao.aviso_remarcacao_habilitado</code> / <code>aviso_remarcacao_ligado_em</code>, <code>sisreg_alteracao_agenda.aviso_automatico_em</code> / <code>nota_aviso</code> e <code>comunicacao_paciente.remarcada_de</code>. Front: Mensageria → Regras (bloco "Remarcações feitas no SISREG"), coluna "Aviso ao paciente" em Alterações de Agenda, rótulos na linha do tempo do detalhe da solicitação; artigo novo do manual <code>alteracoes-agenda</code>. Testes: <code>AvisoRemarcacaoDecisaoTests</code> (decisão), <code>AvisoRemarcacaoTests</code> (banco) e <code>AvisoRemarcacaoEnvioTests</code> (os dois modelos e a espera no envio). No Automais.Zap: <code>NovoTemplate</code> com <code>ImagemCabecalho</code> e <code>Botoes</code>, <code>GraphMetaClient.SubirParaUploadApiAsync</code> (agora também da foto de perfil) e o formulário de criar em <code>Pages/Admin/Templates</code> (<code>LerBotoes</code>), testados em <code>GraphMetaClientTests</code>.</p>
+</main>
+</body>
+</html>

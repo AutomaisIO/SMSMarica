@@ -256,6 +256,11 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.Confirmacoes.ILembreteAgendamentoService,
             Notificacoes.Confirmacoes.LembreteAgendamentoService>();
         services.AddHostedService<Notificacoes.Confirmacoes.LembreteAgendamentoWorker>();
+        // Aviso da remarcação feita no SISREG (23/10/2026): decide sobre a fila de alterações e
+        // enfileira a confirmação com a data nova; quem envia é o EnviadorComunicacaoService.
+        services.AddScoped<Notificacoes.Confirmacoes.IAvisoRemarcacaoService,
+            Notificacoes.Confirmacoes.AvisoRemarcacaoService>();
+        services.AddHostedService<Notificacoes.Confirmacoes.AvisoRemarcacaoWorker>();
         // Régua de reforço da confirmação (reforço + orientação ao posto para quem não se
         // identificou): enfileira; quem envia, com reconferência, é o EnviadorComunicacaoService.
         services.AddScoped<Notificacoes.Confirmacoes.IReforcoConfirmacaoService,

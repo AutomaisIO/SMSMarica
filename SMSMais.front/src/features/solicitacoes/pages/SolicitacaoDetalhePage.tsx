@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   ModalCpfPaciente,
   type SolicitacaoSemCpf,
@@ -1227,6 +1227,11 @@ const ROTULO_RESULTADO: Record<string, string> = {
 };
 const ROTULO_EVENTO: Record<string, string> = {
   AlteracaoUnidadeExecutante: 'Unidade executante alterada:',
+  // O que a sincronização achou mudado no SISREG (fila de Alterações da agenda).
+  RemarcadaNoSisreg: 'Remarcada no SISREG:',
+  ExecutanteAlteradoNoSisreg: 'Profissional trocado no SISREG:',
+  ProcedimentoAlteradoNoSisreg: 'Procedimento trocado no SISREG:',
+  AusenteNoSisreg: 'Sumiu do arquivo do SISREG',
 };
 
 /** Histórico do processo: comunicações WhatsApp (com checks) + contatos manuais + registrar. */
@@ -1305,6 +1310,7 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
                     · {fmt(ev.criadoEm)}
                     {ev.registradoPorNome ? ` · por ${ev.registradoPorNome}` : ''}
                   </span>
+                  {ev.detalhe ? <span className="basis-full pl-5 text-xs text-gray-500">{ev.detalhe}</span> : null}
                 </li>
               ))}
             </ul>
@@ -1317,6 +1323,14 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
                   finalidade={c.finalidade}
                 />
                 <span className="font-medium text-gray-900">{rotuloFinalidade(c.finalidade)}</span>
+                {c.mudancaDeData ? (
+                  <span
+                    className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900"
+                    title="Remarcada no SISREG: a mensagem diz a data anterior e a nova."
+                  >
+                    mudança de data
+                  </span>
+                ) : null}
                 {c.telefone ? <span className="text-xs text-gray-500">→ {c.telefone}</span> : null}
                 {c.tentativas > 1 ? <span className="text-xs text-gray-500">({c.tentativas} tentativas)</span> : null}
                 {podeEditar && c.status !== 'Pendente' ? (

@@ -173,4 +173,8 @@ public static class ComparadorMarcacao
     /// </summary>
     private static string? Data(DateTime? utc) =>
         utc is { } u ? FusoBrasilia.ParaExibicao(u).ToString("dd/MM/yyyy HH:mm") : null;
+
+    /// <summary>O mesmo formato de <c>valor_antes</c>/<c>valor_depois</c> da remarcação — é por ele que
+    /// o aviso automático confere se a data nova ainda é a da solicitação.</summary>
+    internal static string? FormatarData(DateTime? utc) => Data(utc);
 }
