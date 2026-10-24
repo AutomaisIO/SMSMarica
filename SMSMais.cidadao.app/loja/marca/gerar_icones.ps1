@@ -51,5 +51,16 @@ Desenhar $simbolo 512 1.0 (Join-Path $ios 'LaunchImage.imageset\LaunchImage@3x.p
 # Ícone da Play (512, quadrado cheio; a Play arredonda).
 Desenhar $simbolo 512 1.0 (Join-Path $app 'loja\play\icone-512.png')
 
+# PWA (SMSMais.cidadao.pwa/public): os mesmos quadrados cheios. O maskable leva o símbolo a 80%, dentro
+# da área segura (círculo de 80%) do recorte do Android.
+$pwa = Join-Path $app '..\SMSMais.cidadao.pwa\public'
+if (Test-Path $pwa) {
+    Desenhar $simbolo 48 1.0 (Join-Path $pwa 'favicon.png')
+    Desenhar $simbolo 180 1.0 (Join-Path $pwa 'apple-touch-icon.png')
+    Desenhar $simbolo 192 1.0 (Join-Path $pwa 'icon-192.png')
+    Desenhar $simbolo 512 1.0 (Join-Path $pwa 'icon-512.png')
+    Desenhar $simbolo 512 0.8 (Join-Path $pwa 'icon-512-maskable.png')
+}
+
 $simbolo.Dispose(); $letras.Dispose()
 'ícones gerados'

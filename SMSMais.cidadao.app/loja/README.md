@@ -64,7 +64,8 @@ com dois defeitos que o usuário apontou em 24/10:
 
 `simbolo-512.png` é o símbolo corrigido (quadrado arredondado laranja e letras brancas);
 `simbolo-letras-512.png` tem só as letras, com alfa. O `gerar_icones.ps1` gera, a partir deles, os
-ícones do Android e do iOS, a abertura e o `play/icone-512.png`. Rode da pasta `SMSMais.cidadao.app`:
+ícones do Android e do iOS, a abertura, o `play/icone-512.png` e os ícones do PWA
+(`SMSMais.cidadao.pwa/public`: favicon, apple-touch, 192, 512 e maskable). Rode da pasta `SMSMais.cidadao.app`:
 `pwsh loja/marca/gerar_icones.ps1`. O favicon de Sistema → Instituição continua com os defeitos até
 alguém trocar lá pelo `simbolo-512.png`.
 

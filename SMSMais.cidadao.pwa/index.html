@@ -13,11 +13,11 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Saúde Maricá</title>
     <style>
-      /* Fundo vermelho da arte do app — evita flash branco antes do React montar. */
+      /* Fundo laranja da marca (o do ícone) — evita flash branco antes do React montar. */
       html,
       body {
         margin: 0;
-        background-color: #bc1f28;
+        background-color: #ff2a00;
       }
       #splash {
         position: fixed;
@@ -26,7 +26,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #bc1f28;
+        background-color: #ff2a00;
         transition: opacity 0.45s ease;
       }
       #splash img {
@@ -58,7 +58,7 @@
   <body>
     <div id="splash"><img src="/icon-512.png" alt="Saúde Maricá" /></div>
     <div id="root"></div>
-    <!-- Splash garante ~2s de tela vermelha com o logo e some com fade (sem "piscar"). -->
+    <!-- Splash garante ~2s de tela laranja com o símbolo e some com fade (sem "piscar"). -->
     <script>
       (function () {
         var MIN_MS = 2000;
