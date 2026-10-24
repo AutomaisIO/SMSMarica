@@ -89,9 +89,14 @@ class AuthShell extends StatelessWidget {
               children: [
                 Center(
                   child: Semantics(
-                    label: 'Prefeitura de Maricá — cidade que cuida, transforma e inspira',
+                    label: 'Secretaria de Saúde — Prefeitura de Maricá, lugar de viver bem',
                     image: true,
-                    child: Image.asset('assets/brand/marica_logo.png', width: 188),
+                    // O hero cobre os 12px de cima da folha (_sobreposicao 48 - padding 36) e o PNG
+                    // do logo não tem margem em cima: sem este respiro, some o "PREFEITURA".
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: Image.asset('assets/brand/marica_logo.png', width: 300),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),

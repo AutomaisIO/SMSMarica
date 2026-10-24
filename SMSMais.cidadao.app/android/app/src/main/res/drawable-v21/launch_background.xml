@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Abertura igual à do PWA: tela vermelha com o logo da Prefeitura no centro (190dp). -->
+<!-- Abertura: o símbolo "MA RI CÁ" da Prefeitura (190dp) sobre o laranja da marca. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/vermelho_splash" />
+    <item android:drawable="@color/laranja_marca" />
     <item>
         <bitmap android:gravity="center" android:src="@drawable/splash_logo" />
     </item>
