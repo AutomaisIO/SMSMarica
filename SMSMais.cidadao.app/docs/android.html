@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Android — projeto, build, assinatura e Google Play</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>Android — projeto, build, assinatura e Google Play</h1>
+<p>O que é só do Android no app do cidadão ("Saúde Maricá", pacote <code>io.automais.smsmais.cidadao</code>). O que vale para as duas plataformas — telas, push, conta de demonstração, exclusão da conta, versão — está no <a href="../README.md">README</a>. O iPhone está em <a href="ios.md"><code>ios.md</code></a>.</p>
+<p><strong>Situação (24/10/2026):</strong> a versão <strong>1.0.4 (7)</strong> está no <strong>teste interno</strong> da Play. A produção espera só a declaração "Apps governamentais", que depende da Secretaria.</p>
+<h2>Projeto nativo (<code>android/</code>)</h2>
+<ul>
+<li><strong>Versão:</strong> vem do <code>pubspec.yaml</code> (ver <a href="../README.md#versão">Versão</a> no README).</li>
+<li><strong>Permissões</strong> (<code>android/app/src/main/AndroidManifest.xml</code>): <code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code></li>
+</ul>
+<p>  (faixa "Sem conexão") e <code>ACCESS_FINE_LOCATION</code> com <code>ACCESS_COARSE_LOCATION</code> (localização no dia da   viagem). <strong>Sem segundo plano:</strong> não há <code>ACCESS_BACKGROUND_LOCATION</code> nem serviço em primeiro plano.</p>
+<ul>
+<li><strong>GPS opcional:</strong> <code>android.hardware.location</code>, <code>.gps</code> e <code>.network</code> declarados com</li>
+</ul>
+<p>  <code>required="false"</code> (ver <a href="#localização">Localização</a>).</p>
+<ul>
+<li><strong>Sem backup</strong> (<code>allowBackup</code>, <code>fullBackupContent</code>, <code>dataExtractionRules</code>): o cache offline tem</li>
+</ul>
+<p>  dados de saúde e não vai ao backup do Google nem passa para outro aparelho.</p>
+<ul>
+<li><strong>Só HTTPS:</strong> o <code>network_security_config.xml</code> aceita só certificados do sistema nas bibliotecas</li>
+</ul>
+<p>  nativas. O debug libera HTTP e certificados do usuário. O cliente HTTP do Dart não obedece a esse   arquivo; a trava dele é a <code>exigirHttpsNoBuildDeLoja()</code> (ver o README).</p>
+<ul>
+<li><strong>Links do WhatsApp</strong> (<code>/entrar/</code> e <code>/documento/</code>): abrem no app com <code>autoVerify</code>. A verificação</li>
+</ul>
+<p>  automática espera o <code>assetlinks.json</code> (ver <a href="#pendências-do-android">Pendências</a>).</p>
+<ul>
+<li><strong>Ícone e abertura:</strong> saem do símbolo "MA RI CÁ" (<a href="../loja/marca/README.md"><code>loja/marca/</code></a>).</li>
+<li>O ícone adaptativo tem as letras no primeiro plano e o <code>@color/laranja_marca</code> no fundo.</li>
+<li>O ícone legado (48 a 192 px) é o símbolo com os cantos arredondados.</li>
+<li>Antes do Android 12, a abertura é o <code>splash_logo</code> sobre o laranja. Do 12 em diante, o sistema</li>
+</ul>
+<p>    mostra o ícone sobre o laranja.</p>
+<h2>Localização</h2>
+<p>O comportamento (quando aparece, aceite por viagem, envio, quando para) está no <a href="../README.md#localização-no-dia-da-viagem">README</a>. Aqui, o que é do Android:</p>
+<ul>
+<li><strong>GPS não é exigido do aparelho.</strong> Só com as permissões, a Play entende que o app precisa de GPS</li>
+</ul>
+<p>  (<code>android.hardware.location</code>) e o esconde de aparelho sem ele: na 1.0.2, 7 aparelhos deixaram de   ser compatíveis. Por isso o manifesto declara <code>android.hardware.location</code>, <code>.gps</code> e <code>.network</code> com   <code>required="false"</code>. Sem localização, o app funciona igual e a faixa diz que ela está desligada.   - <strong>Como conferir:</strong> depois de mexer no manifesto, veja na revisão da versão, na Play, que nenhum     aparelho deixou de ser compatível. Na 1.0.4, os 7 voltaram, com 19.346 compatíveis.   - <strong>O que não serve para isso:</strong> a lista "Recursos" dos detalhes do pacote, porque ela mostra também     os recursos opcionais.</p>
+<ul>
+<li><strong>Duas armadilhas do plugin <code>geolocator</code></strong>, achadas no emulador (os testes de unidade não pegam):</li>
+<li>o <code>GeolocatorLocationService</code> <strong>tem de ficar</strong> no manifesto: sem ele o fluxo de posições não</li>
+</ul>
+<p>    começa (no logcat: <code>Location background service has not started correctly</code>). Ele fica sem o     <code>foregroundServiceType</code> (<code>tools:remove</code>): só é vinculado, nunca vai para o primeiro plano, e a     Play não pede a declaração de serviço em primeiro plano. Confira no manifesto final     (<code>build/app/intermediates/merged_manifest/</code>): nenhum <code>foregroundServiceType</code> nem     <code>FOREGROUND_SERVICE</code>;   - com a "Precisão do local" do Google desligada, o cliente do Google Play Services mostra o aviso do     Google ao ligar o GPS. Recusado, o plugin devolve erro e o app passaria a mostrar o aviso a cada     consulta. Por isso o <code>GpsDoAparelho</code> segue pelo LocationManager do Android     (<code>forceLocationManager</code>) até o app fechar.</p>
+<h2>Push</h2>
+<p>A configuração do Firebase (o app Android no projeto e o <code>firebase.json</code>) está no <a href="../README.md#notificações-push">README</a>. Aqui, o que é do Android:</p>
+<ul>
+<li><strong>App aberto:</strong> a mensagem vira notificação local no canal "Avisos".</li>
+<li><strong>App fechado:</strong> o sistema mostra sozinho, com ícone pequeno branco e a cor da marca.</li>
+<li><strong>Testar com o app fechado (Samsung):</strong> em <em>Bateria</em> do app, deixe <strong>Sem restrições</strong> e feche o app</li>
+</ul>
+<p>  pelos recentes. <strong>Não</strong> use <em>Forçar parada</em>: app parado à força não recebe push.</p>
+<h2>Assinatura</h2>
+<p>A Play Store guarda a chave que assina o app para os aparelhos (<strong>Assinatura de apps do Google Play</strong>, ligada no primeiro envio). A nossa é só a <strong>chave de upload</strong>, que prova à Play que o pacote veio de nós. Ela fica <strong>fora do repositório</strong>, com cópia num cofre de senhas. Sem ela não sai versão nova; perder a chave se resolve pelo Play Console, com espera.</p>
+<p>Gere num PowerShell aberto por você. O <code>keytool</code> pede a senha na hora, e ela não vai para lugar nenhum:</p>
+<pre><code>New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\Chaves" | Out-Null
+&amp; "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v `
+  -keystore "$env:USERPROFILE\Documents\Chaves\smsmais-cidadao-upload.jks" -storetype PKCS12 `
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload `
+  -dname "CN=AutoMais Automacao Industrial, O=AutoMais, C=BR"</code></pre>
+<p>E crie <code>android/key.properties</code> (no <code>.gitignore</code>; PKCS12 usa a mesma senha nos dois campos):</p>
+<pre><code>storeFile=C:/Users/&lt;você&gt;/Documents/Chaves/smsmais-cidadao-upload.jks
+keyAlias=upload
+storePassword=&lt;a senha&gt;
+keyPassword=&lt;a senha&gt;</code></pre>
+<p>Sem o <code>key.properties</code> (ou as variáveis <code>CIDADAO_<em></code>), o build de release <strong>para com erro</strong>, de propósito: pacote assinado com a chave de debug a loja recusa. O CI usa as <code>CIDADAO_</em></code> com uma chave descartável, criada a cada execução, só para validar o build. O pacote da loja continua saindo daqui.</p>
+<h2>Gerar o pacote da loja (<code>.aab</code>)</h2>
+<pre><code>flutter build appbundle --release --dart-define-from-file=firebase.json --obfuscate --split-debug-info=build/app/simbolos</code></pre>
+<p>Sai em <code>build/app/outputs/bundle/release/app-release.aab</code>.</p>
+<ul>
+<li><strong>Conferência no fim do build:</strong> o Flutter procura o <code>libflutter.so.sym</code>, para saber se os símbolos</li>
+</ul>
+<p>  das bibliotecas nativas saíram do pacote. Para isso ele usa o <code>apkanalyzer</code> do <strong>Android SDK   Command-line Tools</strong>.   - Sem esse componente, o build acusa "Release app bundle failed to strip debug symbols" e termina     com erro, mesmo com o pacote certo.   - Instale pelo SDK Manager do Android Studio: aba SDK Tools → "Android SDK Command-line Tools     (latest)". O <code>flutter doctor</code> aponta quando ele falta.</p>
+<ul>
+<li><strong><code>--obfuscate</code>:</strong> embaralha os nomes do código Dart no pacote, o que dificulta a engenharia reversa.</li>
+<li><strong>Símbolos:</strong> ficam em <code>build/app/simbolos</code> e servem para ler uma pilha de erro. **Guarde a pasta</li>
+</ul>
+<p>  de cada versão** fora do repositório, junto da cópia da chave; sem ela, a pilha daquela versão não   se lê. O comando é   <code>flutter symbolize -i &lt;pilha&gt; -d build/app/simbolos/app.android-arm64.symbols</code>.</p>
+<h2>CI</h2>
+<p>O job <strong>Android</strong> do <a href="../../.github/workflows/ci-cidadao-app.yml"><code>ci-cidadao-app.yml</code></a> faz o build de release (com R8 e o manifesto final) a cada PR que mexe no app, assinado com a chave descartável. Ele não publica nada. Por enquanto, o envio à Play é manual: o pacote sai daqui e sobe pelo Play Console.</p>
+<h2>Google Play</h2>
+<h3>Teste interno</h3>
+<ul>
+<li><strong>Convite:</strong> os testadores abrem, no celular, o link</li>
+</ul>
+<p>  <code>https://play.google.com/apps/internaltest/4701732834498633978</code>. A conta Google precisa estar na   lista <strong>Equipe AutoMais</strong> (Teste interno → Testadores).</p>
+<ul>
+<li><strong>Nome provisório:</strong> até a revisão do Google, o app aparece na loja como</li>
+</ul>
+<p>  "io.automais.smsmais.cidadao (unreviewed)". No aparelho, é "Saúde Maricá".</p>
+<ul>
+<li><strong>"Item não encontrado":</strong> quase sempre é outra conta ativa na Play Store do celular. Troque para a</li>
+</ul>
+<p>  conta da lista e abra o link de novo. Logo depois de aceitar o convite, pode levar alguns minutos.</p>
+<ul>
+<li><strong>O que publica e o que não publica:</strong> o "Salvar e publicar" do teste interno publica **só a</li>
+</ul>
+<p>  versão**. As declarações salvas continuam esperando o "Enviar para revisão" da Visão geral da   publicação, que é decisão de quem responde pelo app.</p>
+<h3>Versão nova</h3>
+<ol>
+<li><strong>Pacote:</strong> suba o <code>pubspec.yaml</code> (ver <a href="../README.md#versão">Versão</a>) e gere o <code>.aab</code>.</li>
+<li><strong>Upload:</strong> em Teste interno → "Criar nova versão", envie o pacote. O arquivo tem uns 60 MB e sobe</li>
+</ol>
+<p>   pelo navegador.</p>
+<ol>
+<li><strong>Revisão:</strong> confira a tabela de aparelhos compatíveis (nenhum pode sair) e preencha as notas da</li>
+</ol>
+<p>   versão em pt-BR.</p>
+<ol>
+<li><strong>Publicação:</strong> "Salvar e publicar".</li>
+</ol>
+<h3>Segurança dos dados</h3>
+<p>O declarado é o que o app <strong>manda</strong> ao servidor:</p>
+<ul>
+<li>CPF e nascimento, os seus e os dos acompanhantes;</li>
+<li>e-mail e telefones do Perfil;</li>
+<li>foto;</li>
+<li>exames enviados (arquivo e foto);</li>
+<li>confirmação e cancelamento de exame;</li>
+<li>avaliação da viagem;</li>
+<li>o token do push;</li>
+<li>desde a 1.0.2, a <strong>localização aproximada e exata</strong>: coletada, não compartilhada, opcional, para a</li>
+</ul>
+<p>  funcionalidade do app. Só é usada no dia da viagem, depois do Compartilhar, e é apagada no embarque.</p>
+<p>Nada é "compartilhado" no sentido da Play: WhatsApp e Firebase são prestadores de serviço, e o motorista é o próprio serviço de transporte. Não há ID de anúncio nem relatório de falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa declaração. A URL de exclusão de contas é a página <code>/exclusao-de-conta/</code> do PWA (ver <a href="../README.md#exclusão-da-conta">Exclusão da conta</a> no README).</p>
+<h3>Página da loja</h3>
+<p>Os textos, os prints, o ícone e o gráfico estão em <a href="../loja/google-play/README.md"><code>loja/google-play/</code></a>, do jeito que foram salvos no Play Console.</p>
+<h2>Pendências do Android</h2>
+<ul>
+<li><strong>Play Integrity</strong> conferido no servidor, no lugar de detecção caseira de root/emulador. Precisa</li>
+</ul>
+<p>  ligar um projeto do Google Cloud no Play Console.</p>
+<ul>
+<li><strong>Links do WhatsApp abrirem direto no app:</strong> publicar <code>/.well-known/assetlinks.json</code> em</li>
+</ul>
+<p>  <code>app.smsmarica.online</code> com a impressão digital da chave de assinatura da Play. O PR #73 está retido   até o app ser publicado. Sem ele, o Android pergunta "abrir com".</p>
+<ul>
+<li><strong>Envio automático à Play:</strong> dá para o GitHub enviar o <code>.aab</code> ao teste interno, com uma conta de</li>
+</ul>
+<p>  serviço do Google Cloud ligada ao Play Console. Por decisão de 24/10/2026, o envio continua manual.</p>
+</main>
+</body>
+</html>

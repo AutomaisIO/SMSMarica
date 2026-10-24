@@ -1,0 +1,136 @@
+name: CI SMSMais.cidadao.app
+
+# Valida o app do cidadão a cada PR que mexe nele, em três frentes: análise e testes (o código Dart é
+# um só), build de Android e build de iOS. Nada aqui publica nem usa segredo:
+# - o Android assina com uma chave DESCARTÁVEL, criada na hora, só para provar que o build de release
+#   (R8, manifesto, recursos) fecha. O pacote da loja continua saindo com a chave de upload, fora
+#   daqui (SMSMais.cidadao.app/docs/android.md);
+# - o iOS compila sem assinatura. Assinatura e TestFlight vão para um workflow próprio, quando a conta
+#   Apple da AutoMais for aprovada (SMSMais.cidadao.app/docs/ios.md).
+#
+# Repositório público: os runners padrão (Linux e Mac) não gastam minutos do plano, mas o log e os
+# artefatos ficam visíveis a qualquer um. Por isso nenhum segredo vai para o `echo`, e nenhum pacote
+# nem símbolo sobe como artefato.
+
+on:
+  pull_request:
+    paths:
+      - 'SMSMais.cidadao.app/**'
+      - '.github/workflows/ci-cidadao-app.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-cidadao-app-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # A mesma versão usada nos pacotes de loja (Android e iOS).
+  FLUTTER_VERSION: '3.41.9'
+
+defaults:
+  run:
+    working-directory: SMSMais.cidadao.app
+
+jobs:
+  testes:
+    name: Análise e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Análise
+        run: flutter analyze
+
+      - name: Testes
+        run: flutter test
+
+  android:
+    name: Android (build de release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # O projeto compila para Java 17 (android/app/build.gradle.kts).
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      # Chave descartável: vale só para este job, com senha aleatória. O Gradle lê as CIDADAO_* quando
+      # não há android/key.properties.
+      - name: Chave descartável
+        run: |
+          senha="$(openssl rand -hex 16)"
+          echo "::add-mask::$senha"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/descartavel.jks" -storetype PKCS12 \
+            -alias ci -keyalg RSA -keysize 2048 -validity 1 -dname "CN=CI descartavel" \
+            -storepass "$senha" -keypass "$senha" -noprompt
+          {
+            echo "CIDADAO_KEYSTORE_FILE=$RUNNER_TEMP/descartavel.jks"
+            echo "CIDADAO_KEYSTORE_PASSWORD=$senha"
+            echo "CIDADAO_KEY_ALIAS=ci"
+            echo "CIDADAO_KEY_PASSWORD=$senha"
+          } >> "$GITHUB_ENV"
+
+      - name: Build Android (release)
+        run: flutter build appbundle --release
+
+  ios:
+    name: iOS (build sem assinatura)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # O Xcode estável mais novo do runner: é o que a App Store exige no envio.
+      - name: Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Versões
+        run: |
+          xcodebuild -version
+          flutter --version
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Build iOS (sem assinatura)
+        run: flutter build ios --release --no-codesign

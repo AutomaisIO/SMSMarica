@@ -49,7 +49,7 @@ Desenhar $simbolo 380 1.0 (Join-Path $ios 'LaunchImage.imageset\LaunchImage@2x.p
 Desenhar $simbolo 512 1.0 (Join-Path $ios 'LaunchImage.imageset\LaunchImage@3x.png')
 
 # Ícone da Play (512, quadrado cheio; a Play arredonda).
-Desenhar $simbolo 512 1.0 (Join-Path $app 'loja\play\icone-512.png')
+Desenhar $simbolo 512 1.0 (Join-Path $app 'loja\google-play\imagens\icone-512.png')
 
 # PWA (SMSMais.cidadao.pwa/public): os mesmos quadrados cheios. O maskable leva o símbolo a 80%, dentro
 # da área segura (círculo de 80%) do recorte do Android.

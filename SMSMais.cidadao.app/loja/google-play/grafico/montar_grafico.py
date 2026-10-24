@@ -1,12 +1,12 @@
 """Monta o HTML do recurso gráfico da Play (1024x500), com as fontes e as imagens embutidas.
 
-Rode da pasta SMSMais.cidadao.app: `python loja/grafico/montar_grafico.py`. A foto do HTML sai pelo
-Edge sem janela (comando no loja/README.md).
+Rode da pasta SMSMais.cidadao.app: `python loja/google-play/grafico/montar_grafico.py`. A foto do HTML
+sai pelo Edge sem janela (comando no loja/google-play/README.md).
 """
 import base64
 import pathlib
 
-APP = pathlib.Path(__file__).resolve().parents[2]
+APP = pathlib.Path(__file__).resolve().parents[3]
 SAIDA = pathlib.Path(__file__).resolve().parent / 'grafico.html'
 
 
@@ -25,8 +25,8 @@ css_fontes = '\n'.join(
     for (nome, peso), arq in fontes.items()
 )
 logo = b64('assets/brand/marica_logo.png')
-tela1 = b64('loja/play/01-inicio.png')
-tela2 = b64('loja/play/02-exames-agendados.png')
+tela1 = b64('loja/google-play/imagens/01-inicio.png')
+tela2 = b64('loja/google-play/imagens/02-exames-agendados.png')
 
 html = f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><title>grafico</title>
