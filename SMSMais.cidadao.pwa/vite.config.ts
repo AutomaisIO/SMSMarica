@@ -34,13 +34,13 @@ export default defineConfig({
         description: 'Saúde de Maricá no seu bolso: agende consultas e exames, acesse seus documentos de saúde e acompanhe seu transporte (TFD).',
         lang: 'pt-BR',
         theme_color: '#C8102E',
-        background_color: '#BC1F28',
+        background_color: '#FF2A00',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
-        // PNGs 192/512 (recomendado p/ Android). A versão maskable tem a arte a ~80%
-        // sobre fundo vermelho, com margem de segurança p/ o recorte circular do Android.
+        // PNGs 192/512 (recomendado p/ Android). A versão maskable tem o símbolo a 80%
+        // sobre o laranja da marca, com margem de segurança p/ o recorte circular do Android.
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

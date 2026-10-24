@@ -30,10 +30,12 @@ export function AuthShell({
       <div className="-mt-12 flex flex-1 flex-col rounded-t-[2rem] bg-papel px-6 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-9 shadow-[0_-14px_44px_-26px_rgba(110,19,34,0.55)]">
         <div className="flex flex-1 flex-col justify-center pb-6">
           <div className="animate-rise">
+            {/* O hero cobre os 12px de cima da folha (-mt-12 com pt-9) e o PNG do logo não tem
+                margem em cima: sem o mt-5, some o "PREFEITURA" em tela baixa. */}
             <img
               src="/marica_logo.png"
-              alt="Prefeitura de Maricá — cidade que cuida, transforma e inspira"
-              className="mx-auto mb-8 h-auto w-[188px]"
+              alt="Secretaria de Saúde — Prefeitura de Maricá, lugar de viver bem"
+              className="mx-auto mb-8 mt-5 h-auto w-[300px] max-w-full"
             />
             <h1 className="text-center font-display text-[26px] font-semibold leading-tight text-tinta">
               {titulo}
