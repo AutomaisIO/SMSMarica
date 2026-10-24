@@ -28,67 +28,120 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <main>
 <h1>SMSMais.cidadao.app</h1>
 <h2>O que é</h2>
-<p>Versão <strong>nativa (Flutter, Android + iOS)</strong> do <strong>App do Cidadão</strong> — o mesmo app que roda como PWA em <code>app.smsmarica.online</code> (<a href="../SMSMais.cidadao.pwa/"><code>SMSMais.cidadao.pwa</code></a>). As duas versões têm <strong>a mesma cara e o mesmo contrato com a API</strong>: o PWA é a referência; mudou lá, muda aqui.</p>
-<p>&gt; <strong>Ainda não está em produção</strong> (nem nas lojas). O PWA continua sendo o canal oficial.</p>
+<p>Versão <strong>nativa (Flutter)</strong> do <strong>App do Cidadão</strong>, o "Saúde Maricá", para <strong>Android e iPhone</strong>. É o mesmo app que roda como PWA em <code>app.smsmarica.online</code> (<a href="../SMSMais.cidadao.pwa/"><code>SMSMais.cidadao.pwa</code></a>). As versões têm <strong>a mesma cara e o mesmo contrato com a API</strong>: o PWA é a referência; mudou lá, muda aqui.</p>
+<p><strong>Um código só para as duas plataformas</strong> (<code>lib/</code>). O que é de cada uma (projeto nativo, assinatura, build, loja) fica separado:</p>
+<div class="tw"><table><thead><tr><th></th><th>Android</th><th>iPhone</th></tr></thead><tbody>
+<tr><td>Projeto nativo</td><td><a href="android/"><code>android/</code></a></td><td><a href="ios/"><code>ios/</code></a></td></tr>
+<tr><td>Build, assinatura e publicação</td><td><a href="docs/android.md"><code>docs/android.md</code></a></td><td><a href="docs/ios.md"><code>docs/ios.md</code></a></td></tr>
+<tr><td>Página da loja</td><td><a href="loja/google-play/README.md"><code>loja/google-play/</code></a></td><td><a href="loja/app-store/README.md"><code>loja/app-store/</code></a></td></tr>
+<tr><td>Situação (24/10/2026)</td><td><strong>Teste interno</strong> da Play, versão 1.0.4 (7)</td><td><strong>Começando</strong>: conta Apple em aprovação</td></tr>
+</tbody></table></div>
+<p>Até o app sair nas lojas, o PWA continua sendo o canal oficial.</p>
 <h2>O que o app faz (igual ao PWA)</h2>
 <div class="tw"><table><thead><tr><th>Tela</th><th>Rota</th><th>O que mostra</th></tr></thead><tbody>
 <tr><td>Entrar</td><td><code>/login</code> → <code>/login/telefone</code> → <code>/login/codigo</code></td><td>CPF + data de nascimento; a pessoa escolhe o seu WhatsApp entre os números que a Saúde já conhece (só o final aparece) e recebe o código nele — nunca num número digitado. "Nenhum desses é meu" procura no e-SUS (se ligado para o canal) ou orienta ir ao posto (<a href="../docs/adr/0078-entrada-cidadao-cpf-nascimento.md">ADR-0078</a>)</td></tr>
 <tr><td>Termo LGPD</td><td>(antes de tudo)</td><td>Aceite do consentimento vigente — bloqueante</td></tr>
-<tr><td>Início</td><td><code>/</code></td><td>Cartão do Cidadão + atalhos (com aviso de exames a confirmar)</td></tr>
+<tr><td>Início</td><td><code>/</code></td><td>Cartão do Cidadão + atalhos (com aviso de exames a confirmar); no dia da viagem, o convite para compartilhar a localização</td></tr>
 <tr><td>Consultas / Exames agendados</td><td><code>/agendados/consultas</code>, <code>/agendados/exames</code></td><td>Agendados e na fila da regulação; confirmar presença / avisar ausência</td></tr>
 <tr><td>Ticket do exame</td><td><code>/agendados/exames/:id</code></td><td>Local, solicitante, protocolo, chave de acesso (só no dia), QR</td></tr>
 <tr><td>Meus atendimentos</td><td><code>/atendimentos</code></td><td>Histórico com documentos clínicos (receituário etc.)</td></tr>
 <tr><td>Exames</td><td><code>/exames?exame=:id</code></td><td>Laudo assinado, PDF das imagens e anexos</td></tr>
 <tr><td>Documentos</td><td><code>/documentos</code></td><td>Acervo completo + envio de foto/PDF (fica "em conferência")</td></tr>
 <tr><td>Chat</td><td><code>/chat</code></td><td>Abre o WhatsApp oficial da Secretaria</td></tr>
-<tr><td>Transporte (TFD)</td><td><code>/transporte</code></td><td>Viagens + "Meus acompanhantes"</td></tr>
+<tr><td>Transporte (TFD)</td><td><code>/transporte</code></td><td>Viagens + "Meus acompanhantes"; no dia da viagem, compartilhar a localização com o motorista</td></tr>
 <tr><td>Meu perfil</td><td><code>/perfil</code></td><td>Foto (com recorte), cadastro oficial, contatos, troca de celular por código</td></tr>
 <tr><td>Links do WhatsApp</td><td><code>/entrar/:token</code>, <code>/documento/:token</code></td><td>Magic link (com desafio de CPF para resultados) e download de uso único</td></tr>
 </tbody></table></div>
 <p>Também como o PWA: <strong>offline-first</strong> (listas e documentos ficam no aparelho; rede sempre primeiro, cache só quando a rede falha; faixa "Sem conexão"), <strong>visualizador de PDF/foto embutido</strong> (zoom, Baixar, Compartilhar) e <strong>limpeza dos dados do aparelho ao sair</strong> (LGPD).</p>
 <h2>Como está organizado</h2>
-<pre><code>lib/
+<pre><code>lib/              código Dart, comum às duas plataformas
   app/            app, tema, rotas (as mesmas do PWA)
   features/       uma pasta por tela (auth, inicio, agendados, exames, documentos, …)
   shared/
     api/          cliente HTTP, modelos (espelho de src/lib/api.ts) e o modo demonstração
     cache/        cache de dados (shared_preferences) e de documentos (arquivos, LRU 40)
+    localizacao/  localização no dia da viagem: o controle (espelho do store/localizacao.ts) e o GPS
     push/         notificações (Firebase): registro do aparelho, toque → tela, lista fixa de destinos
     sessao/       sessão do cidadão (JWT no armazenamento seguro) e saída com limpeza
     theme/        cores, raios, sombras e tipografia — os tokens do tailwind.config.ts do PWA
     widgets/      kit visual (espelho de src/components/ui.tsx) e o esqueleto de listas
-    visualizador/ visualizador de PDF/foto</code></pre>
-<p>Fontes: <strong>Bricolage Grotesque</strong> (títulos) e <strong>Inter</strong> (texto), empacotadas em <code>assets/fonts/</code> (OFL). Ícones: <strong>Lucide</strong> — os mesmos do PWA.</p>
+    visualizador/ visualizador de PDF/foto
+test/             testes (valem para as duas plataformas)
+assets/           fontes e logo da entrada
+android/          projeto nativo Android (manifesto, Gradle, assinatura) → docs/android.md
+ios/              projeto nativo iOS (Info.plist, Xcode, entitlements) → docs/ios.md
+docs/             o passo a passo de cada plataforma: android.md e ios.md
+loja/             as páginas das lojas e a marca: marca/ (comum), google-play/ e app-store/</code></pre>
+<p><strong>Código de uma plataforma só:</strong> as telas são as mesmas nas duas. Quando o comportamento muda (os ajustes do GPS, as opções do Firebase, o canal de notificação do Android), a escolha pela plataforma (<code>defaultTargetPlatform</code>) fica dentro de <code>lib/shared/</code> (por exemplo, <code>shared/localizacao/gps.dart</code> e <code>shared/push/push.dart</code>), nunca em <code>features/</code>.</p>
+<p><strong>CI:</strong> o <a href="../.github/workflows/ci-cidadao-app.yml"><code>ci-cidadao-app.yml</code></a> roda a cada PR que mexe no app, com três jobs: análise e testes, build de Android e build de iOS. Os três são gratuitos, porque o repositório é público, e nenhum publica nada (detalhes em cada <code>docs/</code>).</p>
+<p>Fontes: <strong>Bricolage Grotesque</strong> (títulos) e <strong>Inter</strong> (texto), empacotadas em <code>assets/fonts/</code> (OFL). Ícones: <strong>Lucide</strong>, os mesmos do PWA.</p>
+<p><strong>Marca:</strong> o logo da tela de entrada (<code>assets/brand/marica_logo.png</code>) é o da <strong>Secretaria de Saúde</strong>, versão colorida, que a Comunicação mandou em 21/10/2026. O ícone do app e a abertura usam o símbolo <strong>"MA RI CÁ"</strong> sobre o laranja <code>#FF2A00</code>. O símbolo veio de Sistema → Instituição e foi corrigido; ele e o gerador dos ícones das duas plataformas (e do PWA) ficam em <a href="loja/marca/README.md"><code>loja/marca/</code></a>.</p>
+<h2>Versão</h2>
+<p>Uma versão para as duas plataformas, no <code>pubspec.yaml</code>: <code>version: &lt;nome&gt;+&lt;código&gt;</code> (ex.: <code>1.0.4+7</code>). O nome é o que a pessoa vê; o código precisa ser <strong>maior a cada envio</strong> em cada loja. Mudou o app, sobe a versão, mesmo que o envio a uma das lojas fique para depois.</p>
 <h2>Rodar</h2>
 <pre><code>flutter pub get
 flutter run                                   # API de PRODUÇÃO (padrão, como o PWA) — ver o aviso abaixo
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5080   # backend local — só no EMULADOR Android
 flutter run --dart-define=DEMO=true           # dados fictícios, sem rede — para conferir telas
 flutter analyze &amp;&amp; flutter test</code></pre>
-<p><strong>Atenção: <code>flutter run</code> sem <code>API_BASE_URL</code> fala com a produção</strong> — o login manda um código <strong>de verdade</strong> pelo WhatsApp do cadastro e o que se faz no app vale. Para conferir telas, <code>DEMO=true</code>.</p>
-<p><code>10.0.2.2</code> é o PC visto <strong>de dentro do emulador</strong>; num <strong>celular físico</strong> (USB, depuração ligada) encaminhe a porta e use <code>localhost</code>:</p>
+<p><strong>Atenção: <code>flutter run</code> sem <code>API_BASE_URL</code> fala com a produção.</strong> O login manda um código <strong>de verdade</strong> pelo WhatsApp do cadastro, e o que se faz no app vale. Para conferir telas, use <code>DEMO=true</code>.</p>
+<p><code>10.0.2.2</code> é o PC visto <strong>de dentro do emulador</strong>. Num <strong>celular Android físico</strong> (USB, depuração ligada), encaminhe a porta e use <code>localhost</code>:</p>
 <pre><code>adb reverse tcp:5080 tcp:5080
 flutter run --dart-define=API_BASE_URL=http://localhost:5080</code></pre>
+<p>No <strong>iPhone</strong>, sem Mac aqui, o build é na nuvem: ver <a href="docs/ios.md"><code>docs/ios.md</code></a>.</p>
 <p>No modo demonstração qualquer CPF válido (ex.: <code>529.982.247-25</code>) e qualquer data de nascimento entram; aparecem dois números fictícios "do cadastro", e "Nenhum desses é meu" → "Procurar outros números" acrescenta um "do e-SUS". Qualquer código serve, menos <code>000000</code> (simula código errado).</p>
 <p>Toda chamada leva o cabeçalho <code>X-App-Canal: nativo</code> (o PWA manda <code>pwa</code>): é por ele que o servidor sabe se a busca do telefone no e-SUS está ligada para este canal (Sistema → App do cidadão).</p>
+<h2>Localização no dia da viagem</h2>
+<p>O paciente pode compartilhar a posição do celular com o motorista enquanto espera um embarque de hoje (<a href="../docs/adr/0082-localizacao-do-paciente-no-transporte.md">ADR-0082</a>), igual ao PWA:</p>
+<ul>
+<li><strong>Quando aparece:</strong> o servidor diz (<code>GET /auth/paciente/localizacao</code>) se há uma espera agora: a ida,</li>
+</ul>
+<p>  a partir de 2 h antes da busca, ou o resgate, depois de descer na unidade. O app consulta a cada   minuto, só com o app na tela. Fora disso, nada aparece.</p>
+<ul>
+<li><strong>Aceite por viagem:</strong> o convite ("Ajude o motorista a achar você"), no Início e no Transporte,</li>
+</ul>
+<p>  explica quem vê, quando para e que só envia com o app aberto. Só depois do <strong>Compartilhar</strong> o app   registra o aceite (<code>POST</code>) e o Android/iOS pede a permissão.</p>
+<ul>
+<li><strong>Só com o app aberto:</strong> permissão "durante o uso" (no Android, <code>ACCESS_FINE_LOCATION</code> e</li>
+</ul>
+<p>  <code>ACCESS_COARSE_LOCATION</code>; no iOS, <code>NSLocationWhenInUseUsageDescription</code>). <strong>Sem segundo plano.</strong> O   app saiu da tela, o GPS desliga; voltou, liga de novo sem perguntar.</p>
+<ul>
+<li><strong>Envio:</strong> no máximo a cada 15 s, ou antes disso se andou 20 m, e nunca antes de 10 s (<code>PUT</code>). Vai</li>
+</ul>
+<p>  junto o aviso do Android de posição simulada (app de GPS falso). Com a permissão só aproximada,   envia assim mesmo e a faixa avisa.</p>
+<ul>
+<li><strong>Para:</strong> no embarque (o servidor responde 409 e o app desliga sozinho), no <strong>Parar</strong> da faixa</li>
+</ul>
+<p>  (<code>DELETE</code>) e no Sair. Permissão negada ou localização desligada: a faixa explica e oferece   <strong>Permitir</strong> ou as configurações.</p>
+<ul>
+<li><strong>Não atrapalha o resto:</strong> servidor sem a função (404) esconde tudo e para de consultar; qualquer</li>
+</ul>
+<p>  outro erro só esconde ou espera a próxima consulta.</p>
+<ul>
+<li><strong>Demonstração:</strong> o <code>DemoAdapter</code> simula o resgate de hoje na janela e guarda as posições no próprio</li>
+</ul>
+<p>  aparelho (nada vai à rede). O pedido de permissão é o de verdade, para a revisão das lojas ver.</p>
+<ul>
+<li><strong>No Android</strong>, o GPS não é exigido do aparelho, e o plugin tem duas armadilhas: ver</li>
+</ul>
+<p>  <a href="docs/android.md#localização"><code>docs/android.md</code></a>.</p>
+<p>O controle fica em <code>lib/shared/localizacao/</code> (o GPS atrás da interface <code>FonteGps</code>, que os testes trocam por um falso); o cartão e a faixa, em <code>lib/features/transporte/</code>. Testes: <code>test/localizacao_test.dart</code>.</p>
 <h2>Notificações (push)</h2>
-<p>A equipe manda uma mensagem pela <strong>ficha do paciente</strong> no painel e ela chega ao celular pelo <strong>Firebase Cloud Messaging</strong> (no iPhone o Firebase entrega pela Apple, o APNs). O aparelho pertence à <strong>sessão</strong>: depois do login e do termo aceito o app registra o aparelho (<code>PUT /auth/paciente/dispositivo</code>); ao sair, o servidor apaga o token junto com a sessão e o app pede ao Firebase que esqueça o aparelho (<code>deleteToken</code>).</p>
-<p>O Firebase é iniciado <strong>só pelo Dart</strong>, com os valores passados no build — o projeto <strong>não</strong> usa <code>google-services.json</code>, <code>GoogleService-Info.plist</code> nem o plugin gradle <code>google-services</code>. Cada instância (prefeitura) tem o seu projeto no Firebase: nada disso fica no código. Por isso <strong>não rode <code>flutterfire configure</code></strong> na pasta do app: a FlutterFire CLI grava um <code>firebase.json</code> próprio na raiz (sobrescreve o nosso), gera o <code>lib/firebase_options.dart</code> e o <code>google-services.json</code> (os três estão no <code>.gitignore</code>) e liga o plugin <code>google-services</code> nos arquivos gradle — se rodou por engano, apague o que ela gerou e desfaça a mudança nos gradle.</p>
+<p>A equipe manda uma mensagem pela <strong>ficha do paciente</strong> no painel e ela chega ao celular pelo <strong>Firebase Cloud Messaging</strong> (no iPhone, o Firebase entrega pela Apple, o APNs). O aparelho pertence à <strong>sessão</strong>: depois do login e do termo aceito o app registra o aparelho (<code>PUT /auth/paciente/dispositivo</code>); ao sair, o servidor apaga o token junto com a sessão e o app pede ao Firebase que esqueça o aparelho (<code>deleteToken</code>).</p>
+<p>O Firebase é iniciado <strong>só pelo Dart</strong>, com os valores passados no build. O projeto <strong>não</strong> usa <code>google-services.json</code>, <code>GoogleService-Info.plist</code> nem o plugin gradle <code>google-services</code>. Cada instância (prefeitura) tem o seu projeto no Firebase: nada disso fica no código. Por isso <strong>não rode <code>flutterfire configure</code></strong> na pasta do app. A FlutterFire CLI grava um <code>firebase.json</code> próprio na raiz (sobrescreve o nosso), gera o <code>lib/firebase_options.dart</code> e o <code>google-services.json</code> (os três estão no <code>.gitignore</code>) e liga o plugin <code>google-services</code> nos arquivos gradle. Se rodou por engano, apague o que ela gerou e desfaça a mudança nos gradle.</p>
 <h3>1. Projeto no Firebase (uma vez por instância)</h3>
 <ol>
 <li>Em <code>console.firebase.google.com</code>, crie o projeto (o Google Analytics não é necessário).</li>
 <li>Adicione um app <strong>Android</strong> com o pacote <code>io.automais.smsmais.cidadao</code>. <strong>Não</strong> use o <code>google-services.json</code> que ele oferece: anote o <strong>ID do app</strong> em <em>Configurações do projeto → Seus apps</em> e, na aba <em>Geral</em>, o <strong>ID do projeto</strong> e o <strong>número do projeto</strong> (o código do remetente). A <strong>chave de API Android não aparece no cartão do app</strong> (a "Chave de API da Web" da aba <em>Geral</em> é outra). Pegue-a por um destes caminhos: Google Cloud → <em>APIs e serviços → Credenciais</em> → <strong>Android key (auto created by Firebase)</strong>; ou <code>firebase apps:sdkconfig ANDROID &lt;ID do app&gt;</code> (só imprime na tela); ou baixe o <code>google-services.json</code> <strong>fora do repositório</strong>, copie os valores e apague o arquivo.</li>
-<li>Adicione um app <strong>iOS</strong> com o bundle <code>io.automais.smsmais.cidadao</code>. Do mesmo jeito: <strong>não</strong> use o <code>GoogleService-Info.plist</code>; anote a chave de API e o ID do app iOS.</li>
-<li><strong>Chave da Apple (APNs), só para o iPhone.</strong> No Apple Developer (<em>Certificates, Identifiers &amp; Profiles → Keys</em>), crie a chave com <em>Apple Push Notifications service (APNs)</em>. Hoje a Apple emite a chave <em>team-scoped</em> para <strong>Sandbox ou Production</strong>, não as duas: crie uma de cada, baixe cada <code>.p8</code> (a Apple só deixa baixar uma vez) e anote os Key IDs e o Team ID. No Firebase, em <em>Configurações do projeto → Cloud Messaging → app iOS</em>, envie <strong>as duas</strong> — a de Sandbox como <em>desenvolvimento</em>, a de Production como <em>produção</em> — com o Key ID e o Team ID. Sem isso o iPhone não recebe nada e o painel mostra "O Firebase recusou a chave da Apple (APNs)".</li>
+<li><strong>iPhone:</strong> o app iOS no Firebase e as chaves da Apple (APNs) estão em <a href="docs/ios.md#push"><code>docs/ios.md</code></a>.</li>
 <li><strong>Conta de serviço (para o servidor enviar).</strong> Em <em>Configurações do projeto → Contas de serviço</em>, clique em <em>Gerar nova chave privada</em>: baixa um JSON — do <strong>mesmo projeto</strong> do <code>firebase.json</code> (senão o envio acusa "outro projeto do Firebase"). No painel, em <strong>Integrações</strong>, abra o cartão <strong>Firebase — notificações do app do cidadão</strong>, cole o JSON <strong>inteiro</strong> (o ID do projeto é lido dele), deixe marcado <em>Envio de notificações ativo</em>, clique em <strong>Salvar</strong> e depois em <strong>Testar</strong> (confere se o servidor autentica no Firebase, sem enviar nada). O JSON é a única peça secreta: não vai para o repositório nem para conversa; depois de colar, apague o arquivo baixado.</li>
 </ol>
 <p><strong>Se o Google Cloud recusar a chave da conta de serviço</strong> ("Key creation is not allowed on this service account"): organizações criadas desde 03/05/2024 (e contas Workspace) aplicam a política <code>iam.managed.disableServiceAccountKeyCreation</code>. Quem tem o papel <em>Organization Policy Administrator</em> abre uma exceção só para este projeto.</p>
 <h3>2. Montar o <code>firebase.json</code> e buildar</h3>
 <p>O <code>firebase.json</code> fica <strong>fora do git</strong> (está no <code>.gitignore</code>); o modelo versionado é o <code>firebase.exemplo.json</code>:</p>
 <pre><code>cp firebase.exemplo.json firebase.json        # e preencha com os valores do passo 1
-flutter run --dart-define-from-file=firebase.json
-flutter build apk --release --dart-define-from-file=firebase.json
-flutter build ipa --dart-define-from-file=firebase.json        # no Mac</code></pre>
+flutter run --dart-define-from-file=firebase.json</code></pre>
+<p>O pacote de cada loja sai com o mesmo <code>--dart-define-from-file=firebase.json</code> (ver <a href="docs/android.md"><code>docs/android.md</code></a> e <a href="docs/ios.md"><code>docs/ios.md</code></a>).</p>
 <div class="tw"><table><thead><tr><th>Chave</th><th>De onde vem</th></tr></thead><tbody>
 <tr><td><code>FIREBASE_PROJECT_ID</code></td><td>ID do projeto</td></tr>
 <tr><td><code>FIREBASE_SENDER_ID</code></td><td>Número do projeto (código do remetente)</td></tr>
@@ -97,74 +150,68 @@ flutter build ipa --dart-define-from-file=firebase.json        # no Mac</code></
 <tr><td><code>FIREBASE_IOS_BUNDLE_ID</code></td><td>Opcional: o bundle do app iOS</td></tr>
 </tbody></table></div>
 <p>Esses valores são identificadores públicos (vão dentro do app instalado), não segredos. Dá para combinar com os outros defines (<code>--dart-define=API_BASE_URL=…</code>).</p>
-<p>No iOS o projeto já vem pronto: alvo mínimo <strong>iOS 15</strong> (exigência do Firebase), capability de push (<code>Runner/Runner.entitlements</code> com <code>aps-environment = development</code> — o Xcode troca para <code>production</code> ao distribuir) e <em>Background Modes → Remote notifications</em>. Na conta da Apple o App ID precisa da capability <em>Push Notifications</em> (a assinatura automática do Xcode liga). O <strong>simulador não recebe push</strong> (não tem token APNs): teste num iPhone.</p>
-<p><strong>Testar com o app fechado (Samsung):</strong> em <em>Bateria</em> do app, deixe <strong>Sem restrições</strong>, e feche o app pelos recentes — <strong>não</strong> use <em>Forçar parada</em>: app parado à força não recebe push.</p>
 <h3>3. O que fica desligado sem configuração</h3>
 <p>Sem o <code>firebase.json</code> (ou com valores vazios), no <strong>modo demonstração</strong> (<code>DEMO=true</code>) e na <strong>web</strong>, o push fica desligado: o app não inicia o Firebase, não pede permissão de notificação e funciona igual. No painel, o paciente aparece sem aparelho com notificações ativas.</p>
 <h3>Como o app se comporta</h3>
 <ul>
 <li><strong>Permissão:</strong> pedida depois do login e do termo aceito, uma vez por abertura do app (e de novo se o cidadão sair e entrar). Se o registro falhar (API fora, sem rede), o app tenta de novo quando volta ao primeiro plano. Se o cidadão negar, o aparelho não é registrado e o pedido não se repete até a próxima abertura ou o próximo login (e aí quem decide se mostra o diálogo é o sistema: o iPhone só pergunta uma vez; o Android, no máximo duas); se ele liberar nas configurações do celular e voltar ao app, o registro sai na hora. Se ele desligar as notificações depois, nas configurações do celular, na próxima abertura o app pede ao Firebase que esqueça o token: o envio seguinte volta como "app desinstalado" e o servidor tira o aparelho da sessão (até o app ser aberto de novo, o painel ainda mostra o aparelho e o envio aparece como entregue).</li>
-<li><strong>App aberto:</strong> no Android a mensagem vira notificação local no canal "Avisos"; no iPhone o próprio sistema mostra. Com o app fechado, o sistema mostra sozinho (ícone pequeno branco, cor da marca, canal "Avisos").</li>
+<li><strong>App aberto e fechado:</strong> cada plataforma mostra do seu jeito (ver <a href="docs/android.md#push"><code>docs/android.md</code></a> e <a href="docs/ios.md#push"><code>docs/ios.md</code></a>).</li>
 <li><strong>Toque:</strong> abre a tela escolhida em "Abrir no app" <strong>só se ela estiver na lista fixa</strong> (<code>lib/shared/push/destinos.dart</code> — a mesma do servidor e do painel); sem tela escolhida (o "Início" do painel), abre o Início; com uma rota fora da lista, só abre o app.</li>
 <li><strong>Falha de push nunca derruba o app</strong> nem mostra erro ao cidadão: tudo é best-effort.</li>
 </ul>
 <h3>Privacidade (ler antes de escrever uma notificação)</h3>
-<p>O texto da notificação aparece na <strong>tela bloqueada</strong> e passa pelos servidores do Google (e da Apple, no iPhone) sem criptografia de ponta a ponta. <strong>Nunca</strong> escreva dado de saúde — exame, resultado, diagnóstico, medicamento, especialidade. Use texto genérico ("Você tem uma atualização no app") e deixe o conteúdo dentro do app, atrás do login. A mensagem leva só a rota e o id da notificação; o servidor guarda o histórico de cada envio (quem, quando, para quem, o texto).</p>
-<h2>Publicar na Play Store</h2>
-<h3>Chave de upload (uma vez)</h3>
-<p>A Play Store guarda a chave que assina o app para os aparelhos (<strong>Assinatura de apps do Google Play</strong>, ligada no primeiro envio); a nossa é só a <strong>chave de upload</strong>, que prova à Play que o pacote veio de nós. Ela fica <strong>fora do repositório</strong> e com cópia num cofre de senhas — sem ela não sai versão nova (perder se resolve pelo Play Console, com espera).</p>
-<p>Gere num PowerShell aberto por você (o <code>keytool</code> pede a senha na hora; ela não vai para lugar nenhum):</p>
-<pre><code>New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\Chaves" | Out-Null
-&amp; "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v `
-  -keystore "$env:USERPROFILE\Documents\Chaves\smsmais-cidadao-upload.jks" -storetype PKCS12 `
-  -keyalg RSA -keysize 2048 -validity 10000 -alias upload `
-  -dname "CN=AutoMais Automacao Industrial, O=AutoMais, C=BR"</code></pre>
-<p>E crie <code>android/key.properties</code> (no <code>.gitignore</code>; PKCS12 usa a mesma senha nos dois campos):</p>
-<pre><code>storeFile=C:/Users/&lt;você&gt;/Documents/Chaves/smsmais-cidadao-upload.jks
-keyAlias=upload
-storePassword=&lt;a senha&gt;
-keyPassword=&lt;a senha&gt;</code></pre>
-<p>Sem o <code>key.properties</code> (ou as variáveis <code>CIDADAO_*</code>), o build de release <strong>para com erro</strong> — de propósito: pacote assinado com a chave de debug a loja recusa.</p>
-<h3>Acesso para a revisão das lojas ("Detalhes do login")</h3>
-<p>O revisor da Google Play (e da App Store) não tem CPF nem WhatsApp do cadastro. Para ele, a tela de entrada aceita uma <strong>entrada de demonstração</strong>, que liga o modo demonstração (<code>DemoAdapter</code>: dados fictícios, sem rede, sem tocar a produção) — o mesmo do <code>--dart-define=DEMO=true</code>:</p>
+<p>O texto da notificação aparece na <strong>tela bloqueada</strong> e passa pelos servidores do Google (e da Apple, no iPhone) sem criptografia de ponta a ponta. <strong>Nunca</strong> escreva dado de saúde: exame, resultado, diagnóstico, medicamento, especialidade. Use texto genérico ("Você tem uma atualização no app") e deixe o conteúdo dentro do app, atrás do login. A mensagem leva só a rota e o id da notificação; o servidor guarda o histórico de cada envio (quem, quando, para quem, o texto).</p>
+<h2>Revisão das lojas</h2>
+<p>O revisor da Google Play e o da App Store não têm CPF nem WhatsApp do cadastro. Para eles, a tela de entrada aceita uma <strong>entrada de demonstração</strong>, que liga o modo demonstração (<code>DemoAdapter</code>: dados fictícios, sem rede, sem tocar a produção), o mesmo do <code>--dart-define=DEMO=true</code>:</p>
 <div class="tw"><table><thead><tr><th>Campo</th><th>Valor</th></tr></thead><tbody>
 <tr><td>CPF</td><td><code>111.111.111-11</code></td></tr>
 <tr><td>Data de nascimento</td><td><code>01/01/2000</code></td></tr>
 <tr><td>Número</td><td>qualquer um da lista</td></tr>
 <tr><td>Código</td><td>qualquer código de 6 dígitos (ex.: <code>123456</code>; só <code>000000</code> é recusado)</td></tr>
 </tbody></table></div>
-<p>O CPF tem os 11 dígitos iguais: é inválido por regra, então nunca é de ninguém, e o app não o manda ao servidor. Sair da conta desliga a demonstração. Estes dados podem ir no Play Console sem risco: com eles não se chega a nada real.</p>
-<h3>Exclusão da conta e Segurança dos dados</h3>
-<p>A Play exige, de app em que se entra com conta, um jeito de <strong>pedir a exclusão</strong> dentro do app e fora dele. Fora: a página pública <a href="../SMSMais.cidadao.pwa/public/exclusao-de-conta/index.html"><code>/exclusao-de-conta/</code></a> do PWA (é a "URL para exclusão de contas" da Segurança dos dados). Dentro: <strong>Meu perfil → Excluir minha conta</strong>, no app e no PWA, que abre essa página. O pedido vai por e-mail ao DPO (<code>contato@smsmarica.online</code>), com resposta em até 15 dias; apaga o acesso ao app (sessões e aparelhos do push), a foto e os acompanhantes, e o prontuário fica, por obrigação legal. Mudou o processo, mudam a página e a declaração juntas.</p>
-<p>Na Segurança dos dados, o declarado é o que o app <strong>manda</strong> ao servidor: CPF e nascimento (seus e dos acompanhantes), e-mail e telefones do Perfil, foto, exames enviados (arquivo e foto), confirmação e cancelamento de exame, avaliação da viagem e o token do push. Nada é "compartilhado" no sentido da Play (WhatsApp e Firebase são prestadores de serviço); não há localização, ID de anúncio nem relatório de falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa declaração.</p>
-<h3>Gerar o pacote da loja</h3>
-<pre><code>flutter build appbundle --release --dart-define-from-file=firebase.json --obfuscate --split-debug-info=build/app/simbolos</code></pre>
-<p>Sai em <code>build/app/outputs/bundle/release/app-release.aab</code>. A versão vem do <code>pubspec.yaml</code> (<code>version: &lt;nome&gt;+&lt;código&gt;</code>): cada envio à Play precisa de um <strong>código maior</strong> que o anterior.</p>
-<p>O <code>--obfuscate</code> embaralha os nomes do código Dart no pacote (dificulta a engenharia reversa). Os símbolos para ler uma pilha de erro ficam em <code>build/app/simbolos</code>: <strong>guarde a pasta de cada versão</strong> fora do repositório, junto da cópia da chave. Sem ela, a pilha daquela versão não se lê (<code>flutter symbolize -i &lt;pilha&gt; -d build/app/simbolos/app.android-arm64.symbols</code>).</p>
-<h3>Segurança do app</h3>
-<p>Do pentest VULTUS (fev/2026, projeto Aeromais) e da revisão de 23/10/2026:</p>
+<p>O CPF tem os 11 dígitos iguais: é inválido por regra, então nunca é de ninguém, e o app não o manda ao servidor. Sair da conta desliga a demonstração. Estes dados podem ir para o Play Console e o App Store Connect sem risco: com eles não se chega a nada real.</p>
+<p>Para a revisão ver a localização: no Início, <strong>Ajude o motorista a achar você → Compartilhar minha localização → Compartilhar</strong>. O aparelho pede a permissão e a faixa "Compartilhando sua localização com o motorista" aparece, com o <strong>Parar</strong>. Na demonstração, a posição não sai do aparelho.</p>
+<h2>Exclusão da conta</h2>
+<p>As duas lojas exigem, de app em que se entra com conta, um jeito de <strong>pedir a exclusão</strong> dentro do app. A Play exige também fora dele.</p>
 <ul>
-<li><strong>Backup desligado</strong> (<code>allowBackup</code>, <code>fullBackupContent</code>, <code>dataExtractionRules</code>): o cache offline</li>
+<li><strong>Fora do app:</strong> a página pública</li>
 </ul>
-<p>  tem dados de saúde e não vai ao backup do Google nem passa para outro aparelho.</p>
+<p>  <a href="../SMSMais.cidadao.pwa/public/exclusao-de-conta/index.html"><code>/exclusao-de-conta/</code></a> do PWA.</p>
+<ul>
+<li><strong>Dentro do app:</strong> <strong>Meu perfil → Excluir minha conta</strong>, no app e no PWA, que abre essa página.</li>
+<li><strong>O pedido:</strong> vai por e-mail ao DPO (<code>contato@smsmarica.online</code>), com resposta em até 15 dias.</li>
+<li><strong>O que apaga:</strong> o acesso ao app (sessões e aparelhos do push), a foto e os acompanhantes.</li>
+<li><strong>O que fica:</strong> o prontuário, por obrigação legal.</li>
+</ul>
+<p>Mudou o processo, mudam a página e as declarações de cada loja: a Segurança dos dados da Play (<a href="docs/android.md#segurança-dos-dados"><code>docs/android.md</code></a>) e a Privacidade do app da Apple (<a href="docs/ios.md#app-store"><code>docs/ios.md</code></a>).</p>
+<h2>Segurança do app</h2>
+<p>Do pentest VULTUS (fev/2026, projeto Aeromais) e da revisão de 23/10/2026. Vale para as duas plataformas:</p>
 <ul>
 <li><strong>Só HTTPS no build de loja:</strong> <code>exigirHttpsNoBuildDeLoja()</code> (em <code>lib/shared/api/http.dart</code>) impede</li>
 </ul>
-<p>  o app de abrir se a API não for <code>https</code>. Essa trava é necessária porque o cliente HTTP do Dart não   obedece ao <code>network_security_config.xml</code>. O config continua valendo para as bibliotecas nativas e   aceita só certificados do sistema (o debug libera HTTP e certificados do usuário).</p>
+<p>  o app de abrir se a API não for <code>https</code>. Essa trava é necessária porque o cliente HTTP do Dart não   obedece à configuração de rede de cada plataforma.</p>
 <ul>
 <li><strong>Sessão no cofre do aparelho</strong> (<code>flutter_secure_storage</code>). O cache é limpo ao sair da conta.</li>
-<li><strong>Pendente:</strong></li>
-<li><strong>Play Integrity</strong> conferido no servidor, no lugar de detecção caseira de root/emulador. Precisa</li>
+<li><strong>Ofuscação</strong> do código Dart nos pacotes de loja (<code>--obfuscate</code>), com os símbolos guardados fora</li>
 </ul>
-<p>    ligar um projeto do Google Cloud no Play Console.   - <strong>iOS:</strong> excluir o cache do backup do iCloud antes da App Store.</p>
-<h2>Pendências para publicar</h2>
+<p>  do repositório.</p>
+<p>Cada plataforma tem a sua parte:</p>
 <ul>
-<li><strong>Links do WhatsApp abrirem direto no app:</strong> publicar <code>/.well-known/assetlinks.json</code> (Android)</li>
+<li><strong>Android:</strong> backup desligado e configuração de rede (<a href="docs/android.md"><code>docs/android.md</code></a>). Pendente:</li>
 </ul>
-<p>  e <code>apple-app-site-association</code> (iOS, com Associated Domains no projeto) em   <code>app.smsmarica.online</code>, com a impressão digital da chave de assinatura. Sem isso, o Android   pergunta "abrir com" e o iOS abre no navegador (o PWA).</p>
+<p>  Play Integrity.</p>
 <ul>
-<li><strong>Push:</strong> criar o projeto no Firebase e montar o <code>firebase.json</code> do build de loja (seção acima). O Firebase está trocando o token de registro pelo FID (Firebase Installation ID); o app ainda usa <code>getToken</code>/<code>onTokenRefresh</code> e o servidor envia em <code>message.token</code>, que aceita os dois. Quando o FlutterFire publicar <code>register()</code>/<code>onRegistered</code>, migrar.</li>
+<li><strong>iPhone:</strong> pendente tirar o cache do backup do iCloud (<a href="docs/ios.md"><code>docs/ios.md</code></a>).</li>
 </ul>
+<h2>Pendências comuns</h2>
+<ul>
+<li><strong>Links do WhatsApp abrirem direto no app:</strong> <code>assetlinks.json</code> (Android) e</li>
+</ul>
+<p>  <code>apple-app-site-association</code> (iOS) em <code>app.smsmarica.online</code>, depois de o app sair nas lojas.   Detalhes em cada <code>docs/</code>.</p>
+<ul>
+<li><strong>Push:</strong> o Firebase está trocando o token de registro pelo FID (Firebase Installation ID). O app</li>
+</ul>
+<p>  ainda usa <code>getToken</code>/<code>onTokenRefresh</code>, e o servidor envia em <code>message.token</code>, que aceita os dois.   Quando o FlutterFire publicar <code>register()</code>/<code>onRegistered</code>, migrar.</p>
 </main>
 </body>
 </html>

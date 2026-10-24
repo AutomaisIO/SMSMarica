@@ -8,7 +8,8 @@ plugins {
 }
 
 // Assinatura de release = a CHAVE DE UPLOAD da Play Store: android/key.properties (gitignored; o
-// .jks fica FORA do repositório) ou variáveis CIDADAO_* (CI). A Play reassina com a chave dela
+// .jks fica FORA do repositório) ou variáveis CIDADAO_* (o CI usa uma chave descartável, só para
+// validar o build, em .github/workflows/ci-cidadao-app.yml). A Play reassina com a chave dela
 // (Assinatura de apps do Google Play); perder a de upload se resolve pelo Play Console, mas sem ela
 // não sai versão nova. Sem fallback para a chave de debug: a loja recusa, e o erro aqui é mais claro.
 val keyProperties = Properties().apply {
@@ -92,7 +93,7 @@ gradle.taskGraph.whenReady {
         throw GradleException(
             "Assinatura de release ausente: crie android/key.properties (storeFile, storePassword, " +
                 "keyAlias, keyPassword) ou defina CIDADAO_KEYSTORE_FILE/CIDADAO_KEYSTORE_PASSWORD/" +
-                "CIDADAO_KEY_ALIAS/CIDADAO_KEY_PASSWORD. Ver README, seção \"Publicar na Play Store\"."
+                "CIDADAO_KEY_ALIAS/CIDADAO_KEY_PASSWORD. Ver docs/android.md, seção \"Assinatura\"."
         )
     }
 }
