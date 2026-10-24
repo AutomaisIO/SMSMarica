@@ -56,7 +56,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
   grupo: 'atendimento',
   icone: Workflow,
   publico: 'Toda a equipe que atende pelo WhatsApp — e quem precisa explicar o sistema para alguém',
-  atualizadoEm: '2026-10-19',
+  atualizadoEm: '2026-10-24',
   palavrasChave: [
     'fluxo',
     'lógica',
@@ -318,7 +318,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     {
       id: 'robo-ia',
       titulo: 'Quando o robô (IA) entra — e quando ele cala',
-      busca: 'robô ia atendente virtual entra cala trava humano expediente parar robô teto interações retomada resumo regulação ser sernit esus são gonçalo sisreg na fila aguardando vaga pendência motivo app do cidadão próximos anteriores histórico realizado falta registrada já passou',
+      busca: 'robô ia atendente virtual entra cala trava humano expediente parar robô assumir conversa automação fluxos automáticos confirmação identificação teto interações retomada resumo regulação ser sernit esus são gonçalo sisreg na fila aguardando vaga pendência motivo app do cidadão próximos anteriores histórico realizado falta registrada já passou',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -327,8 +327,8 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
           </P>
           <ListaDefinicoes
             itens={[
-              { termo: 'Humano na janela', descricao: 'Uma atendente escreveu nesta janela de 24h? O robô cala e não volta — a não ser que ela devolva a conversa ao "Atendente Virtual".' },
-              { termo: 'Parar robô', descricao: 'Bloqueio forte por conversa, na mão da atendente. Vence tudo, inclusive a virada do dia.' },
+              { termo: 'Humano na janela', descricao: 'Uma atendente assumiu ou escreveu nesta janela de 24h? Toda a automação cala — o robô E os fluxos automáticos (confirmação, identificação) — e não volta nesta sessão, a não ser que ela devolva a conversa ao "Atendente Virtual".' },
+              { termo: 'Parar robô', descricao: 'Na mão da atendente: silencia o robô e a automação NESTA sessão — vence as outras travas, inclusive a virada de horário. Passou a sessão (janela nova de 24h), o robô volta a assumir sozinho.' },
               { termo: 'Identificação em andamento', descricao: 'Com o diálogo determinístico vivo no número, o robô não atravessa — quem conduz é a máquina.' },
               { termo: 'Teto de interações', descricao: 'Bateu o limite do assunto, o robô avisa UMA vez que a equipe assume — e para de responder.' },
               { termo: 'Guardrails', descricao: 'Nunca revela agendamento antes da identidade, nunca pede CPF completo, nunca promete ação que não executou com ferramenta, nunca inventa canais que não existem.' },
@@ -426,13 +426,13 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     {
       id: 'quem-manda',
       titulo: 'Quem manda em quem (a hierarquia)',
-      busca: 'hierarquia prioridade máquina ia humano posse substituída por atendente',
+      busca: 'hierarquia prioridade máquina ia humano posse substituída por atendente assumir aviso modal responsável concluir sessão automação para',
       conteudo: (
         <div className="space-y-4">
           <Lista>
             <Item><strong>1º A máquina determinística</strong> — botões, dígitos, datas, Sim/Não. Barata, auditável, 1 segundo. É ela que guarda a porta da identidade.</Item>
             <Item><strong>2º O robô de IA</strong> — linguagem solta, sob as travas da seção anterior. Tudo que ele executa passa por ferramentas tipadas com trilha (nada de SQL livre).</Item>
-            <Item><strong>3º (e acima de todos) a pessoa da equipe</strong> — assumiu a ficha ou a conversa, o automático recua e só volta por ordem explícita (<AbaRef>devolver ao robô</AbaRef>, retomada).</Item>
+            <Item><strong>3º (e acima de todos) a pessoa da equipe</strong> — ao <strong>assumir a conversa</strong>, um aviso confirma que, a partir dali, ela é responsável por concluir aquele atendimento: todo o automático (máquina determinística <em>e</em> robô) recua naquela sessão e só volta por ordem explícita (<AbaRef>devolver ao robô</AbaRef>, retomada) ou numa nova sessão.</Item>
           </Lista>
           <Callout tipo="dica" titulo="Se algo parecer errado">
             Toda mensagem automática fica na conversa do paciente e na Mensageria (com motivo quando não

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Notificacoes.VerificacaoCadastral;
+using SMSMais.Core.RoboAtendimento.Runtime;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -53,13 +54,32 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     private static string LembreteGuiaPara(Solicitacao s) =>
         s.TipoVaga == TipoVaga.Retorno ? string.Empty : $"\n\n{LembreteGuia}";
 
+    /// <summary>Um atendente está ativo nesta sessão (assumiu/transferiu/respondeu desde o corte)?
+    /// Lê o expediente humano da config do robô (nulo ⇒ sem override de horário) e delega à
+    /// <see cref="TravaHumano.HumanoAtivoNaSessaoAsync"/> — a MESMA regra do robô LLM.</summary>
+    private async Task<bool> HumanoNaSessaoAsync(ManipuladorContexto ctx, CancellationToken ct)
+    {
+        var cfg = await db.RoboConfiguracoes.AsNoTracking()
+            .Select(c => new { c.HoraAtendimentoHumanoInicio, c.HoraAtendimentoHumanoFim, c.DiasSemanaAtendimentoHumano })
+            .FirstOrDefaultAsync(ct);
+        return await TravaHumano.HumanoAtivoNaSessaoAsync(
+            db, ctx.Conversa.Id, ctx.Conversa.JanelaAbertaEm, ctx.Mensagem.OcorridoEm,
+            ctx.Conversa.RoboRearmadoEm, cfg?.HoraAtendimentoHumanoInicio, cfg?.HoraAtendimentoHumanoFim,
+            cfg?.DiasSemanaAtendimentoHumano, ct);
+    }
+
     public int Ordem => 110; // depois do AcompanhanteWhatsAppHandler (100)
 
     public async Task TratarAsync(ManipuladorContexto ctx, CancellationToken ct)
     {
-        // Humano assumiu ("Parar robô"): a automação determinística se cala — não registra nem
-        // responde por cima do atendente que está no atendimento. 24/10/2026.
+        // "Parar robô" (por sessão): a automação determinística também se cala nesta sessão — zera
+        // ao abrir janela nova. 24/10/2026.
         if (ctx.Conversa.RoboBloqueado) return;
+
+        // Atendente ASSUMIU a conversa (ou respondeu) nesta sessão: para TUDO — o humano é
+        // responsável por concluir o atendimento daquela sessão. Mesmo critério do robô LLM
+        // (TravaHumano), para nunca divergir: se o robô se cala, o determinístico também. 24/10/2026.
+        if (await HumanoNaSessaoAsync(ctx, ct)) return;
 
         if (TentarExtrairId(ctx.BotaoPayload, PrefixoQuickReply, out var idQuick))
         {

@@ -577,10 +577,12 @@ public sealed class ConversaService(
             ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, conversa.UnidadeId, ct);
     }
 
-    /// <summary>Para o robô NESTA conversa (contenção): bloqueio forte que vence tudo — inclusive a
-    /// virada de horário fora do expediente — e persiste entre janelas até a conversa ser devolvida
-    /// ao robô. Assume a conversa para o operador (se estiver sem dono) para ele poder corrigir. Não
-    /// desfaz a mensagem já enviada (o WhatsApp não permite) — só impede o robô de continuar.</summary>
+    /// <summary>Para o robô NESTA conversa (contenção): vence as demais travas DENTRO da sessão
+    /// corrente — inclusive a virada de horário fora do expediente. É por SESSÃO: o webhook o zera
+    /// ao abrir uma janela nova, e aí o robô volta a assumir sozinho; também é limpo ao devolver a
+    /// conversa ao robô. Assume a conversa para o operador (se estiver sem dono) para ele poder
+    /// corrigir. Não desfaz a mensagem já enviada (o WhatsApp não permite) — só impede o robô de
+    /// continuar.</summary>
     public async Task PararRoboAsync(Guid conversaId, CancellationToken ct = default)
     {
         var me = ExigirUsuario();

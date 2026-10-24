@@ -22,8 +22,9 @@ public sealed class RoboAtendimentoWhatsAppHandler(
     {
         if (ctx.Consumido) return;
 
-        // Bloqueio forte por conversa (operador clicou "Parar robô"): vence tudo, inclusive a virada
-        // de horário. Só é limpo ao devolver a conversa ao robô.
+        // "Parar robô" por conversa: vence as demais travas DENTRO desta sessão (inclusive a virada
+        // de horário). É por SESSÃO — o webhook zera ao abrir janela nova; na próxima sessão o robô
+        // volta a assumir sozinho. Também é limpo ao devolver a conversa ao robô.
         if (ctx.Conversa.RoboBloqueado) return;
 
         var ehAtendente = ctx.BotaoPayload?.StartsWith("atendente:", StringComparison.Ordinal) == true
@@ -49,25 +50,18 @@ public sealed class RoboAtendimentoWhatsAppHandler(
             e => e.TelefoneCanonical == ctx.Conversa.TelefoneCanonical && e.ExpiraEm > DateTime.UtcNow, ct);
         if (temVerificacao) return;
 
-        // Trava humano: se um humano já respondeu/assumiu desde o corte, cala. Dentro do expediente o
-        // corte é a âncora da janela; FORA dele, só a atividade RECENTE cala (o robô assume quando os
-        // atendentes saíram, mas recua se um deles acabou de agir — ex.: correção manual às 20h).
         var foraExpediente = TravaHumano.ForaDoExpedienteHumano(
             cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow,
             cfg.DiasSemanaAtendimentoHumano);
-        var ancora = TravaHumano.AncoraEfetiva(
-            ctx.Conversa.JanelaAbertaEm, ctx.Mensagem.OcorridoEm, ctx.Conversa.RoboRearmadoEm);
-        var corteHumano = TravaHumano.CorteHumano(ancora, foraExpediente, DateTime.UtcNow);
-        var humanoRespondeu = await db.MensagensWhatsApp.AsNoTracking().AnyAsync(
-            m => m.ConversaId == ctx.Conversa.Id && m.Direcao == DirecaoMensagem.Saida
-                && m.AutorUsuarioId != null && m.OcorridoEm >= corteHumano, ct);
-        if (humanoRespondeu) return;
-        var humanoAssumiu = await db.ConversaEventos.AsNoTracking().AnyAsync(
-            e => e.ConversaId == ctx.Conversa.Id && e.AtorUsuarioId != null && e.OcorridoEm >= corteHumano
-                && (e.Tipo == TipoEventoConversa.Assumida
-                    || e.Tipo == TipoEventoConversa.Transferida
-                    || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
-        if (humanoAssumiu) return;
+
+        // Trava humano: se um humano já respondeu/assumiu desde o corte, cala. Dentro do expediente o
+        // corte é a âncora da janela; FORA dele, só a atividade RECENTE cala (o robô assume quando os
+        // atendentes saíram, mas recua se um deles acabou de agir — ex.: correção manual às 20h).
+        if (await TravaHumano.HumanoAtivoNaSessaoAsync(
+                db, ctx.Conversa.Id, ctx.Conversa.JanelaAbertaEm, ctx.Mensagem.OcorridoEm,
+                ctx.Conversa.RoboRearmadoEm, cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim,
+                cfg.DiasSemanaAtendimentoHumano, ct))
+            return;
 
         // BOTÃO "Falar com um atendente" (quick-reply do template, ou o texto literal): é pedido
         // DIRETO de humano — não é conversa para o robô decidir. O clique já passou por um LLM

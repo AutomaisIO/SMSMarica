@@ -65,9 +65,11 @@ public class Conversa
     /// trava humano-por-janela: atividade humana ANTES disso deixa de calar o robô, que retoma.</summary>
     public DateTime? RoboRearmadoEm { get; set; }
 
-    /// <summary>Bloqueio FORTE do robô nesta conversa (operador clicou "Parar robô"). Vence tudo —
-    /// inclusive a virada de horário fora do expediente — e persiste entre janelas. Só é limpo ao
-    /// devolver a conversa ao robô ("Atendente Virtual").</summary>
+    /// <summary>Bloqueio do robô nesta conversa (operador clicou "Parar robô"). Vence as demais
+    /// travas DENTRO da sessão em que foi acionado — inclusive a virada de horário fora do
+    /// expediente. É por SESSÃO: o webhook o zera ao abrir uma janela nova (nova sessão), e aí o
+    /// robô volta a assumir sozinho. Também é limpo ao devolver a conversa ao robô ("Atendente
+    /// Virtual").</summary>
     public bool RoboBloqueado { get; set; }
 
     public DateTime PrimeiroContatoEm { get; set; }

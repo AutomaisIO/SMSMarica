@@ -1,3 +1,7 @@
+using Microsoft.EntityFrameworkCore;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+
 namespace SMSMais.Core.RoboAtendimento.Runtime;
 
 /// <summary>
@@ -50,5 +54,39 @@ public static class TravaHumano
         if (inicio is { } ini && hora < ini) return true;        // atendentes ainda não chegaram
         if (fim is { } f && hora >= f) return true;              // atendentes já saíram
         return false;
+    }
+
+    /// <summary>Verdadeiro quando um humano está ATIVO na sessão corrente (respondeu ou
+    /// assumiu/transferiu desde o corte) e, portanto, TODA automação — robô LLM e fluxos
+    /// determinísticos — deve recuar e deixar o atendente concluir aquela sessão. Unifica a
+    /// consulta que antes vivia duplicada no handler do robô e no processador, para que os
+    /// fluxos determinísticos usem exatamente o mesmo critério (nunca divergir: se o robô cala,
+    /// o determinístico também cala). A âncora/corte seguem a regra de expediente de
+    /// <see cref="CorteHumano"/> / <see cref="ForaDoExpedienteHumano"/>.</summary>
+    public static async Task<bool> HumanoAtivoNaSessaoAsync(
+        SmsMaisDbContext db,
+        Guid conversaId,
+        DateTime? janelaAbertaEm,
+        DateTime ocorridoEmMensagem,
+        DateTime? roboRearmadoEm,
+        TimeOnly? horaInicio,
+        TimeOnly? horaFim,
+        int? diasSemana,
+        CancellationToken ct)
+    {
+        var foraExpediente = ForaDoExpedienteHumano(horaInicio, horaFim, DateTime.UtcNow, diasSemana);
+        var ancora = AncoraEfetiva(janelaAbertaEm, ocorridoEmMensagem, roboRearmadoEm);
+        var corte = CorteHumano(ancora, foraExpediente, DateTime.UtcNow);
+
+        var humanoRespondeu = await db.MensagensWhatsApp.AsNoTracking().AnyAsync(
+            m => m.ConversaId == conversaId && m.Direcao == DirecaoMensagem.Saida
+                && m.AutorUsuarioId != null && m.OcorridoEm >= corte, ct);
+        if (humanoRespondeu) return true;
+
+        return await db.ConversaEventos.AsNoTracking().AnyAsync(
+            e => e.ConversaId == conversaId && e.AtorUsuarioId != null && e.OcorridoEm >= corte
+                && (e.Tipo == TipoEventoConversa.Assumida
+                    || e.Tipo == TipoEventoConversa.Transferida
+                    || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
     }
 }

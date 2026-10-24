@@ -8,6 +8,7 @@ using SMSMais.Core.Notificacoes.Confirmacoes;
 using SMSMais.Core.Notificacoes.VerificacaoCadastral;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
+using SMSMais.Core.RoboAtendimento.Runtime;
 using SMSMais.Core.Telefones;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -79,16 +80,33 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     private const int MaxReorientacoes = 3; // mata loop com autoresponder/bot do outro lado
     private static readonly TimeSpan ValidadeEstado = TimeSpan.FromDays(7);
 
+    /// <summary>Um atendente está ativo nesta sessão? Mesma regra do robô LLM
+    /// (<see cref="TravaHumano.HumanoAtivoNaSessaoAsync"/>), lendo o expediente da config do robô.</summary>
+    private async Task<bool> HumanoNaSessaoAsync(ManipuladorContexto ctx, CancellationToken ct)
+    {
+        var cfg = await db.RoboConfiguracoes.AsNoTracking()
+            .Select(c => new { c.HoraAtendimentoHumanoInicio, c.HoraAtendimentoHumanoFim, c.DiasSemanaAtendimentoHumano })
+            .FirstOrDefaultAsync(ct);
+        return await TravaHumano.HumanoAtivoNaSessaoAsync(
+            db, ctx.Conversa.Id, ctx.Conversa.JanelaAbertaEm, ctx.Mensagem.OcorridoEm,
+            ctx.Conversa.RoboRearmadoEm, cfg?.HoraAtendimentoHumanoInicio, cfg?.HoraAtendimentoHumanoFim,
+            cfg?.DiasSemanaAtendimentoHumano, ct);
+    }
+
     public int Ordem => 120; // depois da confirmação Sim/Não (110), antes do robô (1000)
 
     public async Task TratarAsync(ManipuladorContexto ctx, CancellationToken ct)
     {
         if (ctx.Consumido) return;
 
-        // Humano assumiu ("Parar robô"): a automação determinística TAMBÉM se cala — não manda
-        // resposta por cima do atendente. Foi o caso Eliane (23/10/2026): o "Quero mais informações"
-        // disparou "esse agendamento já passou" por cima da atendente que estava no atendimento. 24/10/2026.
+        // "Parar robô" (por sessão): a automação determinística TAMBÉM se cala nesta sessão — zera
+        // ao abrir janela nova. Foi o caso Eliane (23/10/2026): o "Quero mais informações" disparou
+        // "esse agendamento já passou" por cima da atendente que estava no atendimento. 24/10/2026.
         if (ctx.Conversa.RoboBloqueado) return;
+
+        // Atendente ASSUMIU (ou respondeu) nesta sessão: para TUDO — o humano conclui o atendimento
+        // daquela sessão. Mesmo critério do robô LLM (TravaHumano), para nunca divergir. 24/10/2026.
+        if (await HumanoNaSessaoAsync(ctx, ct)) return;
 
         // Botões do próprio fluxo (confirmação de nome).
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoSim, out var idSim))

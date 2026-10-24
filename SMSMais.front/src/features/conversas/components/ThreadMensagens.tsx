@@ -19,6 +19,7 @@ import { EncaminharConversaDialog } from '@/features/conversas/components/Encami
 import { TransferirConversaDialog } from '@/features/conversas/components/TransferirConversaDialog';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { PacientesDoTelefone } from '@/features/conversas/components/PacientesDoTelefone';
+import { Modal } from '@/shared/ui/Modal';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useAuth, usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import type { Mensagem } from '@/features/conversas/types';
@@ -156,6 +157,8 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [encaminharAberto, setEncaminharAberto] = useState(false);
   const [transferirAberto, setTransferirAberto] = useState(false);
+  // Aviso exibido ao ASSUMIR: a partir do claim a automação para e o atendente é quem conclui.
+  const [avisoAssumirAberto, setAvisoAssumirAberto] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -196,6 +199,20 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
       await acao();
     } catch (e) {
       // 409 de corrida ("já assumida por Fulano") — o invalidate do onError já refaz a tela.
+      setErroAcao(extrairMensagemDeErro(e));
+    }
+  }
+
+  // Assumir = o atendente passa a conduzir. A partir daqui a automação (robô e fluxos
+  // automáticos) para de responder ao paciente nesta sessão, então avisamos que concluir o
+  // atendimento é responsabilidade dele. Só abre o aviso se o claim deu certo.
+  async function assumirEAvisar() {
+    setErroAcao(null);
+    setMenuAberto(false);
+    try {
+      await assumir.mutateAsync(conversaId);
+      setAvisoAssumirAberto(true);
+    } catch (e) {
       setErroAcao(extrairMensagemDeErro(e));
     }
   }
@@ -268,7 +285,7 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
               {semDono && (
                 <button
                   type="button"
-                  onClick={() => void executar(() => assumir.mutateAsync(conversaId))}
+                  onClick={() => void assumirEAvisar()}
                   disabled={assumir.isPending}
                   className="flex items-center gap-1 rounded-md bg-primary-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-primary-700 disabled:opacity-50"
                   title="A conversa sai da fila da unidade e vai para a sua lista"
@@ -398,6 +415,28 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
           onTransferida={() => setTransferirAberto(false)}
         />
       )}
+
+      <Modal
+        aberto={avisoAssumirAberto}
+        aoFechar={() => setAvisoAssumirAberto(false)}
+        titulo="Você assumiu este atendimento"
+        largura="sm"
+      >
+        <p className="text-sm leading-relaxed text-gray-700">
+          A partir de agora o atendimento automático{' '}
+          <span className="font-medium">não responde mais a este paciente</span> nesta conversa.
+          Você é responsável por concluir o atendimento desta pessoa nesta sessão.
+        </p>
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setAvisoAssumirAberto(false)}
+            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            OK
+          </button>
+        </div>
+      </Modal>
 
       {criticaMsgId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">

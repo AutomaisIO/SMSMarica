@@ -160,6 +160,10 @@ public sealed class WhatsAppWebhookService(
             {
                 c.JanelaAbertaEm = ocorridoEm;
                 c.RoboInteracoesNaJanela = 0;
+                // "Parar robô" vale SÓ para a sessão em que foi acionado: passou a janela (nova
+                // sessão), o robô volta a assumir sozinho — como já é com a trava humano-por-janela.
+                // Roda ANTES dos manipuladores, então o handler já vê o bloqueio zerado na janela nova.
+                c.RoboBloqueado = false;
             }
             c.JanelaExpiraEm = ocorridoEm.AddHours(24);          // renova janela de 24h
             c.UltimaMensagemEm = ocorridoEm;
