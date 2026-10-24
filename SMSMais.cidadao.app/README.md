@@ -104,8 +104,9 @@ O paciente pode compartilhar a posição do celular com o motorista enquanto esp
   (`android.hardware.location`) e o esconde de aparelho sem ele. Na 1.0.2, 7 aparelhos deixaram de ser
   compatíveis. Por isso o manifesto declara `android.hardware.location`, `.gps` e `.network` com
   `required="false"`. Sem localização, o app funciona igual e a faixa diz que ela está desligada.
-  Depois de mexer no manifesto, confira na Play (Detalhes do pacote → Recursos) que só aparece
-  `android.hardware.faketouch`.
+  Depois de mexer no manifesto, confira na revisão da versão, na Play, que nenhum aparelho deixou de
+  ser compatível (na 1.0.4, os 7 voltaram: 19.346 compatíveis). A lista "Recursos" dos detalhes do
+  pacote não serve para isso, porque mostra também os recursos opcionais.
 - **Duas armadilhas do Android (achadas no emulador, os testes de unidade não pegam):**
   - o `GeolocatorLocationService` do plugin **tem de ficar** no manifesto: sem ele o fluxo de posições
     não começa (no logcat: `Location background service has not started correctly`). Ele fica sem o
@@ -297,6 +298,12 @@ flutter build appbundle --release --dart-define-from-file=firebase.json --obfusc
 
 Sai em `build/app/outputs/bundle/release/app-release.aab`. A versão vem do `pubspec.yaml`
 (`version: <nome>+<código>`): cada envio à Play precisa de um **código maior** que o anterior.
+
+No fim, o Flutter confere se os símbolos das bibliotecas nativas saíram do pacote, procurando o
+`libflutter.so.sym`. Para isso ele usa o `apkanalyzer` do **Android SDK Command-line Tools**.
+Sem esse componente, o build acusa "Release app bundle failed to strip debug symbols" e termina com
+erro, mesmo com o pacote certo. Instale pelo SDK Manager do Android Studio (aba SDK Tools →
+"Android SDK Command-line Tools (latest)"); o `flutter doctor` aponta quando ele falta.
 
 O `--obfuscate` embaralha os nomes do código Dart no pacote (dificulta a engenharia reversa). Os
 símbolos para ler uma pilha de erro ficam em `build/app/simbolos`: **guarde a pasta de cada versão**
