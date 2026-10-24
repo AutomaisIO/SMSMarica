@@ -326,6 +326,32 @@ Do pentest VULTUS (fev/2026, projeto Aeromais) e da revisão de 23/10/2026:
     ligar um projeto do Google Cloud no Play Console.
   - **iOS:** excluir o cache do backup do iCloud antes da App Store.
 
+## Publicar na App Store (iPhone)
+
+Começou em 24/10/2026. O app é **só para iPhone** (`TARGETED_DEVICE_FAMILY = 1`); no iPad, ele abre
+em modo de compatibilidade. O `Info.plist` declara `ITSAppUsesNonExemptEncryption = false`: o app só
+usa a criptografia do sistema (HTTPS), que é isenta, e assim a Apple para de perguntar a cada envio.
+
+**Build sem Mac.** O workflow [`build-cidadao-ios.yml`](../.github/workflows/build-cidadao-ios.yml)
+compila num Mac do GitHub a cada PR que mexe no app. É grátis, porque o repositório é público. Por
+enquanto ele roda sem assinatura. Em repositório público, o log e os artefatos ficam visíveis a
+qualquer um: segredo só em GitHub Secrets, nunca em `echo`, e o `.ipa` e os símbolos não sobem como
+artefato aberto.
+
+**Falta, nesta ordem:**
+
+1. Conta Apple Developer da AutoMais, como organização (D-U-N-S 902782620). A inscrição foi feita e
+   espera a Apple.
+2. No App Store Connect: o app `io.automais.smsmais.cidadao` e a chave de API (`.p8`), para a nuvem
+   enviar ao TestFlight. No Apple Developer: o certificado de distribuição, o perfil da App Store e as
+   chaves APNs (seção do push).
+3. O app iOS no Firebase e as `FIREBASE_IOS_*` no `firebase.json` (seção do push).
+4. O workflow com assinatura e envio ao TestFlight: segredos no GitHub, execução manual.
+5. O cache fora do backup do iCloud (ver Segurança do app).
+6. A página da App Store (a partir de [`loja/`](loja/README.md)), a "Privacidade do app", a conta de
+   demonstração e a declaração da Secretaria nas notas da revisão. A diretriz 5.1.1(ix) da Apple
+   exige que app de saúde venha de quem presta o serviço ou de quem tem autorização dele.
+
 ## Pendências para publicar
 
 - **Links do WhatsApp abrirem direto no app:** publicar `/.well-known/assetlinks.json` (Android)
