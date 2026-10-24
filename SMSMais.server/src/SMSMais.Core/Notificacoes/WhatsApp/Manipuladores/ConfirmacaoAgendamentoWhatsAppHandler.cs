@@ -57,6 +57,10 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
 
     public async Task TratarAsync(ManipuladorContexto ctx, CancellationToken ct)
     {
+        // Humano assumiu ("Parar robô"): a automação determinística se cala — não registra nem
+        // responde por cima do atendente que está no atendimento. 24/10/2026.
+        if (ctx.Conversa.RoboBloqueado) return;
+
         if (TentarExtrairId(ctx.BotaoPayload, PrefixoQuickReply, out var idQuick))
         {
             ctx.Consumido = true;

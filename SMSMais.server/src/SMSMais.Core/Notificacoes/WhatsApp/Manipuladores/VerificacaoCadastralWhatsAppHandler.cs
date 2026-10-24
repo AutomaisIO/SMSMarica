@@ -85,6 +85,11 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     {
         if (ctx.Consumido) return;
 
+        // Humano assumiu ("Parar robô"): a automação determinística TAMBÉM se cala — não manda
+        // resposta por cima do atendente. Foi o caso Eliane (23/10/2026): o "Quero mais informações"
+        // disparou "esse agendamento já passou" por cima da atendente que estava no atendimento. 24/10/2026.
+        if (ctx.Conversa.RoboBloqueado) return;
+
         // Botões do próprio fluxo (confirmação de nome).
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoSim, out var idSim))
         {

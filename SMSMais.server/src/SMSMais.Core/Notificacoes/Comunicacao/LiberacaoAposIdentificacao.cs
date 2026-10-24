@@ -249,6 +249,21 @@ public sealed class LiberacaoAposIdentificacao(
             : motivos.Values.OrderBy(m => Array.IndexOf(PrioridadeDoMotivo, m.Desfecho)).FirstOrDefault()
               ?? new Motivo(DesfechoLiberacao.NadaPendente, null, null);
 
+        // Quando o motivo é "já passou" MAS o paciente tem um agendamento FUTURO entre os candidatos
+        // (ex.: a confirmação de um exame futuro já foi enviada), NÃO mande remarcar um vencido —
+        // aponte para o futuro. Corrige o caso Eliane (23/10/2026): havia a mamografia vencida e a
+        // ginecologia futura, e a prioridade surfava a vencida com "remarque no posto". 24/10/2026.
+        if (motivo.Desfecho == DesfechoLiberacao.AgendamentoPassou)
+        {
+            var futuro = motivos.Values
+                .Where(x => x.Desfecho != DesfechoLiberacao.AgendamentoPassou
+                            && x.Desfecho != DesfechoLiberacao.AgendamentoCancelado
+                            && x.DataAgendada is { } d && d > DateTime.UtcNow)
+                .OrderBy(x => Array.IndexOf(PrioridadeDoMotivo, x.Desfecho))
+                .FirstOrDefault();
+            if (futuro is not null) motivo = futuro;
+        }
+
         // "Já passou" sem data não tem como ser dito: vira "não há aviso pendente".
         if (motivo.Desfecho == DesfechoLiberacao.AgendamentoPassou && motivo.DataAgendada is null)
             motivo = motivo with { Desfecho = DesfechoLiberacao.NadaPendente };
