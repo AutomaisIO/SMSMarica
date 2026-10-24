@@ -91,6 +91,12 @@ O paciente pode compartilhar a posição do celular com o motorista enquanto esp
 - **Só com o app aberto:** permissão "durante o uso" (`ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION`;
   no iOS, `NSLocationWhenInUseUsageDescription`). **Sem segundo plano:** não há
   `ACCESS_BACKGROUND_LOCATION`. O app saiu da tela, o GPS desliga; voltou, liga de novo sem perguntar.
+- **GPS não é exigido do aparelho:** só com as permissões, a Play entende que o app precisa de GPS
+  (`android.hardware.location`) e o esconde de aparelho sem ele. Na 1.0.2, 7 aparelhos deixaram de ser
+  compatíveis. Por isso o manifesto declara `android.hardware.location`, `.gps` e `.network` com
+  `required="false"`. Sem localização, o app funciona igual e a faixa diz que ela está desligada.
+  Depois de mexer no manifesto, confira na Play (Detalhes do pacote → Recursos) que só aparece
+  `android.hardware.faketouch`.
 - **Duas armadilhas do Android (achadas no emulador, os testes de unidade não pegam):**
   - o `GeolocatorLocationService` do plugin **tem de ficar** no manifesto: sem ele o fluxo de posições
     não começa (no logcat: `Location background service has not started correctly`). Ele fica sem o
@@ -261,11 +267,11 @@ prontuário fica, por obrigação legal. Mudou o processo, mudam a página e a d
 
 Na Segurança dos dados, o declarado é o que o app **manda** ao servidor: CPF e nascimento (seus e dos
 acompanhantes), e-mail e telefones do Perfil, foto, exames enviados (arquivo e foto), confirmação e
-cancelamento de exame, avaliação da viagem, o token do push e, desde a 1.0.2, a **localização exata**
-(coletada, não compartilhada, opcional, para a funcionalidade do app: só no dia da viagem, depois do
-Compartilhar, e apagada no embarque). Nada é "compartilhado" no sentido da Play (WhatsApp e Firebase são
-prestadores de serviço; o motorista é o próprio serviço de transporte); não há ID de anúncio nem
-relatório de falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa
+cancelamento de exame, avaliação da viagem, o token do push e, desde a 1.0.2, a **localização
+aproximada e exata** (coletada, não compartilhada, opcional, para a funcionalidade do app: só no dia
+da viagem, depois do Compartilhar, e apagada no embarque). Nada é "compartilhado" no sentido da Play
+(WhatsApp e Firebase são prestadores de serviço; o motorista é o próprio serviço de transporte); não
+há ID de anúncio nem relatório de falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa
 declaração.
 
 ### Gerar o pacote da loja
