@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ícone adaptativo: o ícone "maskable" do PWA sobre o vermelho do splash. -->
+<!-- Ícone adaptativo: o símbolo "MA RI CÁ" (letras na área segura de 66dp) sobre o laranja da marca. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/vermelho_splash" />
+    <background android:drawable="@color/laranja_marca" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>

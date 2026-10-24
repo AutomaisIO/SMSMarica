@@ -49,6 +49,15 @@ lib/
 Fontes: **Bricolage Grotesque** (títulos) e **Inter** (texto), empacotadas em `assets/fonts/`
 (OFL). Ícones: **Lucide** — os mesmos do PWA.
 
+Marca: o logo da tela de entrada (`assets/brand/marica_logo.png`) é o da **Secretaria de Saúde**,
+versão colorida, mandado pela Comunicação em 21/10/2026. O ícone do app e a abertura usam o símbolo
+**"MA RI CÁ"** sobre o laranja `#FF2A00` (`laranja_marca` no Android, fundo da `LaunchScreen` no
+iOS). O símbolo veio de Sistema → Instituição e foi corrigido; ele e o gerador dos ícones ficam em
+[`loja/marca/`](loja/README.md#símbolo-marca). No ícone adaptativo, o primeiro plano tem só as letras
+brancas, sobre fundo transparente e a 74%, para caber na área segura de 66dp; o laranja é a camada de
+fundo. O ícone de 1024 do iOS sai ampliado do PNG de 512 e fica melhor com o arquivo vetorial,
+quando vier.
+
 ## Rodar
 
 ```bash
@@ -271,8 +280,14 @@ cancelamento de exame, avaliação da viagem, o token do push e, desde a 1.0.2, 
 aproximada e exata** (coletada, não compartilhada, opcional, para a funcionalidade do app: só no dia
 da viagem, depois do Compartilhar, e apagada no embarque). Nada é "compartilhado" no sentido da Play
 (WhatsApp e Firebase são prestadores de serviço; o motorista é o próprio serviço de transporte); não
-há ID de anúncio nem relatório de falhas. Dependência nova que colete dado (ex.: Analytics, Crashlytics) muda essa
-declaração.
+há ID de anúncio nem relatório de falhas. Dependência nova que colete dado (ex.: Analytics,
+Crashlytics) muda essa declaração.
+
+### Página da loja
+
+Os textos, os prints, o ícone e o gráfico da página da Play ficam em [`loja/`](loja/README.md), do
+jeito que foram salvos no Play Console. Mudou uma tela que aparece nos prints, ou a marca, refaça a
+imagem e troque lá também.
 
 ### Gerar o pacote da loja
 
